@@ -1,28 +1,22 @@
-import { EC_BN128 } from "./ecbn128";
+import { EC_BN254_Fp } from "./ec-bn254-Fp";
+import { Register } from "./register";
+import { vm } from "./vm";
 
 export class Example {
 
-    vm: EC_BN128 = new EC_BN128();
+    ec = new EC_BN254_Fp();
 
     example() {
 
-        const x = 0x0C6047F9441ED7D6D3045406E95C07CD85C778E4B8CEF3CA7ABAC09B95C709EE5n;
-        const y = 0x1AE168FEA63DC339A3C58419466CEAEEF7F632653266D0E1236431A950CFE52An;
+        const r_x = Register.hardcoded(EC_BN254_Fp.G_X);
+        const r_y = Register.hardcoded(EC_BN254_Fp.G_Y);
 
-        const r_x = this.vm.allocateRegister();
-        this.vm.load(r_x, x, 'x');
+        const point1 = this.ec.makePoint(r_x, r_y);
+        this.ec.assertPoint(point1);
 
-        const r_y = this.vm.allocateRegister();
-        this.vm.load(r_y, y, 'y');
+        const point2 = this.ec.double(point1);
+        this.ec.assertPoint(point2);
 
-        this.vm.ecAssertPoint(r_x, r_y);
-
-        const r_2_x = this.vm.allocateRegister();
-        const r_2_y = this.vm.allocateRegister();
-        this.vm.ecDouble(r_2_x, r_2_y, r_x, r_y);
-
-        this.vm.ecAssertPoint(r_2_x, r_2_y);
-
-        this.vm.print();
+        vm.print();
     }
 }
