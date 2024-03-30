@@ -75,3 +75,4 @@ export class Register {
 export const R_R = Register.hardcodedWithIndex(-1, 0n);
 export const R_0 = Register.hardcodedWithIndex(0, 0n);
 export const R_1 = Register.hardcodedWithIndex(1, 1n);
+export const R_MAX = Register.hardcodedWithIndex(2, 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffn);

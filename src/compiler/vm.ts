@@ -7,7 +7,8 @@ enum InstrCode {
     ADDMOD = "ADDMOD",
     ANDBIT = "ANDBIT",
     MOV = "MOV",
-    EQUAL = "EQUAL"
+    EQUAL = "EQUAL",
+    NOT = "NOT"
 }
 
 interface Instruction {
@@ -84,11 +85,26 @@ export class VM {
         this.current++;
     }
 
+    not(target: Register, a: Register) {
+        target.setValue(a.getValue() === 0n ? 1n : 0n);
+
+        this.setInstruction(InstrCode.NOT, target.getIndex(), [a.getIndex()]);
+        this.current++;
+    }
+
     equal(target: Register, a: Register, b: Register) {
         target.setValue(a.getValue() === b.getValue() ? 1n : 0n);
 
         this.setInstruction(InstrCode.EQUAL, target.getIndex(), [a.getIndex(), b.getIndex()]);
         this.current++;
+    }
+
+    notEqual(target: Register, a: Register, b: Register) {
+        target.setValue(a.getValue() === b.getValue() ? 1n : 0n);
+
+        this.setInstruction(InstrCode.EQUAL, target.getIndex(), [a.getIndex(), b.getIndex()]);
+        this.setInstruction(InstrCode.NOT, target.getIndex(), [target.getIndex()]);
+        this.current += 2;
     }
 
     /// *** UTILITY INSTRUCTIONS *** ///

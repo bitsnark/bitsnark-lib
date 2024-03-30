@@ -1,34 +1,37 @@
 import { Member } from "./member";
 import { vm } from "../vm";
-import { Register } from "../register";
+import { R_MAX, Register } from "../register";
 
 export class ExtensionMember implements Member {
 
-    private prime: Register;
-    private register: Register;
+    private primeCoeffs: Register[];
+    private coeffs: Register[];
+    private degree: Register;
 
-    constructor(prime: Register, r?: Register) {
-        this.prime = prime;
-        this.register = r ?? new Register();
-    }
-
-    ifBit(r: Register, bit: number, other: Member): Member {
-        const t = new PrimeFieldMember(this.prime);
-        vm.mov(t.register, this.register);
-        vm.andbit(t.register, this.register, bit, (other as any as PrimeFieldMember).register);
-        return t;
+    constructor(primeCoeffs: Register[], coeffs?: Register[]) {
+        this.primeCoeffs = primeCoeffs;
+        this.coeffs = coeffs ?? primeCoeffs.map(() => new Register());
+        this.degree = Register.hardcoded(BigInt(primeCoeffs.length));
     }
 
     eq(a: Member): Register {
+        if (this.degree.getValue() !== (a as any as ExtensionMember).degree.getValue())
+            throw new Error('Incompatible polynomials');
+        const total = new Register();
         const f = new Register();
-        vm.equal(f, this.register, (a as any as PrimeFieldMember).register);
+        for (let i = 0; i < this.primeCoeffs.length; i++) {
+            vm.equal(f, this.coeffs[i], (a as any as ExtensionMember).coeffs[i]);
+            vm.add(total, total, f, R_MAX);
+        }
+        vm.equal(f, total, this.degree);
         return f;
     }
 
     add(a: Member): Member {
-        const t = new PrimeFieldMember(this.prime);
-        vm.add(this.register, this.register, (a as any as PrimeFieldMember).register, this.prime);
-        return t;
+        if (this.degree.getValue() !== (a as any as ExtensionMember).degree.getValue())
+            throw new Error('Incompatible polynomials');
+        
+
     }
 
     mul(a: Member): Member {
@@ -48,6 +51,14 @@ export class ExtensionMember implements Member {
         vm.div(this.register, this.register, (a as any as PrimeFieldMember).register, this.prime);
         return t;
     }
+
+    ifBit(r: Register, bit: number, other: Member): Member {
+        const t = new PrimeFieldMember(this.prime);
+        vm.mov(t.register, this.register);
+        vm.andbit(t.register, this.register, bit, (other as any as PrimeFieldMember).register);
+        return t;
+    }
+
 
     getRegister(): Register {
         return this.register;
