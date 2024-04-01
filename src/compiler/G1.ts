@@ -11,10 +11,7 @@ export class G1 extends EC {
     static gen_y = new PrimeFieldMember(G1.prime, Register.hardcoded(2n));
     static generator = new ECPoint(new PrimeFieldMember(G1.prime, G1.prime), G1.gen_x, G1.gen_y);
 
-    generator: ECPoint;
-
     constructor() {
         super(G1.ec_a, G1.ec_b);
-        this.generator = this.makePoint(G1.gen_x, G1.gen_y);
     }
 }
