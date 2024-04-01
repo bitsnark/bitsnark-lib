@@ -75,7 +75,7 @@ export class Complex implements Member {
         const r_r = new Register();
         vm.load(r_r, rt[0], 'complex div r');
         const r_i = new Register();
-        vm.load(r_r, rt[0], 'complex div i');
+        vm.load(r_i, rt[1], 'complex div i');
         const result = new Complex(this.prime, [
             new PrimeFieldMember(this.prime, r_r),
             new PrimeFieldMember(this.prime, r_i)
@@ -111,10 +111,14 @@ export class ComplexField {
     }
 }
 
+function mod(a: bigint, p: bigint) { 
+    return (a % p + p) % p;
+}
+
 function multiplyComplex(a: bigint[], b: bigint[], p: bigint): bigint[] {
     return [
-        ((a[0] * b[0] - a[1] * b[1]) % p + p) % p,
-        ((a[0] * b[1] + a[1] * b[0]) % p + p) % p
+        mod(a[0] * b[0] - a[1] * b[1], p),
+        mod(a[0] * b[1] + a[1] * b[0], p)
     ];
 }
 
@@ -124,7 +128,7 @@ function divideComplex(a: bigint[], b: bigint[], p: bigint): bigint[] {
         throw new Error("Division by zero error");
     }
 
-    const conjugateB = [b[0], (- b[1] % p + p) % p];
+    const conjugateB = [b[0], -b[1]];
     const numerator = multiplyComplex(a, conjugateB, p);
     const modulusSquared = ((b[0] * b[0] + b[1] * b[1]) % p + p) % p;
     return [

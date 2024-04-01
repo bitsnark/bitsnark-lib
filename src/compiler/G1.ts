@@ -2,6 +2,7 @@ import { EC, ECPoint } from "./algebra/ec";
 import { PrimeFieldMember } from "./algebra/prime-field";
 import { Register } from "./vm/register";
 
+// group over elliptic curve over finite field
 export class G1 extends EC {
 
     static prime = Register.hardcoded(21888242871839275222246405745257275088696311157297823662689037894645226208583n);
