@@ -1,5 +1,4 @@
 
-
 const map: Map<number, boolean> = new Map<number, boolean>();
 
 export let highestIndex = 0;

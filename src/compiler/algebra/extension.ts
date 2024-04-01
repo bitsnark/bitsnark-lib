@@ -1,79 +1,59 @@
 import { Member } from "./member";
-import { vm } from "../vm";
-import { R_MAX, Register } from "../register";
+import { Register } from "../vm/register";
+import { Polynomial } from "./polynomials";
 
 export class ExtensionMember implements Member {
 
-    private primeCoeffs: Register[];
-    private coeffs: Register[];
-    private degree: Register;
+    polymod: Polynomial;
+    value: Polynomial;
 
-    constructor(primeCoeffs: Register[], coeffs?: Register[]) {
-        this.primeCoeffs = primeCoeffs;
-        this.coeffs = coeffs ?? primeCoeffs.map(() => new Register());
-        this.degree = Register.hardcoded(BigInt(primeCoeffs.length));
+    constructor(polymod: Polynomial, value?: Polynomial) {
+        this.polymod = polymod;
+        this.value = value ? value : new Polynomial(polymod.prime, polymod.count);
     }
 
     eq(a: Member): Register {
-        if (this.degree.getValue() !== (a as any as ExtensionMember).degree.getValue())
-            throw new Error('Incompatible polynomials');
-        const total = new Register();
-        const f = new Register();
-        for (let i = 0; i < this.primeCoeffs.length; i++) {
-            vm.equal(f, this.coeffs[i], (a as any as ExtensionMember).coeffs[i]);
-            vm.add(total, total, f, R_MAX);
-        }
-        vm.equal(f, total, this.degree);
-        return f;
+        return this.value.eq(a);
     }
 
     add(a: Member): Member {
-        if (this.degree.getValue() !== (a as any as ExtensionMember).degree.getValue())
-            throw new Error('Incompatible polynomials');
-        
-
+        return new ExtensionMember(this.polymod,
+            (this.value.add(a) as Polynomial).mod(this.polymod) as Polynomial);
     }
 
     mul(a: Member): Member {
-        const t = new PrimeFieldMember(this.prime);
-        vm.mul(this.register, this.register, (a as any as PrimeFieldMember).register, this.prime);
-        return t;
+        return new ExtensionMember(this.polymod,
+            (this.value.mul(a) as Polynomial).mod(this.polymod) as Polynomial);
     }
 
     sub(a: Member): Member {
-        const t = new PrimeFieldMember(this.prime);
-        vm.sub(this.register, this.register, (a as any as PrimeFieldMember).register, this.prime);
-        return t;
+        return new ExtensionMember(this.polymod,
+            (this.value.sub(a) as Polynomial).mod(this.polymod) as Polynomial);
     }
 
     div(a: Member): Member {
-        const t = new PrimeFieldMember(this.prime);
-        vm.div(this.register, this.register, (a as any as PrimeFieldMember).register, this.prime);
-        return t;
+        return new ExtensionMember(this.polymod,
+            (this.value.div(a) as Polynomial).mod(this.polymod) as Polynomial);
     }
 
     ifBit(r: Register, bit: number, other: Member): Member {
-        const t = new PrimeFieldMember(this.prime);
-        vm.mov(t.register, this.register);
-        vm.andbit(t.register, this.register, bit, (other as any as PrimeFieldMember).register);
-        return t;
+        throw new Error('Not implemented');
     }
 
-
-    getRegister(): Register {
-        return this.register;
+    zero(): Member {
+        return this.polymod;
     }
 }
 
-export class Extension {
+export class ExtensionField {
 
-    private prime: Register;
+    polymod: Polynomial;
 
-    constructor(prime: Register) {
-        this.prime = prime;
+    constructor(polymod: Polynomial) {
+        this.polymod = polymod;
     }
 
-    newMember(r?: Register): PrimeFieldMember {
-        return new PrimeFieldMember(this.prime, r);
+    newMember(p?: Polynomial): ExtensionMember {
+        return new ExtensionMember(this.polymod, p);
     }
 }

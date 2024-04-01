@@ -1,6 +1,6 @@
 import { Member } from "./member";
-import { vm } from "../vm";
-import { Register } from "../register";
+import { vm } from "../vm/vm";
+import { R_0, Register } from "../vm/register";
 
 export class PrimeFieldMember implements Member {
 
@@ -51,6 +51,10 @@ export class PrimeFieldMember implements Member {
 
     getRegister(): Register {
         return this.register;
+    }
+
+    zero(): Member {
+        return new PrimeFieldMember(this.prime, R_0);
     }
 }
 

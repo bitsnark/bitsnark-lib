@@ -1,6 +1,6 @@
 import { EC_BN254_Fp } from "./ec-bn254-Fp";
-import { Register } from "./register";
-import { vm } from "./vm";
+import { Register } from "./vm/register";
+import { vm } from "./vm/vm";
 
 export class Example {
 

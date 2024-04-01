@@ -1,4 +1,4 @@
-import { Register } from "../register";
+import { Register } from "../vm/register";
 
 export interface Member {
     add(a: Member): Member;
@@ -7,6 +7,7 @@ export interface Member {
     div(a: Member): Member;
     ifBit(r: Register, b: number, other: Member): Member;
     eq(a: Member): Register;
+    zero(): Member;
 }
 
 export class EmptyMember implements Member {
@@ -35,5 +36,9 @@ export class EmptyMember implements Member {
         const r = new Register();
         r.setValue(1n);
         return r;
+    }
+
+    zero(): Member {
+        return this;
     }
 }

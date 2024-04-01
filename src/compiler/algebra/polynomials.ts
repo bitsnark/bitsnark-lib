@@ -1,13 +1,13 @@
 import { Member } from "./member";
-import { vm } from "../vm";
-import { R_0, R_MAX, Register } from "../register";
+import { vm } from "../vm/vm";
+import { R_0, R_MAX, Register } from "../vm/register";
 import { PrimeFieldMember } from "./prime-field";
 
 export class Polynomial implements Member {
 
-    private prime: Register;
-    private coeffs: PrimeFieldMember[];
-    private count: number;
+    prime: Register;
+    coeffs: PrimeFieldMember[];
+    count: number;
 
     constructor(prime: Register, count: number, coeffs?: PrimeFieldMember[]) {
         this.count = count;
@@ -72,11 +72,7 @@ export class Polynomial implements Member {
             throw new Error('Incompatible polynomials');
         const result = new Polynomial(this.prime, this.count);
         for (let i = 0; i < this.count; i++) {
-            vm.sub(
-                result.getCoeff(i).getRegister(),
-                this.getCoeff(i).getRegister(),
-                (a as any as Polynomial).getCoeff(i).getRegister(),
-                this.prime);
+            result.coeffs[i] = this.coeffs[i].sub((a as Polynomial).coeffs[i]) as PrimeFieldMember;
         }
         return result;
     }
@@ -101,7 +97,24 @@ export class Polynomial implements Member {
     }
 
     ifBit(r: Register, bit: number, other: Member): Member {
-        throw new Error('Not implemented');
+        const p = new Polynomial(this.prime, this.count);
+        for (let i = 0; i < this.count; i++) {
+            const t = this.coeffs[i].ifBit(r, bit, (other as Polynomial).coeffs[i]);
+            p.coeffs[i] = t as PrimeFieldMember;
+        }
+        return p;
+    }
+
+    mod(a: Polynomial): Polynomial {
+        if (this.count !== (a as any as Polynomial).count)
+            throw new Error('Incompatible polynomials');
+        const q = this.div(a);
+        const r = this.sub(q.mul(a));
+        return r as Polynomial;
+    }
+
+    zero(): Member {
+        return new Polynomial(this.prime, this.count, this.coeffs.map(c => c.zero() as PrimeFieldMember));
     }
 }
 
