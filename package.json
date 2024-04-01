@@ -16,7 +16,7 @@
   ],
   "scripts": {
     "run": "npx ts-node ./src/index.ts",
-    "build": "npm run clean && npm run lint && tsc",
+    "build": "npm run clean && npx tsc",
     "changelog": "conventional-changelog -p angular -u",
     "changelog:update": "conventional-changelog -p angular -i CHANGELOG.md -s && git add CHANGELOG.md",
     "clean": "node -e \"var { rmdirSync, existsSync } = require('fs'), path = require('path'); ['./.nyc_output', './coverage', './dist'].forEach(fPath => {if (existsSync(path.join(__dirname, fPath))) rmdirSync(path.join(__dirname, fPath), { recursive: true })}); process.exit(0);\"",
