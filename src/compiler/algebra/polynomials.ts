@@ -1,6 +1,6 @@
 import { Member } from "./member";
 import { vm } from "../vm/vm";
-import { R_0, R_MAX, Register } from "../vm/register";
+import { R_0, R_MAX, Register } from "../vm/state";
 import { PrimeFieldMember } from "./prime-field";
 
 export class Polynomial implements Member {

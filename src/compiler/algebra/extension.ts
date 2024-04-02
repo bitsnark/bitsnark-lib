@@ -1,5 +1,5 @@
 import { Member } from "./member";
-import { Register } from "../vm/register";
+import { Register } from "../vm/state";
 import { Polynomial } from "./polynomials";
 
 export class ExtensionMember implements Member {

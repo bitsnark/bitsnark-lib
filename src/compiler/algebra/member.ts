@@ -1,4 +1,4 @@
-import { Register } from "../vm/register";
+import { Register } from "../vm/state";
 
 export interface Member {
     add(a: Member): Member;

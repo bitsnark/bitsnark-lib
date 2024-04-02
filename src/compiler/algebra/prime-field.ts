@@ -1,6 +1,6 @@
 import { Member } from "./member";
 import { vm } from "../vm/vm";
-import { R_0, Register } from "../vm/register";
+import { R_0, Register } from "../vm/state";
 
 export class PrimeFieldMember implements Member {
 

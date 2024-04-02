@@ -1,7 +1,7 @@
-import { R_0, R_1, R_R, Register } from "./register";
-import { highestIndex as highestRegister } from "./register";
+import { R_0, R_1, R_R, Register, state } from "./state";
 import { Logger } from 'sitka';
 import { Witness } from "./witness";
+import { modInverse } from "../math-utils";
 
 enum InstrCode {
     ADDMOD = "ADDMOD",
@@ -17,7 +17,7 @@ interface Instruction {
     params: number[];
 }
 
-const R_P0 = Register.hardcoded(0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffn);
+export const R_P0 = Register.hardcoded('R_P0', 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffn);
 
 export class VM {
 
@@ -45,31 +45,34 @@ export class VM {
         this.instructions[this.current] = { name, target, params };
     }
 
-    print() {
-        console.log('*** PROGRAM ***');
-        for (let i = 0; i < this.instructions.length; i++) {
-            const instr = this.instructions[i];
-            console.log(`${i}: ${instr.name} ${instr.target} ${instr.params}`);
-        }
+    getJson() {
+        return {
+            instructions: this.instructions,
+            instrCount: this.instructions.length,
+            state: state.getJson(),
+            witness: this.witness.getJson()
+        };
+    }
 
-        this.witness.print();
-        console.log('Highest register index: ', highestRegister);
+    print() {
+        const str = JSON.stringify(this.getJson(), null, 4);
+        console.log(str);
     }
 
     /// *** BASIC INSTRUCTIONS *** ///
 
     add(target: Register, a: Register, b: Register, prime: Register) {
-        this.setInstruction(InstrCode.ADDMOD, target.getIndex(), [a.getIndex(), b.getIndex(), prime.getIndex()]);
-        let v = (a.getValue() + b.getValue()) % prime.getValue();
+        this.setInstruction(InstrCode.ADDMOD, target.index, [a.index, b.index, prime.index]);
+        let v = (a.value + b.value) % prime.value;
         target.setValue(v);
 
         this.current++;
     }
 
     andbit(target: Register, a: Register, b: number, c: Register) {
-        this.setInstruction(InstrCode.ANDBIT, target.getIndex(), [a.getIndex(), b, c.getIndex()]);
-        const v = a.getValue() & (2n ** BigInt(b));
-        target.setValue(v ? c.getValue() : 0n);
+        this.setInstruction(InstrCode.ANDBIT, target.index, [a.index, b, c.index]);
+        const v = a.value & (2n ** BigInt(b));
+        target.setValue(v ? c.value : 0n);
 
         this.current++;
     }
@@ -78,32 +81,32 @@ export class VM {
         if (a === R_R) {
             target.setValue(this.witness.get(this.current).value);
         } else {
-            target.setValue(a.getValue());
+            target.setValue(a.value);
         }
 
-        this.setInstruction(InstrCode.MOV, target.getIndex(), [a.getIndex()]);
+        this.setInstruction(InstrCode.MOV, target.index, [a.index]);
         this.current++;
     }
 
     not(target: Register, a: Register) {
-        target.setValue(a.getValue() === 0n ? 1n : 0n);
+        target.setValue(a.value === 0n ? 1n : 0n);
 
-        this.setInstruction(InstrCode.NOT, target.getIndex(), [a.getIndex()]);
+        this.setInstruction(InstrCode.NOT, target.index, [a.index]);
         this.current++;
     }
 
     equal(target: Register, a: Register, b: Register) {
-        target.setValue(a.getValue() === b.getValue() ? 1n : 0n);
+        target.setValue(a.value === b.value ? 1n : 0n);
 
-        this.setInstruction(InstrCode.EQUAL, target.getIndex(), [a.getIndex(), b.getIndex()]);
+        this.setInstruction(InstrCode.EQUAL, target.index, [a.index, b.index]);
         this.current++;
     }
 
     notEqual(target: Register, a: Register, b: Register) {
-        target.setValue(a.getValue() === b.getValue() ? 1n : 0n);
+        target.setValue(a.value === b.value ? 1n : 0n);
 
-        this.setInstruction(InstrCode.EQUAL, target.getIndex(), [a.getIndex(), b.getIndex()]);
-        this.setInstruction(InstrCode.NOT, target.getIndex(), [target.getIndex()]);
+        this.setInstruction(InstrCode.EQUAL, target.index, [a.index, b.index]);
+        this.setInstruction(InstrCode.NOT, target.index, [target.index]);
         this.current += 2;
     }
 
@@ -115,7 +118,7 @@ export class VM {
     }
 
     sub(target: Register, a: Register, b: Register, prime: Register) {
-        const v = (prime.getValue() + a.getValue() - b.getValue()) % prime.getValue();
+        const v = (prime.value + a.value - b.value) % prime.value;
         this.load(target, v, 'sub');
         const temp = new Register();
         this.add(temp, b, target, prime);
@@ -161,7 +164,7 @@ export class VM {
     inverse(target: Register, a: Register, prime: Register) {
         let v = 0n;
         try {
-            v = modInverse(a.getValue(), prime.getValue()) as bigint;
+            v = modInverse(a.value, prime.value) as bigint;
         } catch (e) {
             // Divide by zero. Return 0 because we can't fail here.
         }
@@ -180,27 +183,3 @@ export class VM {
 
 export const vm = new VM();
 
-function modInverse(a: bigint, m: bigint): bigint {
-    // validate inputs
-    a = (a % m + m) % m;
-    if (!a || m < 2) {
-        throw new Error('NaN 1');
-    }
-    // find the gcd
-    const s = [];
-    let b = m;
-    while (b) {
-        [a, b] = [b, a % b];
-        s.push({ a, b });
-    }
-    if (a !== 1n) {
-        throw new Error('NaN 2');
-    }
-    // find the inverse
-    let x = 1n;
-    let y = 0n;
-    for (let i = s.length - 2; i >= 0; --i) {
-        [x, y] = [y, x - y * (s[i].a / s[i].b)];
-    }
-    return (y % m + m) % m;
-}

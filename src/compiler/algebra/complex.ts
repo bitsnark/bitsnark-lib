@@ -1,7 +1,8 @@
 import { Member } from "./member";
-import { vm } from "../vm/vm";
-import { R_0, R_MAX, Register } from "../vm/register";
+import { R_P0, vm } from "../vm/vm";
+import { R_0, Register } from "../vm/state";
 import { PrimeFieldMember } from "./prime-field";
+import { divideComplex } from "../math-utils";
 
 export class Complex implements Member {
 
@@ -30,7 +31,7 @@ export class Complex implements Member {
         for (let i = 0; i < 2; i++) {
             const t = this.getCoeff(i).eq((a as any as Complex).getCoeff(i));
             vm.not(t, t);
-            vm.add(total, total, t, R_MAX);
+            vm.add(total, total, t, R_P0);
         }
         vm.equal(total, total, R_0);
         return total;
@@ -111,28 +112,3 @@ export class ComplexField {
     }
 }
 
-function mod(a: bigint, p: bigint) { 
-    return (a % p + p) % p;
-}
-
-function multiplyComplex(a: bigint[], b: bigint[], p: bigint): bigint[] {
-    return [
-        mod(a[0] * b[0] - a[1] * b[1], p),
-        mod(a[0] * b[1] + a[1] * b[0], p)
-    ];
-}
-
-function divideComplex(a: bigint[], b: bigint[], p: bigint): bigint[] {
-
-    if (b[0] === 0n && b[1] === 0n) {
-        throw new Error("Division by zero error");
-    }
-
-    const conjugateB = [b[0], -b[1]];
-    const numerator = multiplyComplex(a, conjugateB, p);
-    const modulusSquared = ((b[0] * b[0] + b[1] * b[1]) % p + p) % p;
-    return [
-        ((numerator[0] / modulusSquared) % p + p) % p,
-        ((numerator[1] / modulusSquared) % p + p) % p
-    ];
-}

@@ -23,11 +23,9 @@ export class Witness {
         return this.map.get(line) ?? { line, value: 0n, title: '' };
     }
 
-    print() {
-        console.log('*** WITNESS ***');
-        for(const i of this.items) {
-            console.log(`${i.line}: ${i.value} // ${i.title}`);
-        }
-        console.log(`Count: ${this.items.length}`);
+    getJson(): any {
+        return {
+            items: this.items.map(item => ({ line: item.line, value: item.value.toString(16), title: item.title }))
+        };
     }
 }
