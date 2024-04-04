@@ -81,7 +81,7 @@ export class Complex implements Member {
             new PrimeFieldMember(this.prime, r_r),
             new PrimeFieldMember(this.prime, r_i)
         ]);
-        const t = a.mul(result);
+        const t = result.mul(a);
         const f = t.eq(this);
         vm.assertEqOne(f);
         return result;

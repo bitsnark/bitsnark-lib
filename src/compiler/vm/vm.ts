@@ -162,7 +162,7 @@ export class VM {
     }
 
     not(target: Register, f: Register) {
-        this.ifThenElse(target, f, this.R_1, this.R_0);
+        this.ifThenElse(target, f, this.R_0, this.R_1);
     }
 
     mul(target: Register, a: Register, b: Register, prime: Register) {

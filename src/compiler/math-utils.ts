@@ -36,11 +36,9 @@ export function multiplyComplex(a: bigint[], b: bigint[], m: bigint): bigint[] {
 }
 
 export function divideComplex(a: bigint[], b: bigint[], m: bigint): bigint[] {
-
     if (b[0] === 0n && b[1] === 0n) {
         throw new Error("NaN error");
     }
-
     const conjugateB = [b[0], mod(-b[1], m)];
     const numerator = multiplyComplex(a, conjugateB, m);
     const modulusSquared = mod(b[0] * b[0] + b[1] * b[1], m);

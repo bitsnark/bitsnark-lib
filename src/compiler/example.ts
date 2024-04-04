@@ -1,7 +1,9 @@
+// import { Complex } from "./algebra/complex";
+// import { PrimeFieldMember } from "./algebra/prime-field";
 import { G1 } from "./G1";
-//import { G2 } from "./G2";
-import { Bitcoin } from "./vm/bitcoin/bitcoin";
-import { InstrCode, vm } from "./vm/vm";
+import { G2 } from "./G2";
+// import { Bitcoin } from "./vm/bitcoin/bitcoin";
+// import { InstrCode, vm } from "./vm/vm";
 
 export class Example {
 
@@ -12,18 +14,18 @@ export class Example {
         const point2 = g1.generator.double();
         point2.assertPoint();
 
-        // const g2 = new G2();
-        // g2.generator.assertPoint();
-        // const point3 = g2.generator.double();
-        // point3.assertPoint();
+        const g2 = new G2();
+        g2.generator.assertPoint();
+        const point3 = g2.generator.double();
+        point3.assertPoint();
         
         //vm.print();
 
-        for (let i = 0; i < vm.instructions.length; i++) {
-            if (vm.instructions[i].name == InstrCode.ADDMOD) {
-                Bitcoin.generate(vm, i);
-                return;
-            }
-        }
+        // for (let i = 0; i < vm.instructions.length; i++) {
+        //     if (vm.instructions[i].name == InstrCode.ADDMOD) {
+        //         Bitcoin.generate(vm, i);
+        //         return;
+        //     }
+        // }
     }
 }
