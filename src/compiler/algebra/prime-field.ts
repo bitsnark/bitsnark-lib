@@ -1,6 +1,6 @@
 import { Member } from "./member";
 import { vm } from "../vm/vm";
-import { R_0, Register } from "../vm/state";
+import { Register } from "../vm/state";
 
 export class PrimeFieldMember implements Member {
 
@@ -9,18 +9,17 @@ export class PrimeFieldMember implements Member {
 
     constructor(prime: Register, r?: Register) {
         this.prime = prime;
-        this.register = r ?? new Register();
+        this.register = r ?? vm.newRegister();
     }
 
-    ifBit(r: Register, bit: number, other: Member): Member {
-        const t = new PrimeFieldMember(this.prime);
-        vm.mov(t.register, this.register);
-        vm.andbit(t.register, r, bit, (other as any as PrimeFieldMember).register);
-        return t;
+    if(r: Register, other: Member): Member {
+        const result = new PrimeFieldMember(this.prime);
+        vm.ifThenElse(result.getRegister(), r, this.getRegister(), (other as PrimeFieldMember).getRegister());
+        return result;
     }
 
     eq(a: Member): Register {
-        const f = new Register();
+        const f = vm.newRegister();
         vm.equal(f, this.register, (a as any as PrimeFieldMember).register);
         return f;
     }
@@ -54,7 +53,7 @@ export class PrimeFieldMember implements Member {
     }
 
     zero(): Member {
-        return new PrimeFieldMember(this.prime, R_0);
+        return new PrimeFieldMember(this.prime, vm.R_0);
     }
 }
 

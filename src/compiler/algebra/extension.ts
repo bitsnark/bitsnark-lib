@@ -36,7 +36,7 @@ export class ExtensionMember implements Member {
             (this.value.div(a) as Polynomial).mod(this.polymod) as Polynomial);
     }
 
-    ifBit(r: Register, bit: number, other: Member): Member {
+    if(r: Register, other: Member): Member {
         throw new Error('Not implemented');
     }
 

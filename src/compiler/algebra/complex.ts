@@ -1,8 +1,8 @@
 import { Member } from "./member";
-import { R_P0, vm } from "../vm/vm";
-import { R_0, Register } from "../vm/state";
 import { PrimeFieldMember } from "./prime-field";
 import { divideComplex } from "../math-utils";
+import { Register } from "../vm/state";
+import { vm } from "../vm/vm";
 
 export class Complex implements Member {
 
@@ -23,17 +23,17 @@ export class Complex implements Member {
     }
 
     getCoeff(i: number): PrimeFieldMember {
-        return i < this.coeffs.length ? this.coeffs[i] : new PrimeFieldMember(this.prime, R_0);
+        return i < this.coeffs.length ? this.coeffs[i] : new PrimeFieldMember(this.prime, vm.R_0);
     }
 
     eq(a: Member): Register {
-        const total = new Register();
+        const total = vm.newRegister();
         for (let i = 0; i < 2; i++) {
             const t = this.getCoeff(i).eq((a as any as Complex).getCoeff(i));
             vm.not(t, t);
-            vm.add(total, total, t, R_P0);
+            vm.add(total, total, t, vm.R_P0);
         }
-        vm.equal(total, total, R_0);
+        vm.equal(total, total, vm.R_0);
         return total;
     }
 
@@ -73,9 +73,9 @@ export class Complex implements Member {
             ],
             this.prime.getValue()
         );
-        const r_r = new Register();
+        const r_r = vm.newRegister();
         vm.load(r_r, rt[0], 'complex div r');
-        const r_i = new Register();
+        const r_i = vm.newRegister();
         vm.load(r_i, rt[1], 'complex div i');
         const result = new Complex(this.prime, [
             new PrimeFieldMember(this.prime, r_r),
@@ -87,14 +87,19 @@ export class Complex implements Member {
         return result;
     }
 
-    ifBit(r: Register, bit: number, other: Member): Member {
-        throw new Error('Not Implemented');
+    if(r: Register, other: Member): Member {
+        const c = new Complex(this.prime);
+        for (let i = 0; i < 2; i++) {
+            const t = this.coeffs[i].if(r, (other as Complex).coeffs[i]);
+            c.coeffs[i] = t as PrimeFieldMember;
+        }
+        return c;
     }
 
     zero(): Member {
         return new Complex(this.prime, [
-            new PrimeFieldMember(this.prime, R_0),
-            new PrimeFieldMember(this.prime, R_0)
+            new PrimeFieldMember(this.prime, vm.R_0),
+            new PrimeFieldMember(this.prime, vm.R_0)
         ]);
     }
 }

@@ -33,17 +33,32 @@ export class ECPoint {
     }
 
     add(b: ECPoint): ECPoint {
+
+        // case where this == b
+
+        const tempEqual = this.double();
+
+        // case where this != a
+
         // m1 = y2 - y1
         const m1 = b.y.sub(this.y);
         // m2 = x2 - x1
         const m2 = b.x.sub(this.x);
         // l = m1 / m2
         const l = m1.div(m2);
-        const result = new ECPoint(this.curve);
         // x2 = l^2 - x1 - x2
-        result.x = l.mul(l).sub(this.x).sub(b.x);
+        const tempNotEqual = new ECPoint(this.curve);
+        tempNotEqual.x = l.mul(l).sub(this.x).sub(b.x);
         // y2 = l * (x1 - x3) - y1
-        result.y = l.mul(this.x.sub(result.x)).sub(this.y);
+        tempNotEqual.y = l.mul(this.x.sub(tempNotEqual.x)).sub(this.y);
+
+        // combine two cases depending on equality
+
+        const r = this.x.eq(b.x);
+        const result = new ECPoint(this.curve);
+        result.x = tempEqual.x.if(r, tempNotEqual.x);
+        result.y = tempEqual.y.if(r, tempNotEqual.y);
+
         return result;
     }
 
@@ -52,8 +67,8 @@ export class ECPoint {
         let agg = this as ECPoint;
         for (let bit = 0; bit < 256; bit++) {
             const cond = result.add(agg);
-            result.x = cond.x.ifBit(a, bit, result.x);
-            result.y = cond.y.ifBit(a, bit, result.y);
+            result.x = cond.x.if(a, result.x);
+            result.y = cond.y.if(a, result.y);
             if (bit < 255) agg = agg.double();
         }
         return result;
@@ -62,7 +77,9 @@ export class ECPoint {
     assertPoint() {
         // y^2 = x^3 + a*x + b
         let t1 = this.x.mul(this.x).mul(this.x);
-        t1 = t1.add(this.x.mul(this.curve.ec_a));
+        if(this.curve.ec_a.eq(this.curve.ec_a.zero()).getValue() != 0n) {
+            t1 = t1.add(this.x.mul(this.curve.ec_a));
+        }
         t1 = t1.add(this.curve.ec_b);
         const t2 = this.y.mul(this.y);
         const f: Register = t1.eq(t2);

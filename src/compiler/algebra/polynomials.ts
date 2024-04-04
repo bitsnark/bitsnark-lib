@@ -1,6 +1,6 @@
 import { Member } from "./member";
 import { vm } from "../vm/vm";
-import { R_0, R_MAX, Register } from "../vm/state";
+import { Register } from "../vm/state";
 import { PrimeFieldMember } from "./prime-field";
 
 export class Polynomial implements Member {
@@ -24,19 +24,19 @@ export class Polynomial implements Member {
     }
 
     getCoeff(i: number): PrimeFieldMember {
-        return i < this.coeffs.length ? this.coeffs[i] : new PrimeFieldMember(this.prime, R_0);
+        return i < this.coeffs.length ? this.coeffs[i] : new PrimeFieldMember(this.prime, vm.R_0);
     }
 
     eq(a: Member): Register {
         if (this.count !== (a as any as Polynomial).count)
             throw new Error('Incompatible polynomials');
-        const total = new Register();
+        const total = vm.newRegister();
         for (let i = 0; i < this.count; i++) {
             const t = this.getCoeff(i).eq((a as any as Polynomial).getCoeff(i));
             vm.not(t, t);
-            vm.add(total, total, t, R_MAX);
+            vm.add(total, total, t, vm.R_P0);
         }
-        vm.equal(total, total, R_0);
+        vm.equal(total, total, vm.R_0);
         return total;
     }
 
@@ -96,10 +96,10 @@ export class Polynomial implements Member {
         return result;
     }
 
-    ifBit(r: Register, bit: number, other: Member): Member {
+    if(r: Register, other: Member): Member {
         const p = new Polynomial(this.prime, this.count);
         for (let i = 0; i < this.count; i++) {
-            const t = this.coeffs[i].ifBit(r, bit, (other as Polynomial).coeffs[i]);
+            const t = this.coeffs[i].if(r, (other as Polynomial).coeffs[i]);
             p.coeffs[i] = t as PrimeFieldMember;
         }
         return p;

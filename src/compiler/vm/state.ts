@@ -7,30 +7,8 @@ export class Register {
     hardcoded = false;
     title?: string;
 
-    constructor() {
-        this.index = state.findFreeIndex();
-        state.setRegister(this);
-    }
-
-    static hardcodedWithIndex(index: number, title: string, value: bigint): Register {
-        const t = new Register();
-        t.index = index;
-        t.value = value;
-        t.assert = true;
-        t.hardcoded = true;
-        t.title = title;
-        state.setRegister(t);
-        return t;
-    }
-
-    static hardcoded(title: string, value: bigint): Register {
-        const t = new Register();
-        t.index = state.findFreeIndex();
-        t.value = value;
-        t.assert = true;
-        t.title = title;
-        t.hardcoded = true;
-        return t;
+    constructor(index: number) {
+        this.index = index;
     }
 
     getValue(): bigint {
@@ -38,7 +16,7 @@ export class Register {
     }
 
     setValue(value: bigint) {
-        if(this.assert && this.value !== value) throw new Error(`Assertion error, r=${this.index}`);
+        if (this.assert && this.value !== value) throw new Error(`Assertion error, r=${this.index}`);
         this.value = value;
     }
 
@@ -53,13 +31,20 @@ export class State {
     highestIndex = 0;
 
     findFreeIndex(): number {
-        for(let i = 0; ; i++) {
-            if(!this.registers[i]) return i;
+        for (let i = 0; ; i++) {
+            if (!this.registers[i]) return i;
         }
+    }
+
+    newRegister(): Register {
+        const r = new Register(this.findFreeIndex());
+        this.setRegister(r);
+        return r;
     }
 
     setRegister(r: Register) {
         this.registers[r.index] = r;
+        if(r.index > this.highestIndex) this.highestIndex = r.index;
     }
 
     getRegister(index: number): Register {
@@ -70,6 +55,26 @@ export class State {
         const s = new State();
         s.registers = indexes.map(i => this.getRegister(i));
         return s;
+    }
+
+    hardcodedWithIndex(index: number, title: string, value: bigint): Register {
+        const t = new Register(index);
+        t.value = value;
+        t.assert = true;
+        t.hardcoded = true;
+        t.title = title;
+        this.setRegister(t);
+        return t;
+    }
+
+    hardcoded(title: string, value: bigint): Register {
+        const t = new Register(this.findFreeIndex());
+        t.value = value;
+        t.assert = true;
+        t.title = title;
+        t.hardcoded = true;
+        this.setRegister(t);
+        return t;
     }
 
     getHighsetIndex() {
@@ -84,9 +89,3 @@ export class State {
         };
     }
 }
-
-export const state = new State();
-
-export const R_R = Register.hardcodedWithIndex(-1, '', 0n);
-export const R_0 = Register.hardcodedWithIndex(0, 'R_0', 0n);
-export const R_1 = Register.hardcodedWithIndex(1, 'R_1', 1n);
