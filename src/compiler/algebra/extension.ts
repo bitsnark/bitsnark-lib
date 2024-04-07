@@ -9,7 +9,7 @@ export class ExtensionMember implements Member {
 
     constructor(polymod: Polynomial, value?: Polynomial) {
         this.polymod = polymod;
-        this.value = value ? value : new Polynomial(polymod.prime, polymod.count);
+        this.value = value ? value : new Polynomial(polymod.prime, polymod.degree);
     }
 
     eq(a: Member): Register {
@@ -41,7 +41,12 @@ export class ExtensionMember implements Member {
     }
 
     zero(): Member {
-        return this.polymod;
+        return new ExtensionMember(this.polymod,
+            new Polynomial(this.polymod.prime, this.polymod.degree));
+    }
+
+    neg(): Member {
+        return this.zero().sub(this);
     }
 }
 

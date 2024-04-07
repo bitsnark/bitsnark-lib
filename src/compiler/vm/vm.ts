@@ -22,6 +22,7 @@ export class VM {
     R_R: Register;
     R_0: Register;
     R_1: Register;
+    R_2: Register;
     R_P0: Register;
 
     logger: Logger;
@@ -37,6 +38,7 @@ export class VM {
         this.R_R = this.state.hardcodedWithIndex(-1, '', 0n);
         this.R_0 = this.state.hardcodedWithIndex(0, 'R_0', 0n);
         this.R_1 = this.state.hardcodedWithIndex(1, 'R_1', 1n);
+        this.R_2 = this.state.hardcodedWithIndex(2, 'R_2', 2n);
         this.R_P0 = this.state.hardcoded('R_P0', 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffn);
     }
 
@@ -145,10 +147,18 @@ export class VM {
     }
 
     or(target: Register, a: Register, b: Register) {
-        target.setValue(a.value | b.value ? 1n : 0n);
+        target.setValue(!!a.value || !!b.value ? 1n : 0n);
         const temp = this.newRegister();
         this.add(temp, a, b, this.R_P0);
-        this.equal(target, temp,  this.R_0);
+        this.equal(target, temp, this.R_0);
+        this.not(target, target);
+    }
+
+    and(target: Register, a: Register, b: Register) {
+        target.setValue(!!a.value && !!b.value ? 1n : 0n);
+        const temp = this.newRegister();
+        this.add(temp, a, b, this.R_P0);
+        this.equal(target, temp, this.R_2);
     }
 
     ifThenElse(target: Register, f: Register, a: Register, b: Register) {

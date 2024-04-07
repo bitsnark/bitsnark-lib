@@ -9,6 +9,9 @@ export class PrimeFieldMember implements Member {
 
     constructor(prime: Register, r?: Register) {
         this.prime = prime;
+        if (r && r.value < 0) {
+            r.setValue((prime.getValue() + r.getValue()) % prime.getValue());
+        }
         this.register = r ?? vm.newRegister();
     }
 
@@ -55,11 +58,15 @@ export class PrimeFieldMember implements Member {
     zero(): Member {
         return new PrimeFieldMember(this.prime, vm.R_0);
     }
+
+    neg(): Member {
+        return this.zero().sub(this);
+    }
 }
 
 export class PrimeField {
 
-    private prime: Register;
+    prime: Register;
 
     constructor(prime: Register) {
         this.prime = prime;

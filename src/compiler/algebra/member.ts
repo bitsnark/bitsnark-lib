@@ -9,6 +9,7 @@ export interface Member {
     if(r: Register, other: Member): Member;
     eq(a: Member): Register;
     zero(): Member;
+    neg(): Member;
 }
 
 export class EmptyMember implements Member {
@@ -23,6 +24,10 @@ export class EmptyMember implements Member {
 
     sub(a: Member): Member {
         return new EmptyMember();
+    }
+
+    neg(): Member {
+        return  new EmptyMember();
     }
 
     div(a: Member): Member {
