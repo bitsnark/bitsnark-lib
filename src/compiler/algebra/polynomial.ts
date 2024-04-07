@@ -66,9 +66,17 @@ export class Polynomial implements Member {
     mul(_a: Member): Member {
         const a = this.validate(_a);
         const result = this.new();
+        const cache: Member[][] = [];
+        for(let i = 0; i < this.degree; i++) cache[i] = [];
         for (let i = 0; i < this.degree; i++) {
             for (let j = 0; j < this.degree; j++) {
-                const temp = this.getCoeff(i).mul(a.getCoeff(j));
+                let temp;
+                if (cache[i][j]) {
+                    temp = cache[i][j];
+                } else {
+                    temp = this.getCoeff(i).mul(a.getCoeff(j));
+                    cache[j][i] = temp;
+                }
                 result.coeffs[i] = result.coeffs[i].add(temp) as PrimeFieldMember;
             }
         }
@@ -93,7 +101,7 @@ export class Polynomial implements Member {
         while (coeffs.length < this.degree) coeffs.push(0n);
         const result = this.new();
         for (let i = 0; i < this.degree; i++) {
-            vm.load(result.coeffs[i].getRegister(), coeffs[i], 'polynomial_div');
+            vm.load(result.coeffs[i].getRegister(), coeffs[i]);
         }
         const m = result.mul(a);
         const f = m.eq(this);

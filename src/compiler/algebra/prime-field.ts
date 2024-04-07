@@ -15,6 +15,10 @@ export class PrimeFieldMember implements Member {
         this.register = r ?? vm.newRegister();
     }
 
+    new(r?: Register) {
+        return new PrimeFieldMember(this.prime, r);
+    }
+
     validate(a: any): PrimeFieldMember {
         if (!(a instanceof PrimeFieldMember)) 
             throw new Error('Invalid type');
@@ -36,30 +40,30 @@ export class PrimeFieldMember implements Member {
 
     add(_a: Member): Member {
         const a = this.validate(_a);
-        const t = new PrimeFieldMember(this.prime);
-        vm.add(t.register, this.register, a.register, this.prime);
-        return t;
+        const t = vm.newRegister();
+        vm.add(t, this.register, a.register, this.prime);
+        return this.new(t);
     }
 
     mul(_a: Member): Member {
         const a = this.validate(_a);
-        const t = new PrimeFieldMember(this.prime);
-        vm.mul(t.register, this.register, a.register, this.prime);
-        return t;
+        const t = vm.newRegister();
+        vm.mul(t, this.register, a.register, this.prime);
+        return this.new(t);
     }
 
     sub(_a: Member): Member {
         const a = this.validate(_a);
-        const t = new PrimeFieldMember(this.prime);
-        vm.sub(t.register, this.register, a.register, this.prime);
-        return t;
+        const t = vm.newRegister();
+        vm.sub(t, this.register, a.register, this.prime);
+        return this.new(t);
     }
 
     div(_a: Member): Member {
         const a = this.validate(_a);
-        const t = new PrimeFieldMember(this.prime);
-        vm.div(t.register, this.register, a.register, this.prime);
-        return t;
+        const t = vm.newRegister();
+        vm.div(t, this.register, a.register, this.prime);
+        return this.new(t);
     }
 
     getRegister(): Register {
@@ -67,7 +71,7 @@ export class PrimeFieldMember implements Member {
     }
 
     zero(): Member {
-        return new PrimeFieldMember(this.prime, vm.R_0);
+        return this.new();
     }
 
     neg(): Member {

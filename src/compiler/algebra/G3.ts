@@ -7,20 +7,20 @@ import { Register } from "../vm/state";
 import { vm } from "../vm/vm";
 import { Complex } from "./complex";
 
-const nine = new PrimeFieldMember(vm.hardcoded('', 9n));
+const nine = new PrimeFieldMember(vm.hardcoded(9n));
 const degree = 12;
-const prime: Register = vm.hardcoded('G2 prime', 21888242871839275222246405745257275088696311157297823662689037894645226208583n);
+const prime: Register = vm.hardcoded(21888242871839275222246405745257275088696311157297823662689037894645226208583n);
 const primeField = new PrimeField(prime);
 const polyField = new PolynomialOverPrimeField(primeField, degree);
 const base = polyField.newMember(
     [82n, 0n, 0n, 0n, 0n, 0n, -18n, 0n, 0n, 0n, 0n, 0n]
-        .map(c => primeField.newMember(vm.hardcoded('', c))));
+        .map(c => primeField.newMember(vm.hardcoded(c))));
 
 const extField = new ExtensionField(base);
 const w = extField.newMember(
     polyField.newMember(
         [0n, 1n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n]
-            .map(n => primeField.newMember(vm.hardcoded('', n)))));
+            .map(n => primeField.newMember(vm.hardcoded(n)))));
 const w_2 = w.mul(w) as ExtensionMember;
 const w_3 = w_2.mul(w) as ExtensionMember;
 
@@ -30,7 +30,7 @@ const ec_a = extField.newMember();
 const ec_b = extField.newMember(
     polyField.newMember(
         [3n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n]
-            .map(c => primeField.newMember(vm.hardcoded('', c)))));
+            .map(c => primeField.newMember(vm.hardcoded(c)))));
 
 export class G3Point extends ECPoint {
 }

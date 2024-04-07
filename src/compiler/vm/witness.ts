@@ -2,7 +2,6 @@
 interface Item {
     line: number;
     value: bigint;
-    title: string;
 }
 
 export class Witness {
@@ -13,19 +12,19 @@ export class Witness {
     constructor() {
     }
 
-    set(line: number, value: bigint, title: string) {
-        const item = { line, value, title };
+    set(line: number, value: bigint) {
+        const item = { line, value };
         this.items.push(item);
         this.map.set(line, item);
     }
 
     get(line: number): Item {
-        return this.map.get(line) ?? { line, value: 0n, title: '' };
+        return this.map.get(line) ?? { line, value: 0n };
     }
 
     getJson(): any {
         return {
-            items: this.items.map(item => ({ line: item.line, value: item.value.toString(16), title: item.title }))
+            items: this.items.map(item => ({ line: item.line, value: item.value.toString(16) }))
         };
     }
 }

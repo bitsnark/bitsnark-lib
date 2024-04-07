@@ -3,12 +3,12 @@ import { PrimeField, PrimeFieldMember } from "./prime-field";
 import { Register } from "../vm/state";
 import { vm } from "../vm/vm";
 
-const prime: Register = vm.hardcoded('G1 prime', 21888242871839275222246405745257275088696311157297823662689037894645226208583n);
+const prime: Register = vm.hardcoded(21888242871839275222246405745257275088696311157297823662689037894645226208583n);
 const primeField = new PrimeField(prime);
-const gen_x = primeField.newMember(vm.hardcoded('g1 gx', 1n));
-const gen_y = primeField.newMember(vm.hardcoded('g1 gy', 2n));
-const ec_a = primeField.newMember(vm.hardcoded('g1 a', 0n));
-const ec_b = primeField.newMember(vm.hardcoded('g1 b', 3n));
+const gen_x = primeField.newMember(vm.hardcoded(1n));
+const gen_y = primeField.newMember(vm.hardcoded(2n));
+const ec_a = primeField.newMember(vm.hardcoded(0n));
+const ec_b = primeField.newMember(vm.hardcoded(3n));
 
 export class G1Point extends ECPoint {
 }

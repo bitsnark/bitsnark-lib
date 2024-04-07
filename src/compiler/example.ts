@@ -17,10 +17,7 @@ export class Example {
 
         const g3point = g3.twist(point2);
         g3point.assertPoint();
-        //console.log(g3point);
-
 
         vm.print();
-
     }
 }

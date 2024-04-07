@@ -35,17 +35,17 @@ export class VM {
         this.logger = Logger.getLogger({ name: this.constructor.name });
         this.witness = new Witness();
         this.state = new State();
-        this.R_R = this.state.hardcodedWithIndex(-1, '', 0n);
-        this.R_0 = this.state.hardcodedWithIndex(0, 'R_0', 0n);
-        this.R_1 = this.state.hardcodedWithIndex(1, 'R_1', 1n);
-        this.R_2 = this.state.hardcodedWithIndex(2, 'R_2', 2n);
-        this.R_P0 = this.state.hardcoded('R_P0', 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffn);
+        this.R_R = this.state.hardcodedWithIndex(-1, 0n);
+        this.R_0 = this.state.hardcodedWithIndex(0, 0n);
+        this.R_1 = this.state.hardcodedWithIndex(1, 1n);
+        this.R_2 = this.state.hardcodedWithIndex(2, 2n);
+        this.R_P0 = this.state.hardcoded(0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffn);
     }
 
     /// *** BASIC OPERATIONS ***
 
-    addWitness(value: bigint, title: string) {
-        this.witness.set(this.current, value, title);
+    addWitness(value: bigint) {
+        this.witness.set(this.current, value);
     }
 
     setInstruction(name: InstrCode, target: Register, params: Register[], bit?: number) {
@@ -56,8 +56,8 @@ export class VM {
         return this.state.newRegister();
     }
 
-    hardcoded(name: string, value: bigint): Register {
-        return this.state.hardcoded(name, value);
+    hardcoded(value: bigint): Register {
+        return this.state.hardcoded(value);
     }
 
     getJson() {
@@ -69,8 +69,8 @@ export class VM {
             //         params: instr.params.map(p => p.index)
             //     })),
             instrCount: this.instructions.length,
-            state: this.state.getJson(),
-            witness: this.witness.getJson()
+            //state: this.state.getJson(),
+            //witness: this.witness.getJson()
         };
     }
 
@@ -103,11 +103,9 @@ export class VM {
         } else {
             target.setValue(a.value);
         }
-
-        if(!a.index && a.index !== 0) throw new Error('Fubar!');
-
-        this.setInstruction(InstrCode.MOV, target, [a]);
-        this.current++;
+        // is this needed?
+        //this.setInstruction(InstrCode.MOV, target, [a]);
+        //this.current++;
     }
 
     equal(target: Register, a: Register, b: Register) {
@@ -119,14 +117,14 @@ export class VM {
 
     /// *** UTILITY INSTRUCTIONS *** ///
 
-    load(target: Register, value: bigint, title: string) {
-        this.addWitness(value, title);
+    load(target: Register, value: bigint) {
+        this.addWitness(value);
         this.mov(target, this.R_R);
     }
 
     sub(target: Register, a: Register, b: Register, prime: Register) {
         const v = (prime.value + a.value - b.value) % prime.value;
-        this.load(target, v, 'sub');
+        this.load(target, v);
         const temp = this.state.newRegister();
         this.add(temp, b, target, prime);
         this.assertEq(temp, a);
@@ -176,13 +174,20 @@ export class VM {
     }
 
     mul(target: Register, a: Register, b: Register, prime: Register) {
+        if (a.hardcoded && b.hardcoded) {
+            this.mov(target, this.hardcoded(a.getValue() * b.getValue() % prime.getValue()));
+            return;
+        }
         const agg = this.state.newRegister();
         this.mov(agg, a);
         const r_temp = this.state.newRegister();
         this.mov(target, this.R_0);
         for (let bit = 0; bit < 256; bit++) {
-            vm.andbit(r_temp, b, bit, agg);
-            vm.add(target, target, r_temp, prime);
+            const bv = b.getValue() >> BigInt(bit) & 1n;
+            if (!b.hardcoded || bv) {
+                vm.andbit(r_temp, b, bit, agg);
+                vm.add(target, target, r_temp, prime);
+            }
             if (bit < 255) vm.add(agg, agg, agg, prime);
         }
     }
@@ -194,18 +199,29 @@ export class VM {
         } catch (e) {
             // Divide by zero. Return 0 because we can't fail here.
         }
-        this.load(target, v, 'inverse');
+        if(a.hardcoded) {
+            this.mov(target, this.hardcoded(v));
+            return;
+        }
+        this.load(target, v);
         const temp = this.state.newRegister();
         this.mul(temp, a, target, prime);
         this.assertEqOne(temp);
     }
 
     div(target: Register, a: Register, b: Register, prime: Register) {
-        const inv = this.state.newRegister();
-        this.inverse(inv, b, prime);
-        this.mul(target, a, inv, prime);
+        let v = 0n;
+        try {
+            v = modInverse(b.value, prime.value) as bigint;
+        } catch (e) {
+            // Divide by zero. Return 0 because we can't fail here.
+        }
+        v = (a.getValue() * v) % prime.getValue();
+        this.load(target, v);
+        const temp = this.state.newRegister();
+        this.mul(temp, b, target, prime);
+        this.assertEq(temp, a);
     }
 }
 
 export const vm = new VM();
-

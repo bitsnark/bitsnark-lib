@@ -28,8 +28,8 @@ export class Complex implements Member {
     eq(_a: Member): Register {
         const a = this.validate(_a);
         const f1 = this.r.eq(a.r) as Register;
-        const f2 = this.r.eq(a.r) as Register;
-        vm.and(f1, f2, f2);
+        const f2 = this.i.eq(a.i) as Register;
+        vm.and(f1, f1, f2);
         return f1;
     }
 
@@ -73,9 +73,9 @@ export class Complex implements Member {
             this.primeField.prime.getValue()
         );
         const r_r = vm.newRegister();
-        vm.load(r_r, rt[0], 'complex div r');
+        vm.load(r_r, rt[0]);
         const r_i = vm.newRegister();
-        vm.load(r_i, rt[1], 'complex div i');
+        vm.load(r_i, rt[1]);
         const result = this.new(
             this.primeField.newMember(r_r),
             this.primeField.newMember(r_i)
@@ -96,8 +96,8 @@ export class Complex implements Member {
 
     zero(): Member {
         return new Complex(this.primeField,
-            this.primeField.newMember(vm.R_0),
-            this.primeField.newMember(vm.R_0)
+            this.r.zero() as PrimeFieldMember,
+            this.r.zero() as PrimeFieldMember
         );
     }
 

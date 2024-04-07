@@ -36,7 +36,7 @@ export class ECPoint {
 
         // case where this == b
 
-        const tempEqual = this.double();
+        //const tempEqual = this.double();
 
         // case where this != a
 
@@ -54,12 +54,14 @@ export class ECPoint {
 
         // combine two cases depending on equality
 
-        const r = this.x.eq(b.x);
-        const result = new ECPoint(this.curve);
-        result.x = tempEqual.x.if(r, tempNotEqual.x);
-        result.y = tempEqual.y.if(r, tempNotEqual.y);
+        // const r = this.x.eq(b.x);
+        // const result = new ECPoint(this.curve);
+        // result.x = tempEqual.x.if(r, tempNotEqual.x);
+        // result.y = tempEqual.y.if(r, tempNotEqual.y);
 
-        return result;
+        // return result;
+
+        return tempNotEqual;
     }
 
     mul(a: Register): ECPoint {
@@ -77,7 +79,7 @@ export class ECPoint {
     assertPoint() {
         // y^2 = x^3 + a*x + b
         let t1 = this.x.mul(this.x).mul(this.x);
-        if(this.curve.ec_a.eq(this.curve.ec_a.zero()).getValue() != 0n) {
+        if(this.curve.ec_a.eq(this.curve.ec_a.zero()).getValue() === 0n) {
             t1 = t1.add(this.x.mul(this.curve.ec_a));
         }
         t1 = t1.add(this.curve.ec_b);
