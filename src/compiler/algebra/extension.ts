@@ -1,6 +1,6 @@
 import { Member } from "./member";
 import { Register } from "../vm/state";
-import { Polynomial } from "./polynomials";
+import { Polynomial } from "./polynomial";
 
 export class ExtensionMember implements Member {
 
@@ -9,31 +9,45 @@ export class ExtensionMember implements Member {
 
     constructor(polymod: Polynomial, value?: Polynomial) {
         this.polymod = polymod;
-        this.value = value ? value : new Polynomial(polymod.prime, polymod.degree);
+        this.value = value ? value : new Polynomial(polymod.primeField, polymod.degree);
     }
 
-    eq(a: Member): Register {
-        return this.value.eq(a);
+    validate(a: any) {
+        if (!(a instanceof ExtensionMember)) throw new Error('Invalid type');
+        return a;
     }
 
-    add(a: Member): Member {
-        return new ExtensionMember(this.polymod,
-            (this.value.add(a) as Polynomial).mod(this.polymod) as Polynomial);
+    eq(_a: Member): Register {
+        const a = this.validate(_a);
+        return this.value.eq(a.value);
     }
 
-    mul(a: Member): Member {
-        return new ExtensionMember(this.polymod,
-            (this.value.mul(a) as Polynomial).mod(this.polymod) as Polynomial);
+    new(poly?: Polynomial): ExtensionMember {
+        return new ExtensionMember(this.polymod, poly);
     }
 
-    sub(a: Member): Member {
-        return new ExtensionMember(this.polymod,
-            (this.value.sub(a) as Polynomial).mod(this.polymod) as Polynomial);
+    add(_a: Member): Member {
+        const a = this.validate(_a);
+        return this.new((this.value.add(a.value) as Polynomial)
+            .mod(this.polymod) as Polynomial);
     }
 
-    div(a: Member): Member {
-        return new ExtensionMember(this.polymod,
-            (this.value.div(a) as Polynomial).mod(this.polymod) as Polynomial);
+    mul(_a: Member): Member {
+        const a = this.validate(_a);
+        return this.new(
+            (this.value.mul(a.value) as Polynomial).mod(this.polymod));
+    }
+
+    sub(_a: Member): Member {
+        const a = this.validate(_a);
+        return this.new((this.value.sub(a) as Polynomial)
+            .mod(this.polymod) as Polynomial);
+    }
+
+    div(_a: Member): Member {
+        const a = this.validate(_a);
+        return this.new((this.value.div(a) as Polynomial)
+            .mod(this.polymod) as Polynomial);
     }
 
     if(r: Register, other: Member): Member {
@@ -41,8 +55,7 @@ export class ExtensionMember implements Member {
     }
 
     zero(): Member {
-        return new ExtensionMember(this.polymod,
-            new Polynomial(this.polymod.prime, this.polymod.degree));
+        return this.new();
     }
 
     neg(): Member {

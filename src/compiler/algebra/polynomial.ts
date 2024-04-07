@@ -24,6 +24,12 @@ export class Polynomial implements Member {
         }
     }
 
+    validate(a: any): Polynomial {
+        if (!(a instanceof Polynomial)) throw new Error('Invalid type');
+        if (this.degree != a.degree) throw new Error('Invalid degree');
+        return a;
+    }
+
     getCoeff(i: number): PrimeFieldMember {
         return i < this.coeffs.length ? this.coeffs[i] : this.primeField.newMember(vm.R_0);
     }
@@ -32,12 +38,11 @@ export class Polynomial implements Member {
         return new Polynomial(this.primeField, this.degree, coeffs);
     }
 
-    eq(a: Member): Register {
-        if (this.degree !== (a as any as Polynomial).degree)
-            throw new Error('Incompatible polynomials');
+    eq(_a: Member): Register {
+        const a = this.validate(_a);
         const total = vm.newRegister();
         for (let i = 0; i < this.degree; i++) {
-            const t = this.getCoeff(i).eq((a as any as Polynomial).getCoeff(i));
+            const t = this.getCoeff(i).eq(a.getCoeff(i));
             vm.not(t, t);
             vm.add(total, total, t, vm.R_P0);
         }
@@ -45,49 +50,45 @@ export class Polynomial implements Member {
         return total;
     }
 
-    add(a: Member): Member {
-        if (this.degree !== (a as any as Polynomial).degree)
-            throw new Error('Incompatible polynomials');
+    add(_a: Member): Member {
+        const a = this.validate(_a);
         const result = this.new();
         for (let i = 0; i < this.degree; i++) {
             vm.add(
                 result.getCoeff(i).getRegister(),
                 this.getCoeff(i).getRegister(),
-                (a as any as Polynomial).getCoeff(i).getRegister(),
+                a.getCoeff(i).getRegister(),
                 this.primeField.prime);
         }
         return result;
     }
 
-    mul(a: Member): Member {
-        if (this.degree !== (a as any as Polynomial).degree)
-            throw new Error('Incompatible polynomials');
+    mul(_a: Member): Member {
+        const a = this.validate(_a);
         const result = this.new();
         for (let i = 0; i < this.degree; i++) {
             for (let j = 0; j < this.degree; j++) {
-                const temp = this.getCoeff(i).mul((a as Polynomial).getCoeff(j));
-                result.coeffs[i + j] = result.coeffs[i + j].add(temp) as PrimeFieldMember;
+                const temp = this.getCoeff(i).mul(a.getCoeff(j));
+                result.coeffs[i] = result.coeffs[i].add(temp) as PrimeFieldMember;
             }
         }
         return result;
     }
 
-    sub(a: Member): Member {
-        if (this.degree !== (a as any as Polynomial).degree)
-            throw new Error('Incompatible polynomials');
+    sub(_a: Member): Member {
+        const a = this.validate(_a);
         const result = this.new();
         for (let i = 0; i < this.degree; i++) {
-            result.coeffs[i] = this.coeffs[i].sub((a as Polynomial).coeffs[i]) as PrimeFieldMember;
+            result.coeffs[i] = this.coeffs[i].sub(a.coeffs[i]) as PrimeFieldMember;
         }
         return result;
     }
 
-    div(a: Member): Member {
-        if (this.degree !== (a as any as Polynomial).degree)
-            throw new Error('Incompatible polynomials');
+    div(_a: Member): Member {
+        const a = this.validate(_a);
         const coeffs = polydiv(
             this.coeffs.map(m => m.getRegister().getValue()),
-            (a as Polynomial).coeffs.map(m => m.getRegister().getValue()),
+            a.coeffs.map(m => m.getRegister().getValue()),
             this.primeField.prime.getValue()).q;
         while (coeffs.length < this.degree) coeffs.push(0n);
         const result = this.new();
@@ -101,18 +102,18 @@ export class Polynomial implements Member {
         return result;
     }
 
-    if(r: Register, other: Member): Member {
+    if(r: Register, _other: Member): Member {
+        const other = this.validate(_other);
         const p = this.new();
         for (let i = 0; i < this.degree; i++) {
-            const t = this.coeffs[i].if(r, (other as Polynomial).coeffs[i]);
+            const t = this.coeffs[i].if(r, other.coeffs[i]);
             p.coeffs[i] = t as PrimeFieldMember;
         }
         return p;
     }
 
     mod(a: Polynomial): Polynomial {
-        if (this.degree !== (a as any as Polynomial).degree)
-            throw new Error('Incompatible polynomials');
+        this.validate(a);
         const q = this.div(a);
         const r = this.sub(q.mul(a));
         return r as Polynomial;
@@ -165,7 +166,7 @@ function polydiv(dividend: bigint[], divisor: bigint[], prime: bigint): { q: big
 
         // Subtract the divisor multiplied by the quotient term from the remainder
         for (let i = 0; i < divisor.length; i++) {
-            remainder[i] -= quotientTerm * divisor[i];
+            remainder[i] = (prime + remainder[i] - quotientTerm * divisor[i]) % prime;
         }
 
         // Remove any leading zeros from the remainder

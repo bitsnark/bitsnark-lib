@@ -62,12 +62,12 @@ export class VM {
 
     getJson() {
         return {
-            instructions:
-                this.instructions.map(instr => ({
-                    ...instr,
-                    target: instr.target.index,
-                    params: instr.params.map(p => p.index)
-                })),
+            // instructions:
+            //     this.instructions.map(instr => ({
+            //         ...instr,
+            //         target: instr.target.index,
+            //         params: instr.params.map(p => p.index)
+            //     })),
             instrCount: this.instructions.length,
             state: this.state.getJson(),
             witness: this.witness.getJson()

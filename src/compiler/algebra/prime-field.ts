@@ -10,9 +10,15 @@ export class PrimeFieldMember implements Member {
     constructor(prime: Register, r?: Register) {
         this.prime = prime;
         if (r && r.value < 0) {
-            r.setValue((prime.getValue() + r.getValue()) % prime.getValue());
+            r.forceValue((prime.getValue() + r.getValue()) % prime.getValue());
         }
         this.register = r ?? vm.newRegister();
+    }
+
+    validate(a: any): PrimeFieldMember {
+        if (!(a instanceof PrimeFieldMember)) 
+            throw new Error('Invalid type');
+        return a;
     }
 
     if(r: Register, other: Member): Member {
@@ -21,33 +27,38 @@ export class PrimeFieldMember implements Member {
         return result;
     }
 
-    eq(a: Member): Register {
+    eq(_a: Member): Register {
+        const a = this.validate(_a);
         const f = vm.newRegister();
-        vm.equal(f, this.register, (a as any as PrimeFieldMember).register);
+        vm.equal(f, this.register, a.register);
         return f;
     }
 
-    add(a: Member): Member {
+    add(_a: Member): Member {
+        const a = this.validate(_a);
         const t = new PrimeFieldMember(this.prime);
-        vm.add(t.register, this.register, (a as any as PrimeFieldMember).register, this.prime);
+        vm.add(t.register, this.register, a.register, this.prime);
         return t;
     }
 
-    mul(a: Member): Member {
+    mul(_a: Member): Member {
+        const a = this.validate(_a);
         const t = new PrimeFieldMember(this.prime);
-        vm.mul(t.register, this.register, (a as any as PrimeFieldMember).register, this.prime);
+        vm.mul(t.register, this.register, a.register, this.prime);
         return t;
     }
 
-    sub(a: Member): Member {
+    sub(_a: Member): Member {
+        const a = this.validate(_a);
         const t = new PrimeFieldMember(this.prime);
-        vm.sub(t.register, this.register, (a as any as PrimeFieldMember).register, this.prime);
+        vm.sub(t.register, this.register, a.register, this.prime);
         return t;
     }
 
-    div(a: Member): Member {
+    div(_a: Member): Member {
+        const a = this.validate(_a);
         const t = new PrimeFieldMember(this.prime);
-        vm.div(t.register, this.register, (a as any as PrimeFieldMember).register, this.prime);
+        vm.div(t.register, this.register, a.register, this.prime);
         return t;
     }
 

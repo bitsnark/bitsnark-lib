@@ -1,10 +1,11 @@
 import { EC, ECPoint } from "./ec";
-import { ExtensionMember } from "./extension";
-import { Polynomial, PolynomialOverPrimeField } from "./polynomials";
+import { ExtensionField, ExtensionMember } from "./extension";
+import { PolynomialOverPrimeField } from "./polynomial";
 import { PrimeField, PrimeFieldMember } from "./prime-field";
 import { G2Point } from "./G2";
 import { Register } from "../vm/state";
 import { vm } from "../vm/vm";
+import { Complex } from "./complex";
 
 const nine = new PrimeFieldMember(vm.hardcoded('', 9n));
 const degree = 12;
@@ -15,19 +16,18 @@ const base = polyField.newMember(
     [82n, 0n, 0n, 0n, 0n, 0n, -18n, 0n, 0n, 0n, 0n, 0n]
         .map(c => primeField.newMember(vm.hardcoded('', c))));
 
-const w = new ExtensionMember(
-    base,
+const extField = new ExtensionField(base);
+const w = extField.newMember(
     polyField.newMember(
         [0n, 1n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n]
             .map(n => primeField.newMember(vm.hardcoded('', n)))));
 const w_2 = w.mul(w) as ExtensionMember;
 const w_3 = w_2.mul(w) as ExtensionMember;
 
-const fiveZeros = Array(5).map(() => primeField.newMember(vm.R_0));
-    
-const ec_a = new ExtensionMember(base, polyField.newMember());
-const ec_b = new ExtensionMember(
-    base,
+const fiveZeros = [0, 0, 0, 0, 0].map(() => primeField.newMember(vm.R_0));
+
+const ec_a = extField.newMember();
+const ec_b = extField.newMember(
     polyField.newMember(
         [3n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n]
             .map(c => primeField.newMember(vm.hardcoded('', c)))));
@@ -40,6 +40,7 @@ export class G3 extends EC {
 
     primeField = primeField;
     polyField = polyField;
+    extField = extField;
 
     constructor() {
         super(ec_a, ec_b);
@@ -50,24 +51,26 @@ export class G3 extends EC {
     }
 
     twist(pt: G2Point): G3Point {
-        const x = pt.x as Polynomial;
-        const y = pt.y as Polynomial;
+        const x = pt.x as Complex;
+        const y = pt.y as Complex;
         const xcoeffs = [
-            x.coeffs[0].sub(x.coeffs[1].mul(nine)) as PrimeFieldMember,
-            x.coeffs[1]];
+            x.r.sub(x.i.mul(nine)) as PrimeFieldMember,
+            x.i];
         const ycoeffs = [
-            y.coeffs[0].sub(y.coeffs[1].mul(nine)) as PrimeFieldMember,
-            y.coeffs[1]];
-        const nx = this.polyField.newMember(
-            [xcoeffs[0],
-            ...fiveZeros,
-            xcoeffs[1],
-            ...fiveZeros]);
-        const ny = this.polyField.newMember(
-            [ycoeffs[0],
-            ...fiveZeros,
-            ycoeffs[1],
-            ...fiveZeros]);
+            y.r.sub(y.i.mul(nine)) as PrimeFieldMember,
+            y.i];
+        const nx = this.extField.newMember(
+            polyField.newMember(
+                [xcoeffs[0],
+                ...fiveZeros,
+                xcoeffs[1],
+                ...fiveZeros]));
+        const ny = this.extField.newMember(
+            polyField.newMember(
+                [ycoeffs[0],
+                ...fiveZeros,
+                ycoeffs[1],
+                ...fiveZeros]));
 
         return this.makePoint(w_2.mul(nx) as ExtensionMember, w_3.mul(ny) as ExtensionMember);
     }

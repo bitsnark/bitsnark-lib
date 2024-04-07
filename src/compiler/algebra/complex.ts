@@ -16,27 +16,33 @@ export class Complex implements Member {
         this.i = i ? i : primeField.newMember();
     }
 
+    validate(a: any): Complex {
+        if (!(a instanceof Complex)) throw new Error('Invalid type');
+        return a as Complex;
+    }
+
     new(r: PrimeFieldMember, i: PrimeFieldMember): Complex {
         return new Complex(this.primeField, r, i);
     }
 
     eq(_a: Member): Register {
-        const a = _a as Complex;
+        const a = this.validate(_a);
         const f1 = this.r.eq(a.r) as Register;
         const f2 = this.r.eq(a.r) as Register;
         vm.and(f1, f2, f2);
         return f1;
     }
 
-    add(a: Member): Member {
+    add(_a: Member): Member {
+        const a = this.validate(_a);
         const result = this.zero() as Complex;
-        result.r = this.r.add((a as Complex).r) as PrimeFieldMember;
-        result.i = this.i.add((a as Complex).i) as PrimeFieldMember;
+        result.r = this.r.add(a.r) as PrimeFieldMember;
+        result.i = this.i.add(a.i) as PrimeFieldMember;
         return result;
     }
 
     mul(_a: Member): Member {
-        const a = _a as Complex;
+        const a = this.validate(_a);
         const result = this.zero() as Complex;
         result.r = this.r.mul(a.r).sub(
             this.i.mul(a.i)) as PrimeFieldMember;
@@ -46,7 +52,7 @@ export class Complex implements Member {
     }
 
     sub(_a: Member): Member {
-        const a = _a as Complex;
+        const a = this.validate(_a);
         const result = this.zero() as Complex;
         result.r = this.r.sub(a.r) as PrimeFieldMember;
         result.i = this.i.sub(a.i) as PrimeFieldMember;
@@ -54,7 +60,7 @@ export class Complex implements Member {
     }
 
     div(_a: Member): Member {
-        const a = _a as Complex;
+        const a = this.validate(_a);
         const rt = divideComplex(
             [
                 this.r.getRegister().getValue(),
@@ -80,10 +86,11 @@ export class Complex implements Member {
         return result;
     }
 
-    if(flag: Register, other: Member): Member {
+    if(flag: Register, _other: Member): Member {
+        const other = this.validate(_other);
         const c = this.zero() as Complex;
-        c.r = this.r.if(flag, (other as Complex).r) as PrimeFieldMember;
-        c.i = this.r.if(flag, (other as Complex).i) as PrimeFieldMember;
+        c.r = this.r.if(flag, other.r) as PrimeFieldMember;
+        c.i = this.r.if(flag, other.i) as PrimeFieldMember;
         return c;
     }
 
