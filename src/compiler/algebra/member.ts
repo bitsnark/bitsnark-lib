@@ -6,14 +6,13 @@ export interface Member {
     mul(a: Member): Member;
     sub(a: Member): Member;
     div(a: Member): Member;
-    if(r: Register, other: Member): Member;
+    ifBit(r: Register, b: number, other: Member): Member;
     eq(a: Member): Register;
     zero(): Member;
     neg(): Member;
 }
 
 export class EmptyMember implements Member {
-
     add(a: Member): Member {
         return new EmptyMember();
     }
@@ -34,7 +33,7 @@ export class EmptyMember implements Member {
         return new EmptyMember();
     }
 
-    if(r: Register): Member {
+    ifBit(r: Register, b: number): Member {
         return new EmptyMember();
     }
 
@@ -46,5 +45,9 @@ export class EmptyMember implements Member {
 
     zero(): Member {
         return this;
+    }
+
+    one(): Member {
+        return new EmptyMember();
     }
 }
