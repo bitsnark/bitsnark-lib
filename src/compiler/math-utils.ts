@@ -24,7 +24,7 @@ export function modInverse(a: bigint, m: bigint): bigint {
     return (y % m + m) % m;
 }
 
-export function mod(a: bigint, m: bigint) { 
+export function mod(a: bigint, m: bigint) {
     return (a % m + m) % m;
 }
 
@@ -46,4 +46,14 @@ export function divideComplex(a: bigint[], b: bigint[], m: bigint): bigint[] {
         mod(numerator[0] * modInverse(modulusSquared, m), m),
         mod(numerator[1] * modInverse(modulusSquared, m), m)
     ];
+}
+
+export function modPow(expo: bigint, base: bigint, p: bigint): bigint {
+    // "expo" needs to be of type BigInt
+    let x = BigInt(base) % p, res = expo & 1n ? x : 1n
+    do {
+        x = x ** 2n % p
+        if (expo & 2n) res = res * x % p
+    } while (expo /= 2n)
+    return res
 }

@@ -1,6 +1,7 @@
 import { Member } from "./member";
 import { vm } from "../vm/vm";
 import { Register } from "../vm/state";
+import { modPow } from "../math-utils";
 
 export class PrimeFieldMember implements Member {
 
@@ -20,7 +21,7 @@ export class PrimeFieldMember implements Member {
     }
 
     validate(a: any): PrimeFieldMember {
-        if (!(a instanceof PrimeFieldMember)) 
+        if (!(a instanceof PrimeFieldMember))
             throw new Error('Invalid type');
         return a;
     }
@@ -77,6 +78,28 @@ export class PrimeFieldMember implements Member {
     neg(): Member {
         return this.zero().sub(this);
     }
+
+    pow(e: PrimeFieldMember): PrimeFieldMember {
+        if (this.register.hardcoded && e.register.hardcoded) {
+            const r = this.new();
+            vm.mov(r.register, 
+                vm.hardcoded(modPow(this.register.getValue(), e.register.getValue(), this.prime.getValue())));
+            return r;
+        }
+        const agg = vm.newRegister();
+        vm.mov(agg, this.register);
+        const r_temp = vm.newRegister();
+        const result = vm.hardcoded(1n);
+        for (let bit = 0; bit < 256; bit++) {
+            const bv = e.register.getValue() >> BigInt(bit) & 1n;
+            if (!e.register.hardcoded || bv) {
+                vm.andbit(r_temp, e.register, bit, agg);
+                vm.mul(result, result, r_temp, this.prime);
+            }
+            if (bit < 255) vm.mul(agg, agg, agg, this.prime);
+        }
+        return this.new(result);
+    }
 }
 
 export class PrimeField {
@@ -89,5 +112,9 @@ export class PrimeField {
 
     newMember(r?: Register): PrimeFieldMember {
         return new PrimeFieldMember(this.prime, r);
+    }
+
+    getPrime(): PrimeFieldMember {
+        return this.newMember(this.prime);
     }
 }

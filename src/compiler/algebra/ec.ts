@@ -32,6 +32,14 @@ export class ECPoint {
         return result;
     }
 
+    eq(b: ECPoint): Register {
+        const rx = this.y.eq(b.y);
+        const ry = this.y.eq(b.y);
+        const tr = vm.newRegister();
+        vm.and(tr, rx, ry);
+        return tr;
+    }
+
     add(b: ECPoint): ECPoint {
 
         // case where this == b

@@ -61,6 +61,10 @@ export class ExtensionMember implements Member {
     neg(): Member {
         return this.zero().sub(this);
     }
+
+    pow(a: Member): Member {
+        throw new Error('Not implemented');
+    }
 }
 
 export class ExtensionField {

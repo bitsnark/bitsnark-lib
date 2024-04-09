@@ -10,6 +10,7 @@ export interface Member {
     eq(a: Member): Register;
     zero(): Member;
     neg(): Member;
+    pow(a: Member): Member;
 }
 
 export class EmptyMember implements Member {
@@ -45,6 +46,10 @@ export class EmptyMember implements Member {
     }
 
     zero(): Member {
+        return this;
+    }
+
+    pow() {
         return this;
     }
 }

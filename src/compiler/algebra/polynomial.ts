@@ -34,7 +34,7 @@ export class Polynomial implements Member {
         return i < this.coeffs.length ? this.coeffs[i] : this.primeField.newMember(vm.R_0);
     }
 
-    new(coeffs?: []) {
+    new(coeffs?: PrimeFieldMember[]) {
         return new Polynomial(this.primeField, this.degree, coeffs);
     }
 
@@ -64,20 +64,26 @@ export class Polynomial implements Member {
     }
 
     mul(_a: Member): Member {
-        const a = this.validate(_a);
         const result = this.new();
-        const cache: Member[][] = [];
-        for(let i = 0; i < this.degree; i++) cache[i] = [];
-        for (let i = 0; i < this.degree; i++) {
-            for (let j = 0; j < this.degree; j++) {
-                let temp;
-                if (cache[i][j]) {
-                    temp = cache[i][j];
-                } else {
-                    temp = this.getCoeff(i).mul(a.getCoeff(j));
-                    cache[j][i] = temp;
+        if (_a instanceof Polynomial) {
+            const a = this.validate(_a);
+            const cache: Member[][] = [];
+            for(let i = 0; i < this.degree; i++) cache[i] = [];
+            for (let i = 0; i < this.degree; i++) {
+                for (let j = 0; j < this.degree; j++) {
+                    let temp;
+                    if (cache[i][j]) {
+                        temp = cache[i][j];
+                    } else {
+                        temp = this.getCoeff(i).mul(a.getCoeff(j));
+                        cache[j][i] = temp;
+                    }
+                    result.coeffs[i] = result.coeffs[i].add(temp) as PrimeFieldMember;
                 }
-                result.coeffs[i] = result.coeffs[i].add(temp) as PrimeFieldMember;
+            }    
+        } else if (_a instanceof PrimeFieldMember) {
+            for (let i = 0; i < this.degree; i++) {
+                result.coeffs[i] = this.coeffs[i].mul(_a) as PrimeFieldMember;
             }
         }
         return result;
@@ -133,6 +139,16 @@ export class Polynomial implements Member {
 
     neg(): Member {
         return this.zero().sub(this);
+    }
+
+    one() {
+        const coeffs = [vm.R_1];
+        while(coeffs.length < this.degree) coeffs.push(vm.R_1);
+        return this.new(coeffs.map(r => this.primeField.newMember(r)));
+    }
+
+    pow(a: Member): Member {
+        throw new Error('Not implemented');
     }
 }
 

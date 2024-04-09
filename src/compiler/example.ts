@@ -11,12 +11,14 @@ export class Example {
         const point1 = g1.generator.double();
         point1.assertPoint();
 
-        g2.generator.assertPoint();
         const point2 = g2.generator.double();
         point2.assertPoint();
 
         const g3point = g3.twist(point2);
         g3point.assertPoint();
+
+        const pairing = g3.pairing(point2, point1);
+        console.log(pairing);
 
         vm.print();
     }
