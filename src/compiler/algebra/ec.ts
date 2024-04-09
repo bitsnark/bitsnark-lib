@@ -74,96 +74,8 @@ export class ECPoint {
             if (bit < 255) agg = agg.double();
         }
         return result;
-    }    
-
-    neg(): ECPoint {
-        const negate = new ECPoint(this.curve);
-        negate.x = this.x;
-        negate.y = this.y.neg();
-        return negate;
     }
 
-    pairing(a: ECPoint): Member {
-        // Initialize result to the neutral element in the target group
-        //let result = this.curve.ec_a.one();
-        let result = new ECPoint(this.curve).x;
-
-        const primeFieldOrder = 21888242871839275222246405745257275088696311157297823662689037894645226208583n;
-    
-        // Initialize P to the current point
-        let P = new ECPoint(this.curve, this.x, this.y);
-    
-        // Initialize Q to the point on the other curve
-        let Q = new ECPoint(a.curve, a.x, a.y);
-        //const bitlen = bitLength(primeFieldOrder);
-        const ate_loop_count = 64;
-        // Perform Miller loop
-        for (let i = 0; i < ate_loop_count; i++) {
-            // Compute line function
-            let line_result = P.line(Q);
-    
-            // Update result
-            result = result.mul(line_result);
-
-            // Double P
-            P = P.double();
-    
-            // Update Q based on the bit of the scalar
-            if (testBit(primeFieldOrder, i)) {
-                Q = Q.add(a);
-            }
-        }
-    
-        return result;
-    }
-    
-
-    //line function used in miller loop in pairing computation
-    line(a: ECPoint): ECPoint {
-        const result = new ECPoint(this.curve);
-        
-        // Change if condition to computing the difference and combine by ifBit(register, bit, other)
-
-        // When P = Q
-        if ((this.x == a.x) && (this.y == a.y)) {
-            // xsqr = x^2
-            const xsqr = this.x.mul(this.x);
-            // m1 = 3*x^2 + a
-            let m1 = xsqr.add(xsqr).add(xsqr).add(this.curve.ec_a);
-            // m2 = 2y
-            let m2 = this.y.add(this.y);
-            // l = m1 * m2inv = (3*x^2 + a) / (2*y)
-            let l = m1.div(m2);
-    
-            // Compute x3 = l^2 - 2*x1
-            let x3 = l.mul(l).sub(this.x.mul(this.x));
-    
-            // Compute y3 = l * (x1 - x3) - y1
-            let y3 = l.mul(this.x.sub(x3)).sub(this.y);
-    
-            result.x = x3;
-            result.y = y3;
-        } else {
-            // Compute m1 = y2 - y1
-            let m1 = a.y.sub(this.y);
-            // Compute m2 = x2 - x1
-            let m2 = a.x.sub(this.x);
-            // Compute l = m1 / m2
-            let l = m1.div(m2);
-    
-            // Compute x3 = l^2 - x1 - x2
-            let x3 = l.mul(l).sub(this.x).sub(a.x);
-    
-            // Compute y3 = l * (x1 - x3) - y1
-            let y3 = l.mul(this.x.sub(x3)).sub(this.y);
-    
-            result.x = x3;
-            result.y = y3;
-        }
-    
-        return result;
-    }
-    
     assertPoint() {
         // y^2 = x^3 + a*x + b
         let t1 = this.x.mul(this.x).mul(this.x);
@@ -190,18 +102,4 @@ export class EC {
     makePoint(x: Member, y: Member) {
         return new ECPoint(this, x, y);
     }
-}
-
-function bitLength(n: bigint): number {
-    let bitLength = 0;
-    while (n > 0n) {
-        n >>= 1n;
-        bitLength++;
-    }
-    return bitLength;
-}
-
-// Function to test a specific bit of a BigInt
-function testBit(n: bigint, bitIndex: number): boolean {
-    return (n & (1n << BigInt(bitIndex))) !== 0n;
 }

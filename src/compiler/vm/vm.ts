@@ -192,23 +192,6 @@ export class VM {
         }
     }
 
-    exp(target: Register, a: Register, n: Register, prime: Register) {
-        // Initialize result to 1
-        target.setValue(1n);
-
-        // Loop through the bits of the exponent n
-        for (let i = n.getValue().toString(2).length - 1; i >= 0; i--) {
-            // Square the result
-            this.mul(target, target, target, prime);
-
-            // If the current bit of n is 1, multiply result by a
-            if (n.getValue() & (1n << BigInt(i))) {
-                this.mul(target, target, a, prime);
-            }
-        }
-        this.current++; // Increment current instruction pointer
-    }
-
     inverse(target: Register, a: Register, prime: Register) {
         let v = 0n;
         try {
