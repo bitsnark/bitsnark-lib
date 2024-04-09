@@ -1,6 +1,6 @@
 import { g1 } from "./algebra/G1";
 import { g2 } from "./algebra/G2";
-import { g3 } from "./algebra/G3";
+import { pairing, twist } from "./algebra/pairing";
 import { vm } from "./vm/vm";
 
 export class Example {
@@ -14,11 +14,11 @@ export class Example {
         const point2 = g2.generator.double();
         point2.assertPoint();
 
-        const g3point = g3.twist(point2);
+        const g3point = twist(point2);
         g3point.assertPoint();
 
-        const pairing = g3.pairing(point2, point1);
-        console.log(pairing);
+        const pp = pairing(point2, point1);
+        console.log(pp);
 
         vm.print();
     }
