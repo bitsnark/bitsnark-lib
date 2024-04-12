@@ -32,14 +32,8 @@ export class State {
     registers: Register[] = [];
     highestIndex = 0;
 
-    findFreeIndex(): number {
-        for (let i = 0; ; i++) {
-            if (!this.registers[i]) return i;
-        }
-    }
-
     newRegister(): Register {
-        const r = new Register(this.findFreeIndex());
+        const r = new Register(this.highestIndex++);
         this.setRegister(r);
         return r;
     }
@@ -71,7 +65,7 @@ export class State {
     hardcoded(value: bigint): Register {
         let t = this.hardcodedMap.get(value);
         if (t) return t;
-        t = new Register(this.findFreeIndex());
+        t = new Register(this.highestIndex++);
         t.value = value;
         t.assert = true;
         t.hardcoded = true;

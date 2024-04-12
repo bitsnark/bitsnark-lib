@@ -9,8 +9,10 @@ export interface Member {
     if(r: Register, other: Member): Member;
     eq(a: Member): Register;
     zero(): Member;
+    one(): Member;
     neg(): Member;
     pow(a: Member): Member;
+    toString(): String;
 }
 
 export class EmptyMember implements Member {
@@ -49,7 +51,15 @@ export class EmptyMember implements Member {
         return this;
     }
 
-    pow() {
+    one(): Member {
         return this;
+    }
+
+    pow(): Member {
+        return this;
+    }
+
+    toString(): String {
+        return '';
     }
 }

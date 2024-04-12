@@ -1,6 +1,6 @@
 import { Member } from "./member";
 import { PrimeField, PrimeFieldMember } from "./prime-field";
-import { divideComplex } from "../math-utils";
+import { divideComplex } from "../common/math-utils";
 import { Register } from "../vm/state";
 import { vm } from "../vm/vm";
 
@@ -101,12 +101,33 @@ export class Complex implements Member {
         );
     }
 
+    one(): Member {
+        return new Complex(this.primeField,
+            this.r.one() as PrimeFieldMember,
+            this.r.zero() as PrimeFieldMember
+        );
+    }
+
     neg(): Member {
         return this.zero().sub(this);
     }
 
-    pow(a: Member): Member {
-        throw new Error('Not implemented');
+    pow(_a: Member): Member {
+        if (!(_a instanceof PrimeFieldMember)) throw new Error('Invalid type');
+        const a = (_a as PrimeFieldMember).getRegister();
+        let agg = this.one();
+        let result = this.one();
+        for (let bit = 0; bit < 256; bit++) {
+            const r = vm.newRegister();
+            vm.andbit(r, a, bit, vm.R_1);
+            result = result.mul(agg.if(r, this.one())) as Complex;
+            if (bit < 255) agg = agg.mul(agg) as Complex;
+        }
+        return result;
+    }
+
+    toString(): String {
+        return `[${this.r}, ${this.i}]`;
     }
 }
 
@@ -122,6 +143,13 @@ export class ComplexField {
         return new Complex(this.primeField,
             this.primeField.newMember(r),
             this.primeField.newMember(i)
+        );
+    }
+
+    hardcoded(r: bigint, i: bigint): Complex {
+        return new Complex(this.primeField,
+            this.primeField.newMember(vm.hardcoded(r)),
+            this.primeField.newMember(vm.hardcoded(i))
         );
     }
 }

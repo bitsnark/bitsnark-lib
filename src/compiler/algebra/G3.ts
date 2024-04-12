@@ -22,6 +22,7 @@ const ec_b = extField.newMember(
             .map(c => primeField.newMember(vm.hardcoded(c)))));
 
 export class G3Point extends ECPoint {
+    this_is_a_g3_point = 0;
 }
 
 // group over elliptic curve over polynomial field over finite field

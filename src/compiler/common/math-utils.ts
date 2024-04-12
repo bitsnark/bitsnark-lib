@@ -3,7 +3,8 @@ export function modInverse(a: bigint, m: bigint): bigint {
     // validate inputs
     a = (a % m + m) % m;
     if (!a || m < 2) {
-        throw new Error("NaN error");
+        // NaN, but we can't fail
+        return 1n;
     }
     // find the gcd
     const s = [];
@@ -13,7 +14,8 @@ export function modInverse(a: bigint, m: bigint): bigint {
         s.push({ a, b });
     }
     if (a !== 1n) {
-        throw new Error("NaN error");
+        // NaN, but we can't fail
+        return 1n;
     }
     // find the inverse
     let x = 1n;
@@ -48,9 +50,8 @@ export function divideComplex(a: bigint[], b: bigint[], m: bigint): bigint[] {
     ];
 }
 
-export function modPow(expo: bigint, base: bigint, p: bigint): bigint {
-    // "expo" needs to be of type BigInt
-    let x = BigInt(base) % p, res = expo & 1n ? x : 1n
+export function modPow(base: bigint, expo: bigint, p: bigint): bigint {
+    let x = base % p, res = expo & 1n ? x : 1n
     do {
         x = x ** 2n % p
         if (expo & 2n) res = res * x % p

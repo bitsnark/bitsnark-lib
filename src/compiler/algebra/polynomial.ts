@@ -2,7 +2,7 @@ import { Member } from "./member";
 import { vm } from "../vm/vm";
 import { Register } from "../vm/state";
 import { PrimeField, PrimeFieldMember } from "./prime-field";
-import { modInverse } from "../math-utils";
+import { modInverse } from "../common/math-utils";
 
 export class Polynomial implements Member {
 
@@ -147,8 +147,22 @@ export class Polynomial implements Member {
         return this.new(coeffs.map(r => this.primeField.newMember(r)));
     }
 
-    pow(a: Member): Member {
-        throw new Error('Not implemented');
+    pow(_a: Member): Member {
+        if (!(_a instanceof PrimeFieldMember)) throw new Error('Invalid type');
+        const a = (_a as PrimeFieldMember).getRegister();
+        let agg = this.one();
+        let result = this.one();
+        for (let bit = 0; bit < 256; bit++) {
+            const r = vm.newRegister();
+            vm.andbit(r, a, bit, vm.R_1);
+            result = result.mul(agg.if(r, this.one())) as Polynomial;
+            if (bit < 255) agg = agg.mul(agg) as Polynomial;
+        }
+        return result;
+    }
+
+    toString(): String {
+        return `[${this.coeffs.map(v => v.toString()).join(',')}]`;
     }
 }
 

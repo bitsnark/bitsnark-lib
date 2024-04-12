@@ -1,7 +1,7 @@
 import { Register, State } from "./state";
 import { Logger } from 'sitka';
 import { Witness } from "./witness";
-import { modInverse } from "../math-utils";
+import { modInverse } from "../common/math-utils";
 
 export enum InstrCode {
     ADDMOD = "ADDMOD",
@@ -49,7 +49,11 @@ export class VM {
     }
 
     setInstruction(name: InstrCode, target: Register, params: Register[], bit?: number) {
-        this.instructions[this.current] = { name, target, params, bit: bit };
+        //this.instructions[this.current] = { name, target, params, bit: bit };
+        this.current++;
+        if (this.current % 1000000 == 0) {
+            //console.log(`line number: ${this.current}   registers: ${this.state.highestIndex}`);
+        }
     }
 
     newRegister(): Register {
@@ -79,22 +83,26 @@ export class VM {
         console.log(str);
     }
 
+    reset() {
+
+        this.state = new State();
+        this.witness = new Witness();
+        this.instructions = [];
+        this.current = 0;
+    }
+
     /// *** BASIC INSTRUCTIONS *** ///
 
     add(target: Register, a: Register, b: Register, prime: Register) {
         this.setInstruction(InstrCode.ADDMOD, target, [a, b, prime]);
         let v = (a.value + b.value) % prime.value;
         target.setValue(v);
-
-        this.current++;
     }
 
     andbit(target: Register, a: Register, bit: number, b: Register) {
         this.setInstruction(InstrCode.ANDBIT, target, [a, b], bit);
         const v = a.value & (2n ** BigInt(bit));
         target.setValue(v ? b.value : 0n);
-
-        this.current++;
     }
 
     mov(target: Register, a: Register) {
@@ -103,16 +111,11 @@ export class VM {
         } else {
             target.setValue(a.value);
         }
-        // is this needed?
-        //this.setInstruction(InstrCode.MOV, target, [a]);
-        //this.current++;
     }
 
     equal(target: Register, a: Register, b: Register) {
         target.setValue(a.value === b.value ? 1n : 0n);
-
         this.setInstruction(InstrCode.EQUAL, target, [a, b]);
-        this.current++;
     }
 
     /// *** UTILITY INSTRUCTIONS *** ///

@@ -1,7 +1,7 @@
 import { vm } from "../vm/vm";
 import { Complex } from "./complex";
 import { ExtensionMember } from "./extension";
-import { G1Point, G1, g1 } from "./G1";
+import { G1Point } from "./G1";
 import { G2Point } from "./G2";
 import { G3, G3Point, g3 } from "./G3";
 import { Polynomial } from "./polynomial";
@@ -51,16 +51,41 @@ export function twist(pt: G2Point): G3Point {
     return g3.makePoint(w_2.mul(nx) as ExtensionMember, w_3.mul(ny) as ExtensionMember);
 }
 
-export function miller(q: G1Point, p: G1Point): Polynomial {
+function line(p1: G3Point, p2: G3Point, t: G3Point): ExtensionMember {
+
+    const sameX = p1.x.eq(p2.x);
+    const diffX = vm.newRegister();
+    vm.not(diffX, sameX);
+    const sameY = p1.y.eq(p2.y);
+    const diffY = vm.newRegister();
+    vm.not(diffY, sameY);
+    const sameXDiffY = vm.newRegister();
+    vm.and(sameXDiffY, sameX, diffY);
+
+    const p1x_2 = p1.x.mul(p1.x);
+    const mSameX = p1x_2.add(p1x_2).add(p1x_2).div(p1.y.add(p1.y)) as ExtensionMember;
+    const mDiffX = p2.y.sub(p1.y).div(p2.x.sub(p1.x)) as ExtensionMember;
+    const resultSameY = mSameX.mul(t.x.sub(p1.x).sub(t.y.sub(p1.y))) as ExtensionMember;
+    const resultDiffX = mDiffX.mul(t.x.sub(p1.x).sub(t.y.sub(p1.y))) as ExtensionMember;
+    const resultOther = t.x.sub(p1.x) as ExtensionMember;
+
+    let result = resultDiffX.if(diffX, resultOther);
+    result = resultSameY.if(sameY, result);
+    return result as ExtensionMember;
+}
+
+
+export function miller(q: G3Point, p: G3Point): Polynomial {
     let r = q;
     let f = G3.extField.polymod.one();
+    log_ate_loop_count.toFixed();
 
     for (let i = log_ate_loop_count; i >= 0; i--) {
-        f = f.mul(f).mul(G1.line(r, r, p)) as Polynomial;
-        r = r.double();
+        f = f.mul(f).mul(line(r, r, p)) as Polynomial;
+        r = r.double() as G3Point;
         if (BigInt(2 ** i) & rAteLoopCount.getValue()) {
-            f = f.mul(G1.line(r, q, p)) as Polynomial;
-            r = r.add(q);
+            f = f.mul(line(r, q, p)) as Polynomial;
+            r = r.add(q) as G3Point;
         }
     }
 
@@ -68,19 +93,19 @@ export function miller(q: G1Point, p: G1Point): Polynomial {
     const tf = r.eq(tr);
     vm.assertEqOne(tf);
 
-    const q1 = g1.makePoint(
-        q.x.pow(G3.primeField.getPrime()) as PrimeFieldMember, 
-        q.y.pow(G3.primeField.getPrime()) as PrimeFieldMember);
+    const q1 = g3.makePoint(
+        q.x.pow(G3.primeField.getPrime()) as ExtensionMember,
+        q.y.pow(G3.primeField.getPrime()) as ExtensionMember);
     q1.assertPoint();
-    
-    const nq2 = g1.makePoint(
-        q.x.pow(G3.primeField.getPrime()) as PrimeFieldMember, 
-        q.y.pow(G3.primeField.getPrime()).neg() as PrimeFieldMember);
+
+    const nq2 = g3.makePoint(
+        q.x.pow(G3.primeField.getPrime()) as ExtensionMember,
+        q.y.pow(G3.primeField.getPrime()).neg() as ExtensionMember);
     nq2.assertPoint();
 
-    f = f.mul(G1.line(r, q1, p)) as Polynomial;
-    r = r.add(q1);
-    f = f.mul(G1.line(r, nq2, p)) as Polynomial;
+    f = f.mul(line(r, q1, p)) as Polynomial;
+    r = r.add(q1) as G3Point;
+    f = f.mul(line(r, nq2, p)) as Polynomial;
     f.pow(G3.primeField.getPrime().pow(degree).sub(one).div(G3.primeField.newMember(curveOrder)));
 
     return f;

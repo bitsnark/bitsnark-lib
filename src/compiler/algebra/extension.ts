@@ -40,22 +40,28 @@ export class ExtensionMember implements Member {
 
     sub(_a: Member): Member {
         const a = this.validate(_a);
-        return this.new((this.value.sub(a) as Polynomial)
+        return this.new((this.value.sub(a.value) as Polynomial)
             .mod(this.polymod) as Polynomial);
     }
 
     div(_a: Member): Member {
         const a = this.validate(_a);
-        return this.new((this.value.div(a) as Polynomial)
+        return this.new((this.value.div(a.value) as Polynomial)
             .mod(this.polymod) as Polynomial);
     }
 
     if(r: Register, other: Member): Member {
-        throw new Error('Not implemented');
+        const result = this.new();
+        result.value = this.value.if(r, (other as ExtensionMember).value) as Polynomial;
+        return result;
     }
 
     zero(): Member {
         return this.new();
+    }
+
+    one(): Member {
+        return this.new(this.polymod.one());
     }
 
     neg(): Member {
@@ -63,7 +69,11 @@ export class ExtensionMember implements Member {
     }
 
     pow(a: Member): Member {
-        throw new Error('Not implemented');
+        return this.new(this.value.pow(a) as Polynomial);
+    }
+
+    toString(): String {
+        return this.value.toString();
     }
 }
 
@@ -77,5 +87,12 @@ export class ExtensionField {
 
     newMember(p?: Polynomial): ExtensionMember {
         return new ExtensionMember(this.polymod, p);
+    }
+
+    hardcoded(a: bigint[]): ExtensionMember {
+        return new ExtensionMember(this.polymod, new Polynomial(this.polymod.primeField,
+            this.polymod.degree,
+            a.map(n => this.polymod.primeField.newHardcoded(n))
+        ));
     }
 }

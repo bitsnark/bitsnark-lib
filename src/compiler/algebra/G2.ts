@@ -13,6 +13,7 @@ const ec_b = complexField.newMember(
     .div(complexField.newMember(vm.hardcoded(9n), vm.hardcoded(1n)));
 
 export class G2Point extends ECPoint {
+    this_is_a_g2_point = 0;
 }
 
 // group over elliptic curve over complex plane over finite field
