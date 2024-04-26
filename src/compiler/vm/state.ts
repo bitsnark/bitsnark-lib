@@ -15,22 +15,21 @@ export class Register {
         return this.value;
     }
 
-    setValue(value: bigint) {
-        if (this.assert && this.value !== value) throw new Error(`Assertion error, r=${this.index}`);
+    forceValue(value: bigint) {
         this.value = value;
     }
 
-    forceValue(value: bigint) {
-        this.value = value;
+    isBit(b: number): boolean {
+        return !!(this.value && 2 ** b);
     }
 }
 
 export class State {
 
     hardcodedMap = new Map<bigint, Register>();
-
     registers: Register[] = [];
     highestIndex = 0;
+    failed: boolean = false;
 
     newRegister(): Register {
         const r = new Register(this.highestIndex++);
@@ -80,9 +79,14 @@ export class State {
 
     getJson(): any {
         return {
+            failed: this.failed,
             count: this.highestIndex,
             hardcoded: this.registers.filter(r => r.hardcoded && r.index >= 0).
                 map(r => ({ index: r.index, value: r.value.toString(16), title: r.title }))
         };
+    }
+
+    setFailed() {
+        this.failed = true;
     }
 }

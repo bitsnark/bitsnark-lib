@@ -6,8 +6,10 @@ import { modInverse } from "../common/math-utils";
 export enum InstrCode {
     ADDMOD = "ADDMOD",
     ANDBIT = "ANDBIT",
+    IFBIT = "IFBIT",
     MOV = "MOV",
-    EQUAL = "EQUAL"
+    EQUAL = "EQUAL",
+    MULMOD = "MULMOD"
 }
 
 export interface Instruction {
@@ -30,6 +32,7 @@ export class VM {
     witness: Witness;
     instructions: Instruction[] = [];
     current: number = 0;
+    collectInstructions = false;
 
     constructor() {
         this.logger = Logger.getLogger({ name: this.constructor.name });
@@ -42,6 +45,14 @@ export class VM {
         this.R_P0 = this.state.hardcoded(0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffn);
     }
 
+    setCollectInstructions(f: boolean) {
+        this.collectInstructions = f;
+    }
+
+    getCurrentInstruction(): number {
+        return this.current;
+    }
+
     /// *** BASIC OPERATIONS ***
 
     addWitness(value: bigint) {
@@ -49,10 +60,14 @@ export class VM {
     }
 
     setInstruction(name: InstrCode, target: Register, params: Register[], bit?: number) {
-        //this.instructions[this.current] = { name, target, params, bit: bit };
+
+        if (this.collectInstructions) {
+            this.instructions[this.current] = { name, target, params, bit: bit };
+        }
+
         this.current++;
         if (this.current % 1000000 == 0) {
-            //console.log(`line number: ${this.current}   registers: ${this.state.highestIndex}`);
+            // console.log(`line number: ${this.current}   registers: ${this.state.highestIndex}`);
         }
     }
 
@@ -61,17 +76,12 @@ export class VM {
     }
 
     hardcoded(value: bigint): Register {
+        if (value >= 2n ** 256n) throw new Error('Too big');
         return this.state.hardcoded(value);
     }
 
     getJson() {
         return {
-            // instructions:
-            //     this.instructions.map(instr => ({
-            //         ...instr,
-            //         target: instr.target.index,
-            //         params: instr.params.map(p => p.index)
-            //     })),
             instrCount: this.instructions.length,
             //state: this.state.getJson(),
             //witness: this.witness.getJson()
@@ -79,12 +89,12 @@ export class VM {
     }
 
     print() {
-        const str = JSON.stringify(this.getJson(), null, 4);
-        console.log(str);
+        this.instructions.forEach((i, index) => {
+            console.log(`${index}: ${i.name} (${i.params.map(r => r.index)},${i.bit ?? ''}) -> ${i.target.index}`);
+        });
     }
 
     reset() {
-
         this.state = new State();
         this.witness = new Witness();
         this.instructions = [];
@@ -94,33 +104,50 @@ export class VM {
     /// *** BASIC INSTRUCTIONS *** ///
 
     add(target: Register, a: Register, b: Register, prime: Register) {
+        if (target.hardcoded) throw new Error("Can't write to hardcoded");
         this.setInstruction(InstrCode.ADDMOD, target, [a, b, prime]);
         let v = (a.value + b.value) % prime.value;
-        target.setValue(v);
+        this.setRegister(target, v);
     }
 
     andbit(target: Register, a: Register, bit: number, b: Register) {
+        if (target.hardcoded) throw new Error("Can't write to hardcoded");
         this.setInstruction(InstrCode.ANDBIT, target, [a, b], bit);
-        const v = a.value & (2n ** BigInt(bit));
-        target.setValue(v ? b.value : 0n);
+        const v = !!(a.value & (2n ** BigInt(bit)));
+        this.setRegister(target, v ? b.value : 0n);
     }
 
     mov(target: Register, a: Register) {
         if (a === this.R_R) {
-            target.setValue(this.witness.get(this.current).value);
+            this.setRegister(target, this.witness.get(this.current).value);
         } else {
-            target.setValue(a.value);
+            this.setRegister(target, a.value);
         }
     }
 
     equal(target: Register, a: Register, b: Register) {
-        target.setValue(a.value === b.value ? 1n : 0n);
+        if (target.hardcoded) throw new Error("Can't write to hardcoded");
+        this.setRegister(target, a.value === b.value ? 1n : 0n);
         this.setInstruction(InstrCode.EQUAL, target, [a, b]);
+    }
+
+    ifBit(target: Register, flag: Register, bit: number, value: Register, other: Register) {
+        if (target.hardcoded) throw new Error("Can't write to hardcoded");
+        this.setInstruction(InstrCode.IFBIT, target, [flag, value, other], bit);
+        const f = !!(flag.value & (2n ** BigInt(bit)));
+        this.setRegister(target, f ? value.value : other.value);
+    }
+
+    mul(target: Register, a: Register, b: Register, prime: Register) {
+        if (target.hardcoded) throw new Error("Can't write to hardcoded");
+        this.setInstruction(InstrCode.MULMOD, target, [a, b, prime]);
+        target.value = (a.getValue() * b.getValue()) % prime.getValue();
     }
 
     /// *** UTILITY INSTRUCTIONS *** ///
 
     load(target: Register, value: bigint) {
+        if (target.hardcoded) throw new Error("Can't write to hardcoded");
         this.addWitness(value);
         this.mov(target, this.R_R);
     }
@@ -131,6 +158,23 @@ export class VM {
         const temp = this.state.newRegister();
         this.add(temp, b, target, prime);
         this.assertEq(temp, a);
+    }
+
+    ignoreFailure(a: () => void) {
+        let f = this.isFailed();
+        a();
+        this.state.failed = f;
+    }
+
+    ignoreFailureInExactlyOne(a: () => void, b: () => void) {
+        let f = this.isFailed() ? 1 : 0;
+        this.state.failed = false;
+        a();
+        f += this.isFailed() ? 1 : 0;
+        this.state.failed = false;
+        b();
+        f += this.isFailed() ? 1 : 0;
+        this.state.failed = f == 1;
     }
 
     assertEqZero(v: Register) {
@@ -147,8 +191,15 @@ export class VM {
         this.assertEqOne(temp);
     }
 
+    setRegister(r: Register, v: bigint) {
+        if (r.assert && r.getValue() !== v) {
+            this.state.setFailed();
+        }
+        r.value = v;
+    }
+
     or(target: Register, a: Register, b: Register) {
-        target.setValue(!!a.value || !!b.value ? 1n : 0n);
+        this.setRegister(target, !!a.value || !!b.value ? 1n : 0n);
         const temp = this.newRegister();
         this.add(temp, a, b, this.R_P0);
         this.equal(target, temp, this.R_0);
@@ -156,7 +207,7 @@ export class VM {
     }
 
     and(target: Register, a: Register, b: Register) {
-        target.setValue(!!a.value && !!b.value ? 1n : 0n);
+        this.setRegister(target, !!a.value && !!b.value ? 1n : 0n);
         const temp = this.newRegister();
         this.add(temp, a, b, this.R_P0);
         this.equal(target, temp, this.R_2);
@@ -168,31 +219,12 @@ export class VM {
         const notF = this.state.newRegister();
         this.add(notF, f, this.R_1, this.R_P0);
         const t2 = this.state.newRegister();
-        this.andbit(t2, notF, 0, a);
+        this.andbit(t2, notF, 0, b);
         this.add(target, t1, t2, this.R_P0);
     }
 
     not(target: Register, f: Register) {
         this.ifThenElse(target, f, this.R_0, this.R_1);
-    }
-
-    mul(target: Register, a: Register, b: Register, prime: Register) {
-        if (a.hardcoded && b.hardcoded) {
-            this.mov(target, this.hardcoded(a.getValue() * b.getValue() % prime.getValue()));
-            return;
-        }
-        const agg = this.state.newRegister();
-        this.mov(agg, a);
-        const r_temp = this.state.newRegister();
-        this.mov(target, this.R_0);
-        for (let bit = 0; bit < 256; bit++) {
-            const bv = b.getValue() >> BigInt(bit) & 1n;
-            if (!b.hardcoded || bv) {
-                vm.andbit(r_temp, b, bit, agg);
-                vm.add(target, target, r_temp, prime);
-            }
-            if (bit < 255) vm.add(agg, agg, agg, prime);
-        }
     }
 
     inverse(target: Register, a: Register, prime: Register) {
@@ -201,10 +233,6 @@ export class VM {
             v = modInverse(a.value, prime.value) as bigint;
         } catch (e) {
             // Divide by zero. Return 0 because we can't fail here.
-        }
-        if(a.hardcoded) {
-            this.mov(target, this.hardcoded(v));
-            return;
         }
         this.load(target, v);
         const temp = this.state.newRegister();
@@ -224,6 +252,10 @@ export class VM {
         const temp = this.state.newRegister();
         this.mul(temp, b, target, prime);
         this.assertEq(temp, a);
+    }
+
+    isFailed(): boolean {
+        return this.state.failed;
     }
 }
 

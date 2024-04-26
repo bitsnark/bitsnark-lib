@@ -10,6 +10,7 @@ interface Operation {
 interface SimulatedRegister {
     index: number;
     stackItems: StackItem[];
+    hardcoded: boolean;
 }
 
 export class Bitcoin {
@@ -24,7 +25,7 @@ export class Bitcoin {
     /// BASIC ///
 
     private createRegisterOnStack(index: number, value: bigint): SimulatedRegister {
-        const sr: SimulatedRegister = { index, stackItems: [] };
+        const sr: SimulatedRegister = { index, stackItems: [], hardcoded: false };
         for (let i = 0; i < 256; i++) {
             this.pushOpcode(OpcodeType.DATA, value & 1n ? 1 : 0);
             value = value >> 1n;
@@ -248,6 +249,24 @@ export class Bitcoin {
 
     private andBitRegister(target: SimulatedRegister, a: SimulatedRegister, b: number, c: SimulatedRegister) {
         this.ifBit(a.stackItems[b], () => this.movRegister(target, c), () => this.clearRegister(target));
+    }
+
+    private mulRegister(target: SimulatedRegister, a: SimulatedRegister, b: number, c: SimulatedRegister) {
+        
+        
+        // const agg = this.createRegisterOnStack();
+        // this.mov(agg, a);
+        // const r_temp = this.state.newRegister();
+        // this.mov(target, this.R_0);
+        // for (let bit = 0; bit < 256; bit++) {
+        //     if (!b.hardcoded) {
+        //         vm.andbit(r_temp, b, bit, agg);
+        //         vm.add(target, target, r_temp, prime);
+        //     } else if (b.getValue() & 2n ** BigInt(bit)) {
+        //         vm.add(target, target, agg, prime);
+        //     }    
+        //     if (bit < 255) vm.add(agg, agg, agg, prime);
+        // }
     }
 
     //********  BITSNARK OPS ***********/
