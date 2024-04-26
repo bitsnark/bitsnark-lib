@@ -9,6 +9,8 @@ export class Example {
 
     example() {
 
+        Fp.setOptimizeHardcoded(true);
+        vm.setCollectInstructions(true);
 
         const g1 = new G1();
         const g2 = new G2();
