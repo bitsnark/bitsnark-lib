@@ -21,7 +21,7 @@ export class Stack {
         return { values, items: this.items.map(t => t) };
     }
 
-    fromsavedState(state: StackState) {
+    fromSavedState(state: StackState) {
         this.items = state.items;
         this.items.forEach(si => si.value = state.values[si.id]);
     }

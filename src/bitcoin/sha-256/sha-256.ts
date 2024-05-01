@@ -1,4 +1,5 @@
-import { add, and, bitcoin, not, rotr, shr, Word, xor, xorxor } from "./word";
+import { step1, step2, step3, step4, step5, step6 } from "./steps";
+import { add, addHardcoded, bitcoin, dropBits, makeBits, Word } from "./word";
 
 const h_hex = [0x6a09e667n, 0xbb67ae85n, 0x3c6ef372n, 0xa54ff53an, 0x510e527fn, 0x9b05688cn, 0x1f83d9abn, 0x5be0cd19n];
 
@@ -45,8 +46,6 @@ export function verifyHash(msg: bigint, hash: bigint): boolean {
     const s1 = new Word();
     const ch = new Word();
     const s0_1 = new Word();
-    const s0_2 = new Word();
-    const s0_3 = new Word();
     const temp1 = new Word();
     const temp2 = new Word();
     const m = new Word();
@@ -60,22 +59,12 @@ export function verifyHash(msg: bigint, hash: bigint): boolean {
     const h = new Word(h7.toNumber());
 
     for (let i = 16; i < 64; i++) {
-        rotr(s0_1, w[i - 15], 7);
-        rotr(s0_2, w[i - 15], 18);
-        shr(s0_3, w[i - 15], 3);
-        xorxor(s0, s0_1, s0_2, s0_3);
+        step1(s0, w[i - 15]);
+        step2(s1, w[i - 2]);
 
-        rotr(s0_1, w[i - 2], 17);
-        rotr(s0_2, w[i - 2], 19);
-        shr(s0_3, w[i - 2], 10);
-        xorxor(s1, s0_1, s0_2, s0_3);
-
-        const w_0 = new Word(0n);
-        add(w_0, w[i - 16], s0);
-        add(w_0, w_0, w[i - 7]);
-        add(w_0, w_0, s1);
-        w[i].set(w_0);
-        w_0.free();
+        add(w[i], w[i - 16], s0);
+        add(w[i], w[i], w[i - 7]);
+        add(w[i], w[i], s1);
 
         //console.log('[' + w.map(tw => tw.toPyString()).join(', ') + ']');
         console.log(i);
@@ -83,34 +72,23 @@ export function verifyHash(msg: bigint, hash: bigint): boolean {
 
     for (let j = 0; j < 64; j++) {
 
-        rotr(s0_1, e, 6);
-        rotr(s0_2, e, 11);
-        rotr(s0_3, e, 25);
-        xorxor(s1, s0_1, s0_2, s0_3);
+        const aBits = makeBits(a);
+        const eBits = makeBits(e);
 
-        and(s0_1, e, f);
-        not(s0_2, e);
-        and(s0_3, s0_2, g);
-        xor(ch, s0_1, s0_3);
+        step3(s1, eBits);
+        step4(s0, aBits);
+        step5(ch, eBits, f, g);
+        step6(m, aBits, b, c);
+        
+        dropBits(aBits);
+        dropBits(eBits);
+
+        add(temp2, s0, m);
 
         add(s0_1, h, s1);
         add(s0_1, s0_1, ch);
-        const k_j = new Word(k_hex[j]);
-        add(s0_1, s0_1, k_j);
+        addHardcoded(s0_1, s0_1, k_hex[j]);
         add(temp1, s0_1, w[j]);
-        k_j.free();
-
-        rotr(s0_1, a, 2);
-        rotr(s0_2, a, 13);
-        shr(s0_3, a, 22);
-        xorxor(s0, s0_1, s0_2, s0_3);
-
-        and(s0_1, a, b);
-        and(s0_2, a, c);
-        and(s0_3, b, c);
-        xorxor(m, s0_1, s0_2, s0_3);
-
-        add(temp2, s0, m);
 
         h.set(g);
         g.set(f);
@@ -148,8 +126,8 @@ export function verifyHash(msg: bigint, hash: bigint): boolean {
 
 const chunk = 0x3487578354897345987abbf713298017347dddcca8760987aabbbccdd98798798abbfc987987987abb00ccd98798798ffffffbbbc908797987cccdddddaaaaaan;
 console.log('chunk: ', chunk);
-let binaryString = chunk.toString(2);
-while (binaryString.length < 512) binaryString = '0' + binaryString;
-console.log('chunk bin: ', binaryString);
+// let binaryString = chunk.toString(2);
+// while (binaryString.length < 512) binaryString = '0' + binaryString;
+// console.log('chunk bin: ', binaryString);
 const hash =  0x54c3f3d905082f7f3b20538aa7219eb64af6be46b7cbbaa90a779748606b9a5cn;
 verifyHash(chunk, hash);

@@ -1,5 +1,6 @@
 export enum OpcodeType {
     DATA = 'DATA',
+    OP_PUSHDATA4 = 'OP_PUSHDATA4',
     OP_ROLL = 'OP_ROLL',
     OP_PICK = 'OP_PICK',
     OP_DROP = 'OP_DROP',

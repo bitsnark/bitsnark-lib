@@ -36,8 +36,12 @@ export class Bitcoin {
     /// BASIC ///
 
     newStackItem(value?: number): StackItem {
-        const si = this.stack.newItem(value ?? 0);
-        this.opcodes.push({ op: hardcode(value ?? 0)});
+        value = value ?? 0;
+        const si = this.stack.newItem(value);
+        if (value <= 16)
+            this.opcodes.push({ op: hardcode(value)});
+        else 
+            this.opcodes.push({ op: OpcodeType.OP_PUSHDATA4, data: value })
         return si;      
     }
 
@@ -47,7 +51,8 @@ export class Bitcoin {
 
     private getRelativeStackPosition(si: StackItem): number {
         const index = this.stack.findIndex(si);
-        if (index < 0) throw new Error('Invalid relative position');
+        if (index < 0) 
+            throw new Error('Invalid relative position');
         return this.stack.length() - index;
     }
 
@@ -69,14 +74,27 @@ export class Bitcoin {
         this.opcodes.push({ op: OpcodeType.OP_DROP });
         this.stack.pop();
     }
+
+    OP_IF() {
+        const si = this.stack.pop();
+        this.opcodes.push({ op: OpcodeType.OP_IF });
+    }
         
-    OP_IF(tfn: () => void, ffn?: () => void) {
+    OP_ELSE() {
+        this.opcodes.push({ op: OpcodeType.OP_ELSE });
+    }
+
+    OP_ENDIF() {
+        this.opcodes.push({ op: OpcodeType.OP_ENDIF});
+    }
+
+    OP_IF_SMARTASS(tfn: () => void, ffn?: () => void) {
         this.opcodes.push({ op: OpcodeType.OP_IF });
         const si = this.stack.pop();
         const s_before = this.stack.saveState();
         tfn();
         const s_afterTrue = this.stack.saveState();
-        this.stack.fromsavedState(s_before);
+        this.stack.fromSavedState(s_before);
         if (ffn) {
             this.opcodes.push({ op: OpcodeType.OP_ELSE });
             ffn();
@@ -84,9 +102,9 @@ export class Bitcoin {
         const s_afterFalse = this.stack.saveState();
         this.opcodes.push({ op: OpcodeType.OP_ENDIF });
         if(si.value !== 0) {
-            this.stack.fromsavedState(s_afterTrue);
+            this.stack.fromSavedState(s_afterTrue);
         } else {
-            this.stack.fromsavedState(s_afterFalse);
+            this.stack.fromSavedState(s_afterFalse);
         }
     }
     
@@ -105,7 +123,7 @@ export class Bitcoin {
     OP_NOT() {
         this.opcodes.push({ op: OpcodeType.OP_NOT });
         const si = this.stack.pop();
-        this.stack.newItem(si.value !== 0 ? 1 : 0);
+        this.stack.newItem(si.value === 0 ? 1 : 0);
     }
     
     OP_DUP() {
@@ -192,13 +210,13 @@ export class Bitcoin {
     
     roll(si: StackItem) {
         const rel = this.getRelativeStackPosition(si);
-        this.stack.newItem(rel);
+        this.newStackItem(rel);
         this.OP_ROLL();
     }
 
     pick(si: StackItem) {
         const rel = this.getRelativeStackPosition(si);
-        this.stack.newItem(rel);
+        this.newStackItem(rel);
         this.OP_PICK();
     }
 
@@ -239,7 +257,7 @@ export class Bitcoin {
 
     ifTrue(si: StackItem, tfn: () => void, ffn?: () => void) {
         this.pick(si);
-        this.OP_IF(tfn, ffn);
+        this.OP_IF_SMARTASS(tfn, ffn);
     }
 
     equal(si: StackItem, a: StackItem, n: number) {
