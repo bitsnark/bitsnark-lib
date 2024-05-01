@@ -13,6 +13,7 @@ export class Witness {
     }
 
     set(line: number, value: bigint) {
+        //if( value === 0n) throw new Error('fubar');
         const item = { line, value };
         this.items.push(item);
         this.map.set(line, item);

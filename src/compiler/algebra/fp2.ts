@@ -1,9 +1,9 @@
 import { Fp, prime_bigint } from "./fp";
 import { divideComplex } from "../common/math-utils";
-import { Register } from "../vm/state";
+import { GcExceptable, Register } from "../vm/state";
 import { vm } from "../vm/vm";
 
-export class Fp2 {
+export class Fp2 implements GcExceptable {
 
     r: Fp;
     i: Fp;
@@ -11,6 +11,10 @@ export class Fp2 {
     constructor(r?: Fp, i?: Fp) {
         this.r = r ? r : new Fp(vm.hardcoded(0n));
         this.i = i ? i : new Fp(vm.hardcoded(0n));
+    }
+
+    getRegisters(): Register[] {
+        return [ ...this.r.getRegisters(), ...this.i.getRegisters() ];
     }
 
     static hardcoded(r: bigint, i: bigint): Fp2 {
@@ -61,12 +65,12 @@ export class Fp2 {
     div(a: Fp2): Fp2 {
         const rt = divideComplex(
             [
-                this.r.getRegister().getValue(),
-                this.i.getRegister().getValue()
+                this.r.getRegister().value,
+                this.i.getRegister().value
             ],
             [
-                a.r.getRegister().getValue(),
-                a.i.getRegister().getValue()
+                a.r.getRegister().value,
+                a.i.getRegister().value
             ],
             prime_bigint
         );
@@ -100,7 +104,7 @@ export class Fp2 {
         return this.zero().sub(this);
     }
 
-    toString(): String {
+    toString(): string {
         return `[${this.r}, ${this.i}]`;
     }
 }

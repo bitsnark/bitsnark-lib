@@ -1,3 +1,4 @@
+import { vm } from "../vm/vm";
 import { EC, ECPoint } from "./ec";
 import { Fp, prime_bigint } from "./fp";
 import { Fp12 } from "./fp12";
@@ -55,7 +56,8 @@ export class G3 extends EC<Fp12> {
             ycoeffs[1],
             ...fiveZeros]));
 
-        return this.makePoint(w_2.mul(nx), w_3.mul(ny));
+        const result = this.makePoint(w_2.mul(nx), w_3.mul(ny));
+        return result;
     }
 
     cast(p: G1Point): G3Point {

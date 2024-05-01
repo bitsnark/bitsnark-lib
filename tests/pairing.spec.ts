@@ -37,7 +37,7 @@ describe('Pairing', () => {
         const pn1 = g3.pairing(gen2, gen1.neg());
         const t1 = p1.mul(pn1);
         const t2 = Fp12.one();
-        expect(t1.eq(t2).getValue()).eq(1n);
+        expect(t1.eq(t2).value).eq(1n);
     });
 
     it('Pairing check against negative in G2', () => {
@@ -45,13 +45,13 @@ describe('Pairing', () => {
         const np1 = g3.pairing(gen2.neg(), gen1);
         const t1 = p1.mul(np1);
         const t2 = Fp12.one();
-        expect(t1.eq(t2).getValue()).eq(1n);
+        expect(t1.eq(t2).value).eq(1n);
     });
 
     it('Pairing output has correct order', () => {
         const p1 = g3.pairing(gen2, gen1);
         const t = p1.powHardcoded(curveOrder);
-        expect(t.eq(Fp12.one()).getValue()).eq(1n);
+        expect(t.eq(Fp12.one()).value).eq(1n);
     });
 
     it('Pairing bilinearity in G1', () => {
@@ -59,28 +59,28 @@ describe('Pairing', () => {
         const p1 = g3.pairing(gen2, gen1);
         const p2 = g3.pairing(gen2, gen1.double());
         const t = p1.mul(p1);
-        expect(t.eq(p2).getValue()).eq(1n);
+        expect(t.eq(p2).value).eq(1n);
     });
 
     it('Pairing is non-degenerate', () => {
         const p1 = g3.pairing(gen2, gen1);
         const p2 = g3.pairing(gen2, gen1.double());
         const np1 = g3.pairing(gen2.neg(), gen1);
-        expect(p1.eq(p2).getValue()).eq(0n);
-        expect(p1.eq(np1).getValue()).eq(0n);
-        expect(p2.eq(np1).getValue()).eq(0n);
+        expect(p1.eq(p2).value).eq(0n);
+        expect(p1.eq(np1).value).eq(0n);
+        expect(p2.eq(np1).value).eq(0n);
     });
 
     it('Pairing bilinearity in G2', () => {
         const p1 = g3.pairing(gen2, gen1);
         const po2 = g3.pairing(gen2.double(), gen1);
         const t = p1.mul(p1);
-        expect(t.eq(po2).getValue()).eq(1n);
+        expect(t.eq(po2).value).eq(1n);
     });
 
     it('Composite check passed', () => {
         const p3 = g3.pairing(gen2.mul(vm.hardcoded(27n)), gen1.mul(vm.hardcoded(37n)));
         const po3 = g3.pairing(gen2, gen1.mul(vm.hardcoded(999n)));
-        expect(p3.eq(po3).getValue()).eq(1n);
+        expect(p3.eq(po3).value).eq(1n);
     });
 });

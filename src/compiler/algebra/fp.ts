@@ -1,10 +1,10 @@
 import { vm } from "../vm/vm";
-import { Register } from "../vm/state";
+import { GcExceptable, Register } from "../vm/state";
 import { modInverse } from "../common/math-utils";
 
 export const prime_bigint = 21888242871839275222246405745257275088696311157297823662689037894645226208583n;
 
-export class Fp {
+export class Fp implements GcExceptable {
 
     static optimizeHardcoded = false;
 
@@ -13,10 +13,14 @@ export class Fp {
 
     constructor(r?: Register) {
         this.prime = vm.hardcoded(prime_bigint);
-        if (r && r.value < 0) {
-            r.forceValue((this.prime.getValue() + r.getValue()) % this.prime.getValue());
+        if (r && r.value! < 0) {
+            r.value = (this.prime.value + r.value) % this.prime.value;
         }
         this.register = r ?? vm.newRegister();
+    }
+
+    getRegisters(): Register[] {
+        return [ this.register ];
     }
 
     static setOptimizeHardcoded(f: boolean) {
@@ -58,7 +62,7 @@ export class Fp {
     eq(a: Fp): Register {
 
         if (Fp.optimizeHardcoded && this.register.hardcoded && a.register.hardcoded) {
-            return this.register.getValue() == a.register.getValue() ? vm.hardcoded(1n) : vm.hardcoded(0n);
+            return this.register.value == a.register.value ? vm.hardcoded(1n) : vm.hardcoded(0n);
         }
 
         const f = vm.newRegister();
@@ -69,7 +73,7 @@ export class Fp {
     add(a: Fp): Fp {
 
         if (Fp.optimizeHardcoded && this.register.hardcoded && a.register.hardcoded) {
-            return Fp.hardcoded((this.register.getValue() + a.register.getValue()) % this.prime.getValue());
+            return Fp.hardcoded((this.register.value + a.register.value) % this.prime.value);
         }
 
         const t = vm.newRegister();
@@ -80,7 +84,7 @@ export class Fp {
     mul(a: Fp): Fp {
 
         if (Fp.optimizeHardcoded && this.register.hardcoded && a.register.hardcoded) {
-            return Fp.hardcoded((this.register.getValue() * a.register.getValue()) % this.prime.getValue());
+            return Fp.hardcoded((this.register.value * a.register.value) % this.prime.value);
         }
 
         const t = vm.newRegister();
@@ -91,7 +95,7 @@ export class Fp {
     sub(a: Fp): Fp {
 
         if (Fp.optimizeHardcoded && this.register.hardcoded && a.register.hardcoded) {
-            return Fp.hardcoded((this.prime.getValue() + this.register.getValue() - a.register.getValue()) % this.prime.getValue());
+            return Fp.hardcoded((this.prime.value + this.register.value - a.register.value) % this.prime.value);
         }
 
         const t = vm.newRegister();
@@ -102,8 +106,8 @@ export class Fp {
     div(a: Fp): Fp {
 
         if (Fp.optimizeHardcoded && this.register.hardcoded && a.register.hardcoded) {
-            const inv = modInverse(a.register.getValue(), this.prime.getValue()) as bigint;
-            return Fp.hardcoded((this.register.getValue() * inv) % this.prime.getValue());
+            const inv = modInverse(a.register.value, this.prime.value) as bigint;
+            return Fp.hardcoded((this.register.value * inv) % this.prime.value);
         }
 
         const t = vm.newRegister();
@@ -119,7 +123,7 @@ export class Fp {
         return this.zero().sub(this);
     }
 
-    toString(): String {
-        return `${this.getRegister().getValue()}`;
+    toString(): string {
+        return `${this.getRegister().value}`;
     }
 }

@@ -1,11 +1,11 @@
 import { vm } from "../vm/vm";
-import { Register } from "../vm/state";
+import { GcExceptable, Register } from "../vm/state";
 import { Fp, prime_bigint } from "./fp";
 import { polyInv } from "../common/math-utils";
 
 const DEGREE = 12;
 
-export class Poly12 {
+export class Poly12 implements GcExceptable {
 
     coeffs: Fp[];
 
@@ -14,6 +14,10 @@ export class Poly12 {
         if (coeffs.length > DEGREE) throw new Error('Invalid coeffs count');
         while (coeffs.length < DEGREE) coeffs.push(new Fp());
         this.coeffs = coeffs;
+    }
+
+    getRegisters(): Register[] {
+        return this.coeffs.map(c => c.getRegisters()).flat();
     }
 
     static hardcoded(coeffs: bigint[]): Poly12 {
@@ -96,13 +100,14 @@ export class Poly12 {
                 temp[exp + i] = temp[exp + i].sub(top.mul(b.coeffs[i]));
             }
         }
-        return new Poly12(temp);
+        const result = new Poly12(temp);
+        return result;
     }
 
     divMod(a: Poly12, b: Poly12): Poly12 {
         const inv = polyInv(
-            a.coeffs.map(fp => fp.register.getValue()), 
-            b.coeffs.map(fp => fp.register.getValue()),
+            a.coeffs.map(fp => fp.register.value), 
+            b.coeffs.map(fp => fp.register.value),
             DEGREE, 
             prime_bigint);
         const pinv = new Poly12(inv.map(n => {
@@ -113,7 +118,8 @@ export class Poly12 {
         const test = a.mulMod(pinv, b);
         const f = test.eq(a.one());
         vm.assertEqOne(f);
-        return this.mulMod(pinv, b);
+        const result = this.mulMod(pinv, b)
+        return result;
     }
 
     sub(a: Poly12): Poly12 {
@@ -134,7 +140,8 @@ export class Poly12 {
     }
 
     neg(): Poly12 {
-        return this.zero().sub(this);
+        const result = this.zero().sub(this);
+        return result;
     }
 
     toString(): String {

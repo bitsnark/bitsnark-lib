@@ -1,5 +1,5 @@
-import { Register } from "../vm/state";
 import { vm } from "../vm/vm";
+import { GcExceptable, Register } from "../vm/state";
 import { Fp } from "./fp";
 
 interface Member<T> {
@@ -13,9 +13,10 @@ interface Member<T> {
     sub(a: T): T;
     div(a: T): T;
     neg(): T;
+    getRegisters(): Register[];
 };
 
-export class ECPoint<T extends Member<T>> {
+export class ECPoint<T extends Member<T>> implements GcExceptable {
 
     curve: EC<T>;
     x: T;
@@ -27,15 +28,21 @@ export class ECPoint<T extends Member<T>> {
         this.y = y ? y : curve.ec_a.zero();
     }
 
+    getRegisters(): Register[] {
+        return [ ...this.x.getRegisters(), ...this.y.getRegisters() ];
+    }
+
     neg(): ECPoint<T> {
         return this.curve.makePoint(this.x, this.y.neg());
     }
 
     double(): ECPoint<T> {
+
         // xsqr = x^2
         const xsqr = this.x.mul(this.x);
         // m1 = 3*x^2 + a
         const m1 = xsqr.add(xsqr).add(xsqr).add(this.curve.ec_a);
+
         // m2 = 2y
         const m2 = this.y.add(this.y);
         // l = m1 * m2inv = (3*x^2 + a) / (2*y)
@@ -94,7 +101,7 @@ export class ECPoint<T extends Member<T>> {
     }
 
     mul(a: Register): ECPoint<T> {
-        if (a.getValue() === 0n) throw new Error('Zero multiplication');
+        if (a.value === 0n) throw new Error('Zero multiplication');
         let result = this as ECPoint<T>;
         const na = vm.newRegister();
         vm.sub(na, a, vm.R_1, vm.R_P0);
@@ -102,7 +109,7 @@ export class ECPoint<T extends Member<T>> {
         for (let bit = 0; bit < 256; bit++) {
             if (!a.hardcoded) {
                 result = result.add(agg).ifBit(na, bit, result);
-            } else if (na.getValue() & 2n ** BigInt(bit)) {
+            } else if (na.value & 2n ** BigInt(bit)) {
                 result = result.add(agg);
             }
             if (bit < 255) agg = agg.double();
@@ -113,7 +120,7 @@ export class ECPoint<T extends Member<T>> {
     assertPoint() {
         // y^2 = x^3 + a*x + b
         let t1 = this.x.mul(this.x).mul(this.x);
-        if (this.curve.ec_a.eq(this.curve.ec_a.zero()).getValue() === 0n) {
+        if (this.curve.ec_a.eq(this.curve.ec_a.zero()).value === 0n) {
             t1 = t1.add(this.x.mul(this.curve.ec_a));
         }
         t1 = t1.add(this.curve.ec_b);
@@ -154,7 +161,7 @@ export class ECPoint<T extends Member<T>> {
         return result;
     }
 
-    toString(): String {
+    toString(): string {
         return `{ x: ${this.x}, y: ${this.y} }`;
     }
 }

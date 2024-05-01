@@ -1,36 +1,38 @@
 import { Register } from "./state";
 import { VM } from "./vm";
 
-interface RegRef {
-    first: number;
-    last: number;
-    interval: number;
-    reg: Register;
+const v8 = require('v8');
+
+function isOverlap(r1: Register, r2: Register): boolean {
+    return !(r1.last! < r2.first! || r2.last! < r1.first!);
 }
 
-function isOverlap(r1: RegRef, r2: RegRef): boolean {
-    return !(r1.last < r2.first || r2.last < r1.first);
-}
-
-function isNotInSieve(ref: RegRef, sieve: boolean[]): boolean {
-    for (let i = ref.first; i <= ref.last; i++)
-        if(sieve[i]) return false;
+function isNotInSieve(ref: Register, sieve: boolean[]): boolean {
+    for (let i = ref.first!; i <= ref.last!; i++)
+        if (sieve[i]) return false;
     return true;
 }
 
-function markSieve(ref: RegRef, sieve: boolean[]) {
-    for (let i = ref.first; i <= ref.last; i++) sieve[i] = true;
+function markSieve(ref: Register, sieve: boolean[]) {
+    for (let i = ref.first!; i <= ref.last!; i++) sieve[i] = true;
 }
 
 export function regOptimizer(vm: VM) {
 
-    const map: { [key: number]: RegRef } = {};
+    const allRegMap: { [key: number]: Register } = {};
+
+    console.log('Instruction count: ', vm.instructions.length);
+
     function mapReg(r: Register, line: number) {
-        if (!map[r.index]) map[r.index] = { reg: r, first: line, last: line, interval: 0 };
-        const ref = map[r.index];
-        ref.last = line;
-        ref.interval = ref.last - ref.first;
+        if (!allRegMap[r.key]) {
+            allRegMap[r.key] = r;
+        }
+        r.first = r.first ?? line;
+        r.last = line;
+        r.interval = r.last! - r.first!;
     }
+
+    console.log('Find first and last uses');
 
     // find first and last for each register
     vm.instructions.forEach((instr, line) => {
@@ -38,17 +40,28 @@ export function regOptimizer(vm: VM) {
         instr.params.forEach(r => mapReg(r, line));
     });
 
+    console.log('Register optimization starting, count: ', Object.values(allRegMap).length);
+
+    console.log('Sort by interval');
+
     // sort by size
-    let sorted = Object.values(map)
-        .filter(ref => !ref.reg.hardcoded)
-        .sort((a, b) => b.interval - a.interval);
+    let sorted = Object.values(allRegMap)
+        .filter(r => !r.hardcoded)
+        .sort((a, b) => b.interval! - a.interval!);
+
+    let hardcoded = Object.values(allRegMap)
+        .filter(r => r.hardcoded);
+
+    console.log('Hardcoded register count: ', hardcoded.length);
 
     const roots = [];
     let counter = 0;
 
+    console.log('Find non-overlapping sets');
+
     // find non-overlapping
     while (sorted.length > 0) {
-        const group: RegRef[] = [];
+        const group: Register[] = [];
         roots.push(group);
         const remaining = [];
         const sieve: boolean[] = new Array(vm.instructions.length);
@@ -63,7 +76,7 @@ export function regOptimizer(vm: VM) {
             }
 
             counter++;
-            if(counter % 10000000 == 0) {
+            if (counter % 10000000 == 0) {
                 console.log(`sorted: ${sorted.length}   roots: ${roots.length}   group: ${group.length}    remaining: ${remaining.length}`);
             }
         }
@@ -71,4 +84,27 @@ export function regOptimizer(vm: VM) {
     }
 
     console.log('Optimized register count: ', roots.length);
+
+    console.log('Replace in instruction set');
+
+    const remap: { [key: number]: Register } = {};
+    const newRegs: Register[] = [];
+
+    roots.forEach((ra, i) => {
+        const newR = new Register();
+        newRegs.push(newR);
+        ra.forEach(r => remap[r.key] = newR);
+    });
+
+    hardcoded.forEach(r => remap[r.key!] = r);
+
+    vm.instructions.forEach(instr => {
+        instr.target = remap[instr.target.key!];
+        instr.params = instr.params.map(r => remap[r.key!]);
+    });
+
+    vm.state.registerMap = {};
+    [...hardcoded, ...newRegs].forEach((r, i) => vm.state.registerMap[i] = r);
+
+    console.log('Done');
 }

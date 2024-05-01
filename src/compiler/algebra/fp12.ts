@@ -1,14 +1,19 @@
-import { Register } from "../vm/state";
+import { vm } from "../vm/vm";
+import { GcExceptable, Register } from "../vm/state";
 import { Fp } from "./fp";
 import { Poly12 } from "./poly12";
 
-export class Fp12 {
+export class Fp12 implements GcExceptable {
 
     polymod = Poly12.hardcoded([82n, 0n, 0n, 0n, 0n, 0n, -18n, 0n, 0n, 0n, 0n, 0n]);
     value: Poly12;
 
     constructor(value?: Poly12) {
         this.value = value ? value : new Poly12();
+    }
+
+    getRegisters(): Register[] {
+        return this.value.getRegisters();
     }
 
     static hardcoded(coeffs: bigint[]): Fp12 {

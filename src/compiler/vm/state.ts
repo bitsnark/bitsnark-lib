@@ -1,92 +1,98 @@
+let lastRegisterKey = 0;
 
 export class Register {
 
-    value = 0n;
-    assert = false;
-    index = 0;
-    hardcoded = false;
-    title?: string;
+    key: number = lastRegisterKey++;
+    value: bigint = 0n;
+    hardcoded?: boolean;
+    first?: number;
+    last?: number;
+    interval?: number;
 
-    constructor(index: number) {
-        this.index = index;
-    }
+    toString() { return `${this.key}`; }
+}
 
-    getValue(): bigint {
-        return this.value;
-    }
-
-    forceValue(value: bigint) {
-        this.value = value;
-    }
-
-    isBit(b: number): boolean {
-        return !!(this.value && 2 ** b);
-    }
+export abstract class GcExceptable {
+    abstract getRegisters(): Register[];
 }
 
 export class State {
 
     hardcodedMap = new Map<bigint, Register>();
-    registers: Register[] = [];
-    highestIndex = 0;
+    registerMap: any = {};
+    freeRegisters: Register[] = [];
     failed: boolean = false;
+    lastIndex: number = 0;
+    gcStack: Register[][] = [];
 
     newRegister(): Register {
-        const r = new Register(this.highestIndex++);
-        this.setRegister(r);
+        let r: Register = new Register();
+        if (this.freeRegisters.length > 0) {
+            r = this.freeRegisters.pop()!;
+            r.hardcoded = false;
+            r.value = 0n;
+        }
+        this.registerMap[r as any] = r;
+        if (this.gcStack.length > 0) {
+            this.gcStack[this.gcStack.length - 1].push(r);
+        }
         return r;
     }
 
-    setRegister(r: Register) {
-        this.registers[r.index] = r;
-        if(r.index > this.highestIndex) this.highestIndex = r.index;
-    }
-
-    getRegister(index: number): Register {
-        return this.registers[index];
-    }
-
-    getSubstate(indexes: number[]): State {
-        const s = new State();
-        s.registers = indexes.map(i => this.getRegister(i));
-        return s;
-    }
-
-    hardcodedWithIndex(index: number, value: bigint): Register {
-        const t = new Register(index);
-        t.value = value;
-        t.assert = true;
-        t.hardcoded = true;
-        this.setRegister(t);
-        return t;
+    freeRegister(r: Register) {
+        if (r.hardcoded) throw new Error('Cannot free hardcoded register');
+        delete this.registerMap[r as any];
+        this.freeRegisters.push(r);
+        // console.log('free register regs: ', Object.values(this.registerMap).length, '   free: ' , this.freeRegisters.length);
     }
 
     hardcoded(value: bigint): Register {
         let t = this.hardcodedMap.get(value);
         if (t) return t;
-        t = new Register(this.highestIndex++);
+        t = this.newRegister();
         t.value = value;
-        t.assert = true;
         t.hardcoded = true;
-        this.setRegister(t);
         this.hardcodedMap.set(value, t);
         return t;
     }
 
-    getHighsetIndex() {
-        return this.highestIndex;
+    getAllRegisters(): Register[] {
+        const ra = (Object.values(this.registerMap) as Register[]);
+        return [ ...ra, ...this.freeRegisters ];
     }
 
     getJson(): any {
         return {
             failed: this.failed,
-            count: this.highestIndex,
-            hardcoded: this.registers.filter(r => r.hardcoded && r.index >= 0).
-                map(r => ({ index: r.index, value: r.value.toString(16), title: r.title }))
+            values: this.getAllRegisters()
+                .filter(r => !r.hardcoded)
+                .map(r => r.value.toString(16)),
+            hardcoded: this.getAllRegisters()
+                .filter(r => r.hardcoded)
+                .map(r => r.value.toString(16))
         };
     }
 
     setFailed() {
         this.failed = true;
     }
+
+    // enterGcStack() {
+    //     this.gcStack.push([]);
+    //     // console.log('Enter GC Stack, reg count: ', Object.keys(this.registerMap).length);
+    // }
+
+    // exitGcStack(except: (Register | GcExceptable)[]) {
+    //     if (this.gcStack.length == 0) throw new Error('Stack underflow?');
+    //     const ra = this.gcStack.pop()!;
+    //     const exceptRegs = except.map(ex => {
+    //         if (ex instanceof Register) return ex;
+    //         if (ex.getRegisters) return ex.getRegisters();
+    //         return [];
+    //     }).flat();
+    //     // console.log('Exit gc stack, exceptReg: ', except.length, exceptRegs.length);
+    //     ra.forEach(r => {
+    //         if (!r.hardcoded && !exceptRegs.some(tr => tr === r)) this.freeRegister(r);
+    //     });
+    // }
 }
