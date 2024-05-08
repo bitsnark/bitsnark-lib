@@ -29,7 +29,6 @@ export class Stack {
     newItem(value: number) {
         const si = { value: value, id: lastId++ };
         this.items.push(si);
-        //console.log('Stack length: ', this.items.length);
         return si;
     }
 

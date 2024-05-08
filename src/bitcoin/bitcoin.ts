@@ -18,6 +18,8 @@ export class Bitcoin {
     simulatedRegisters: Map<number, SimulatedRegister> = new Map<number, SimulatedRegister>();
     stack: Stack = new Stack();
     failed: boolean = false;
+    altStack: number[] = [];
+    witness: number[] = [];
 
     constructor() {
     }
@@ -36,6 +38,8 @@ export class Bitcoin {
     /// BASIC ///
 
     newStackItem(value?: number): StackItem {
+        if (this.stack.items.length + this.altStack.length > 1000) throw new Error('Stack too big');
+
         value = value ?? 0;
         const si = this.stack.newItem(value);
         if (value <= 16)
@@ -45,34 +49,46 @@ export class Bitcoin {
         return si;      
     }
 
-    private pushOpcode(code: OpcodeType, data?: number) {
-        this.opcodes.push({ op: code, data });
-    }
-
     private getRelativeStackPosition(si: StackItem): number {
         const index = this.stack.findIndex(si);
         if (index < 0) 
             throw new Error('Invalid relative position');
-        return this.stack.length() - index;
+        return this.stack.length() - index - 1;
     }
 
     /// NATIVE OPERATIONS ///
 
+    DATA(data: number) {
+        if (data > 0 && data <= 16) {
+            this.opcodes.push({ op: hardcode(data) });
+        } else {
+            this.opcodes.push({ op: OpcodeType.DATA, data });
+        }
+        this.stack.newItem(data);
+    }
+
     OP_ROLL() {
         this.opcodes.push({ op: OpcodeType.OP_ROLL });
         const si = this.stack.pop();
-        this.stack.roll(this.stack.length() - si.value);
+        this.stack.roll(this.stack.length() - 1 - si.value);
     }
 
     OP_PICK() {
         this.opcodes.push({ op: OpcodeType.OP_PICK });
         const si = this.stack.pop();
-        this.stack.pick(this.stack.length() - si.value);
+        this.stack.pick(this.stack.length() - 1 - si.value);
     }
 
     OP_DROP() {
         this.opcodes.push({ op: OpcodeType.OP_DROP });
         this.stack.pop();
+    }
+
+    OP_NIP() {
+        this.opcodes.push({ op: OpcodeType.OP_NIP });
+        const t1 = this.stack.pop();
+        const t2 = this.stack.pop();
+        this.stack.push(t1);
     }
 
     OP_IF() {
@@ -92,16 +108,17 @@ export class Bitcoin {
         this.opcodes.push({ op: OpcodeType.OP_IF });
         const si = this.stack.pop();
         const s_before = this.stack.saveState();
+        let s_afterFalse = s_before;
         tfn();
         const s_afterTrue = this.stack.saveState();
-        this.stack.fromSavedState(s_before);
         if (ffn) {
             this.opcodes.push({ op: OpcodeType.OP_ELSE });
+            this.stack.fromSavedState(s_before);
             ffn();
+            s_afterFalse = this.stack.saveState();
         }
-        const s_afterFalse = this.stack.saveState();
         this.opcodes.push({ op: OpcodeType.OP_ENDIF });
-        if(si.value !== 0) {
+        if(si.value == 1) {
             this.stack.fromSavedState(s_afterTrue);
         } else {
             this.stack.fromSavedState(s_afterFalse);
@@ -206,23 +223,104 @@ export class Bitcoin {
         if (f != 1) this.setFailed();
     }
 
+    OP_TOALTSTACK() {
+        this.opcodes.push({ op: OpcodeType.OP_TOALTSTACK });
+        const si = this.stack.pop();
+        this.altStack.push(si.value);
+    }
+
+    OP_FROMALTSTACK() {
+        this.opcodes.push({ op: OpcodeType.OP_FROMALTSTACK });
+        this.stack.newItem(this.altStack.pop()!);
+    }
+
+    OP_SWAP() {
+        this.opcodes.push({ op: OpcodeType.OP_SWAP });
+        const t1 = this.stack.items.pop()!;
+        const t2 = this.stack.items.pop()!;
+        this.stack.items.push(t1);
+        this.stack.items.push(t2);
+    }
+
+    OP_2DUP() {
+        this.opcodes.push({ op: OpcodeType.OP_2DUP });
+        this.stack.newItem(this.stack.top().value);
+        this.stack.newItem(this.stack.top().value);    
+    }
+
+    OP_3DUP() {
+        this.opcodes.push({ op: OpcodeType.OP_3DUP });
+        this.stack.newItem(this.stack.top().value);
+        this.stack.newItem(this.stack.top().value);
+        this.stack.newItem(this.stack.top().value);
+    }
+
+    OP_TUCK() {
+        this.opcodes.push({ op: OpcodeType.OP_TUCK });
+        const t1 = this.stack.items.pop()!;
+        const t2 = this.stack.items.pop()!;
+        const t3 = this.stack.items.pop()!;
+        this.stack.items.push(t1);
+        this.stack.items.push(t3);
+        this.stack.items.push(t2);
+    }
+
+    OP_2SWAP() {
+        this.opcodes.push({ op: OpcodeType.OP_TUCK });
+        const t1 = this.stack.items.pop()!;
+        const t2 = this.stack.items.pop()!;
+        const t3 = this.stack.items.pop()!;
+        const t4 = this.stack.items.pop()!;
+        this.stack.items.push(t2);
+        this.stack.items.push(t1);
+        this.stack.items.push(t4);
+        this.stack.items.push(t3);
+    }
+
+    OP_ROT() {
+        this.opcodes.push({ op: OpcodeType.OP_ROT });
+        const t1 = this.stack.items.pop()!;
+        const t2 = this.stack.items.pop()!;
+        const t3 = this.stack.items.pop()!;
+        this.stack.items.push(t2);
+        this.stack.items.push(t1);
+        this.stack.items.push(t3);
+    }
+
     /// Complex operations ///
     
     roll(si: StackItem) {
         const rel = this.getRelativeStackPosition(si);
+        if (rel == 0) return;
         this.newStackItem(rel);
         this.OP_ROLL();
     }
 
     pick(si: StackItem) {
         const rel = this.getRelativeStackPosition(si);
-        this.newStackItem(rel);
-        this.OP_PICK();
+        if (rel == 0) {
+            this.OP_DUP();            
+        } else {
+            this.newStackItem(rel);
+            this.OP_PICK();
+        }
     }
 
-    drop(si: StackItem) {
-        this.roll(si);
-        this.OP_DROP();
+    drop(si: StackItem | StackItem[]) {
+        if (Array.isArray(si)) {
+            si = si.sort((a, b) => this.getRelativeStackPosition(a) - this.getRelativeStackPosition(b));
+            si.forEach(tsi => this.drop(tsi));
+        } else {
+            const rel = this.getRelativeStackPosition(si);
+            if (rel == 0) {
+                this.OP_DROP();
+            } else if (rel == 1) {
+                this.OP_NIP();
+            } else {
+                this.roll(si);
+                this.OP_DROP();
+            }
+    }
     }
 
     replaceWithTop(si: StackItem) {
@@ -241,7 +339,20 @@ export class Bitcoin {
         this.replaceWithTop(target);
     }
 
+    xorxor(target: StackItem, a: StackItem, b: StackItem, c: StackItem) {
+        this.pick(a);
+        this.pick(b);
+        this.pick(c);
+        this.OP_ADD();
+        this.OP_0_16(1);
+        this.OP_NUMEQUAL();
+        this.OP_ADD();
+        this.OP_0_16(1);
+        this.OP_NUMEQUAL();
+        this.replaceWithTop(target);
+    }
     and(target: StackItem, a: StackItem, b: StackItem) {
+
         this.pick(a);
         this.pick(b);
         this.OP_BOOLAND();
@@ -315,26 +426,26 @@ export class Bitcoin {
                     () => this.ifTrue(carry, fns.tft, fns.fff)));
     }
 
-    private subBit(target: StackItem, borrow: StackItem, a: StackItem, b: StackItem) {
-        const fns = {
-            fff: () => { this.setBit_0(target); },
-            fft: () => { this.setBit_1(borrow); this.setBit_1(target); },
-            ftf: () => { this.setBit_1(target); },
-            ftt: () => { this.setBit_0(target); },
-            tff: () => { this.setBit_1(target); },
-            tft: () => { this.setBit_0(target); },
-            ttf: () => { this.setBit_0(borrow); this.setBit_0(target); },
-            ttt: () => { this.setBit_0(target); }
-        };
-        this.ifTrue(a, () =>
-            this.ifTrue(b,
-                () => this.ifTrue(borrow, fns.ttt, fns.ftt),
-                () => this.ifTrue(borrow, fns.tft, fns.ftf)),
-            () =>
-                this.ifTrue(b,
-                    () => this.ifTrue(borrow, fns.tft, fns.fft),
-                    () => this.ifTrue(borrow, fns.tft, fns.fff)));
-    }
+    // private subBit(target: StackItem, borrow: StackItem, a: StackItem, b: StackItem) {
+    //     const fns = {
+    //         fff: () => { this.setBit_0(target); },
+    //         fft: () => { this.setBit_1(borrow); this.setBit_1(target); },
+    //         ftf: () => { this.setBit_1(target); },
+    //         ftt: () => { this.setBit_0(target); },
+    //         tff: () => { this.setBit_1(target); },
+    //         tft: () => { this.setBit_0(target); },
+    //         ttf: () => { this.setBit_0(borrow); this.setBit_0(target); },
+    //         ttt: () => { this.setBit_0(target); }
+    //     };
+    //     this.ifTrue(a, () =>
+    //         this.ifTrue(b,
+    //             () => this.ifTrue(borrow, fns.ttt, fns.ftt),
+    //             () => this.ifTrue(borrow, fns.tft, fns.ftf)),
+    //         () =>
+    //             this.ifTrue(b,
+    //                 () => this.ifTrue(borrow, fns.tft, fns.fft),
+    //                 () => this.ifTrue(borrow, fns.tft, fns.fff)));
+    // }
 
     // /// Register operations ///
 

@@ -1,11 +1,11 @@
 import { expect } from 'chai';
 
-import { Fp12 } from "../src/compiler/algebra/fp12";
-import { G1, G1Point } from "../src/compiler/algebra/G1";
-import { G2, G2Point } from "../src/compiler/algebra/G2";
-import { vm } from '../src/compiler/vm/vm';
-import { curveOrder, G3 } from '../src/compiler/algebra/G3';
-import { Fp } from '../src/compiler/algebra/fp';
+import { Fp12 } from "../src/groth16/algebra/fp12";
+import { G1, G1Point } from "../src/groth16/algebra/G1";
+import { G2, G2Point } from "../src/groth16/algebra/G2";
+import { vm } from '../src/groth16/vm/vm';
+import { curveOrder, G3 } from '../src/groth16/algebra/G3';
+import { Fp } from '../src/groth16/algebra/fp';
 
 describe('Pairing', () => {
 

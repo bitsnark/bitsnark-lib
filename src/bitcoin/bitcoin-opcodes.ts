@@ -37,7 +37,16 @@ export enum OpcodeType {
     OP_BOOLAND = 'OP_BOOLAND',
     OP_BOOLOR = 'OP_BOOLOR',
     OP_WITHIN = 'OP_WITHIN',
-    OP_NUMEQUALVERIFY = 'OP_NUMEQUALVERIFY'
+    OP_NUMEQUALVERIFY = 'OP_NUMEQUALVERIFY',
+    OP_TOALTSTACK ='OP_TOALTSTACK',
+    OP_FROMALTSTACK = 'OP_FROMALTSTACK',
+    OP_SWAP = 'OP_SWAP',
+    OP_3DUP = 'OP_3DUP',
+    OP_TUCK = 'OP_TUCK',
+    OP_2SWAP = 'OP_2SWAP',
+    OP_2DUP = 'OP_2DUP',
+    OP_NIP = 'OP_NIP',
+    OP_ROT = 'OP_ROT'
 }
 
 export function hardcode(value: number): OpcodeType {
