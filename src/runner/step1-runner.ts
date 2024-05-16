@@ -1,78 +1,82 @@
-import { prime_bigint } from "../groth16/algebra/fp";
-import { modInverse } from "../groth16/common/math-utils";
-import { State, Register } from "../groth16/vm/state";
-import { Instruction, InstrCode } from "../groth16/vm/vm";
+import { prime_bigint } from "../bitcoin/ec/ec-hash";
+import { modInverse } from "../generator/common/math-utils";
+import { SavedVm } from "../generator/common/saved-vm";
+import { State } from "../generator/common/state";
+import { Instruction, InstrCode } from "../generator/step1/vm/types";
 
 export class Runner {
 
-    state: State;
+    state: State = new State()
     witness: bigint[] = []
     hardcoded: bigint[] = []
     instructions: Instruction[] = [];
     current: number = 0;
 
-    constructor() {
-        this.state = new State();
+    private constructor() {
     }
 
-    reset() {
-        this.state = new State();
-        this.witness = [];
-        this.hardcoded = [];
-        this.instructions = [];
-        this.current = 0;
+    public static load(obj: SavedVm<InstrCode>, witness: bigint[]): Runner {
+        const runner = new Runner();
+        runner.witness = witness;
+        runner.hardcoded = obj.hardcoded.map((ns: string) => BigInt('0x' + ns));
+        runner.instructions = obj.program.map(inst => ({
+            name: inst.name,
+            target: inst.target,
+            params: inst.params,
+            data: BigInt('0x' + inst.data ?? '')
+        }));
+        runner.witness.forEach(n => runner.state.newRegister(n));
+        runner.hardcoded.forEach(n => runner.state.newHardcoded(n));
+        return runner;
     }
 
-    newRegister(): Register {
-        return this.state.newRegister();
-    }
-
-    addWitness(value: bigint) {
-        this.witness.push(value);
-    }
-
-    hardcode(value: bigint): Register {
-        if (value >= 2n ** 256n) throw new Error('Too big');
-        return this.state.hardcoded(value);
-    }
-
-    executeOne() {
+    private executeOne() {
         const instr = this.instructions[this.current];
-        let v = 0n;
-        let f = false;
+        const target = this.state.registers[instr.target];
+        const param1 = this.state.registers[instr.params[0]];
+        const param2 = this.state.registers[instr.params[1]];
         switch (instr.name) {
             case InstrCode.ADDMOD:
-                instr.target.value = (instr.params[0].value + instr.params[1].value) % prime_bigint;
+                target.value = (param1.value + param2.value) % prime_bigint;
                 break;
             case InstrCode.ANDBIT:
-                f = !!(instr.params[0].value & (2n ** BigInt(instr.bit ?? 0)));
-                instr.target.value = f ? instr.params[1].value : 0n;
+                target.value = !!(param1.value & (2n ** BigInt(instr.data ?? 0))) ? param2.value : 0n;
                 break;
             case InstrCode.MOV:
-                instr.target.value = instr.params[0].value;
+                target.value = param1.value;
                 break;
             case InstrCode.EQUAL:
-                instr.target.value = instr.params[0].value === instr.params[1].value ? 1n : 0n;
+                target.value = param1.value === param2.value ? 1n : 0n;
                 break;
             case InstrCode.MULMOD:
-                instr.target.value = (instr.params[0].value * instr.params[1].value) % prime_bigint;
+                target.value = (param1.value * param2.value) % prime_bigint;
                 break;
             case InstrCode.OR:
-                instr.target.value = !!instr.params[0].value || !!instr.params[1].value ? 1n : 0n;
+                target.value = !!param1.value || !!param2.value ? 1n : 0n;
                 break;
             case InstrCode.AND:
-                instr.target.value = !!instr.params[0].value && !!instr.params[1].value ? 1n : 0n;
+                target.value = !!param1.value && !!param2.value ? 1n : 0n;
                 break;
             case InstrCode.NOT:
-                instr.target.value = !instr.params[0].value ? 1n : 0n;
+                target.value = !param1.value ? 1n : 0n;
                 break;
             case InstrCode.SUBMOD:
-                instr.target.value = (prime_bigint + instr.params[0].value - instr.params[1].value) % prime_bigint;
+                target.value = (prime_bigint + param1.value - param2.value) % prime_bigint;
                 break;
             case InstrCode.DIVMOD:
-                v = modInverse(instr.params[1].value, prime_bigint);
-                instr.target.value = (instr.params[0].value * v) % prime_bigint;
+                target.value = (param1.value * modInverse(param2.value, prime_bigint)) % prime_bigint;
                 break;
         }
+    }
+
+    public execute(stop?: number) {
+        stop = stop ?? 2 ** 64;
+        while (this.current < stop) {
+            this.executeOne();
+        }
+    }
+
+    public getRegisters() {
+        return this.state.registers;
     }
 }

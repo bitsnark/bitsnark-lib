@@ -1,6 +1,7 @@
+import { Register } from "../generator/common/register";
 import { SavedVm } from "../generator/common/saved-vm";
-import { State, Register } from "../groth16/vm/state";
-import { Instruction, InstrCode } from "../groth16/vm/vm";
+import { State } from "../generator/common/state";
+import { Instruction, InstrCode } from "../generator/step2/vm/types";
 
 export class Runner {
     state: State;
@@ -90,14 +91,15 @@ export class Runner {
 
     //*******  PUBLIC   ********/
 
-    static load(obj: SavedVm, witness: bigint[]): Runner {
+    static load(obj: SavedVm<InstrCode>, witness: bigint[]): Runner {
         const runner = new Runner(
             obj.hardcoded.map((ns: string) => BigInt('0x' + ns)),
             witness);
         runner.instructions = obj.program.map((inst: Instruction) => ({
             name: inst.name,
             target: inst.target,
-            params: inst.params
+            params: inst.params,
+            data: inst.data
         }));
         runner.reset();
         return runner;

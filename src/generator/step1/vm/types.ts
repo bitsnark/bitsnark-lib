@@ -17,7 +17,7 @@ export enum InstrCode {
 
 export interface Instruction {
     name: InstrCode;
-    target: Register;
-    params: Register[];
+    target: number;
+    params: number[];
     data?: bigint;
 }

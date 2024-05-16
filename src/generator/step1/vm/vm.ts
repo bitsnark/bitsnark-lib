@@ -30,7 +30,7 @@ export class VM {
     /// *** BASIC OPERATIONS ***
 
     private pushInstruction(name: InstrCode, target: Register, params: Register[], data?: bigint) {
-        this.instructions.push({ name, target, params, data });
+        this.instructions.push({ name, target: target.index, params: params.map(r => r.index), data });
         if (this.instructions.length % 1000000 == 0) {
             console.log(`line number: ${this.instructions.length} \t register count: ${this.state.registers.length}`);
         }
@@ -206,8 +206,8 @@ export class VM {
             programLength: this.instructions.length,
             program: this.instructions.map(instr => ({
                 name: instr.name,
-                target: instr.target.index,
-                params: instr.params.map(r => r.index),
+                target: instr.target,
+                params: instr.params,
                 data: instr.data?.toString(16),
             })),
         };
