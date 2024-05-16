@@ -1,5 +1,7 @@
-import { Register, State } from "./state";
-import { Instruction, InstrCode, SavedVm } from "./types";
+import { Register } from "../../common/register";
+import { SavedVm } from "../../common/saved-vm";
+import { State } from "../../common/state";
+import { Instruction, InstrCode } from "./types";
 
 export class VM {
 
@@ -121,10 +123,10 @@ export class VM {
         return withness.map(n => this.addWitness(n));
     }
 
-    save(): SavedVm {
+    save(): SavedVm<InstrCode> {
         return {
             hardcoded: this.hardcoded.map(r => r.value.toString(16)),
-            witness: this.witness.length,
+            witness: this.witness.map(r => r.value.toString(16)),
             registers: this.state.registers.length,
             programLength: this.instructions.length,
             program: this.instructions.map(instr => ({

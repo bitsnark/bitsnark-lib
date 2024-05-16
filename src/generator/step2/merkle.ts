@@ -1,6 +1,5 @@
+import { Register } from "../common/register";
 import { hash } from "./sha-256";
-import { makeRegisters } from "./utils";
-import { Register } from "./vm/state";
 import { vm } from "./vm/vm";
 
 export function verifyMerkleProof(hashes: Register[][], root: Register[]): boolean {

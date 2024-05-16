@@ -1,8 +1,7 @@
-import { Instruction, InstrCode } from "./types";
-import { prime_bigint } from "./prime";
-import { modInverse } from "../common/math-utils";
-import { State } from "../../common/state";
-import { Register } from "../../common/register";
+import { prime_bigint } from "../groth16/algebra/fp";
+import { modInverse } from "../groth16/common/math-utils";
+import { State, Register } from "../groth16/vm/state";
+import { Instruction, InstrCode } from "../groth16/vm/vm";
 
 export class Runner {
 
@@ -43,8 +42,7 @@ export class Runner {
         let f = false;
         switch (instr.name) {
             case InstrCode.ADDMOD:
-                v = (instr.params[0].value + instr.params[1].value) % prime_bigint;
-                instr.target.value = v;
+                instr.target.value = (instr.params[0].value + instr.params[1].value) % prime_bigint;
                 break;
             case InstrCode.ANDBIT:
                 f = !!(instr.params[0].value & (2n ** BigInt(instr.bit ?? 0)));

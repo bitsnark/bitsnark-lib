@@ -1,4 +1,4 @@
-import { Register } from "./vm/state";
+import { Register } from "../common/register";
 import { vm } from "./vm/vm";
 
 export function makeRegisters(n: number) {

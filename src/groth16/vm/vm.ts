@@ -13,7 +13,9 @@ export enum InstrCode {
     OR,
     AND,
     NOT,
-    SUB
+    SUB,
+    SUBMOD,
+    DIVMOD
 }
 
 export interface Instruction {
