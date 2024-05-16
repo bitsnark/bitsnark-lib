@@ -1,6 +1,6 @@
 
 
-import { Register } from "./vm/state";
+import { Register } from "../common/register";
 import { vm } from "./vm/vm";
 
 const temp1 = vm.newRegister();
