@@ -1,30 +1,38 @@
 import { Register } from "../../common/register";
 import { VM } from "./vm";
 
-function isOverlap(r1: Register, r2: Register): boolean {
+interface RichReg {
+    value: bigint;
+    hardcoded: boolean;
+    witness: boolean;
+    index: number;
+    last?: number;
+    first?: number;
+    interval?: number;
+}
+
+function isOverlap(r1: RichReg, r2: RichReg): boolean {
     return !(r1.last! < r2.first! || r2.last! < r1.first!);
 }
 
-function isNotInSieve(ref: Register, sieve: boolean[]): boolean {
+function isNotInSieve(ref: RichReg, sieve: boolean[]): boolean {
     for (let i = ref.first!; i <= ref.last!; i++)
         if (sieve[i]) return false;
     return true;
 }
 
-function markSieve(ref: Register, sieve: boolean[]) {
+function markSieve(ref: RichReg, sieve: boolean[]) {
     for (let i = ref.first!; i <= ref.last!; i++) sieve[i] = true;
 }
 
 export function regOptimizer(vm: VM) {
 
-    const allRegMap: { [key: number]: Register } = {};
+    const regArray: RichReg[] = vm.state.registers;
 
     console.log('Instruction count: ', vm.instructions.length);
 
-    function mapReg(r: Register, line: number) {
-        if (!allRegMap[r.key]) {
-            allRegMap[r.key] = r;
-        }
+    function mapReg(i: number, line: number) {
+        const r = regArray[i];
         r.first = r.first ?? line;
         r.last = line;
         r.interval = r.last! - r.first!;
@@ -35,22 +43,24 @@ export function regOptimizer(vm: VM) {
     // find first and last for each register
     vm.instructions.forEach((instr, line) => {
         mapReg(instr.target, line);
-        instr.params.forEach(r => mapReg(r, line));
+        mapReg(instr.param1 ?? 0, line);
+        mapReg(instr.param1 ?? 0, line);
     });
 
-    console.log('Register optimization starting, count: ', Object.values(allRegMap).length);
+    console.log('Register optimization starting');
+
+    const hardcoded = regArray.filter(r => r.hardcoded);
+    const witness = regArray.filter(r => r.witness);
+    const regular = regArray.filter(r => !r.witness && !r.hardcoded);
+
+    console.log('total: ', regArray.length, ' hardcoded: ', hardcoded.length, ' withness: ', witness.length);;
 
     console.log('Sort by interval');
 
     // sort by size
-    let sorted = Object.values(allRegMap)
-        .filter(r => !r.hardcoded)
+    let sorted = Object.values(regular)
+        .filter(r => !r.hardcoded && !r.witness)
         .sort((a, b) => b.interval! - a.interval!);
-
-    let hardcoded = Object.values(allRegMap)
-        .filter(r => r.hardcoded);
-
-    console.log('Hardcoded register count: ', hardcoded.length);
 
     const roots = [];
     let counter = 0;
@@ -86,19 +96,16 @@ export function regOptimizer(vm: VM) {
     console.log('Replace in instruction set');
 
     const remap: { [key: number]: Register } = {};
-    const newRegs: Register[] = [];
-
-    roots.forEach((ra, i) => {
-        const newR = new Register();
-        newRegs.push(newR);
-        ra.forEach(r => remap[r.key] = newR);
+    roots.forEach(group => {
+        group.forEach(r => {
+            remap[r.index] = group[0];
+        });
     });
 
-    hardcoded.forEach(r => remap[r.key!] = r);
-
     vm.instructions.forEach(instr => {
-        instr.target = remap[instr.target.key!];
-        instr.params = instr.params.map(r => remap[r.key!]);
+        instr.target = remap[instr.target].index;
+        instr.param1 = remap[instr.param1 ?? 0].index;
+        instr.param2 = remap[instr.param2 ?? 0].index;
     });
 
     console.log('Done');

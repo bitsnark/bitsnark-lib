@@ -1,5 +1,3 @@
-import { Register } from "../../common/register";
-
 export enum InstrCode {
     ADDMOD,
     ANDBIT,
@@ -12,12 +10,15 @@ export enum InstrCode {
     NOT,
     SUB,
     SUBMOD,
-    DIVMOD
+    DIVMOD,
+    ASSERTONE,
+    ASSERTZERO
 }
 
 export interface Instruction {
     name: InstrCode;
     target: number;
-    params: number[];
+    param1?: number;
+    param2?: number;
     data?: bigint;
 }

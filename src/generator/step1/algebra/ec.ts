@@ -103,7 +103,7 @@ export class ECPoint<T extends Member<T>> {
         if (a.value === 0n) throw new Error('Zero multiplication');
         let result = this as ECPoint<T>;
         const na = vm.newRegister();
-        vm.subMod(na, a, vm.R_1);
+        vm.subMod(na, a, vm.one);
         let agg = this as ECPoint<T>;
         for (let bit = 0; bit < 256; bit++) {
             if (!a.hardcoded) {

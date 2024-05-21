@@ -1,11 +1,10 @@
 import { expect } from 'chai';
 
-import { Fp12 } from "../src/groth16/algebra/fp12";
-import { G1, G1Point } from "../src/groth16/algebra/G1";
-import { G2, G2Point } from "../src/groth16/algebra/G2";
-import { vm } from '../src/groth16/vm/vm';
-import { curveOrder, G3 } from '../src/groth16/algebra/G3';
-import { Fp } from '../src/groth16/algebra/fp';
+import { Fp12 } from "../src/generator/step1/algebra/fp12";
+import { G1, G1Point } from "../src/generator/step1/algebra/G1";
+import { G2, G2Point } from "../src/generator/step1/algebra/G2";
+import { vm } from '../src/generator/step1/vm/vm';
+import { curveOrder, G3 } from '../src/generator/step1/algebra/G3';
 
 describe('Pairing', () => {
 
@@ -18,8 +17,6 @@ describe('Pairing', () => {
 
     beforeEach(() => {
         vm.reset();
-        Fp.setOptimizeHardcoded(false);
-        vm.setCollectInstructions(false);		
         g1 = new G1();
         g2 = new G2();
         g3 = new G3();
@@ -29,7 +26,7 @@ describe('Pairing', () => {
     });
 
     afterEach(() => {
-        expect(vm.isFailed()).to.eq(false);
+        expect(vm.success).to.eq(true);
     });
 
     it('Pairing check against negative in G1', () => {
@@ -55,7 +52,7 @@ describe('Pairing', () => {
     });
 
     it('Pairing bilinearity in G1', () => {
-        const _2 = vm.hardcoded(2n);
+        const _2 = vm.hardcode(2n);
         const p1 = g3.pairing(gen2, gen1);
         const p2 = g3.pairing(gen2, gen1.double());
         const t = p1.mul(p1);
@@ -79,8 +76,11 @@ describe('Pairing', () => {
     });
 
     it('Composite check passed', () => {
-        const p3 = g3.pairing(gen2.mul(vm.hardcoded(27n)), gen1.mul(vm.hardcoded(37n)));
-        const po3 = g3.pairing(gen2, gen1.mul(vm.hardcoded(999n)));
+        const _27 = vm.hardcode(27n);
+        const _37 = vm.hardcode(37n);
+        const _999 = vm.hardcode(999n);
+        const p3 = g3.pairing(gen2.mul(_27), gen1.mul(_37));
+        const po3 = g3.pairing(gen2, gen1.mul(_999));
         expect(p3.eq(po3).value).eq(1n);
     });
 });

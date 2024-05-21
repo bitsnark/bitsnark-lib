@@ -1,4 +1,5 @@
 import { prime_bigint } from "../vm/prime";
+import { vm } from "../vm/vm";
 import { EC, ECPoint } from "./ec";
 import { Fp } from "./fp";
 import { Fp12 } from "./fp12";
@@ -17,10 +18,17 @@ export class G3Point extends ECPoint<Fp12> {
 // group over elliptic curve over polynomial field over finite field
 export class G3 extends EC<Fp12> {
 
+    fiveZeros: Fp[];
+    nine: Fp;
+    initialW: Fp12;
+
     constructor() {
-        const ec_a = new Fp12();
+        const ec_a = Fp12.hardcoded([]);
         const ec_b = Fp12.hardcoded([3n]);
         super(ec_a, ec_b);
+        this.fiveZeros = [0, 0, 0, 0, 0].map(() => Fp.hardcoded(0n));
+        this.nine = Fp.hardcoded(9n);
+        this.initialW = Fp12.hardcoded([0n, 1n]);
     }
 
     makePoint(x: Fp12, y: Fp12): G3Point {
@@ -32,29 +40,27 @@ export class G3 extends EC<Fp12> {
     }
 
     twist(pt: G2Point): G3Point {
-        const fiveZeros = [0, 0, 0, 0, 0].map(() => new Fp());
-        const nine = Fp.hardcoded(9n);
-        const w = Fp12.hardcoded([0n, 1n]);
+        const w = this.initialW;
         const w_2 = w.mul(w);
         const w_3 = w_2.mul(w);
         const x = pt.x;
         const y = pt.y;
         const xcoeffs = [
-            x.r.sub(x.i.mul(nine)),
+            x.r.sub(x.i.mul(this.nine)),
             x.i];
         const ycoeffs = [
-            y.r.sub(y.i.mul(nine)),
+            y.r.sub(y.i.mul(this.nine)),
             y.i];
         const nx = new Fp12(new Poly12(
             [xcoeffs[0],
-            ...fiveZeros,
+            ...this.fiveZeros,
             xcoeffs[1],
-            ...fiveZeros]));
+            ...this.fiveZeros]));
         const ny = new Fp12(new Poly12(
             [ycoeffs[0],
-            ...fiveZeros,
+            ...this.fiveZeros,
             ycoeffs[1],
-            ...fiveZeros]));
+            ...this.fiveZeros]));
 
         const result = this.makePoint(w_2.mul(nx), w_3.mul(ny));
         return result;
@@ -68,8 +74,8 @@ export class G3 extends EC<Fp12> {
     }
 
     miller(q: G3Point, p: G3Point): Fp12 {
-        let r = q;
         let f = Fp12.one();
+        let r = q;
 
         for (let i = log_ate_loop_count; i >= 0n; i--) {
             f = f.mul(f).mul(r.line(r, p));
@@ -101,11 +107,13 @@ export class G3 extends EC<Fp12> {
 
         f = f.mul(r.line(nq2, p));
         f = f.powHardcoded(prime_pow_degree_sub_one_div_order);
-
         return f;
     }
 
     pairing(q: G2Point, p: G1Point): Fp12 {
-        return this.miller(this.twist(q), this.cast(p));
+        //vm.gcEnter();
+        const r = this.miller(this.twist(q), this.cast(p));
+        //vm.gcExit(r.getRegisters());
+        return r;
     }
 }

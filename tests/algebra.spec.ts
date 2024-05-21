@@ -1,11 +1,12 @@
 import { expect } from 'chai';
-import { Fp, prime_bigint } from '../src/groth16/algebra/fp';
-import { Fp2 } from '../src/groth16/algebra/fp2';
-import { Fp12 } from '../src/groth16/algebra/fp12';
-import { vm } from '../src/groth16/vm/vm';
-import { G1, G1Point } from '../src/groth16/algebra/G1';
-import { G2, G2Point } from '../src/groth16/algebra/G2';
-import { G3, G3Point } from '../src/groth16/algebra/G3';
+import { Fp } from '../src/generator/step1/algebra/fp';
+import { Fp2 } from '../src/generator/step1/algebra/fp2';
+import { Fp12 } from '../src/generator/step1/algebra/fp12';
+import { vm } from '../src/generator/step1/vm/vm';
+import { G1, G1Point } from '../src/generator/step1/algebra/G1';
+import { G2, G2Point } from '../src/generator/step1/algebra/G2';
+import { G3, G3Point } from '../src/generator/step1/algebra/G3';
+import { prime_bigint } from '../src/generator/step1/vm/prime';
 
 const _0 = Fp.hardcoded(0n);
 const _1 = Fp.hardcoded(1n);
@@ -24,15 +25,13 @@ describe('Algebra', () => {
 
 	beforeEach(() => {
 		vm.reset();
-        Fp.setOptimizeHardcoded(false);
-        vm.setCollectInstructions(false);		
 		g1 = new G1();
 		g2 = new G2();
 		g3 = new G3();
 	});
 
 	afterEach(() => {
-		expect(vm.isFailed()).to.eq(false);
+		expect(vm.success).to.eq(true);
 	});
 
 	describe('Fp', () => {
@@ -59,7 +58,11 @@ describe('Algebra', () => {
 
 		it('x + f = fpx', () => checkFp2(x.add(f), fpx));
 		it('f/f = 1', () => checkFp2(f.div(f), one));
-		it('1/f + x/f = (1 + x)/f', () => checkFp2(one.div(f).add(x.div(f)), one.add(x).div(f)));
+		it('1/f + x/f = (1 + x)/f', () => {
+			const a = one.div(f).add(x.div(f));
+			const b = one.add(x).div(f);
+			checkFp2(a, b);
+		});
 		it('1*f + x*f = (1 + x)*f', () => checkFp2(one.mul(f).add(x.mul(f)), one.add(x).mul(f)));
 	});
 
@@ -105,14 +108,14 @@ describe('Algebra', () => {
 		});
 
 		it('add(multiply(G1, 9), multiply(G1, 5)) = add(multiply(G1, 12), multiply(G1, 2))', () => {
-			const a = gen.mul(vm.hardcoded(9n)).add(gen.mul(vm.hardcoded(5n)));
-			const b = gen.mul(vm.hardcoded(12n)).add(gen.mul(vm.hardcoded(2n)));
+			const a = gen.mul(vm.hardcode(9n)).add(gen.mul(vm.hardcode(5n)));
+			const b = gen.mul(vm.hardcode(12n)).add(gen.mul(vm.hardcode(2n)));
 			expect(a.eq(b).value).eq(1n);
 		});
 
 		it('assert G1*9', () => {
-			const a = gen.mul(vm.hardcoded(9n));
-			expect(() => a.assertPoint()).to.not.throw();
+			const a = gen.mul(vm.hardcode(9n));
+			a.assertPoint();
 		});
 	});
 
@@ -135,14 +138,17 @@ describe('Algebra', () => {
 		});
 
 		it('add(multiply(G2, 9), multiply(G2, 5)) = add(multiply(G2, 12), multiply(G2, 2))', () => {
-			const a = gen.mul(vm.hardcoded(9n)).add(gen.mul(vm.hardcoded(5n)));
-			const b = gen.mul(vm.hardcoded(12n)).add(gen.mul(vm.hardcoded(2n)));
+			const a = gen.mul(vm.hardcode(9n)).add(gen.mul(vm.hardcode(5n)));
+			const b = gen.mul(vm.hardcode(12n)).add(gen.mul(vm.hardcode(2n)));
 			expect(a.eq(b).value).eq(1n);
 		});
 
 		it('assert G2*9', () => {
-			const a = gen.mul(vm.hardcoded(9n));
-			expect(() => a.assertPoint()).to.not.throw();
+			console.log('!!!!!!', vm.success);
+			const a = gen.mul(vm.hardcode(9n));
+			console.log('!!!!!!', vm.success);
+			a.assertPoint();
+			console.log('!!!!!!', vm.success);
 		});
 	});
 
@@ -165,16 +171,16 @@ describe('Algebra', () => {
 		});
 
 		it.skip('add(multiply(G3, 9), multiply(G3, 5)) = add(multiply(G3, 12), multiply(G3, 2))', () => {
-			const a = gen.mul(vm.hardcoded(9n)).add(gen.mul(vm.hardcoded(5n)));
+			const a = gen.mul(vm.hardcode(9n)).add(gen.mul(vm.hardcode(5n)));
 			console.log(a.toString());
-			const b = gen.mul(vm.hardcoded(12n)).add(gen.mul(vm.hardcoded(2n)));
+			const b = gen.mul(vm.hardcode(12n)).add(gen.mul(vm.hardcode(2n)));
 			console.log(b.toString());
 			expect(a.eq(b).value).eq(1n);
 		});
 
 		it.skip('assert G3*9', () => {
-			const a = gen.mul(vm.hardcoded(9n));
-			expect(() => a.assertPoint()).to.not.throw();
+			const a = gen.mul(vm.hardcode(9n));
+			a.assertPoint();
 		});
 	});
 });

@@ -10,15 +10,21 @@ export class Fp {
         if (r && r.value! < 0) {
             r.value = (prime_bigint + r.value) % prime_bigint;
         }
-        this.register = r ?? vm.newRegister();
+        this.register = r ?? vm.hardcode(0n);
     }
+
+    // free() {
+    //     vm.freeRegs(this.register);
+    // }
 
     getRegisters(): Register[] {
         return [this.register];
     }
 
     static hardcoded(n: bigint): Fp {
-        return new Fp();
+        n = (prime_bigint + n) % prime_bigint;
+        const r = vm.hardcode(n);
+        return new Fp(r);
     }
 
     zero(): Fp {
@@ -38,9 +44,9 @@ export class Fp {
     }
 
     if(r: Register, other: Fp): Fp {
-        const result = new Fp();
-        vm.ifThenElse(result.getRegister(), r, this.getRegister(), other.getRegister());
-        return result;
+        const result = vm.newRegister();
+        vm.ifThenElse(result, r, this.getRegister(), other.getRegister());
+        return new Fp(result);
     }
 
     ifBit(r: Register, bit: number, other: Fp): Fp {

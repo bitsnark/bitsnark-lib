@@ -14,6 +14,10 @@ export class Fp12 {
         this.value = value ? value : new Poly12();
     }
 
+    // free() {
+    //     this.value.free();
+    // }
+
     getRegisters(): Register[] {
         return this.value.getRegisters();
     }

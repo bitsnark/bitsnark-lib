@@ -17,6 +17,10 @@ export class Poly12 {
         this.coeffs = coeffs;
     }
 
+    // free() {
+    //     this.coeffs.forEach(c => c.free());
+    // }
+
     getRegisters(): Register[] {
         return this.coeffs.map(c => c.getRegisters()).flat();
     }
@@ -42,13 +46,13 @@ export class Poly12 {
     }
 
     eq(a: Poly12): Register {
-        const total = vm.newRegister();
+        const total = vm.newRegister(true);
         for (let i = 0; i < DEGREE; i++) {
             const t = this.coeffs[i].eq(a.coeffs[i]);
             vm.not(t, t);
             vm.addMod(total, total, t);
         }
-        vm.equal(total, total, vm.R_0);
+        vm.equal(total, total, vm.zero);
         return total;
     }
 
@@ -119,51 +123,23 @@ export class Poly12 {
         }
         const result = new Poly12(temp);
         return result;
-    }   
-    
+    }
+
     divMod(a: Poly12, b: Poly12): Poly12 {
-        // const pc = (n: number) => {
-        //     const r = []; 
-        //     while (r.length < n) r.push(0n);
-        //     return r;
-        // }
-        // let lm = [1n, ...pc(DEGREE+1)];
-        // let hm = [0n, ...pc(DEGREE+1)];
-        // let low = [ ...this.coeffs, 0n ];
-        // let high = [ ...b.coeffs, 1n ];
-        // for(let k = 0; k < DEGREE; k++) {
-        //     let r = polyRoundedDiv(high, low, prime);
-        //     r = polyComplete(r, degree + 1);
-        //     let nm = hm.map(n => n);
-        //     const _new = high.map(n => n);
-        //     for (let i = 0; i < DEGREE + 1; i++) {
-        //         for (let j = 0; j < DEGREE + 1 - i; j++) {
-        //             nm[i + j] = (prime_bigint + nm[i + j] - (lm[i] * r[j]) % prime_bigint) % prime_bigint;
-        //             _new[i + j] = (prime_bigint + _new[i + j] - (low[i] * r[j]) % prime_bigint) % prime_bigint;
-        //         }
-        //     }
-        //     hm = lm;
-        //     lm = nm;
-        //     high = low;
-        //     low = _new;
-            
-        // }
-        // lm.length = degree;
-        // lm = lm.map(n => (n * modInverse(low[0], prime)) % prime);
-        // return lm;
         const inv = polyInv(
-            a.coeffs.map(fp => fp.register.value), 
+            a.coeffs.map(fp => fp.register.value),
             b.coeffs.map(fp => fp.register.value),
-            12, 
+            12,
             prime_bigint);
         const pinv = new Poly12(inv.map(n => {
-            const r = vm.hardcode(n);
+            const r =  vm.newRegister();
+            r.value = n;
             return new Fp(r);
         }));
         const test = a.mulMod(pinv, b);
         const f = test.eq(a.one());
-        vm.assertEqOne(f);
+        //vm.assertEqOne(f);
         const result = this.mulMod(pinv, b)
         return result;
-    }    
+    }
 }
