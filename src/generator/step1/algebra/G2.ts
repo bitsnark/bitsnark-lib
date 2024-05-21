@@ -11,7 +11,7 @@ export class G2 extends EC<Fp2> {
 
     constructor() {
         const ec_a = new Fp2();
-        const ec_b = Fp2.hardcoded(3n, 0n).div(Fp2.hardcoded(9n, 1n));
+        const ec_b = Fp2.hardcoded(1n, 2432026985759919469138489527250808343188479017477535962521004210516136245398n);
         super(ec_a, ec_b);
         const gen_x = Fp2.hardcoded(
             10857046999023057135944570762232829481370756359578518086990519993285655852781n,

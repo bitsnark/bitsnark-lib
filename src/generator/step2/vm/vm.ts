@@ -25,10 +25,9 @@ export class VM {
 
     private hardcode(value: bigint): Register {
         if (value < 0 || value >= 2n ** 32n) throw new Error('Invalid value');
-        let t = this.hardcodedCache[value.toString(16)];
+        let t: Register = this.hardcodedCache[value.toString(16)];
         if (t) return t;
-        t = new Register();
-        t.value = value;
+        t = this.newRegister(value);
         t.hardcoded = true;
         this.hardcodedCache[value.toString(16)] = t;
         this.hardcoded.push(t);

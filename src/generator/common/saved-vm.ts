@@ -6,7 +6,8 @@ export interface SavedVm<InstrCode> {
     program: {
         name: InstrCode,
         target: number,
-        params: number[],
+        param1?: number,
+        param2?: number
         data?: string
     }[];
 }

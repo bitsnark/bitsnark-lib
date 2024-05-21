@@ -10,19 +10,21 @@ export class Fp2 {
     i: Fp;
 
     constructor(r?: Fp, i?: Fp) {
-        this.r = r ? r : new Fp(vm.hardcode(0n));
-        this.i = i ? i : new Fp(vm.hardcode(0n));
+        this.r = r ? r : Fp.zero();
+        this.i = i ? i : Fp.zero();
     }
+
+    // free() {
+    //     this.r.free();
+    //     this.i.free();
+    // }
 
     getRegisters(): Register[] {
         return [...this.r.getRegisters(), ...this.i.getRegisters()];
     }
 
     static hardcoded(r: bigint, i: bigint): Fp2 {
-        return new Fp2(
-            new Fp(vm.hardcode(r)),
-            new Fp(vm.hardcode(i))
-        );
+        return new Fp2(Fp.hardcoded(r), Fp.hardcoded(i));
     }
 
     zero(): Fp2 {
@@ -64,14 +66,15 @@ export class Fp2 {
     }
 
     div(a: Fp2): Fp2 {
-        if (a.r.register.value === 0n && a.i.register.value === 0n) {
+        const denom = a.r.mul(a.r).add(a.i.mul(a.i));
+        if (denom.register.value === 0n) {
             // can't fail!
             return this.zero();
         }
-        const conj = a.conj();
-        const num = this.mul(conj);
-        const sqrd = this.r.mul(a.r).add(this.i.mul(a.i));
-        return new Fp2(num.r.div(sqrd), num.i.div(sqrd));
+
+        const r = this.r.mul(a.r).add(this.i.mul(a.i)).div(denom);
+        const i = this.i.mul(a.r).sub(this.r.mul(a.i)).div(denom);
+        return new Fp2(r, i);
     }
 
     if(flag: Register, other: Fp2): Fp2 {
