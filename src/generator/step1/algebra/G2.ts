@@ -10,8 +10,11 @@ export class G2 extends EC<Fp2> {
     generator: G2Point;
 
     constructor() {
-        const ec_a = new Fp2();
-        const ec_b = Fp2.hardcoded(1n, 2432026985759919469138489527250808343188479017477535962521004210516136245398n);
+        const ec_a = Fp2.zero();
+        //const ec_b = Fp2.hardcoded(3n, 0n).div(Fp2.hardcoded(9n, 1n));
+        const ec_b = Fp2.hardcoded(
+            19485874751759354771024239261021720505790618469301721065564631296452457478373n, 
+            266929791119991161246907387137283842545076965332900288569378510910307636690n);
         super(ec_a, ec_b);
         const gen_x = Fp2.hardcoded(
             10857046999023057135944570762232829481370756359578518086990519993285655852781n,

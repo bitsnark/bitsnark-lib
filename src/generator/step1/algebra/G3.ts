@@ -23,7 +23,7 @@ export class G3 extends EC<Fp12> {
     initialW: Fp12;
 
     constructor() {
-        const ec_a = Fp12.hardcoded([]);
+        const ec_a = Fp12.zero();
         const ec_b = Fp12.hardcoded([3n]);
         super(ec_a, ec_b);
         this.fiveZeros = [0, 0, 0, 0, 0].map(() => Fp.hardcoded(0n));
