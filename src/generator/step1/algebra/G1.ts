@@ -10,7 +10,7 @@ export class G1 extends EC<Fp> {
     generator: G1Point;
 
     constructor() {
-        const ec_a = Fp.hardcoded(0n);
+        const ec_a = Fp.zero();
         const ec_b = Fp.hardcoded(3n);
         super(ec_a, ec_b);
         const gen_x = Fp.hardcoded(1n);
