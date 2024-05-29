@@ -88,19 +88,20 @@ export class Key {
 
 export default async function groth16Verify(key: Key, proof: Proof) {
 
-    let vk_x = g1.makePoint(fp0, fp0)
+    let vk_x = g1.makePoint(key.ic[0].x, key.ic[0].y)
 
     for (let i = 0; i < proof.publicSignals.length; i++) {
         let t = key.ic[i + 1].mul(proof.publicSignals[i].getRegister());
-        vk_x = t.add(vk_x);
+        vk_x = vk_x.add(t);
     }
 
+    vk_x.assertPoint();
     proof.validate();
 
-    const pr = g3.pairing(proof.pi_b, proof.pi_a);
-    const p1 = g3.pairing(key.beta, key.alpha);
-    const p2 = g3.pairing(key.gamma, vk_x);
-    const p3 = g3.pairing(key.delta, proof.pi_c);
+    const pr = g3.pairing(proof.pi_a, proof.pi_b);
+    const p1 = g3.pairing(key.alpha, key.beta);
+    const p2 = g3.pairing(vk_x, key.gamma);
+    const p3 = g3.pairing(proof.pi_c, key.delta);
     const tpr = p1.add(p2).add(p3);
 
     const f = tpr.eq(pr);

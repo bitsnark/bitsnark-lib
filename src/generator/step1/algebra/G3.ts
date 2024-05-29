@@ -110,7 +110,7 @@ export class G3 extends EC<Fp12> {
         return f;
     }
 
-    pairing(q: G2Point, p: G1Point): Fp12 {
+    pairing(p: G1Point, q: G2Point): Fp12 {
         //vm.gcEnter();
         const r = this.miller(this.twist(q), this.cast(p));
         //vm.gcExit(r.getRegisters());

@@ -59,4 +59,3 @@ describe("groth16 verify", function () {
         assert(vm.success == false);
     });
 });
-
