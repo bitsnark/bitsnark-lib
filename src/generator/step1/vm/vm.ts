@@ -46,7 +46,6 @@ export class VM {
             throw new Error(msg);
         } catch (e) {
             console.error(e);
-            throw e;
         }
     }
 
