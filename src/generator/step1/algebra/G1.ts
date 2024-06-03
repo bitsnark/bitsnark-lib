@@ -18,7 +18,7 @@ export class G1 extends EC<Fp> {
         this.generator = this.makePoint(gen_x, gen_y);
     }
 
-    makePoint(x: Fp, y: Fp): G1Point {
-        return new G1Point(this, x, y);
+    makePoint(x: Fp, y: Fp, z?: Fp, t?: Fp): G1Point {
+        return new G1Point(this, x, y, z, t);
     }
 }

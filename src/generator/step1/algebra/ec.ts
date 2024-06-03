@@ -11,6 +11,7 @@ interface Member<T> {
     mul(a: T): T;
     sub(a: T): T;
     div(a: T): T;
+    inv(): T;
     neg(): T;
     getRegisters(): Register[];
 };
@@ -20,15 +21,19 @@ export class ECPoint<T extends Member<T>> {
     curve: EC<T>;
     x: T;
     y: T;
+    z: T;
+    t: T;
 
-    constructor(curve: EC<T>, x?: T, y?: T) {
+    constructor(curve: EC<T>, x?: T, y?: T, z?: T, t?: T) {
         this.curve = curve;
         this.x = x ? x : curve.ec_a.zero();
         this.y = y ? y : curve.ec_a.zero();
+        this.z = z ? z : curve.ec_a.one();
+        this.t = t ? t : curve.ec_a.one();
     }
 
     getRegisters(): Register[] {
-        return [ ...this.x.getRegisters(), ...this.y.getRegisters() ];
+        return [this.x, this.y, this.z, this.t ].map(t => t.getRegisters()).flat();
     }
 
     neg(): ECPoint<T> {
@@ -160,8 +165,15 @@ export class ECPoint<T extends Member<T>> {
         return result;
     }
 
+    toAffine(): ECPoint<T> {
+        let zInv = this.z.inv();
+        let t = this.y.mul(zInv);
+        let zInv2 = zInv.mul(zInv);
+        return new ECPoint<T>(this.curve, this.x.mul(zInv2), t.mul(zInv2), this.x.one(), this.x.one());
+    }
+
     toString(): string {
-        return `{ x: ${this.x}, y: ${this.y} }`;
+        return `{ x: ${this.x.toString()}, y: ${this.y.toString()} }`;
     }
 }
 
@@ -175,7 +187,7 @@ export abstract class EC<T extends Member<T>> {
         this.ec_b = ec_b;
     }
 
-    makePoint(x: T, y: T) {
-        return new ECPoint<T>(this, x, y);
+    makePoint(x?: T, y?: T, z?: T, t?: T) {
+        return new ECPoint<T>(this, x, y, z, t);
     }
 }

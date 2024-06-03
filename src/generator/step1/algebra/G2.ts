@@ -13,7 +13,7 @@ export class G2 extends EC<Fp2> {
         const ec_a = Fp2.zero();
         //const ec_b = Fp2.hardcoded(3n, 0n).div(Fp2.hardcoded(9n, 1n));
         const ec_b = Fp2.hardcoded(
-            19485874751759354771024239261021720505790618469301721065564631296452457478373n, 
+            19485874751759354771024239261021720505790618469301721065564631296452457478373n,
             266929791119991161246907387137283842545076965332900288569378510910307636690n);
         super(ec_a, ec_b);
         const gen_x = Fp2.hardcoded(
@@ -25,7 +25,7 @@ export class G2 extends EC<Fp2> {
         this.generator = this.makePoint(gen_x, gen_y);
     }
 
-    makePoint(x: Fp2, y: Fp2): G2Point {
-        return new G2Point(this, x, y);
+    makePoint(x: Fp2, y: Fp2, z?: Fp2, t?: Fp2): G2Point {
+        return new G2Point(this, x, y, z, t);
     }
 }
