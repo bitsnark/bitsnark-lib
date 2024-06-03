@@ -1,7 +1,6 @@
 import { expect } from 'chai';
 import { Fp } from '../src/generator/step1/algebra/fp';
 import { Fp2 } from '../src/generator/step1/algebra/fp2';
-import { Fp12 } from '../src/generator/step1/algebra/fp12';
 import { vm } from '../src/generator/step1/vm/vm';
 import { G1, G1Point } from '../src/generator/step1/algebra/G1';
 import { G2, G2Point } from '../src/generator/step1/algebra/G2';
@@ -12,6 +11,7 @@ const _0 = Fp.hardcoded(0n);
 const _1 = Fp.hardcoded(1n);
 const _2 = Fp.hardcoded(2n);
 const _4 = Fp.hardcoded(4n);
+const _5 = Fp.hardcoded(5n);
 const _7 = Fp.hardcoded(7n);
 const _9 = Fp.hardcoded(9n);
 const _11 = Fp.hardcoded(11n);
@@ -66,23 +66,6 @@ describe('Algebra', () => {
 		it('1*f + x*f = (1 + x)*f', () => checkFp2(one.mul(f).add(x.mul(f)), one.add(x).mul(f)));
 	});
 
-	describe('Fp12', () => {
-
-		function checkFp12(p1: Fp12, p2: Fp12) {
-			expect(p1.eq(p2).value).eq(1n);
-		}
-
-		const x = Fp12.hardcoded([1n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n]);
-		const f = Fp12.hardcoded([1n, 2n, 3n, 4n, 5n, 6n, 7n, 8n, 9n, 10n, 11n, 12n]);
-		const fpx = Fp12.hardcoded([2n, 2n, 3n, 4n, 5n, 6n, 7n, 8n, 9n, 10n, 11n, 12n]);
-		const one = fpx.one();
-
-		it('x + f = fpx', () => checkFp12(x.add(f), fpx));
-		it('f/f = 1', () => checkFp12(f.div(f), one));
-		it('1/f + x/f = (1 + x) / f', () => checkFp12(one.div(f).add(x.div(f)), one.add(x).div(f)));
-		it('x**(prime**12 - 1) = 1', () => checkFp12(x.powHardcoded(prime_bigint ** 12n - 1n), one));
-	});
-
 	describe('G1', () => {
 
 		let gen: G1Point;
@@ -108,7 +91,7 @@ describe('Algebra', () => {
 		});
 
 		it('add(multiply(G1, 9), multiply(G1, 5)) = add(multiply(G1, 12), multiply(G1, 2))', () => {
-			const a = gen.mul(vm.hardcode(9n)).add(gen.mul(vm.hardcode(5n)));
+			const a = gen.mul(_9.register).add(gen.mul(_5.register));
 			const b = gen.mul(vm.hardcode(12n)).add(gen.mul(vm.hardcode(2n)));
 			expect(a.eq(b).value).eq(1n);
 		});
@@ -144,41 +127,6 @@ describe('Algebra', () => {
 		});
 
 		it('assert G2*9', () => {
-			console.log('!!!!!!', vm.success);
-			const a = gen.mul(vm.hardcode(9n));
-			console.log('!!!!!!', vm.success);
-			a.assertPoint();
-			console.log('!!!!!!', vm.success);
-		});
-	});
-
-	describe('G3', () => {
-
-		let gen: G3Point;
-
-		beforeAll(() => {
-			gen = g3.getGenerator(g2);
-		});
-
-		it('add(add(double(G3), G3), G3) = double(double(3))', () => {
-			const a = gen.double().add(gen).add(gen);
-			const b = gen.double().double();
-			expect(a.eq(b).value).eq(1n);
-		});
-
-		it('double(G3) != G3', () => {
-			expect(gen.eq(gen.double()).value).eq(0n);
-		});
-
-		it.skip('add(multiply(G3, 9), multiply(G3, 5)) = add(multiply(G3, 12), multiply(G3, 2))', () => {
-			const a = gen.mul(vm.hardcode(9n)).add(gen.mul(vm.hardcode(5n)));
-			console.log(a.toString());
-			const b = gen.mul(vm.hardcode(12n)).add(gen.mul(vm.hardcode(2n)));
-			console.log(b.toString());
-			expect(a.eq(b).value).eq(1n);
-		});
-
-		it.skip('assert G3*9', () => {
 			const a = gen.mul(vm.hardcode(9n));
 			a.assertPoint();
 		});

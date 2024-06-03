@@ -4,6 +4,8 @@ import { prime_bigint } from "../vm/prime";
 import { divideComplex } from "../../common/math-utils";
 import { Register } from "../../common/register";
 
+const _2__3 = Fp.hardcoded(2n ** 3n);
+
 export class Fp2 {
 
     r: Fp;
@@ -55,7 +57,12 @@ export class Fp2 {
         return new Fp2(this.r.add(a.r), this.i.add(a.i));
     }
 
-    mul(a: Fp2): Fp2 {
+    mul(a: Fp | Fp2): Fp2 {
+        if (a instanceof Fp) {
+            return new Fp2(
+                this.r.mul(a),
+                this.i)
+        }
         return new Fp2(
             this.r.mul(a.r).sub(this.i.mul(a.i)),
             this.r.mul(a.i).add(this.i.mul(a.r)));
@@ -63,6 +70,10 @@ export class Fp2 {
 
     sub(a: Fp2): Fp2 {
         return new Fp2(this.r.sub(a.r), this.i.sub(a.i));
+    }
+
+    inv(): Fp2 {
+        return this.one().div(this);
     }
 
     div(a: Fp2): Fp2 {
@@ -98,6 +109,14 @@ export class Fp2 {
     }
 
     toString(): string {
-        return `[${this.r}, ${this.i}]`;
+        return `[${this.r.toString()}, ${this.i.toString()}]`;
+    }
+
+    // MulXi returns ξthis where ξ=i+9
+    mulXi(): Fp2 {
+	    // (xi+y)(i+3) = (9x+y)i+(9y-x)
+	    let tr = this.r.mul(_2__3).add(this.r).add(this.i);
+        let ti = this.i.mul(_2__3).add(this.i).sub(this.r);
+        return new Fp2(tr, ti);
     }
 }

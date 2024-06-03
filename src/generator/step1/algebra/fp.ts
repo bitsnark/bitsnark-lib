@@ -2,6 +2,7 @@ import { vm } from "../vm/vm";
 import { prime_bigint } from "../vm/prime";
 import { Register } from "../../common/register";
 
+
 export class Fp {
 
     register: Register;
@@ -99,6 +100,6 @@ export class Fp {
     }
 
     toString(): string {
-        return `${this.getRegister().value}`;
+        return `${this.getRegister().value.toString(16)}`;
     }
 }

@@ -6,12 +6,17 @@ import { G1, G1Point } from "./algebra/G1";
 import { G2, G2Point } from "./algebra/G2";
 import { G3 } from "./algebra/G3";
 import { vm } from "./vm/vm";
-
-const fp0 = Fp.hardcoded(0n);
+import { prime_bigint } from './vm/prime';
 
 const g1 = new G1();
 const g2 = new G2();
 const g3 = new G3();
+
+const mont_r2 = 6350874878119819312338956282401532409788428879151445726012394534686998597021n;
+
+function toMongomery(n: bigint): bigint {
+    return (n * mont_r2) % prime_bigint;
+}
 
 export class Proof {
     pi_a: G1Point;
@@ -55,34 +60,40 @@ export class Key {
     delta: G2Point;
     ic: G1Point[] = [];
 
-    constructor(obj: any) {
+    private constructor(a: G1Point, b: G2Point, c: G2Point, d: G2Point, ic: G1Point[]) {
+        this.alpha = a;
+        this.beta = b;
+        this.gamma = c;
+        this.delta = d;
+        this.ic = ic;
+    }
+    
+    static fromSnarkjs(obj: any) {
         if (obj.protocol != 'groth16' || obj.curve != 'bn128') throw new Error('Invalid key file');
 
-        this.alpha = g1.makePoint(Fp.hardcoded(BigInt(obj.vk_alpha_1[0])), Fp.hardcoded(BigInt(obj.vk_alpha_1[1])));
-        this.beta = g2.makePoint(
-            Fp2.hardcoded(BigInt(obj.vk_beta_2[0][0]), BigInt(obj.vk_beta_2[0][1])),
-            Fp2.hardcoded(BigInt(obj.vk_beta_2[1][0]), BigInt(obj.vk_beta_2[1][1])));
-        this.gamma = g2.makePoint(
-            Fp2.hardcoded(BigInt(obj.vk_gamma_2[0][0]), BigInt(obj.vk_gamma_2[0][1])),
-            Fp2.hardcoded(BigInt(obj.vk_gamma_2[1][0]), BigInt(obj.vk_gamma_2[1][1])));
-        this.delta = g2.makePoint(
-            Fp2.hardcoded(BigInt(obj.vk_delta_2[0][0]), BigInt(obj.vk_delta_2[0][1])),
-            Fp2.hardcoded(BigInt(obj.vk_delta_2[1][0]), BigInt(obj.vk_delta_2[1][1])));
-        for (let i = 0; i < obj.IC.length; i++) {
-            this.ic[i] = g1.makePoint(Fp.hardcoded(BigInt(obj.IC[i][0])), Fp.hardcoded(BigInt(obj.IC[i][1])));
+        function toFp(s: string): Fp {
+            return Fp.hardcoded(BigInt(s));
         }
-    }
+        function toFp2(sa: string[]): Fp2 {
+            return Fp2.hardcoded(BigInt(sa[0]), BigInt(sa[1]));
+        }
 
-    static async fromFile(path: string): Promise<Key> {
-        return new Promise((accept, reject) => {
-            fs.readFile(path, 'utf-8', (err, data) => {
-                if (err) reject(err);
-                else accept(JSON.parse(data));
-            });
-        }).then(obj => {
-            const k = new Key(obj);
-            return k;
-        });
+        const alpha = g1.makePoint(toFp(obj.vk_alpha_1[0]), toFp(obj.vk_alpha_1[1]));
+        const beta = g2.makePoint(toFp2(obj.vk_beta_2[0]), toFp2(obj.vk_beta_2[1]));
+        const gamma = g2.makePoint(toFp2(obj.vk_gamma_2[0]), toFp2(obj.vk_gamma_2[1]));
+        const delta = g2.makePoint(toFp2(obj.vk_delta_2[0]), toFp2(obj.vk_delta_2[1]));
+
+        const ic: G1Point[] = [];
+        for (let i = 0; i < obj.IC.length; i++) {
+            ic[i] = g1.makePoint(toFp(obj.IC[i][0]), toFp(obj.IC[i][1]));
+        }
+        return new Key(
+            alpha,
+            beta,
+            gamma,
+            delta,
+            ic
+        );
     }
 }
 
@@ -98,24 +109,12 @@ export default async function groth16Verify(key: Key, proof: Proof) {
     vk_x.assertPoint();
     proof.validate();
 
-    const pr = g3.pairing(proof.pi_a, proof.pi_b);
-    const p1 = g3.pairing(key.alpha, key.beta);
-    const p2 = g3.pairing(vk_x, key.gamma);
-    const p3 = g3.pairing(proof.pi_c, key.delta);
+    const pr = g3.optimalAte(proof.pi_a, proof.pi_b);
+    const p1 = g3.optimalAte(key.alpha, key.beta);
+    const p2 = g3.optimalAte(vk_x, key.gamma);
+    const p3 = g3.optimalAte(proof.pi_c, key.delta);
     const tpr = p1.add(p2).add(p3);
 
     const f = tpr.eq(pr);
     vm.assertEqOne(f);
-}
-
-async function generate() {
-
-    const key = await Key.fromFile('./tests/groth16/verification_key.json');
-    groth16Verify(key, new Proof([0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n]));
-
-    vm.optimizeRegs();
-    const obj = vm.save();
-    fs.writeFile('./generated/step1.json', JSON.stringify(obj, null, '\t'), 'utf8', err => {
-        console.error(err);
-    });
 }

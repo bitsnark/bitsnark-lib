@@ -3,6 +3,7 @@ import * as snarkjs from 'snarkjs';
 import assert from "assert";
 import groth16Verify, { Key, Proof } from '../src/generator/step1/verifier';
 import { vm } from '../src/generator/step1/vm/vm';
+import { G3 } from '../src/generator/step1/algebra/G3';
 
 const vkey_path = './tests/groth16/verification_key.json';
 
@@ -49,13 +50,22 @@ describe("groth16 verify", function () {
 
     it("groth16 verify SUCCESS", async () => {
         vm.reset();
-        groth16Verify(new Key(vKey), Proof.fromSnarkjs(proof, publicSignals));
+        groth16Verify(Key.fromSnarkjs(vKey), Proof.fromSnarkjs(proof, publicSignals));
         assert(vm.success == true);
     });
 
     it("groth16 verify FAIL", async () => {
         vm.reset();
-        groth16Verify(new Key(vKey), Proof.fromSnarkjs(proof, badPublicSignals));
+        groth16Verify(Key.fromSnarkjs(vKey), Proof.fromSnarkjs(proof, badPublicSignals));
         assert(vm.success == false);
+    });
+
+    it("foo", () => {
+
+        vKey = JSON.parse(fs.readFileSync(vkey_path).toString());
+        const key = Key.fromSnarkjs(vKey);
+        const g3 = new G3();
+        const p = g3.optimalAte(key.alpha, key.beta);
+        console.log(p);
     });
 });
