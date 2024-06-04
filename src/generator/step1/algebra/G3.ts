@@ -25,7 +25,6 @@ export class G3 extends EC<Fp12t> {
 
     fiveZeros: Fp[];
     nine: Fp;
-    // initialW: Fp12;
 
     constructor() {
         const ec_a = Fp12t.zero();
@@ -33,7 +32,6 @@ export class G3 extends EC<Fp12t> {
         super(ec_a, ec_b);
         this.fiveZeros = [0, 0, 0, 0, 0].map(() => Fp.hardcoded(0n));
         this.nine = Fp.hardcoded(9n);
-        // this.initialW = Fp12.hardcoded([0n, 1n]);
     }
 
     makePoint(x: Fp12t, y: Fp12t, z?: Fp12t, t?: Fp12t): G3Point {
@@ -168,7 +166,7 @@ export class G3 extends EC<Fp12t> {
     }
 
     static mulLine(ret: Fp12t, a: Fp2, b: Fp2, c: Fp2): Fp12t {
-        let a2 = new Fp6(Fp2.zero(), new Fp2(a.r, a.i), new Fp2(b.r, b.i)).mul(ret.x);
+        let a2 = new Fp6(Fp2.zero(), a, b).mul(ret.x);
         let t3 = ret.y.mul(c);
         let t = b.add(c);
         let t2 = new Fp6(Fp2.zero(), a, t);

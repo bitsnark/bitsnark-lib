@@ -15,9 +15,9 @@ const xiToPMinus1Over3 = Fp2.hardcoded(
 
 // xiTo2PSquaredMinus2Over3 is ξ^((2p²-2)/3) where ξ = i+9 (a cubic root of unity, mod p).
 const xiTo2PSquaredMinus2Over3 = Fp.hardcoded(2203960485148121921418603742825762020974279258880205651966n);
+
 // xiToPSquaredMinus1Over3 is ξ^((p²-1)/3) where ξ = i+9.
 const xiToPSquaredMinus1Over3 = Fp.hardcoded(21888242871839275220042445260109153167277707414472061641714758635765020556616n);
-
 
 export class Fp6 {
 
@@ -175,7 +175,6 @@ export class Fp6 {
         r.y = this.y.conj();
         r.y = r.y.mul(xiToPMinus1Over3);
         r.z = this.z.conj();
-
         return r;
     }
 

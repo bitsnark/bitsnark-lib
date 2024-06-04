@@ -100,6 +100,6 @@ export class Fp {
     }
 
     toString(): string {
-        return `${this.getRegister().value.toString(16)}`;
+        return `${this.getRegister().value.toString()}`;
     }
 }

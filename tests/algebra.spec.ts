@@ -57,7 +57,11 @@ describe('Algebra', () => {
 		const one = x.one();
 
 		it('x + f = fpx', () => checkFp2(x.add(f), fpx));
-		it('f/f = 1', () => checkFp2(f.div(f), one));
+		it('f/f = 1', () => {
+			const t1 = f.inv();
+			const t2 = f.mul(t1);
+			checkFp2(f.div(f), one);
+		});
 		it('1/f + x/f = (1 + x)/f', () => {
 			const a = one.div(f).add(x.div(f));
 			const b = one.add(x).div(f);
@@ -121,13 +125,13 @@ describe('Algebra', () => {
 		});
 
 		it('add(multiply(G2, 9), multiply(G2, 5)) = add(multiply(G2, 12), multiply(G2, 2))', () => {
-			const a = gen.mul(vm.hardcode(9n)).add(gen.mul(vm.hardcode(5n)));
-			const b = gen.mul(vm.hardcode(12n)).add(gen.mul(vm.hardcode(2n)));
+			const a = gen.mul(_9.register).add(gen.mul(_5.register));
+			const b = gen.mul(_12.register).add(gen.mul(_2.register));
 			expect(a.eq(b).value).eq(1n);
 		});
 
 		it('assert G2*9', () => {
-			const a = gen.mul(vm.hardcode(9n));
+			const a = gen.mul(_9.register);
 			a.assertPoint();
 		});
 	});
