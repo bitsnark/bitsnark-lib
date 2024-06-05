@@ -14,10 +14,6 @@ export class Fp {
         this.register = r ?? vm.hardcode(0n);
     }
 
-    // free() {
-    //     vm.freeRegs(this.register);
-    // }
-
     getRegisters(): Register[] {
         return [this.register];
     }
