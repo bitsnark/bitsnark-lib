@@ -1,3 +1,4 @@
+import { vm } from "../vm/vm";
 import { EC, ECPoint } from "./ec";
 import { Fp } from "./fp";
 import { Fp12t } from "./fp12t";
@@ -6,16 +7,27 @@ import { Fp6 } from "./fp6";
 import { G1, G1Point } from "./G1";
 import { G2, G2Point } from "./G2";
 
-// const ateLoopCount = 29793968203157093288n;
-// const log_ate_loop_count = 63n;
 export const curveOrder = 21888242871839275222246405745257275088548364400416034343698204186575808495617n;
-// const prime_pow_degree_sub_one_div_order = (prime_bigint ** 12n - 1n) / curveOrder;
 const u = 4965661367192848881n;
 const sixuPlus2NAF = [
     0, 0, 0, 1, 0, 1, 0, -1, 0, 0, 1, -1, 0, 0, 1, 0,
     0, 1, 1, 0, -1, 0, 0, 1, 0, -1, 0, 0, 0, 0, 1, 1,
     1, 0, 0, -1, 0, 0, 1, 0, 0, 0, 0, 0, -1, 0, 0, 1,
     1, 0, 0, -1, 0, 0, 0, 1, 1, 0, -1, 0, 0, 1, 0, 1, 1];
+
+// xiToPMinus1Over3 is ξ^((p-1)/3) where ξ = i+9.
+const xiToPMinus1Over3 = Fp2.hardcoded(
+    10307601595873709700152284273816112264069230130616436755625194854815875713954n,
+    21575463638280843010398324269430826099269044274347216827212613867836435027261n);
+
+// xiToPMinus1Over2 is ξ^((p-1)/2) where ξ = i+9.
+const xiToPMinus1Over2 = Fp2.hardcoded(
+    3505843767911556378687030309984248845540243509899259641013678093033130930403n,
+    2821565182194536844548159561693502659359617185244120367078079554186484126554n);
+
+// xiToPSquaredMinus1Over3 is ξ^((p²-1)/3) where ξ = i+9.
+const xiToPSquaredMinus1Over3 = Fp.hardcoded(
+    21888242871839275220042445260109153167277707414472061641714758635765020556616n);
 
 export class G3Point extends ECPoint<Fp12t> {
 }
@@ -101,7 +113,7 @@ export class G3 extends EC<Fp12t> {
         rOut.z = r.z.add(H);
         rOut.z = rOut.z.mul(rOut.z);
         rOut.z = rOut.z.sub(r.t);
-        rOut.z = rOut.z.mul(I);
+        rOut.z = rOut.z.sub(I);
 
         let t = V.sub(rOut.x);
         t = t.mul(L1);
@@ -140,7 +152,10 @@ export class G3 extends EC<Fp12t> {
         const B = r.y.mul(r.y);
         const C = B.mul(B);
         let D = r.x.add(B);
-        D = D.mul(D).sub(A).sub(C).add(D);
+        D = D.mul(D);
+        D = D.sub(A);
+        D = D.sub(C);
+        D = D.add(D);
         const E = A.add(A).add(A);
         const G = E.mul(E);
         rOut.x = G.sub(D).sub(D);
@@ -151,8 +166,10 @@ export class G3 extends EC<Fp12t> {
         t = t.add(t).add(t).add(t);
         rOut.y = rOut.y.sub(t);
         rOut.t = rOut.z.mul(rOut.z);
+
         t = E.mul(r.t);
         t = t.add(t);
+
         b = t.neg().mul(q.x);
         a = r.x.add(E);
         a = a.mul(a).sub(A).sub(G);
@@ -172,7 +189,9 @@ export class G3 extends EC<Fp12t> {
         let t2 = new Fp6(Fp2.zero(), a, t);
         ret.x = ret.x.add(ret.y);
         ret.y = t3;
-        ret.x = ret.x.mul(t2).sub(a2).sub(ret.y);
+        ret.x = ret.x.mul(t2);
+        ret.x = ret.x.sub(a2);
+        ret.x = ret.x.sub(ret.y);
         ret.y = ret.y.add(a2.mulTau());
         return ret;
     }
@@ -207,6 +226,51 @@ export class G3 extends EC<Fp12t> {
             r = rOut;
         }
 
+        // In order to calculate Q1 we have to convert q from the sextic twist
+        // to the full GF(p^12) group, apply the Frobenius there, and convert
+        // back.
+        //
+        // The twist isomorphism is (x', y') -> (xω², yω³). If we consider just
+        // x for a moment, then after applying the Frobenius, we have x̄ω^(2p)
+        // where x̄ is the conjugate of x. If we are going to apply the inverse
+        // isomorphism we need a value with a single coefficient of ω² so we
+        // rewrite this as x̄ω^(2p-2)ω². ξ⁶ = ω and, due to the construction of
+        // p, 2p-2 is a multiple of six. Therefore we can rewrite as
+        // x̄ξ^((p-1)/3)ω² and applying the inverse isomorphism eliminates the
+        // ω².
+        //
+        // A similar argument can be made for the y value.
+
+        let q1 = new G2Point(q.curve);
+        q1.x = aAffine.x.conj();
+        q1.x = q1.x.mul(xiToPMinus1Over3);
+        q1.y = aAffine.y.conj();
+        q1.y = q1.y.mul(xiToPMinus1Over2);
+        q1.z = Fp2.one();
+        q1.t = Fp2.one();
+
+        // For Q2 we are applying the p² Frobenius. The two conjugations cancel
+        // out and we are left only with the factors from the isomorphism. In
+        // the case of x, we end up with a pure number which is why
+        // xiToPSquaredMinus1Over3 is ∈ GF(p). With y we get a factor of -1. We
+        // ignore this to end up with -Q2.
+
+        let minusQ2 = new G2Point(q.curve);
+        minusQ2.x = aAffine.x.mul(xiToPSquaredMinus1Over3);
+        minusQ2.y = aAffine.y;
+        minusQ2.z = Fp2.one();
+        minusQ2.t = Fp2.one();
+
+        r2 = q1.y.mul(q1.y);
+        let { a, b, c, rOut } = G3.lineFunctionAdd(r, q1, bAffine, r2);
+        G3.mulLine(ret, a, b, c);
+        r = rOut;
+
+        r2 = minusQ2.y.mul(minusQ2.y);
+        ({ a, b, c, rOut } = G3.lineFunctionAdd(r, minusQ2, bAffine, r2));
+        G3.mulLine(ret, a, b, c);
+        r = rOut
+
         return ret;
     }
 
@@ -224,7 +288,7 @@ export class G3 extends EC<Fp12t> {
         let inv = _in.inv();
         t1 = t1.mul(inv);
 
-        let t2 = t1.frobenius();
+        let t2 = t1.frobeniusP2();
         t1 = t1.mul(t2);
 
         let fp = t1.frobenius();
@@ -238,7 +302,7 @@ export class G3 extends EC<Fp12t> {
         let y3 = fu.frobenius();
         let fu2p = fu2.frobenius();
         let fu3p = fu3.frobenius();
-        let y2 = fu2.frobenius();
+        let y2 = fu2.frobeniusP2();
 
         let y0 = fp.mul(fp2);
         y0 = y0.mul(fp3);
@@ -257,7 +321,7 @@ export class G3 extends EC<Fp12t> {
         t0 = t0.mul(y5);
         t1 = y3.mul(y5);
         t1 = t1.mul(t0);
-        t0 = t0.mul(t2);
+        t0 = t0.mul(y2);
         t1 = t1.mul(t1);
         t1 = t1.mul(t0);
         t1 = t1.mul(t1);
@@ -271,6 +335,17 @@ export class G3 extends EC<Fp12t> {
 
     optimalAte(b: G1Point, a: G2Point): Fp12t {
         const e = this.miller(a, b);
-        return this.finalExponentiation(e);
+        const ret = this.finalExponentiation(e);
+        return ret;
+    }
+
+    pairingCheck(a: G1Point[], b: G2Point[]) {
+        let acc = new Fp12t(Fp6.zero(), Fp6.one());
+        for (let i = 0; i < a.length; i++) {
+            acc = acc.mul(this.miller(b[i], a[i]));
+        }
+        const ret = this.finalExponentiation(acc);
+        const r = ret.eq(Fp12t.one());
+        vm.assertEqOne(r);
     }
 }

@@ -57,7 +57,7 @@ export class Fp2 {
     mul(a: Fp | Fp2): Fp2 {
         if (a instanceof Fp) {
             return new Fp2(
-                this.x,
+                this.x.mul(a),
                 this.y.mul(a))
         }
         let tx = this.x.mul(a.y);

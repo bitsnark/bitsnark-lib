@@ -59,10 +59,7 @@ export class Fp12t {
     }
 
     mul(a: Fp | Fp6 | Fp12t): Fp12t {
-        if (a instanceof Fp) {
-            return new Fp12t(this.x.mul(a), this.y.mul(a));
-        }
-        if (a instanceof Fp6) {
+        if (a instanceof Fp || a instanceof Fp6) {
             return new Fp12t(this.x.mul(a), this.y.mul(a));
         }
 
@@ -75,7 +72,7 @@ export class Fp12t {
         t = t.mulTau();
         ty = ty.add(t);
 
-        return new Fp12t(ty, tx);
+        return new Fp12t(tx, ty);
     }
 
     // See "Implementing cryptographic pairings", M. Scott, section 3.2.

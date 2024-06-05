@@ -74,11 +74,8 @@ export class Fp6 {
     // http://eprint.iacr.org/2006/471.pdf
     mul(a: Fp | Fp2 | Fp6): Fp6 {
 
-        if (a instanceof Fp) {
-            return new Fp6(this.x.mul(a), this.y.mul(a));
-        }
-        if (a instanceof Fp2) {
-            return new Fp6(this.x.mul(a), this.y.mul(a));
+        if (a instanceof Fp || a instanceof Fp2) {
+            return new Fp6(this.x.mul(a), this.y.mul(a), this.z.mul(a));
         }
 
         let v0 = this.z.mul(a.z);
@@ -90,7 +87,7 @@ export class Fp6 {
         let tz = t0.mul(t1);
 
         tz = tz.sub(v1).sub(v2);
-        tz.mulXi().add(v0);
+        tz = tz.mulXi().add(v0);
 
         t0 = this.y.add(this.z);
         t1 = a.y.add(a.z);
