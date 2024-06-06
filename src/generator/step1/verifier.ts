@@ -39,7 +39,7 @@ export class Proof {
     static fromSnarkjs(snarkjsProof: any, publicSignals: string[]) {
         let t = [
             snarkjsProof.pi_a[0], snarkjsProof.pi_a[1],
-            snarkjsProof.pi_b[0][0], snarkjsProof.pi_b[0][1], snarkjsProof.pi_b[1][0], snarkjsProof.pi_b[1][1],
+            snarkjsProof.pi_b[0][1], snarkjsProof.pi_b[0][0], snarkjsProof.pi_b[1][1], snarkjsProof.pi_b[1][0],
             snarkjsProof.pi_c[0], snarkjsProof.pi_c[1],
         ];
         t = t.map(s => BigInt(s));
@@ -75,7 +75,7 @@ export class Key {
             return Fp.hardcoded(BigInt(s));
         }
         function toFp2(sa: string[]): Fp2 {
-            return Fp2.hardcoded(BigInt(sa[0]), BigInt(sa[1]));
+            return Fp2.hardcoded(BigInt(sa[1]), BigInt(sa[0]));
         }
 
         const alpha = g1.makePoint(toFp(obj.vk_alpha_1[0]), toFp(obj.vk_alpha_1[1]));
@@ -98,7 +98,6 @@ export class Key {
 }
 
 export default async function groth16Verify(key: Key, proof: Proof) {
-
     let vk_x = g1.makePoint(key.ic[0].x, key.ic[0].y)
 
     for (let i = 0; i < proof.publicSignals.length; i++) {
@@ -109,12 +108,7 @@ export default async function groth16Verify(key: Key, proof: Proof) {
     vk_x.assertPoint();
     proof.validate();
 
-    const pr = g3.optimalAte(proof.pi_a, proof.pi_b);
-    const p1 = g3.optimalAte(key.alpha, key.beta);
-    const p2 = g3.optimalAte(vk_x, key.gamma);
-    const p3 = g3.optimalAte(proof.pi_c, key.delta);
-    const tpr = p1.add(p2).add(p3);
-
-    const f = tpr.eq(pr);
-    vm.assertEqOne(f);
+    let vg1: G1Point[] = [proof.pi_a, key.alpha.neg(), vk_x.neg(), proof.pi_c.neg()]
+    let vg2: G2Point[] = [proof.pi_b, key.beta, key.gamma, key.delta]
+    return g3.pairingCheck(vg1, vg2)
 }
