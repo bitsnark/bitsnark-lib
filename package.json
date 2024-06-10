@@ -15,20 +15,10 @@
     "dist/"
   ],
   "scripts": {
-    "run": "npx ts-node ./src/index.ts",
-    "build": "npm run clean && npx tsc",
-    "changelog": "conventional-changelog -p angular -u",
-    "changelog:update": "conventional-changelog -p angular -i CHANGELOG.md -s && git add CHANGELOG.md",
-    "clean": "node -e \"var { rmdirSync, existsSync } = require('fs'), path = require('path'); ['./.nyc_output', './coverage', './dist'].forEach(fPath => {if (existsSync(path.join(__dirname, fPath))) rmdirSync(path.join(__dirname, fPath), { recursive: true })}); process.exit(0);\"",
-    "clean:all": "npm run clean && (rm -r ./node_modules || true)",
-    "cover": "nyc npm run test",
-    "cover:check": "nyc --check-coverage --reporter=lcov npm run test",
-    "lint": "eslint --ext .ts --fix src/**/*.ts test/**/*.ts",
-    "preversion": "npm run build && npm run cover:check",
-    "postversion": "git push && git push --tags",
-    "prepare": "npm run build",
-    "serve": "nodemon ./src/index.ts",
     "test": "npm run build && jest",
+    "generate": "ts-node ./src/generator/step1/generate.ts",
+
+    "lint": "eslint --ext .ts --fix src/**/*.ts test/**/*.ts",
     "upgrade": "npx npm-check -u",
     "version": "npm run build && npm run changelog:update"
   },
