@@ -1,11 +1,10 @@
 import { expect } from 'chai';
 import { Fp } from '../src/generator/step1/algebra/fp';
 import { Fp2 } from '../src/generator/step1/algebra/fp2';
-import { vm } from '../src/generator/step1/vm/vm';
+import { VM, vm } from '../src/generator/step1/vm/vm';
 import { G1, G1Point } from '../src/generator/step1/algebra/G1';
 import { G2, G2Point } from '../src/generator/step1/algebra/G2';
 import { G3, G3Point } from '../src/generator/step1/algebra/G3';
-import { prime_bigint } from '../src/generator/step1/vm/prime';
 
 const _0 = Fp.hardcoded(0n);
 const _1 = Fp.hardcoded(1n);
@@ -24,7 +23,7 @@ describe('Algebra', () => {
 	let g3: G3;
 
 	beforeEach(() => {
-		vm.reset();
+		VM.reset();
 		g1 = new G1();
 		g2 = new G2();
 		g3 = new G3();
@@ -96,7 +95,7 @@ describe('Algebra', () => {
 
 		it('add(multiply(G1, 9), multiply(G1, 5)) = add(multiply(G1, 12), multiply(G1, 2))', () => {
 			const a = gen.mul(_9.register).add(gen.mul(_5.register));
-			const b = gen.mul(vm.hardcode(12n)).add(gen.mul(vm.hardcode(2n)));
+			const b = gen.mul(_12.register).add(gen.mul(_2.register));
 			expect(a.eq(b).value).eq(1n);
 		});
 

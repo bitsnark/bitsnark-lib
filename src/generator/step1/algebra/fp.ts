@@ -1,6 +1,6 @@
-import { vm } from "../vm/vm";
 import { prime_bigint } from "../vm/prime";
 import { Register } from "../../common/register";
+import { vm } from "../vm/vm";
 
 
 export class Fp {
@@ -47,10 +47,12 @@ export class Fp {
     }
 
     ifBit(r: Register, bit: number, other: Fp): Fp {
-        const nr = vm.newRegister();
-        vm.andBit(nr, r, bit, this.register);
-        vm.andNotBit(nr, r, bit, other.register);
-        return new Fp(nr);
+        const nr1 = vm.newRegister();
+        const nr2 = vm.newRegister();
+        vm.andBit(nr1, r, bit, this.register);
+        vm.andNotBit(nr2, r, bit, other.register);
+        vm.addMod(nr1, nr1, nr2);
+        return new Fp(nr1);
     }
 
     eq(a: Fp): Register {

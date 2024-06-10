@@ -1,24 +1,23 @@
 export enum InstrCode {
-    ADDMOD,
-    ANDBIT,
-    ANDNOTBIT,
-    MOV,
-    EQUAL,
-    MULMOD,
-    OR,
-    AND,
-    NOT,
-    SUB,
-    SUBMOD,
-    DIVMOD,
-    ASSERTONE,
-    ASSERTZERO
+    ADDMOD = 'ADDMOD',
+    ANDBIT = 'ANDBIT',
+    ANDNOTBIT = 'ANDNOTBIT',
+    MOV = 'MOV',
+    EQUAL = 'EQUAL',
+    MULMOD = 'MULMOD',
+    OR = 'OR',
+    AND = 'AND',
+    NOT = 'NOT',
+    SUBMOD = 'SUBMOD',
+    DIVMOD = 'DIVMOD',
+    ASSERTONE = 'ASSERTONE',
+    ASSERTZERO = 'ASSERTZERO'
 }
 
 export interface Instruction {
     name: InstrCode;
     target: number;
-    param1?: number;
+    param1: number;
     param2?: number;
     data?: bigint;
 }

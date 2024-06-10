@@ -1,6 +1,6 @@
 import { Fp } from "./fp";
-import { vm } from "../vm/vm";
 import { Register } from "../../common/register";
+import { vm } from "../vm/vm";
 
 const _2__3 = Fp.hardcoded(2n ** 3n);
 
