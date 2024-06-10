@@ -2,8 +2,11 @@ import fs from 'fs';
 import * as snarkjs from 'snarkjs';
 import assert from "assert";
 import groth16Verify, { Key, Proof } from '../src/generator/step1/verifier';
-import { vm } from '../src/generator/step1/vm/vm';
-import { G3 } from '../src/generator/step1/algebra/G3';
+import { vm, VM } from '../src/generator/step1/vm/vm';
+import { SavedVm } from '../src/generator/common/saved-vm';
+import { InstrCode } from '../src/generator/step1/vm/types';
+import { Runner } from '../src/generator/step1/vm/runner';
+import { regOptimizer } from '../src/generator/step1/vm/reg-optimizer';
 
 const vkey_path = './tests/groth16/verification_key.json';
 
@@ -38,25 +41,63 @@ describe("groth16 verify", function () {
         badPublicSignals[1]++;
     });
 
-    it("sanity: snarkjs groth16 verify SUCCESS", async () => {
-        const res = await snarkjs.groth16.verify(vKey, publicSignals, proof);
-        assert(res == true);
+    describe('snarkjs', () => {
+        it("sanity: snarkjs groth16 verify SUCCESS", async () => {
+            const res = await snarkjs.groth16.verify(vKey, publicSignals, proof);
+            assert(res == true);
+        });
+    
+        it("sanity: snarkjs groth16 verify FAIL", async () => {
+            const res = await snarkjs.groth16.verify(vKey, badPublicSignals, proof);
+            assert(res == false);
+        });    
     });
 
-    it("sanity: snarkjs groth16 verify FAIL", async () => {
-        const res = await snarkjs.groth16.verify(vKey, badPublicSignals, proof);
-        assert(res == false);
+    describe('bitsnrak verifier', () => {
+
+        beforeEach(() => {
+            VM.reset();
+        });
+
+        it("groth16 verify SUCCESS", async () => {
+            groth16Verify(Key.fromSnarkjs(vKey), Proof.fromSnarkjs(proof, publicSignals));
+            assert(vm.success == true);
+        });
+    
+        it("groth16 verify FAIL", async () => {
+            groth16Verify(Key.fromSnarkjs(vKey), Proof.fromSnarkjs(proof, badPublicSignals));
+            assert(vm.success == false);
+        }); 
     });
 
-    it("groth16 verify SUCCESS", async () => {
-        vm.reset();
-        groth16Verify(Key.fromSnarkjs(vKey), Proof.fromSnarkjs(proof, publicSignals));
-        assert(vm.success == true);
-    });
+    describe('runner', () => {
 
-    it("groth16 verify FAIL", async () => {
-        vm.reset();
-        groth16Verify(Key.fromSnarkjs(vKey), Proof.fromSnarkjs(proof, badPublicSignals));
-        assert(vm.success == false);
+        let _vm: VM;
+        let program: SavedVm<InstrCode>;
+        let failProgram: SavedVm<InstrCode>;
+
+        beforeAll(() => {
+            VM.reset();
+            _vm = vm;
+
+            groth16Verify(Key.fromSnarkjs(vKey), Proof.fromSnarkjs(proof, publicSignals));
+            assert(vm.success == true);
+            vm.optimizeRegs();
+            program = vm.save();
+            failProgram = vm.save();
+            failProgram.witness[0] = (BigInt('0x' + failProgram.witness[0]) + 1n).toString(16);
+        });
+
+        it("runner SUCCESS", async () => {
+            const runner = Runner.load(program);
+            runner.execute();
+            assert(runner.success == true);
+        });
+    
+        it("runner FAIL", async () => {
+            const runner = Runner.load(failProgram);
+            runner.execute();
+            assert(runner.success == false);
+        }); 
     });
 });
