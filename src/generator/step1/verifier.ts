@@ -1,22 +1,13 @@
-import fs from 'fs';
-
 import { Fp } from "./algebra/fp";
 import { Fp2 } from "./algebra/fp2";
 import { G1, G1Point } from "./algebra/G1";
 import { G2, G2Point } from "./algebra/G2";
 import { G3 } from "./algebra/G3";
 import { vm } from "./vm/vm";
-import { prime_bigint } from './vm/prime';
 
 const g1 = new G1();
 const g2 = new G2();
 const g3 = new G3();
-
-const mont_r2 = 6350874878119819312338956282401532409788428879151445726012394534686998597021n;
-
-function toMongomery(n: bigint): bigint {
-    return (n * mont_r2) % prime_bigint;
-}
 
 export class Proof {
     pi_a: G1Point;
@@ -26,7 +17,7 @@ export class Proof {
 
     constructor(_witness: bigint[]) {
         let i = 0;
-        const witness = _witness.map(n => vm.hardcode(n));
+        const witness = _witness.map(n => vm.addWitness(n));
         this.pi_a = g1.makePoint(new Fp(witness[i++]), new Fp(witness[i++]));
         this.pi_b = g2.makePoint(new Fp2(new Fp(witness[i++]), new Fp(witness[i++])), new Fp2(new Fp(witness[i++]), new Fp(witness[i++])));
         this.pi_c = g1.makePoint(new Fp(witness[i++]), new Fp(witness[i++]));
