@@ -1,10 +1,10 @@
 import { expect } from 'chai';
-import { Fp } from '../src/generator/step1/algebra/fp';
-import { Fp2 } from '../src/generator/step1/algebra/fp2';
-import { VM, vm } from '../src/generator/step1/vm/vm';
-import { G1, G1Point } from '../src/generator/step1/algebra/G1';
-import { G2, G2Point } from '../src/generator/step1/algebra/G2';
-import { G3, G3Point } from '../src/generator/step1/algebra/G3';
+import { Fp } from '../../src/generator/step1/algebra/fp';
+import { Fp2 } from '../../src/generator/step1/algebra/fp2';
+import { VM, vm } from '../../src/generator/step1/vm/vm';
+import { G1, G1Point } from '../../src/generator/step1/algebra/G1';
+import { G2, G2Point } from '../../src/generator/step1/algebra/G2';
+import { G3, G3Point } from '../../src/generator/step1/algebra/G3';
 
 const _0 = Fp.hardcoded(0n);
 const _1 = Fp.hardcoded(1n);

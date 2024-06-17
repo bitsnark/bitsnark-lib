@@ -1,14 +1,13 @@
 import fs from 'fs';
 import * as snarkjs from 'snarkjs';
 import assert from "assert";
-import groth16Verify, { Key, Proof } from '../src/generator/step1/verifier';
-import { vm, VM } from '../src/generator/step1/vm/vm';
-import { SavedVm } from '../src/generator/common/saved-vm';
-import { InstrCode } from '../src/generator/step1/vm/types';
-import { Runner } from '../src/generator/step1/vm/runner';
-import { regOptimizer } from '../src/generator/step1/vm/reg-optimizer';
+import groth16Verify, { Key, Proof } from '../../src/generator/step1/verifier';
+import { vm, VM } from '../../src/generator/step1/vm/vm';
+import { SavedVm } from '../../src/generator/common/saved-vm';
+import { InstrCode } from '../../src/generator/step1/vm/types';
+import { Runner } from '../../src/generator/step1/vm/runner';
 
-const vkey_path = './tests/groth16/verification_key.json';
+const vkey_path = './tests/step1/groth16/verification_key.json';
 
 describe("groth16 verify", function () {
 
