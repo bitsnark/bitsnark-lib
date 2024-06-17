@@ -1,7 +1,7 @@
 import { modInverse } from "../../common/math-utils";
+import { prime_bigint } from "../../common/prime";
 import { Register } from "../../common/register";
 import { SavedVm } from "../../common/saved-vm";
-import { prime_bigint } from "./prime";
 import { Instruction, InstrCode } from "./types";
 
 export class Runner {

@@ -1,4 +1,4 @@
-import { prime_bigint } from "../vm/prime";
+import { prime_bigint } from "../../common/prime";
 import { Register } from "../../common/register";
 import { vm } from "../vm/vm";
 

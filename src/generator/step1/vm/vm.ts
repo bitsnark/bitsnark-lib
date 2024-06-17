@@ -1,7 +1,7 @@
 import { modInverse } from "../../common/math-utils";
+import { prime_bigint } from "../../common/prime";
 import { Register } from "../../common/register";
 import { SavedVm } from "../../common/saved-vm";
-import { prime_bigint } from "./prime";
 import { regOptimizer } from "./reg-optimizer";
 import { Instruction, InstrCode } from "./types";
 
@@ -159,7 +159,7 @@ export class VM {
     }
 
     not(target: Register, a: Register) {
-        this.pushInstruction(InstrCode.AND, target, a);
+        this.pushInstruction(InstrCode.NOT, target, a);
         this.setRegister(target, !a.value ? 1n : 0n);
     }
 
@@ -184,6 +184,8 @@ export class VM {
         this.pushInstruction(InstrCode.ASSERTONE, r, r);
         if (r.value != 1n) this.fail('assert one');
     }
+
+    /******* complex functions  *******/
 
     ignoreFailure(a: () => void) {
         let f = this.success;
