@@ -43,6 +43,18 @@ export class VM {
         vm = tvm;
     }
 
+    _256ToN(ra: _256): bigint {
+        const pad = (s: string) => {
+            while(s.length < 8) s = '0' + s;
+            return s;
+        }
+        let s = '';
+        for (let i = 0; i < 8; i++) {
+            s = pad(ra[i].value.toString(16)) + s;
+        }
+        return BigInt('0x' + s);
+    }
+    
     /// *** BASIC OPERATIONS ***
 
     private pushInstruction(name: InstrCode, target: Register, param1?: Register, param2?: Register, data?: number) {
@@ -139,7 +151,13 @@ export class VM {
 
     greaterThan(target: Register, a: Register, b: Register) {
         this.pushInstruction(InstrCode.GT, target, a, b);
-        let v = a.value > b.value ? 1n : 0n;
+        let v = a.value >= b.value ? 1n : 0n;
+        this.setRegister(target, v);
+    }
+
+    lesserThan(target: Register, a: Register, b: Register) {
+        this.pushInstruction(InstrCode.LT, target, a, b);
+        let v = a.value < b.value ? 1n : 0n;
         this.setRegister(target, v);
     }
 
@@ -205,11 +223,24 @@ export class VM {
     //**** complex instructions ******/
 
     andBitOr(target: Register, a: Register, bit: number, b: Register, c: Register) {
-        const temp = this.newRegister();
-        this.andBit(target, a, bit, b);
-        this.andNotBit(temp, a, bit, c);
-        this.add(target, target, temp);
-        this.freeRegister(temp);
+        const temp1 = this.newRegister();
+        const temp2 = this.newRegister();
+        this.andBit(temp1, a, bit, b);
+        this.andNotBit(temp2, a, bit, c);
+        this.add(target, temp1, temp2);
+        this.freeRegister(temp1);
+        this.freeRegister(temp2);
+    }
+
+    isGt256(target: Register, a: _256, b: _256) {
+        const gt = this.newRegister();
+        const lt = this.newRegister();
+        this.mov(target, this.zero);
+        for (let i = 7; i >= 0; i--) {
+            this.greaterThan(gt, a[i], b[i]);
+            this.or(target, target, gt);
+            this.lesserThan(lt, a[i], b[i]);
+        }
     }
 
     // WARNING: if a or b are greater than the prime the result could be wrong
@@ -220,7 +251,6 @@ export class VM {
         const temp = this.newRegister();
         const temp2 = this.newRegister();
         const temp256 = this.newTemp256();
-        const isGt = this.newRegister(true);
 
         this.add(temp256[0], a[0], b[0]);
         this.addOF(overflow, a[0], b[0]);
@@ -234,29 +264,32 @@ export class VM {
         this.add(temp, a[7], overflow);
         this.add(temp256[7], temp, b[7]);
 
-        for (let i = 7; i >= 0; i--) {
-            this.greaterThan(temp, this.prime[i], temp256[i]);
-            this.or(isGt, isGt, temp);
-        }
+        const tp = this._256ToN(this.prime);
+        const tpp = this._256ToN(temp256);
 
-        this.sub(temp, temp256[0], this.prime[0]);
+        this.sub(target[0], temp256[0], this.prime[0]);
         this.subOF(overflow, temp256[0], this.prime[0]);
-        this.andBitOr(target[0], isGt, 0, temp256[0], temp);
-        for (let i = 1; i < 7; i++) {
+        for (let i = 1; i < 8; i++) {
             this.sub(temp, temp256[i], overflow);
             this.subOF(overflow, temp256[i], overflow);
-            this.sub(temp2, temp, this.prime[i]);
+            this.sub(target[i], temp, this.prime[i]);
             this.subOF(carry2, temp, this.prime[i]);
             this.add(overflow, overflow, carry2);
-            this.andBitOr(target[i], isGt, 0, temp256[i], temp2);
         }
+
+        const tppp = this._256ToN(target);
+
+        for (let i = 0; i < 8; i++) {
+            this.andBitOr(target[i], overflow, 0, temp256[i], target[i]);
+        }
+
+        const tpppp = this._256ToN(target);
 
         this.freeRegister(overflow);
         this.freeRegister(carry2);
         this.freeRegister(temp);
         this.freeRegister(temp2);
         this.freeTemp256(temp256);
-        this.freeRegister(isGt);
     }
 
     mov256(target: _256, a: _256) {
@@ -326,7 +359,7 @@ export class VM {
 
         this.mov256(agg, a);
         for (let i = 0; i < 256; i++) {
-            this.andBit256(temp, b[i], i % 32, agg);
+            this.andBit256(temp, b[Math.floor(i / 32)], i % 32, agg);
             this.add256Mod(result, result, temp);
             if (i != 255) {
                 this.add256Mod(agg, agg, agg);

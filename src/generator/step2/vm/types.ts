@@ -8,6 +8,7 @@ export enum InstrCode {
 
     MOV = 'MOV',
     GT = 'GT',
+    LT = 'LT',
     EQUAL = 'EQUAL',
 
     ANDBIT = 'ANDBIT',
