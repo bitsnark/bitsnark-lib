@@ -149,18 +149,6 @@ export class VM {
         this.setRegister(target, v);
     }
 
-    greaterThan(target: Register, a: Register, b: Register) {
-        this.pushInstruction(InstrCode.GT, target, a, b);
-        let v = a.value >= b.value ? 1n : 0n;
-        this.setRegister(target, v);
-    }
-
-    lesserThan(target: Register, a: Register, b: Register) {
-        this.pushInstruction(InstrCode.LT, target, a, b);
-        let v = a.value < b.value ? 1n : 0n;
-        this.setRegister(target, v);
-    }
-
     sub(target: Register, a: Register, b: Register) {
         this.pushInstruction(InstrCode.SUB, target, a, b);
         let v = a.value >= b.value ? a.value - b.value : a.value + 0x0100000000n - b.value;
@@ -232,17 +220,6 @@ export class VM {
         this.freeRegister(temp2);
     }
 
-    isGt256(target: Register, a: _256, b: _256) {
-        const gt = this.newRegister();
-        const lt = this.newRegister();
-        this.mov(target, this.zero);
-        for (let i = 7; i >= 0; i--) {
-            this.greaterThan(gt, a[i], b[i]);
-            this.or(target, target, gt);
-            this.lesserThan(lt, a[i], b[i]);
-        }
-    }
-
     // WARNING: if a or b are greater than the prime the result could be wrong
 
     add256Mod(target: _256, a: _256, b: _256) {
@@ -264,9 +241,6 @@ export class VM {
         this.add(temp, a[7], overflow);
         this.add(temp256[7], temp, b[7]);
 
-        const tp = this._256ToN(this.prime);
-        const tpp = this._256ToN(temp256);
-
         this.sub(target[0], temp256[0], this.prime[0]);
         this.subOF(overflow, temp256[0], this.prime[0]);
         for (let i = 1; i < 8; i++) {
@@ -277,13 +251,9 @@ export class VM {
             this.add(overflow, overflow, carry2);
         }
 
-        const tppp = this._256ToN(target);
-
         for (let i = 0; i < 8; i++) {
             this.andBitOr(target[i], overflow, 0, temp256[i], target[i]);
         }
-
-        const tpppp = this._256ToN(target);
 
         this.freeRegister(overflow);
         this.freeRegister(carry2);
