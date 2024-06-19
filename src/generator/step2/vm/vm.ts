@@ -380,7 +380,6 @@ export class VM {
     }
 
     step1_mov(a: _256, b: _256) {
-        const temp = this.newRegister()
         this.assertEqual256(a, b);
     }
 
