@@ -80,10 +80,6 @@ export class Runner {
                 if (!param2) throw new Error(`Invalid param2 line: ${this.current}`);
                 target.value = (param1.value + param2.value) >> 32n;
                 break;
-            case InstrCode.GT:
-                if (!param2) throw new Error(`Invalid param2 line: ${this.current}`);
-                target.value = param1.value > param2.value ? 1n : 0n;
-                break;
             case InstrCode.SUB:
                 if (!param2) throw new Error(`Invalid param2 line: ${this.current}`);
                 target.value = param1.value >= param2.value ? param1.value - param2.value : param1.value + 0x0100000000n - param2.value;

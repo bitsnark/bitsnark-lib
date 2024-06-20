@@ -56,6 +56,8 @@ export class Bitcoin {
         return this.stack.length() - index - 1;
     }
 
+    
+
     /// NATIVE OPERATIONS ///
 
     DATA(data: number) {
@@ -320,7 +322,7 @@ export class Bitcoin {
                 this.roll(si);
                 this.OP_DROP();
             }
-    }
+        }
     }
 
     replaceWithTop(si: StackItem) {
@@ -339,20 +341,7 @@ export class Bitcoin {
         this.replaceWithTop(target);
     }
 
-    xorxor(target: StackItem, a: StackItem, b: StackItem, c: StackItem) {
-        this.pick(a);
-        this.pick(b);
-        this.pick(c);
-        this.OP_ADD();
-        this.OP_0_16(1);
-        this.OP_NUMEQUAL();
-        this.OP_ADD();
-        this.OP_0_16(1);
-        this.OP_NUMEQUAL();
-        this.replaceWithTop(target);
-    }
     and(target: StackItem, a: StackItem, b: StackItem) {
-
         this.pick(a);
         this.pick(b);
         this.OP_BOOLAND();
@@ -405,26 +394,28 @@ export class Bitcoin {
         this.OP_NUMEQUALVERIFY()
     }
 
-    private addBit(target: StackItem, carry: StackItem, a: StackItem, b: StackItem) {
-        const fns = {
-            fff: () => { this.setBit_0(target); },
-            fft: () => { this.setBit_1(target); },
-            ftf: () => { this.setBit_1(target); },
-            ftt: () => { this.setBit_1(carry); this.setBit_0(target); },
-            tff: () => { this.setBit_0(carry); this.setBit_1(target); },
-            tft: () => { this.setBit_0(target); },
-            ttf: () => { this.setBit_0(target); },
-            ttt: () => { this.setBit_1(target); }
-        };
-        this.ifTrue(a, () =>
-            this.ifTrue(b,
-                () => this.ifTrue(carry, fns.ttt, fns.ftt),
-                () => this.ifTrue(carry, fns.tft, fns.ftf)),
-            () =>
-                this.ifTrue(b,
-                    () => this.ifTrue(carry, fns.tft, fns.fft),
-                    () => this.ifTrue(carry, fns.tft, fns.fff)));
-    }
+
+
+    // private addBit(target: StackItem, carry: StackItem, a: StackItem, b: StackItem) {
+    //     const fns = {
+    //         fff: () => { this.setBit_0(target); },
+    //         fft: () => { this.setBit_1(target); },
+    //         ftf: () => { this.setBit_1(target); },
+    //         ftt: () => { this.setBit_1(carry); this.setBit_0(target); },
+    //         tff: () => { this.setBit_0(carry); this.setBit_1(target); },
+    //         tft: () => { this.setBit_0(target); },
+    //         ttf: () => { this.setBit_0(target); },
+    //         ttt: () => { this.setBit_1(target); }
+    //     };
+    //     this.ifTrue(a, () =>
+    //         this.ifTrue(b,
+    //             () => this.ifTrue(carry, fns.ttt, fns.ftt),
+    //             () => this.ifTrue(carry, fns.tft, fns.ftf)),
+    //         () =>
+    //             this.ifTrue(b,
+    //                 () => this.ifTrue(carry, fns.tft, fns.fft),
+    //                 () => this.ifTrue(carry, fns.tft, fns.fff)));
+    // }
 
     // private subBit(target: StackItem, borrow: StackItem, a: StackItem, b: StackItem) {
     //     const fns = {
