@@ -1,5 +1,3 @@
-import { modInverse } from "../../common/math-utils";
-import { prime_bigint } from "../../common/prime";
 import { Register } from "../../common/register";
 import { SavedVm } from "../../common/saved-vm";
 import { Instruction, InstrCode } from "./types";
@@ -49,8 +47,8 @@ export class Runner {
             target: inst.target,
             param1: inst.param1!,
             param2: inst.param2,
-            data: BigInt('0x' + (inst.data ?? '0')),
-            toString: function() { return `${this.name} ${this.target} ${this.param1} ${this.param2} ${this.data}`; }
+            data: Number(inst.data ?? '0'),
+            toString: function () { return `${this.name} ${this.target} ${this.param1} ${this.param2} ${this.data}`; }
         }));
         runner.hardcoded.forEach(n => runner.hardcode(n));
         runner.witness.forEach(n => runner.addWitness(n));
@@ -70,33 +68,40 @@ export class Runner {
             this.registers[instr.target] = target;
         }
         const param1 = this.registers[instr.param1!];
-        if (!param1) 
+        if (!param1)
             throw new Error(`Invalid param1 line: ${this.current}, instr: ${instr}`);
         const param2 = this.registers[instr.param2!];
         switch (instr.name) {
-            case InstrCode.ADDMOD:
+            case InstrCode.ADD:
                 if (!param2) throw new Error(`Invalid param2 line: ${this.current}`);
-                target.value = (param1.value + param2.value) % prime_bigint;
+                target.value = (param1.value + param2.value) & 0xffffffffn;
                 break;
-            case InstrCode.ANDBIT:
+            case InstrCode.ADDOF:
                 if (!param2) throw new Error(`Invalid param2 line: ${this.current}`);
-                target.value = !!(param1.value & (2n ** BigInt(instr.data ?? 0))) ? param2.value : 0n;
+                target.value = (param1.value + param2.value) >> 32n;
                 break;
-            case InstrCode.ANDNOTBIT:
+            case InstrCode.SUB:
                 if (!param2) throw new Error(`Invalid param2 line: ${this.current}`);
-                target.value = !(param1.value & (2n ** BigInt(instr.data ?? 0))) ? param2.value : 0n;
+                target.value = param1.value >= param2.value ? param1.value - param2.value : param1.value + 0x0100000000n - param2.value;
+                break;
+            case InstrCode.SUBOF:
+                if (!param2) throw new Error(`Invalid param2 line: ${this.current}`);
+                target.value = param1.value >= param2.value ? 0n : 1n;
                 break;
             case InstrCode.MOV:
                 target.value = param1.value;
                 break;
+            case InstrCode.ANDBIT:
+                if (!param2) throw new Error(`Invalid param2 line: ${this.current}`);
+                target.value = !!(param1.value & (2n ** BigInt(instr.data!))) ? param2.value : 0n;
+                break;
+            case InstrCode.ANDNOTBIT:
+                if (!param2) throw new Error(`Invalid param2 line: ${this.current}`);
+                target.value = !(param1.value & (2n ** BigInt(instr.data!))) ? param2.value : 0n;
+                break;
             case InstrCode.EQUAL:
                 if (!param2) throw new Error(`Invalid param2 line: ${this.current}`);
                 target.value = param1.value === param2.value ? 1n : 0n;
-                break;
-            case InstrCode.MULMOD:
-                if (!param2) 
-                    throw new Error(`Invalid param2 line: ${this.current}`);
-                target.value = (param1.value * param2.value) % prime_bigint;
                 break;
             case InstrCode.OR:
                 if (!param2) throw new Error(`Invalid param2 line: ${this.current}`);
@@ -106,26 +111,16 @@ export class Runner {
                 if (!param2) throw new Error(`Invalid param2 line: ${this.current}`);
                 target.value = !!param1.value && !!param2.value ? 1n : 0n;
                 break;
+            case InstrCode.XOR:
+                if (!param2) throw new Error(`Invalid param2 line: ${this.current}`);
+                target.value = param1.value ^ param2.value ? 1n : 0n;
+                break;
             case InstrCode.NOT:
                 target.value = !param1.value ? 1n : 0n;
                 break;
-            case InstrCode.SUBMOD:
+            case InstrCode.ASSERTEQ:
                 if (!param2) throw new Error(`Invalid param2 line: ${this.current}`);
-                target.value = (prime_bigint + param1.value - param2.value) % prime_bigint;
-                break;
-            case InstrCode.DIVMOD:
-                if (!param2) throw new Error(`Invalid param2 line: ${this.current}`);
-                target.value = (param1.value * modInverse(param2.value, prime_bigint)) % prime_bigint;
-                break;
-            case InstrCode.ASSERTONE:
-                if (param1.value != 1n) {
-                    this.success = false;
-                }
-                break;
-            case InstrCode.ASSERTZERO:
-                if (param1.value != 0n) {
-                    this.success = false;
-                }
+                if (param1.value != param2.value) this.success = false;
                 break;
         }
         this.current++;
