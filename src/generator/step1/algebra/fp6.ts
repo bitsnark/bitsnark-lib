@@ -1,4 +1,4 @@
-import { vm } from "../vm/vm";
+import { step1_vm as vm } from "../vm/vm";
 import { Register } from "../../common/register";
 import { Fp2 } from "./fp2";
 import { Fp } from "./fp";

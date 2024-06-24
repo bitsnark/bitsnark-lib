@@ -1,5 +1,5 @@
 import { beforeEach } from "node:test";
-import { vm, VM } from "../../src/generator/step2/vm/vm";
+import { step2_vm as vm } from "../../src/generator/step2/vm/vm";
 import { Register } from "../../src/generator/common/register";
 import { prime_bigint } from "../../src/generator/common/prime";
 
@@ -27,26 +27,22 @@ describe("step 1 instructions in step 2 VM", function () {
     const two_trillion = nTo_256(2000000000000n);
     const prime_minus_two = nTo_256(prime_bigint - 2n);        
 
-    beforeEach(async () => {
-        VM.reset();
-    });
-
     describe('step1_addMod', () => {
 
         it("positive", async () => {
-            VM.reset();
+            vm.reset();
             vm.step1_addMod(million, million, two_million);
             expect(vm.success).toBe(true);
-            VM.reset();
+            vm.reset();
             vm.step1_addMod(million, two_million, three_million);
             expect(vm.success).toBe(true);
-            VM.reset();
+            vm.reset();
             vm.step1_addMod(prime_minus_one, prime_minus_one, prime_minus_two);
             expect(vm.success).toBe(true);
         });
 
         it("negative", async () => {
-            VM.reset();
+            vm.reset();
             vm.step1_addMod(million, million, million);
             expect(vm.success).toBe(false);
         });
@@ -55,19 +51,19 @@ describe("step 1 instructions in step 2 VM", function () {
     describe('step1_mulMod', () => {
 
         it("positive", async () => {
-            VM.reset();
+            vm.reset();
             vm.step1_mulMod(million, million, trillion);
             expect(vm.success).toBe(true);
-            VM.reset();
+            vm.reset();
             vm.step1_mulMod(million, two_million, two_trillion);
             expect(vm.success).toBe(true);
-            VM.reset();
+            vm.reset();
             vm.step1_mulMod(prime_minus_one, prime_minus_two, two);
             expect(vm.success).toBe(true);
         });
 
         it("negative", async () => {
-            VM.reset();
+            vm.reset();
             vm.step1_mulMod(million, million, million);
             expect(vm.success).toBe(false);
         });
