@@ -3,7 +3,7 @@ import { Fp2 } from "./algebra/fp2";
 import { G1, G1Point } from "./algebra/G1";
 import { G2, G2Point } from "./algebra/G2";
 import { G3 } from "./algebra/G3";
-import { vm } from "./vm/vm";
+import { step1_vm as vm } from "./vm/vm";
 
 const g1 = new G1();
 const g2 = new G2();
@@ -15,26 +15,36 @@ export class Proof {
     pi_c: G1Point;
     publicSignals: Fp[] = [];
 
-    constructor(_witness: bigint[]) {
-        let i = 0;
-        const witness = _witness.map(n => vm.addWitness(n));
-        this.pi_a = g1.makePoint(new Fp(witness[i++]), new Fp(witness[i++]));
-        this.pi_b = g2.makePoint(new Fp2(new Fp(witness[i++]), new Fp(witness[i++])), new Fp2(new Fp(witness[i++]), new Fp(witness[i++])));
-        this.pi_c = g1.makePoint(new Fp(witness[i++]), new Fp(witness[i++]));
-
-        while (i < witness.length) {
-            this.publicSignals.push(new Fp(witness[i++]));
-        }
+    constructor() {
+        this.pi_a = g1.makePoint(Fp.zero(), Fp.zero());
+        this.pi_b = g2.makePoint(Fp2.zero(), Fp2.zero())
+        this.pi_c = g1.makePoint(Fp.zero(), Fp.zero());
     }
 
-    static fromSnarkjs(snarkjsProof: any, publicSignals: string[]) {
+    static fromWitness(_witness: bigint[]): Proof {
+        let i = 0;
+        const t = new Proof();
+        const witness = _witness.map(n => vm.addWitness(n));
+        t.pi_a = g1.makePoint(new Fp(witness[i++]), new Fp(witness[i++]));
+        t.pi_b = g2.makePoint(new Fp2(new Fp(witness[i++]), new Fp(witness[i++])), new Fp2(new Fp(witness[i++]), new Fp(witness[i++])));
+        t.pi_c = g1.makePoint(new Fp(witness[i++]), new Fp(witness[i++]));
+
+        while (i < witness.length) {
+            t.publicSignals.push(new Fp(witness[i++]));
+        }
+
+        return t;
+    }
+
+    static fromSnarkjs(snarkjsProof: any, publicSignals: string[]): Proof {
         let t = [
             snarkjsProof.pi_a[0], snarkjsProof.pi_a[1],
             snarkjsProof.pi_b[0][1], snarkjsProof.pi_b[0][0], snarkjsProof.pi_b[1][1], snarkjsProof.pi_b[1][0],
             snarkjsProof.pi_c[0], snarkjsProof.pi_c[1],
         ];
         t = t.map(s => BigInt(s));
-        return new Proof([...t, ...publicSignals.map(s => BigInt(s))]);
+        
+        return Proof.fromWitness([...t, ...publicSignals.map(s => BigInt(s))]);
     }
 
     validate() {

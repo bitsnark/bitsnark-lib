@@ -1,5 +1,5 @@
 import { Register } from "../../common/register";
-import { vm } from "../vm/vm";
+import { step1_vm as vm } from "../vm/vm";
 
 interface Member<T> {
     zero(): T;

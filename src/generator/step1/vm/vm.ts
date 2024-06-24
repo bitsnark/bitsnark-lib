@@ -19,31 +19,23 @@ export class VM {
     hardcodedCache: any = {};
     instrCounter = 0;
 
-    private constructor() {
+    constructor() {
         this.zero = this.hardcode(0n);
         this.one = this.hardcode(1n);
     }
 
-    static reset() {
-        let tvm;
-        if (vm) {
-            const hardcodedRegs = vm.registers.filter(r => r.hardcoded);
-            tvm = new VM();
-            tvm.registers = hardcodedRegs;
-            tvm.hardcoded = vm.hardcoded;
-            tvm.hardcodedCache = vm.hardcodedCache;
-            tvm.zero = vm.zero;
-            tvm.one = vm.one;
-        } else {
-            tvm = new VM();
-        }
-        vm = tvm;
+    public reset() {
+        this.registers = this.registers.filter(r => r.hardcoded);
+        this.instrCounter = 0;
+        this.success = true;
+        this.instructions = [];
+        this.witness = [];
     }
 
     /// *** BASIC OPERATIONS ***
 
-    private pushInstruction(name: InstrCode, target: Register, param1: Register, param2?: Register, data?: bigint) {
-        this.instructions.push({ name, target: target.index, param1: param1.index, param2: param2?.index, data });
+    private pushInstruction(name: InstrCode, target: Register, param1: Register, param2?: Register, bit?: number) {
+        this.instructions.push({ name, target: target.index, param1: param1.index, param2: param2?.index, bit });
         // if (this.instructions.length-1 == 24659)
         //     throw new Error('fubar');
         this.instrCounter++;
@@ -116,7 +108,7 @@ export class VM {
 
     addMod(target: Register, a: Register, b: Register) {
         this.pushInstruction(InstrCode.ADDMOD, target, a, b);
-        let v = (a.value + b.value) % prime_bigint;
+        let v = (a.value % prime_bigint + b.value % prime_bigint) % prime_bigint;
         this.setRegister(target, v);
     }
 
@@ -127,13 +119,13 @@ export class VM {
     }
 
     andBit(target: Register, a: Register, bit: number, b: Register) {
-        this.pushInstruction(InstrCode.ANDBIT, target, a, b, BigInt(bit));
+        this.pushInstruction(InstrCode.ANDBIT, target, a, b, bit);
         const v = !!(a.value & (2n ** BigInt(bit)));
         this.setRegister(target, v ? b.value : 0n);
     }
 
     andNotBit(target: Register, a: Register, bit: number, b: Register) {
-        this.pushInstruction(InstrCode.ANDNOTBIT, target, a, b, BigInt(bit));
+        this.pushInstruction(InstrCode.ANDNOTBIT, target, a, b, bit);
         const v = !(a.value & (2n ** BigInt(bit)));
         this.setRegister(target, v ? b.value : 0n);
     }
@@ -237,11 +229,10 @@ export class VM {
                 target: instr.target,
                 param1: instr.param1,
                 param2: instr.param2,
-                data: instr.data?.toString(16),
+                bit: instr.bit
             })),
         };
     }
 }
 
-export let vm: VM;
-VM.reset();
+export let step1_vm: VM = new VM();

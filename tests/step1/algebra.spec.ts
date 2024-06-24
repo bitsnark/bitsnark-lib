@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { Fp } from '../../src/generator/step1/algebra/fp';
 import { Fp2 } from '../../src/generator/step1/algebra/fp2';
-import { VM, vm } from '../../src/generator/step1/vm/vm';
+import { VM, step1_vm as vm } from '../../src/generator/step1/vm/vm';
 import { G1, G1Point } from '../../src/generator/step1/algebra/G1';
 import { G2, G2Point } from '../../src/generator/step1/algebra/G2';
 import { G3, G3Point } from '../../src/generator/step1/algebra/G3';
@@ -23,7 +23,7 @@ describe('Algebra', () => {
 	let g3: G3;
 
 	beforeEach(() => {
-		VM.reset();
+		vm.reset();
 		g1 = new G1();
 		g2 = new G2();
 		g3 = new G3();

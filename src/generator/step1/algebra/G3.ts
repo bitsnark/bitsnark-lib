@@ -1,11 +1,11 @@
-import { vm } from "../vm/vm";
+import { step1_vm as vm } from "../vm/vm";
 import { EC, ECPoint } from "./ec";
 import { Fp } from "./fp";
 import { Fp12t } from "./fp12t";
 import { Fp2 } from "./fp2";
 import { Fp6 } from "./fp6";
-import { G1, G1Point } from "./G1";
-import { G2, G2Point } from "./G2";
+import { G1Point } from "./G1";
+import { G2Point } from "./G2";
 
 export const curveOrder = 21888242871839275222246405745257275088548364400416034343698204186575808495617n;
 const u = 4965661367192848881n;

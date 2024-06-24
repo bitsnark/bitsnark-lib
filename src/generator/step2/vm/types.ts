@@ -27,7 +27,7 @@ export interface Instruction {
     target: number;
     param1?: number;
     param2?: number;
-    data?: number;
+    bit?: number;
 }
 
 export type _256 = Register[];
