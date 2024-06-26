@@ -101,7 +101,7 @@ export class Bitcoin {
     OP_NIP() {
         this.opcodes.push({ op: OpcodeType.OP_NIP });
         const t1 = this.stack.pop();
-        const t2 = this.stack.pop();
+        const _ = this.stack.pop();
         this.stack.push(t1);
     }
 
@@ -118,28 +118,8 @@ export class Bitcoin {
         this.opcodes.push({ op: OpcodeType.OP_ENDIF });
     }
 
-    OP_IF_SMARTASS(tfn: () => void, ffn?: () => void) {
-        this.opcodes.push({ op: OpcodeType.OP_IF });
-        const si = this.stack.pop();
-        const s_before = this.stack.saveState();
-        let s_afterFalse = s_before;
-        tfn();
-        const s_afterTrue = this.stack.saveState();
-        if (ffn) {
-            this.opcodes.push({ op: OpcodeType.OP_ELSE });
-            this.stack.fromSavedState(s_before);
-            ffn();
-            s_afterFalse = this.stack.saveState();
-        }
-        this.opcodes.push({ op: OpcodeType.OP_ENDIF });
-        if (si.value == 1) {
-            this.stack.fromSavedState(s_afterTrue);
-        } else {
-            this.stack.fromSavedState(s_afterFalse);
-        }
-    }
-
     OP_0_16(n: number) {
+        if (n < 0 || n > 16) throw new Error('invalid value');
         this.opcodes.push({ op: hardcode(n) });
         this.stack.newItem(n);
     }
@@ -367,11 +347,6 @@ export class Bitcoin {
         this.replaceWithTop(target);
     }
 
-    ifTrue(si: StackItem, tfn: () => void, ffn?: () => void) {
-        this.pick(si);
-        this.OP_IF_SMARTASS(tfn, ffn);
-    }
-
     equal(si: StackItem, a: StackItem, n: number) {
         this.OP_0_16(n);
         this.pick(a);
@@ -461,8 +436,6 @@ export class Bitcoin {
     step2_add(a: SimulatedRegister, b: SimulatedRegister, c: SimulatedRegister) {
         const carry = this.newStackItem();
         const temp = this.newStackItem();
-        this.addBit(temp, carry, a.stackItems[0], b.stackItems[0]);
-        this.assertEqual(temp, c.stackItems[0]);
         for (let i = 0; i < 32; i++) {
             this.addBit(temp, carry, a.stackItems[i], b.stackItems[i]);
             this.assertEqual(temp, c.stackItems[i]);
@@ -472,7 +445,6 @@ export class Bitcoin {
     step2_addOf(a: SimulatedRegister, b: SimulatedRegister, c: SimulatedRegister) {
         const carry = this.newStackItem();
         const temp = this.newStackItem();
-        this.addBit(temp, carry, a.stackItems[0], b.stackItems[0]);
         for (let i = 0; i < 32; i++) {
             this.addBit(temp, carry, a.stackItems[i], b.stackItems[i]);
         }
@@ -481,7 +453,12 @@ export class Bitcoin {
     }
 
     step2_sub(a: SimulatedRegister, b: SimulatedRegister, c: SimulatedRegister) {
-
+        const carry = this.newStackItem();
+        const temp = this.newStackItem();
+        for (let i = 0; i < 32; i++) {
+            this.addBit(temp, carry, b.stackItems[i], c.stackItems[i]);
+            this.assertEqual(temp, a.stackItems[i]);
+        }
     }
 
     step2_subOf(a: SimulatedRegister, b: SimulatedRegister, c: SimulatedRegister) {
@@ -500,11 +477,25 @@ export class Bitcoin {
     }
 
     step2_andBit(a: SimulatedRegister, b: SimulatedRegister, bit: number, c: SimulatedRegister) {
-
+        this.pick(b.stackItems[bit]);
+        this.OP_IF();
+        this.assertEqual32(a, c);
+        this.OP_ELSE();
+        for (let i = 0; i < 32; i++) {
+            this.assertZero(c.stackItems[i]);
+        }
+        this.OP_ENDIF();
     }
 
     step2_andNotBit(a: SimulatedRegister, b: SimulatedRegister, bit: number, c: SimulatedRegister) {
-
+        this.pick(b.stackItems[bit]);
+        this.OP_IF();
+        for (let i = 0; i < 32; i++) {
+            this.assertZero(c.stackItems[i]);
+        }
+        this.OP_ELSE();
+        this.assertEqual32(a, c);
+        this.OP_ENDIF();
     }
 
     step2_shr(a: SimulatedRegister, b: number, c: SimulatedRegister) {

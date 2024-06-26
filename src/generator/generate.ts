@@ -170,7 +170,7 @@ function step2(step1Program: Step1Program) {
         }
         
         const step2_program = step2_vm.save();
-        //saveFile(`./generated/step2_${line}.json`, step2_program);
+        //saveFile(`./generated/step2/step2_${line}.json`, step2_program);
     });
 }
 
