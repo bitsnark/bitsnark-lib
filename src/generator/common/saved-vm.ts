@@ -3,7 +3,7 @@ export interface ProgramLine<InstrCode> {
     target: number,
     param1?: number,
     param2?: number
-    data?: string
+    bit?: number
 }
 
 export interface SavedVm<InstrCode> {

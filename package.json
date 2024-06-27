@@ -17,7 +17,6 @@
   "scripts": {
     "test": "jest",
     "generate": "ts-node ./src/generator/step1/generate.ts",
-
     "lint": "eslint --ext .ts --fix src/**/*.ts test/**/*.ts",
     "upgrade": "npx npm-check -u",
     "version": "npm run build && npm run changelog:update"

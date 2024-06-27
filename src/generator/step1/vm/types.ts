@@ -19,5 +19,5 @@ export interface Instruction {
     target: number;
     param1: number;
     param2?: number;
-    data?: bigint;
+    bit?: number;
 }

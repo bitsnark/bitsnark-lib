@@ -3,6 +3,14 @@ import { Register } from "../../common/register";
 import { SavedVm } from "../../common/saved-vm";
 import { Instruction, InstrCode, _256 } from "./types";
 
+function _256toN(ra: _256): bigint {
+    let n = 0n;
+    for (let i = 0; i < 8; i++) {
+        n = n + (ra[i].value << BigInt(i * 32));
+    }
+    return n;
+}
+
 export class VM {
 
     hardcoded: bigint[] = [];
@@ -20,7 +28,7 @@ export class VM {
     one: Register;
     prime: _256 = [];
 
-    private constructor() {
+    constructor() {
         this.zero = this.hardcode(0n);
         this.one = this.hardcode(1n);
         for (let i = 0; i < 8; i++) {
@@ -29,18 +37,12 @@ export class VM {
         }
     }
 
-    static reset() {
-        let tvm;
-        if (vm) {
-            const hardcodedRegs = vm.registers.filter(r => r.hardcoded);
-            tvm = new VM();
-            tvm.registers = hardcodedRegs;
-            tvm.hardcoded = vm.hardcoded;
-            tvm.hardcodedCache = vm.hardcodedCache;
-        } else {
-            tvm = new VM();
-        }
-        vm = tvm;
+    reset() {
+        this.registers = this.registers.filter(r => r.hardcoded);
+        this.instrCounter = 0;
+        this.success = true;
+        this.instructions = [];
+        this.witness = [];
     }
 
     _256ToN(ra: _256): bigint {
@@ -57,8 +59,8 @@ export class VM {
     
     /// *** BASIC OPERATIONS ***
 
-    private pushInstruction(name: InstrCode, target: Register, param1?: Register, param2?: Register, data?: number) {
-        this.instructions.push({ name, target: target.index, param1: param1?.index, param2: param2?.index, data });
+    private pushInstruction(name: InstrCode, target: Register, param1?: Register, param2?: Register, bit?: number) {
+        this.instructions.push({ name, target: target.index, param1: param1?.index, param2: param2?.index, bit });
         this.instrCounter++;
         if (this.instrCounter % 1000000 == 0) {
             //console.log(`line number: ${this.instrCounter} \t register count: ${this.state.registers.length}`);
@@ -210,7 +212,7 @@ export class VM {
 
     not(target: Register, a: Register) {
         this.pushInstruction(InstrCode.NOT, target, a);
-        this.setRegister(target, ~a.value);
+        this.setRegister(target, a.value ^ 0xffffffffn);
     }
 
     assertEq(a: Register, b: Register) {
@@ -357,7 +359,7 @@ export class VM {
     }
 
     step1_divMod(a: _256, b: _256, c: _256) {
-        this.step1_mulMod(c, a, b);
+        this.step1_mulMod(c, b, a);
     }
 
     private checkUpperZero(a: _256) {
@@ -420,11 +422,10 @@ export class VM {
                 target: instr.target,
                 param1: instr.param1,
                 param2: instr.param2,
-                data: instr.data?.toString()
+                data: instr.bit
             })),
         };
     }
 }
 
-export let vm: VM;
-VM.reset();
+export let step2_vm: VM = new VM();
