@@ -1,5 +1,5 @@
 import { Register } from "../common/register";
-import { vm } from "./vm/vm";
+import { step2_vm as vm } from "./vm/vm";
 import { _256 } from "./vm/types"
 
 const h_hex = [0x6a09e667n, 0xbb67ae85n, 0x3c6ef372n, 0xa54ff53an, 0x510e527fn, 0x9b05688cn, 0x1f83d9abn, 0x5be0cd19n]
