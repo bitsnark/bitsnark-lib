@@ -3,30 +3,16 @@ let lastId = 0;
 
 export interface StackItem {
     id: number;
-    value: number;
-}
-
-export interface StackState {
-    values: { [key: number]: number };
-    items: StackItem[];
+    value: bigint;
+    name?: string;
+    data?: bigint;
 }
 
 export class Stack {
     items: StackItem[] = [];
     maxLength = 0;
 
-    saveState(): StackState {
-        const values: { [key: number]: number } = {};
-        this.items.forEach(si => values[si.id] = si.value);
-        return { values, items: this.items.map(t => t) };
-    }
-
-    fromSavedState(state: StackState) {
-        this.items = state.items;
-        this.items.forEach(si => si.value = state.values[si.id]);
-    }
-
-    newItem(value: number) {
+    newItem(value: bigint): StackItem {
         const si = { value: value, id: lastId++ };
         this.items.push(si);
         return si;
@@ -64,7 +50,7 @@ export class Stack {
 
     pick(i: number) {
         const t = this.items[i];
-        this.push(t);
+        this.push({ value: t.value, id: lastId++, name: `${t.name} picked` });
         //console.log('Stack length: ', this.items.length);
     }
 
