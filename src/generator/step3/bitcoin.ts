@@ -3,7 +3,7 @@ import { StackItem, Stack } from "./stack";
 
 interface Operation {
     op?: OpcodeType;
-    data?: number;
+    data?: bigint;
 }
 
 export interface SimulatedRegister {
@@ -17,8 +17,8 @@ export class Bitcoin {
     opcodes: Operation[] = [];
     simulatedRegisters: Map<number, SimulatedRegister> = new Map<number, SimulatedRegister>();
     stack: Stack = new Stack();
-    altStack: number[] = [];
-    witness: number[] = [];
+    altStack: bigint[] = [];
+    witness: bigint[] = [];
     success = true;
 
     constructor() {
@@ -37,11 +37,12 @@ export class Bitcoin {
 
     /// BASIC ///
 
-    private newStackItem(value?: number): StackItem {
+    private newStackItem(value: bigint, name: string = ''): StackItem {
         if (this.stack.items.length + this.altStack.length > 1000) throw new Error('Stack too big');
 
         value = value ?? 0;
         const si = this.stack.newItem(value);
+        si.name = name;
         if (value <= 16)
             this.opcodes.push({ op: hardcode(value) });
         else
@@ -65,15 +66,15 @@ export class Bitcoin {
         for (let i = 0; i < 32; i++) {
             const b = n & 1n;
             n = n >> 1n;
-            sr.stackItems.push(this.newStackItem(Number(b)));
+            sr.stackItems.push(this.newStackItem(b));
         }
         return sr;
     }
 
     /// NATIVE OPERATIONS ///
 
-    DATA(data: number) {
-        if (data > 0 && data <= 16) {
+    DATA(data: bigint) {
+        if (data >= 0 && data <= 16) {
             this.opcodes.push({ op: hardcode(data) });
         } else {
             this.opcodes.push({ op: OpcodeType.DATA, data });
@@ -84,13 +85,13 @@ export class Bitcoin {
     OP_ROLL() {
         this.opcodes.push({ op: OpcodeType.OP_ROLL });
         const si = this.stack.pop();
-        this.stack.roll(this.stack.length() - 1 - si.value);
+        this.stack.roll(this.stack.length() - 1 - Number(si.value));
     }
 
     OP_PICK() {
         this.opcodes.push({ op: OpcodeType.OP_PICK });
         const si = this.stack.pop();
-        this.stack.pick(this.stack.length() - 1 - si.value);
+        this.stack.pick(this.stack.length() - 1 - Number(si.value));
     }
 
     OP_DROP() {
@@ -118,7 +119,7 @@ export class Bitcoin {
         this.opcodes.push({ op: OpcodeType.OP_ENDIF });
     }
 
-    OP_0_16(n: number) {
+    OP_0_16(n: bigint) {
         if (n < 0 || n > 16) throw new Error('invalid value');
         this.opcodes.push({ op: hardcode(n) });
         this.stack.newItem(n);
@@ -128,13 +129,20 @@ export class Bitcoin {
         this.opcodes.push({ op: OpcodeType.OP_NUMEQUAL });
         const si1 = this.stack.pop();
         const si2 = this.stack.pop();
-        this.stack.newItem(si1.value === si2.value ? 1 : 0);
+        this.stack.newItem(si1.value === si2.value ? 1n : 0n);
+    }
+
+    OP_EQUAL() {
+        this.opcodes.push({ op: OpcodeType.OP_EQUAL });
+        const si1 = this.stack.pop();
+        const si2 = this.stack.pop();
+        this.stack.newItem(si1.value === si2.value ? 1n : 0n);
     }
 
     OP_NOT() {
         this.opcodes.push({ op: OpcodeType.OP_NOT });
         const si = this.stack.pop();
-        this.stack.newItem(si.value === 0 ? 1 : 0);
+        this.stack.newItem(si.value === 0n ? 1n : 0n);
     }
 
     OP_DUP() {
@@ -162,42 +170,42 @@ export class Bitcoin {
         this.opcodes.push({ op: OpcodeType.OP_GREATERTHAN });
         const si2 = this.stack.pop();
         const si1 = this.stack.pop();
-        this.stack.newItem(si1.value > si2.value ? 1 : 0);
+        this.stack.newItem(si1.value > si2.value ? 1n : 0n);
     }
 
     OP_GREATERTHANOREQUAL() {
         this.opcodes.push({ op: OpcodeType.OP_GREATERTHANOREQUAL });
         const si2 = this.stack.pop();
         const si1 = this.stack.pop();
-        this.stack.newItem(si1.value >= si2.value ? 1 : 0);
+        this.stack.newItem(si1.value >= si2.value ? 1n : 0n);
     }
 
     OP_LESSTHAN() {
         this.opcodes.push({ op: OpcodeType.OP_LESSTHAN });
         const si2 = this.stack.pop();
         const si1 = this.stack.pop();
-        this.stack.newItem(si1.value < si2.value ? 1 : 0);
+        this.stack.newItem(si1.value < si2.value ? 1n : 0n);
     }
 
     OP_LESSTHANOREQUAL() {
         this.opcodes.push({ op: OpcodeType.OP_LESSTHANOREQUAL });
         const si2 = this.stack.pop();
         const si1 = this.stack.pop();
-        this.stack.newItem(si1.value <= si2.value ? 1 : 0);
+        this.stack.newItem(si1.value <= si2.value ? 1n : 0n);
     }
 
     OP_BOOLOR() {
         this.opcodes.push({ op: OpcodeType.OP_BOOLOR });
         const si1 = this.stack.pop();
         const si2 = this.stack.pop();
-        this.stack.newItem(!!si1.value || !!si2.value ? 1 : 0);
+        this.stack.newItem(!!si1.value || !!si2.value ? 1n : 0n);
     }
 
     OP_BOOLAND() {
         this.opcodes.push({ op: OpcodeType.OP_BOOLAND });
         const si1 = this.stack.pop();
         const si2 = this.stack.pop();
-        this.stack.newItem(!!si1.value && !!si2.value ? 1 : 0);
+        this.stack.newItem(!!si1.value && !!si2.value ? 1n : 0n);
     }
 
     OP_WITHIN() {
@@ -208,13 +216,14 @@ export class Bitcoin {
         const t = min;
         min = min < max ? min : max;
         max = t < max ? max : t;
-        this.stack.newItem(x >= min && x <= max ? 1 : 0);
+        this.stack.newItem(x >= min && x <= max ? 1n : 0n);
     }
 
     OP_NUMEQUALVERIFY() {
         this.opcodes.push({ op: OpcodeType.OP_NUMEQUALVERIFY });
-        const f = this.stack.pop().value;
-        if (f != 1) this.fail();
+        const f1 = this.stack.pop().value;
+        const f2 = this.stack.pop().value;
+        if (f1 != f2) this.fail();
     }
 
     OP_TOALTSTACK() {
@@ -281,12 +290,20 @@ export class Bitcoin {
         this.stack.items.push(t3);
     }
 
+    OP_SHA256() {
+        this.opcodes.push({ op: OpcodeType.OP_SHA256 });
+        const t = this.stack.items.pop()!;
+
+
+
+    }
+
     /// Complex operations ///
 
     roll(si: StackItem) {
         const rel = this.getRelativeStackPosition(si);
         if (rel == 0) return;
-        this.newStackItem(rel);
+        this.newStackItem(BigInt(rel));
         this.OP_ROLL();
     }
 
@@ -295,7 +312,7 @@ export class Bitcoin {
         if (rel == 0) {
             this.OP_DUP();
         } else {
-            this.newStackItem(rel);
+            this.newStackItem(BigInt(rel));
             this.OP_PICK();
         }
     }
@@ -328,7 +345,7 @@ export class Bitcoin {
         this.pick(a);
         this.pick(b);
         this.OP_ADD();
-        this.OP_0_16(1);
+        this.OP_0_16(1n);
         this.OP_NUMEQUAL();
         this.replaceWithTop(target);
     }
@@ -347,7 +364,7 @@ export class Bitcoin {
         this.replaceWithTop(target);
     }
 
-    equal(si: StackItem, a: StackItem, n: number) {
+    equal(si: StackItem, a: StackItem, n: bigint) {
         this.OP_0_16(n);
         this.pick(a);
         this.OP_NUMEQUAL();
@@ -362,12 +379,12 @@ export class Bitcoin {
     }
 
     setBit_1(target: StackItem) {
-        this.OP_0_16(1);
+        this.OP_0_16(1n);
         this.replaceWithTop(target);
     }
 
     setBit_0(target: StackItem) {
-        this.OP_0_16(0);
+        this.OP_0_16(0n);
         this.replaceWithTop(target);
     }
 
@@ -378,7 +395,7 @@ export class Bitcoin {
 
     assertZero(a: StackItem) {
         this.pick(a);
-        this.OP_0_16(0);
+        this.OP_0_16(0n);
         this.OP_NUMEQUALVERIFY()
     }
 
@@ -386,6 +403,20 @@ export class Bitcoin {
         this.pick(a);
         this.pick(b);
         this.OP_NUMEQUALVERIFY()
+    }
+
+    setIfElse(target: StackItem, v: StackItem, t: StackItem, f: StackItem) {
+        const temp = !!v.value ? t.value : f.value;
+        this.pick(v);
+        this.OP_IF();
+        this.pick(t);
+        this.replaceWithTop(target);
+        this.OP_ELSE();
+        this.pick(f);
+        this.replaceWithTop(target);
+        this.OP_ENDIF();
+        // correct if weirdness
+        target.value = temp;
     }
 
     /********* helpers *********/
@@ -396,16 +427,21 @@ export class Bitcoin {
         this.OP_ADD();
         this.pick(carry);
         this.OP_ADD();
-        this.OP_DUP();
-        this.OP_0_16(2);
-        this.OP_GREATERTHANOREQUAL();
-        this.OP_DUP();
-        this.replaceWithTop(carry);
-        this.OP_IF();
-        this.OP_0_16(2);
-        this.OP_SUB();
-        this.OP_ENDIF();
         this.replaceWithTop(target);
+        this.pick(target);
+        this.OP_0_16(2n);
+        this.OP_GREATERTHANOREQUAL();
+        this.replaceWithTop(carry);
+        this.pick(carry)
+        this.OP_IF();
+        this.pick(target);
+        this.OP_0_16(2n);
+        this.OP_SUB();
+        this.replaceWithTop(target);
+        this.OP_ENDIF();
+
+        // correct for if weirdness
+        if (target.value < 0) target.value += 2n;
     }
 
     assertEqual32(a: SimulatedRegister, b: SimulatedRegister) {
@@ -414,8 +450,14 @@ export class Bitcoin {
         }
     }
 
+    assertZero32(a: SimulatedRegister) {
+        for (let i = 0; i < 32; i++) {
+            this.assertZero(a.stackItems[i]);
+        }
+    }
+
     equal32(target: StackItem, a: SimulatedRegister, b: SimulatedRegister) {
-        this.OP_0_16(1);
+        this.OP_0_16(1n);
         for (let i = 0; i < 32; i++) {
             this.pick(a.stackItems[i]);
             this.pick(b.stackItems[i]);
@@ -434,8 +476,8 @@ export class Bitcoin {
     /********* step 2 *********/
 
     step2_add(a: SimulatedRegister, b: SimulatedRegister, c: SimulatedRegister) {
-        const carry = this.newStackItem();
-        const temp = this.newStackItem();
+        const carry = this.newStackItem(0n, 'carry');
+        const temp = this.newStackItem(0n, 'temp');
         for (let i = 0; i < 32; i++) {
             this.addBit(temp, carry, a.stackItems[i], b.stackItems[i]);
             this.assertEqual(temp, c.stackItems[i]);
@@ -443,8 +485,8 @@ export class Bitcoin {
     }
 
     step2_addOf(a: SimulatedRegister, b: SimulatedRegister, c: SimulatedRegister) {
-        const carry = this.newStackItem();
-        const temp = this.newStackItem();
+        const carry = this.newStackItem(0n, 'carry');
+        const temp = this.newStackItem(0n, 'temp');
         for (let i = 0; i < 32; i++) {
             this.addBit(temp, carry, a.stackItems[i], b.stackItems[i]);
         }
@@ -453,8 +495,8 @@ export class Bitcoin {
     }
 
     step2_sub(a: SimulatedRegister, b: SimulatedRegister, c: SimulatedRegister) {
-        const carry = this.newStackItem();
-        const temp = this.newStackItem();
+        const carry = this.newStackItem(0n, 'carry');
+        const temp = this.newStackItem(0n, 'temp');
         for (let i = 0; i < 32; i++) {
             this.addBit(temp, carry, b.stackItems[i], c.stackItems[i]);
             this.assertEqual(temp, a.stackItems[i]);
@@ -462,7 +504,25 @@ export class Bitcoin {
     }
 
     step2_subOf(a: SimulatedRegister, b: SimulatedRegister, c: SimulatedRegister) {
-
+        this.checkUpperZero(c);
+        const temp = this.newStackItem(0n, 'temp');
+        const done = this.newStackItem(0n, 'done');
+        const b_bigger = this.newStackItem(0n, 'b_bigger');
+        for (let i = 31; i >= 0; i--) {
+            this.pick(b.stackItems[i]);
+            this.pick(a.stackItems[i]);
+            this.OP_GREATERTHAN();
+            this.replaceWithTop(temp);
+            this.setIfElse(b_bigger, done, b_bigger, temp);
+            this.pick(a.stackItems[i]);
+            this.pick(b.stackItems[i]);
+            this.OP_NUMEQUAL();
+            this.OP_NOT();
+            this.pick(done);
+            this.OP_BOOLOR();
+            this.replaceWithTop(done);
+        }
+        this.assertEqual(b_bigger, c.stackItems[0]);
     }
 
     step2_mov(a: SimulatedRegister, c: SimulatedRegister) {
@@ -470,7 +530,7 @@ export class Bitcoin {
     }
 
     step2_equal(a: SimulatedRegister, b: SimulatedRegister, c: SimulatedRegister) {
-        const temp = this.newStackItem();
+        const temp = this.newStackItem(0n, 'temp');
         this.equal32(temp, a, b);
         this.checkUpperZero(c);
         this.assertEqual(temp, c.stackItems[0]);
@@ -481,18 +541,14 @@ export class Bitcoin {
         this.OP_IF();
         this.assertEqual32(a, c);
         this.OP_ELSE();
-        for (let i = 0; i < 32; i++) {
-            this.assertZero(c.stackItems[i]);
-        }
+        this.assertZero32(c);
         this.OP_ENDIF();
     }
 
     step2_andNotBit(a: SimulatedRegister, b: SimulatedRegister, bit: number, c: SimulatedRegister) {
         this.pick(b.stackItems[bit]);
         this.OP_IF();
-        for (let i = 0; i < 32; i++) {
-            this.assertZero(c.stackItems[i]);
-        }
+        this.assertZero32(c);
         this.OP_ELSE();
         this.assertEqual32(a, c);
         this.OP_ENDIF();
@@ -568,4 +624,19 @@ export class Bitcoin {
     step2_assertEqual(a: SimulatedRegister, b: SimulatedRegister) {
         this.assertEqual32(a, b);
     }
+
+    /***  Witness decoding ***/
+
+    lamportVerify32(publicKey: bigint[][]) {
+        for (let i = 0; i < 32; i++) {
+            this.OP_SHA256();
+            this.DATA(publicKey[i][0]);
+
+        }
+    }
+
+    lamportDecode(target: SimulatedRegister, publicKey: Uint8Array[][]) {
+        
+    }
+
 }
