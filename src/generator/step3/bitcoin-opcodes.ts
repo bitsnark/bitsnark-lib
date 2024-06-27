@@ -27,6 +27,7 @@ export enum OpcodeType {
     OP_16 = 'OP_16',
     OP_NUMEQUAL = 'OP_NUMEQUAL',
     OP_NOT = 'OP_NOT',
+    OP_EQUAL = 'OP_EQUAL',
     OP_EQUALVERIFY = 'OP_EQUALVERIFY',
     OP_GREATERTHAN = 'OP_GREATERTHAN',
     OP_GREATERTHANOREQUAL = 'OP_GREATERTHANOREQUAL',
@@ -46,10 +47,11 @@ export enum OpcodeType {
     OP_2SWAP = 'OP_2SWAP',
     OP_2DUP = 'OP_2DUP',
     OP_NIP = 'OP_NIP',
-    OP_ROT = 'OP_ROT'
+    OP_ROT = 'OP_ROT',
+    OP_SHA256 = 'OP_SHA256'
 }
 
-export function hardcode(value: number): OpcodeType {
+export function hardcode(value: bigint): OpcodeType {
     if (value < 0 || value > 16) throw new Error('Invalid hardcoded value');
     return [
         OpcodeType.OP_0,
@@ -69,6 +71,6 @@ export function hardcode(value: number): OpcodeType {
         OpcodeType.OP_14,
         OpcodeType.OP_15,
         OpcodeType.OP_16
-    ][value];
+    ][Number(value)];
 
 }

@@ -2,7 +2,7 @@ import fs from 'fs';
 import * as snarkjs from 'snarkjs';
 import assert from "assert";
 import groth16Verify, { Key, Proof } from '../../src/generator/step1/verifier';
-import { vm, VM } from '../../src/generator/step1/vm/vm';
+import { step1_vm as vm, VM } from '../../src/generator/step1/vm/vm';
 import { SavedVm } from '../../src/generator/common/saved-vm';
 import { InstrCode } from '../../src/generator/step1/vm/types';
 import { Runner } from '../../src/generator/step1/vm/runner';
@@ -55,7 +55,7 @@ describe("groth16 verify", function () {
     describe('bitsnrak verifier', () => {
 
         beforeEach(() => {
-            VM.reset();
+            vm.reset();
         });
 
         it("groth16 verify SUCCESS", async () => {
@@ -76,7 +76,7 @@ describe("groth16 verify", function () {
         let failProgram: SavedVm<InstrCode>;
 
         beforeAll(() => {
-            VM.reset();
+            vm.reset();
             _vm = vm;
 
             groth16Verify(Key.fromSnarkjs(vKey), Proof.fromSnarkjs(proof, publicSignals));

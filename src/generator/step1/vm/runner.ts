@@ -49,8 +49,8 @@ export class Runner {
             target: inst.target,
             param1: inst.param1!,
             param2: inst.param2,
-            data: BigInt('0x' + (inst.data ?? '0')),
-            toString: function() { return `${this.name} ${this.target} ${this.param1} ${this.param2} ${this.data}`; }
+            bit:inst.bit,
+            toString: function() { return `${this.name} ${this.target} ${this.param1} ${this.param2} ${this.bit}`; }
         }));
         runner.hardcoded.forEach(n => runner.hardcode(n));
         runner.witness.forEach(n => runner.addWitness(n));
@@ -80,11 +80,11 @@ export class Runner {
                 break;
             case InstrCode.ANDBIT:
                 if (!param2) throw new Error(`Invalid param2 line: ${this.current}`);
-                target.value = !!(param1.value & (2n ** BigInt(instr.data ?? 0))) ? param2.value : 0n;
+                target.value = !!(param1.value & (2n ** BigInt(instr.bit ?? 0))) ? param2.value : 0n;
                 break;
             case InstrCode.ANDNOTBIT:
                 if (!param2) throw new Error(`Invalid param2 line: ${this.current}`);
-                target.value = !(param1.value & (2n ** BigInt(instr.data ?? 0))) ? param2.value : 0n;
+                target.value = !(param1.value & (2n ** BigInt(instr.bit ?? 0))) ? param2.value : 0n;
                 break;
             case InstrCode.MOV:
                 target.value = param1.value;
@@ -140,5 +140,9 @@ export class Runner {
 
     public getRegisters() {
         return this.registers;
+    }
+
+    public getRegisterValues(): bigint[] {
+        return this.registers.map(r => r.value);
     }
 }

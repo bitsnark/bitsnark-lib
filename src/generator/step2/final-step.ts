@@ -1,6 +1,5 @@
-import fs from 'fs';
 import { Register } from "../common/register";
-import { vm } from "./vm/vm";
+import { step2_vm as vm } from "./vm/vm";
 import { ProgramLine, SavedVm } from '../common/saved-vm';
 import { InstrCode as Step1_InstrCode } from '../step1/vm/types';
 import { _256, InstrCode as Step2_InstrCode } from '../step2/vm/types';
@@ -15,8 +14,9 @@ export class Proof {
     merkleProofB: _256[] = [];
     merkleProofC: _256[] = [];
 
-    constructor(height: number, _witness: bigint[]) {
+    static fromWitness(height: number, _witness: bigint[]): Proof {
         let index = 0;
+        const t = new Proof();
         function hashFromWitness(): _256 {
             const h: Register[] = [];
             for (let i = 0; i < 32; i++) {
@@ -31,14 +31,16 @@ export class Proof {
             }
             return mp;
         }
-        this.rootBefore = hashFromWitness();
-        this.rootAfter = hashFromWitness();
-        this.reg256A = hashFromWitness();
-        this.reg256B = hashFromWitness();
-        this.reg256C = hashFromWitness();
-        this.merkleProofA = merkleProofFromWitness();
-        this.merkleProofB = merkleProofFromWitness();
-        this.merkleProofC = merkleProofFromWitness();
+        t.rootBefore = hashFromWitness();
+        t.rootAfter = hashFromWitness();
+        t.reg256A = hashFromWitness();
+        t.reg256B = hashFromWitness();
+        t.reg256C = hashFromWitness();
+        t.merkleProofA = merkleProofFromWitness();
+        t.merkleProofB = merkleProofFromWitness();
+        t.merkleProofC = merkleProofFromWitness();
+
+        return t;
     }
 }
 
@@ -46,13 +48,7 @@ function verifyMerkleProof(root: _256, regIndex: number, regValue: _256, mp: _25
 
 }
 
-function getStep1Instr(line: number): ProgramLine<Step1_InstrCode> {
-    const path = './generated/snark.json';
-    const obj = JSON.parse(fs.readFileSync(path).toString()) as SavedVm<Step1_InstrCode>;
-    return obj.program[line];
-}
-
-function validateInstr(proof: Proof, instr: ProgramLine<Step1_InstrCode>) {
+export function validateInstr(proof: Proof, instr: ProgramLine<Step1_InstrCode>) {
     const a = proof.reg256A;
     const b = proof.reg256B;
     const c = proof.reg256C;
@@ -67,12 +63,12 @@ function validateInstr(proof: Proof, instr: ProgramLine<Step1_InstrCode>) {
             verifyMerkleProof(proof.rootBefore, instr.param1!, proof.reg256A, proof.merkleProofA);
             verifyMerkleProof(proof.rootBefore, instr.param2!, proof.reg256B, proof.merkleProofB);
             verifyMerkleProof(proof.rootAfter, instr.target, proof.reg256C, proof.merkleProofC);        
-            vm.step1_andBit(a, Number(instr.data), b, c); break;
+            vm.step1_andBit(a, instr.bit!, b, c); break;
         case Step1_InstrCode.ANDNOTBIT:
             verifyMerkleProof(proof.rootBefore, instr.param1!, proof.reg256A, proof.merkleProofA);
             verifyMerkleProof(proof.rootBefore, instr.param2!, proof.reg256B, proof.merkleProofB);
             verifyMerkleProof(proof.rootAfter, instr.target, proof.reg256C, proof.merkleProofC);        
-            vm.step1_andNotBit(a, Number(instr.data), b, c); break;
+            vm.step1_andNotBit(a, instr.bit!, b, c); break;
         case Step1_InstrCode.MOV:
             verifyMerkleProof(proof.rootBefore, instr.param1!, proof.reg256A, proof.merkleProofA);
             verifyMerkleProof(proof.rootAfter, instr.target, proof.reg256C, proof.merkleProofC);        
@@ -118,11 +114,4 @@ function validateInstr(proof: Proof, instr: ProgramLine<Step1_InstrCode>) {
             verifyMerkleProof(proof.rootBefore, instr.param1!, proof.reg256A, proof.merkleProofA);
             vm.step1_assertEqZero(a); break;
     }
-}
-
-export default async function validate(line: number, proof: Proof) {
-
-    const instr = getStep1Instr(line);
-    validateInstr(proof, instr);
-    return vm.success;
 }
