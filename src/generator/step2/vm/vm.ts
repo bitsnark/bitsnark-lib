@@ -67,7 +67,7 @@ export class VM {
         }
     }
 
-    private setRegister(r: Register, v: bigint) {
+    public setRegister(r: Register, v: bigint) {
         if (r.hardcoded && r.value !== v) throw new Error('Writing to hardcoded register');
         if (r.free) throw new Error('Setting free register?');
         r.value = v;
@@ -185,6 +185,16 @@ export class VM {
         this.setRegister(target, a.value === b.value ? 1n : 0n);
     }
 
+    rotr(target: Register, a: Register, n: Register) {
+        this.pushInstruction(InstrCode.ROTR, target, a, n)
+        this.setRegister(target, a.value >> n.value | a.value << (32n - n.value))
+    }
+
+    shr(target: Register, a: Register, n: Register) {
+        this.pushInstruction(InstrCode.SHR, target, a, n)
+        this.setRegister(target, a.value >> n.value)
+    }
+
     or(target: Register, a: Register, b: Register) {
         this.pushInstruction(InstrCode.OR, target, a, b);
         this.setRegister(target, a.value | b.value);
@@ -211,6 +221,10 @@ export class VM {
     }
 
     //**** complex instructions ******/
+
+    initHardcoded(hardcoded: bigint[]): Register[] {
+        return hardcoded.map(n => this.hardcode(n));
+    }
 
     andBitOr(target: Register, a: Register, bit: number, b: Register, c: Register) {
         const temp1 = this.newRegister();
