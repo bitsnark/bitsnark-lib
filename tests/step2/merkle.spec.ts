@@ -1,7 +1,6 @@
 import { expect } from 'chai';
 import { beforeEach } from "node:test";
-import { vm, VM } from "../../src/generator/step2/vm/vm";
-import { Register } from "../../src/generator/common/register";
+import { step2_vm as vm, VM } from "../../src/generator/step2/vm/vm";
 import { sha256, sha256pair } from "../../src/generator/step2/sha-256";
 import { _256 } from "../../src/generator/step2/vm/types"
 
@@ -15,7 +14,7 @@ const breg = vm.initHardcoded(b_hex)
 describe("SHA256 tests", function () {
 
     beforeEach(async () => {
-        VM.reset();
+        vm.reset();
     });
 
     function check(got: _256, exp: bigint[]) {
