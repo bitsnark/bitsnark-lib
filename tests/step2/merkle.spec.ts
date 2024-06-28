@@ -4,7 +4,7 @@ import { Register } from "../../src/generator/common/register";
 import { step2_vm as vm, VM } from "../../src/generator/step2/vm/vm";
 import { sha256, sha256pair } from "../../src/generator/step2/sha-256";
 import { _256 } from "../../src/generator/step2/vm/types"
-import { Merkle } from "../../src/generator/step2/merkle"
+import { Merkle, MerkleProve } from "../../src/generator/step2/merkle"
 
 const transactions_hex: bigint[][] = [
     [0xca978112n, 0xca1bbdcan, 0xfac231b3n, 0x9a23dc4dn, 0xa786eff8n, 0x147c4e72n, 0xb9807785n, 0xafee48bbn],
@@ -61,8 +61,8 @@ describe("SHA256 tests", function () {
 
     describe('Merkle', () => {
         let merkle = new Merkle(transactions)
-        let got = merkle.GetRoot()
-        it('Merkle root', () => check(got, root_hex))
+        let root = merkle.GetRoot()
+        it('Merkle root', () => check(root, root_hex))
         let proof = merkle.GetProof(3)
         it('Merkle proof', () => {
             for (let i = 0; i < proof.length; i++) {
@@ -70,7 +70,8 @@ describe("SHA256 tests", function () {
             }
         })
         it('Merkle prove', () => {
-            expect(merkle.Prove(3, proof)).to.be.true
+            let trans = vm.initHardcoded(transactions_hex[3])
+            expect(MerkleProve(3, trans, proof, root)).to.be.true
         })
     })
 })
