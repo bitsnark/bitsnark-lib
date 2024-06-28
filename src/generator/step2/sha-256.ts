@@ -154,7 +154,7 @@ export function hash(target: Register[], a: Register[]) {
     }
 }
 
-export function sha256(a: _256) {
+export function sha256(a: _256) : _256 {
     let target: _256 = []
     for (let i = 0 ; i < 8 ; i++) {
         target.push(vm.newRegister())
@@ -176,7 +176,7 @@ export function sha256(a: _256) {
     return target
 }
 
-export function sha256pair(a: _256, b: _256) {
+export function sha256pair(a: _256, b: _256) : _256 {
     let target: _256 = []
     for (let i = 0 ; i < 8 ; i++) {
         target.push(vm.newRegister())
