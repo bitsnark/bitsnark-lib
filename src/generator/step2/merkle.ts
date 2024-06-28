@@ -29,28 +29,6 @@ export class Merkle {
         return proof
     }
 
-    public Prove(index: number, proof: Register[][]) : boolean {
-        let hash: Register[] = []
-        for (let i = 0; i < proof.length; i++) {
-            let layer = this.tree[i]
-            let pair = layer[index]
-            if ((index & 1) == 0) {
-                hash = sha256pair(pair, proof[i])
-            } else {
-                hash = sha256pair(proof[i], pair)
-            }
-            index = index >> 1
-        }
-        let proved = true
-        let cmp = step2_vm.newRegister(true)
-        let root = this.GetRoot()
-        for (let i = 0; i < root.length; i++) {
-            step2_vm.equal(cmp, hash[i], root[i])
-            proved = proved && (cmp.value == 1n)
-        }
-        return proved
-    }
-
     public Free() {
         for (let i = 0; i < this.tree.length; i++) {
             let layer = this.tree[i]
@@ -77,4 +55,23 @@ export class Merkle {
         this.tree.push(layer)
         return layer.length
     }
+}
+
+export function MerkleProve(index: number, transaction: Register[], proof: Register[][], root: Register[]) : boolean {
+    let hash = transaction
+    for (let i = 0; i < proof.length; i++) {
+        if ((index & 1) == 0) {
+            hash = sha256pair(hash, proof[i])
+        } else {
+            hash = sha256pair(proof[i], hash)
+        }
+        index = index >> 1
+    }
+    let proved = true
+    let cmp = step2_vm.newRegister(true)
+    for (let i = 0; i < root.length; i++) {
+        step2_vm.equal(cmp, hash[i], root[i])
+        proved = proved && (cmp.value == 1n)
+    }
+    return proved
 }
