@@ -15,8 +15,6 @@ const k_hex = [0x428a2f98n, 0x71374491n, 0xb5c0fbcfn, 0xe9b5dba5n, 0x3956c25bn, 
     0x748f82een, 0x78a5636fn, 0x84c87814n, 0x8cc70208n, 0x90befffan, 0xa4506cebn, 0xbef9a3f7n,
     0xc67178f2n]
 
-let K = vm.initHardcoded(k_hex)
-
 function ch(target: Register, x: Register, y: Register, z: Register) {
     let t1 = vm.newRegister()
     let t2 = vm.newRegister()
@@ -113,7 +111,8 @@ export function hash(target: Register[], a: Register[]) {
         ch(tmp2, h[4], h[5], h[6])
         vm.add(T1, h[7], tmp1)
         vm.add(T1, T1, tmp2)
-        vm.add(T1, T1, K[i])
+        vm.setRegister(T2, k_hex[i])
+        vm.add(T1, T1, T2)
         vm.add(T1, T1, W[i])
         vm.and(T1, T1, mask)
 
