@@ -48,7 +48,8 @@ export enum OpcodeType {
     OP_2DUP = 'OP_2DUP',
     OP_NIP = 'OP_NIP',
     OP_ROT = 'OP_ROT',
-    OP_SHA256 = 'OP_SHA256'
+    OP_SHA256 = 'OP_SHA256',
+    OP_VERIFY = 'OP_VERIFY'
 }
 
 export function hardcode(value: bigint): OpcodeType {

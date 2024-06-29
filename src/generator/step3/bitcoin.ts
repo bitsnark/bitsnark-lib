@@ -1,5 +1,6 @@
 import { hardcode, OpcodeType } from "./bitcoin-opcodes";
 import { StackItem, Stack } from "./stack";
+import { createHash } from 'crypto';
 
 interface Operation {
     op?: OpcodeType;
@@ -290,12 +291,17 @@ export class Bitcoin {
         this.stack.items.push(t3);
     }
 
+    OP_VERIFY() {
+        this.opcodes.push({ op: OpcodeType.OP_VERIFY});
+        const t = this.stack.items.pop()!;
+        if (!t.value) this.fail();
+    }
+
     OP_SHA256() {
         this.opcodes.push({ op: OpcodeType.OP_SHA256 });
         const t = this.stack.items.pop()!;
-
-
-
+        const h = createHash('sha256').update(t.value.toString(16), 'hex').digest('hex');
+        this.newStackItem(BigInt('0x' + h));
     }
 
     /// Complex operations ///
@@ -390,6 +396,13 @@ export class Bitcoin {
 
     mov(target: StackItem, source: StackItem) {
         this.pick(source);
+        this.replaceWithTop(target);
+    }
+
+    add(target: StackItem, a: StackItem, b: StackItem) {
+        this.pick(a);
+        this.pick(b);
+        this.OP_ADD();
         this.replaceWithTop(target);
     }
 
@@ -627,16 +640,85 @@ export class Bitcoin {
 
     /***  Witness decoding ***/
 
-    lamportVerify32(publicKey: bigint[][]) {
-        for (let i = 0; i < 32; i++) {
-            this.OP_SHA256();
-            this.DATA(publicKey[i][0]);
+    checkPrehash(target: StackItem, prehash: StackItem, hash: StackItem) {
+        this.pick(prehash);
+        this.OP_SHA256();
+        this.pick(hash);
+        this.OP_EQUAL();
+        this.replaceWithTop(target);
+    }
 
+    lamportDecode1(target: StackItem, witness: StackItem, publicKeys: StackItem[]) {
+        const temp = this.newStackItem(0n);
+        this.setBit_0(target);
+        this.checkPrehash(temp, witness, publicKeys[0]);
+        this.checkPrehash(target, witness, publicKeys[1]);
+        this.pick(temp);
+        this.pick(target);
+        this.OP_BOOLOR();
+        this.OP_VERIFY();
+    }
+
+    lamportEquivocation(witness: StackItem[], publicKeys: StackItem[]) {
+        const agg = this.newStackItem(0n);
+        const temp = this.newStackItem(0n);
+        this.checkPrehash(agg, witness[0], publicKeys[0]);
+        this.checkPrehash(temp, witness[0], publicKeys[1]);
+        this.add(agg, agg, temp);
+        this.checkPrehash(temp, witness[1], publicKeys[0]);
+        this.add(agg, agg, temp);
+        this.checkPrehash(temp, witness[1], publicKeys[1]);
+        this.add(agg, agg, temp);
+        this.pick(agg);
+        this.OP_0_16(2n);
+        this.OP_GREATERTHANOREQUAL();
+        this.OP_VERIFY();
+    }
+
+    winternitzDecodeByte(target: StackItem, witness: StackItem, publicKey: bigint) {
+        this.pick(witness); // witness
+        for (let i = 0; i < 256; i++) {
+            this.OP_SHA256(); // hash
+            this.OP_DUP(); // hash hash 
+            this.DATA(publicKey); // hash hash pk
+            this.OP_EQUAL(); // hash 0/1
+            this.OP_IF(); // hash
+            this.DATA(BigInt(i)); // hash i
+            this.OP_TOALTSTACK(); // hash
+            this.OP_ENDIF(); // hash
         }
+        this.OP_DROP(); //
+        this.OP_FROMALTSTACK(); // i
+        this.replaceWithTop(target); //
     }
 
-    lamportDecode(target: SimulatedRegister, publicKey: Uint8Array[][]) {
-        
+    winternitzDecode(target: StackItem[], witness: StackItem[], publicKeys: bigint[]) {
+        const totalBytes = witness.length;
+        const checksumBytes = 2;
+        const dataBytes = totalBytes - checksumBytes;
+        for (let i = 0; i < totalBytes; i++) {
+            this.winternitzDecodeByte(target[i], witness[i], publicKeys[i]);
+        }
+        const checksum = this.newStackItem(0n, 'checksum');
+        for (let i = 0; i < dataBytes; i++) {
+            this.pick(checksum);
+            this.pick(target[i]);
+            this.OP_ADD();
+            this.replaceWithTop(checksum);
+        }
+        this.DATA(255n);
+        this.pick(target[totalBytes - 1]);
+        this.OP_SUB();
+        for (let i = 0; i < 8; i++) {
+            this.OP_DUP();
+            this.OP_ADD();
+        }
+        this.DATA(255n);
+        this.pick(target[totalBytes - 2]);
+        this.OP_SUB();
+        this.OP_ADD();
+        this.pick(checksum);
+        this.OP_EQUAL();
+        this.OP_VERIFY();
     }
-
 }
