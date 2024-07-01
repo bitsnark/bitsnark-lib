@@ -160,9 +160,16 @@ function step2(step1Program: Step1Program) {
             return ra;
         }
 
+        proof.makeMerkle(regsBefore)
         proof.reg256A = nTo_256(regsBefore[instr.param1!]);
+        proof.makeMerkleProof(instr.param1!)
         proof.reg256B = nTo_256(regsBefore[instr.param2!]);
+        proof.makeMerkleProof(instr.param2!)
+        proof.freeMerkle()
+        proof.makeMerkle(regsAfter)
         proof.reg256C = nTo_256(regsAfter[instr.target!]);
+        proof.makeMerkleProof(instr.param1!)
+        proof.freeMerkle()
 
         validateInstr(proof, instr);
         if (!step2_vm.success) {

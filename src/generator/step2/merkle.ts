@@ -17,13 +17,22 @@ export class Merkle {
     }
 
     public GetRoot() : Register[] {
-        return this.tree[this.tree.length - 1][0]
+        let root = step2_vm.newTemp256(true)
+        let value = this.tree[this.tree.length - 1][0]
+        for (let i = 0; i < 8; i++) {
+            step2_vm.mov(root[i], value[i])
+        }
+        return root
     }
 
     public GetProof(index : number) : Register[][] {
         let proof: Register[][] = []
         for (let i = 0; i < this.tree.length - 1; i++) {
-            proof.push(this.tree[i][index^1])
+            proof.push(step2_vm.newTemp256(true))
+            let hash = this.tree[i][index^1]
+            for (let j = 0; j < 8; j++) {
+                step2_vm.mov(proof[i][j], hash[j])
+            }
             index = index >> 1
         }
         return proof
