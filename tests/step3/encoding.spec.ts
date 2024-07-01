@@ -94,7 +94,8 @@ describe("encoding schemes", function () {
             expect(result).toEqual(testData32Bits);
 
             console.log('32 bits in lamport encoding: ', encoded.length);
-            console.log('32 bit lamport decode btc script', bitcoin.programSizeInBitcoinBytes());
+            console.log('32 bit lamport decode btc script count', bitcoin.opcodes.length);
+            console.log('32 bit lamport decode btc script size', bitcoin.programSizeInBitcoinBytes());
         });
 
         it("negative", async () => {
@@ -130,6 +131,7 @@ describe("encoding schemes", function () {
             expect(result).toEqual(testData256Bits);
 
             console.log('256 bits in lamport encoding: ', encoded.length);
+            console.log('256 bit lamport decode btc script count', bitcoin.opcodes.length);
             console.log('256 bit lamport decode btc script', bitcoin.programSizeInBitcoinBytes());
         });
 
@@ -164,8 +166,9 @@ describe("encoding schemes", function () {
             const result = nibblesToBigint(decodedItems.slice(0, 11).map(si => Number(si.value)));
             expect(result).toEqual(testData32Bits);
 
-            console.log('256 bits in lamport encoding: ', encoded.length);
-            console.log('256 bit lamport decode btc script', bitcoin.programSizeInBitcoinBytes());
+            console.log('32 bits in winternitz encoding: ', encoded.length);
+            console.log('32 bit winternitz decode btc script count', bitcoin.opcodes.length);
+            console.log('32 bit winternitz decode btc script', bitcoin.programSizeInBitcoinBytes());
         });
         it("negative", async () => {
 
@@ -198,8 +201,9 @@ describe("encoding schemes", function () {
             const result = nibblesToBigint(decodedItems.slice(0, 86).map(si => Number(si.value)));
             expect(result).toEqual(testData256Bits);
 
-            console.log('256 bits in lamport encoding: ', encoded.length);
-            console.log('256 bit lamport decode btc script', bitcoin.programSizeInBitcoinBytes());
+            console.log('256 bits in winternitz encoding: ', encoded.length);
+            console.log('256 bit winternitz decode btc script count', bitcoin.opcodes.length);
+            console.log('256 bit winternitz decode btc script', bitcoin.programSizeInBitcoinBytes());
         });
 
         it("negative", async () => {

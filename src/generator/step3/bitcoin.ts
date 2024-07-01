@@ -853,10 +853,14 @@ export class Bitcoin {
     programSizeInBitcoinBytes(): number {
         let total = 0;
         this.opcodes.forEach(op => {
-            let n = op.data ?? 0n;
-            let log = 0;
-            for (; n > 0; log++) n = n >> 1n;
-            total += op.op == OpcodeType.DATA ? 1 + log : 1;
+            if (op.data) {
+                let n = op.data ?? 0n;
+                let log = 0;
+                for (; n > 0; log++) n = n >> 1n;
+                total += 1 + Math.ceil(log / 8);
+            } else {
+                total++;
+            }
         });
         return total;
     }
