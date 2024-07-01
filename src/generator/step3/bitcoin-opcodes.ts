@@ -1,6 +1,5 @@
 export enum OpcodeType {
     DATA = 'DATA',
-    OP_PUSHDATA4 = 'OP_PUSHDATA4',
     OP_ROLL = 'OP_ROLL',
     OP_PICK = 'OP_PICK',
     OP_DROP = 'OP_DROP',
@@ -39,7 +38,7 @@ export enum OpcodeType {
     OP_BOOLOR = 'OP_BOOLOR',
     OP_WITHIN = 'OP_WITHIN',
     OP_NUMEQUALVERIFY = 'OP_NUMEQUALVERIFY',
-    OP_TOALTSTACK ='OP_TOALTSTACK',
+    OP_TOALTSTACK = 'OP_TOALTSTACK',
     OP_FROMALTSTACK = 'OP_FROMALTSTACK',
     OP_SWAP = 'OP_SWAP',
     OP_3DUP = 'OP_3DUP',
@@ -73,5 +72,4 @@ export function hardcode(value: bigint): OpcodeType {
         OpcodeType.OP_15,
         OpcodeType.OP_16
     ][Number(value)];
-
 }
