@@ -98,7 +98,7 @@ export class Key {
     }
 }
 
-export default async function groth16Verify(key: Key, proof: Proof) {
+export default function groth16Verify(key: Key, proof: Proof) {
     let vk_x = g1.makePoint(key.ic[0].x, key.ic[0].y)
 
     for (let i = 0; i < proof.publicSignals.length; i++) {
