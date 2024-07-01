@@ -55,8 +55,12 @@ describe("SHA256 tests", function () {
     })
 
     describe('512 bit input hash', () => {
-        let got = sha256pair(areg, breg)
-        it("SHA256 AB", () => check(got, ab_hash_hex))
+        let target: _256 = []
+        for (let i = 0 ; i < 8 ; i++) {
+            target.push(vm.newRegister())
+        }
+        sha256pair(target, areg, breg)
+        it("SHA256 AB", () => check(target, ab_hash_hex))
     })
 
     describe('Merkle', () => {

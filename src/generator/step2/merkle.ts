@@ -46,7 +46,9 @@ export class Merkle {
         let llen = ilen >> 1
         let layer: Register[][] = []
         for (let i = 0, j = 0; j < llen; j++) {
-            layer.push(sha256pair(inputs[i], inputs[i + 1]))
+            let hash = step2_vm.newTemp256(true)
+            sha256pair(hash, inputs[i], inputs[i + 1])
+            layer.push(hash)
             i += 2
         }
         if (llen > 1 && (llen & 1) != 0) {
@@ -58,20 +60,32 @@ export class Merkle {
 }
 
 export function MerkleProve(index: number, transaction: Register[], proof: Register[][], root: Register[]) : boolean {
-    let hash = transaction
+    let hash: Register[] = []
+    let hashtmp: Register[] = []
+    for (let i = 0; i < root.length; i++) {
+        hash.push(step2_vm.newRegister())
+        step2_vm.mov(hash[i], transaction[i])
+        hashtmp.push(step2_vm.newRegister())
+    }
     for (let i = 0; i < proof.length; i++) {
         if ((index & 1) == 0) {
-            hash = sha256pair(hash, proof[i])
+            sha256pair(hashtmp, hash, proof[i])
         } else {
-            hash = sha256pair(proof[i], hash)
+            sha256pair(hashtmp, proof[i], hash)
+        }
+        for (let j = 0; j < root.length; j++) {
+            step2_vm.mov(hash[j], hashtmp[j])
         }
         index = index >> 1
     }
     let proved = true
-    let cmp = step2_vm.newRegister(true)
     for (let i = 0; i < root.length; i++) {
-        step2_vm.equal(cmp, hash[i], root[i])
-        proved = proved && (cmp.value == 1n)
+        step2_vm.assertEq(hash[i], root[i])
+        proved = proved && (hash[i].value == root[i].value)
+    }
+    for (let i = 0; i < root.length; i++) {
+        step2_vm.freeRegister(hash[i])
+        step2_vm.freeRegister(hashtmp[i])
     }
     return proved
 }
