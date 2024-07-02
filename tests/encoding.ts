@@ -39,6 +39,13 @@ export function hash(input: bigint, times: number = 1): bigint {
     return t;
 }
 
+export function hashPair(inputA: bigint, inputB: bigint): bigint {
+    const s = padHex(inputA.toString(16), 32) + padHex(inputB.toString(16), 32);
+    return BigInt('0x' + createHash('sha256')
+        .update(s, 'hex')
+        .digest('hex'));
+}
+
 export function writeBigintToBuffer(target: Buffer, index: number, n: bigint, bytes: number) {
     for (let i = 0; i < bytes; i++) {
         target.writeUint8(Number(n & 0xffn), index + i);
