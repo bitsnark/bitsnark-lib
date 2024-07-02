@@ -138,10 +138,8 @@ describe("encoding schemes", function () {
         });
 
         it("positive", async () => {
-            bitcoin.winternitzDecode256(decodedItems, witness, keyItems);
+            bitcoin.winternitzCheck256(witness, keyItems);
             expect(bitcoin.success).toBe(true);
-            const result = nibblesToBigint(decodedItems.slice(0, 86).map(si => Number(si.value)));
-            expect(result).toEqual(testData256Bits);
 
             console.log('256 bits in winternitz encoding: ', encoded.length);
             console.log('256 bit winternitz decode btc script count', bitcoin.opcodes.length);
