@@ -1,4 +1,7 @@
-import { createHash, randomBytes } from "crypto";
+import { createHash } from "crypto";
+
+export let lamportKeyIndex = 0;
+export let winternitzKeyIndex = 0;
 
 export interface Key { prvt: bigint, pblc: bigint };
 
@@ -32,9 +35,9 @@ export function padHex(s: string, bytes: number): string {
 export function hash(input: bigint, times: number = 1): bigint {
     let t = input;
     for (let i = 0; i < times; i++) {
-        t = BigInt('0x' + createHash('sha256')
-            .update(padHex(t.toString(16), 32), 'hex')
-            .digest('hex'));
+        let s1 = padHex(t.toString(16), 32);
+        let s2 = createHash('sha256').update(s1,'hex').digest('hex');
+        t = BigInt('0x' + s2);
     }
     return t;
 }
