@@ -22,6 +22,7 @@ export class Bitcoin {
     witness: bigint[] = [];
     hardcoded: bigint[] = [];
     success = true;
+    maxStack = 0;
 
     constructor() {
     }
@@ -40,15 +41,14 @@ export class Bitcoin {
     /// BASIC ///
 
     newStackItem(value: bigint, name: string = ''): StackItem {
-        if (this.stack.items.length + this.altStack.length > 1000) throw new Error('Stack too big');
-
         value = value ?? 0;
         const si = this.stack.newItem(value);
         si.name = name;
-        if (value <= 16)
-            this.opcodes.push({ op: hardcode(value) });
-        else
-            this.opcodes.push({ op: OpcodeType.DATA, data: value })
+        if (value <= 16) this.opcodes.push({ op: hardcode(value) });
+        else this.opcodes.push({ op: OpcodeType.DATA, data: value })
+
+        this.maxStack = Math.max(this.maxStack, this.stack.items.length);
+        if (this.stack.items.length + this.altStack.length > 1000) throw new Error('Stack too big');
         return si;
     }
 
@@ -75,6 +75,7 @@ export class Bitcoin {
 
     addWitness(n: bigint): StackItem {
         const si = this.stack.newItem(n);
+        this.maxStack = Math.max(this.maxStack, this.stack.items.length);
         return si;
     }
 
@@ -331,7 +332,7 @@ export class Bitcoin {
         if (rel == 0) {
             this.OP_DUP();
         } else {
-            this.stack.newItem(BigInt(rel));
+            this.DATA(BigInt(rel));
             this.OP_PICK();
         }
     }
@@ -782,26 +783,32 @@ export class Bitcoin {
         this.pick(checksum);
         this.OP_EQUAL();
         this.OP_VERIFY();
+
+        this.drop(checksum);
     }
 
-    winternitzDecode256(target: StackItem[], witness: StackItem[], publicKeys: bigint[]) {
+    winternitzCheck256(witness: StackItem[], publicKeys: bigint[]) {
 
         const totalNibbles = witness.length;
+        const temp = this.newStackItem(0n, 'temp');
+        const checksumNibbles: StackItem[] = [];
+        for (let i = 0; i < 4; i++) checksumNibbles.push(this.newStackItem(0n, 'cs nibble'));
         const checksum = this.newStackItem(0n, 'checksum');
 
-        for (let i = 0; i < totalNibbles; i++) {
-            this.winternitzDecodeNibble(target[i], witness[i], publicKeys[i]);
-        }
-
         for (let i = 0; i < totalNibbles - 4; i++) {
+            this.winternitzDecodeNibble(temp, witness[i], publicKeys[i]);
             this.pick(checksum);
-            this.pick(target[i]);
+            this.pick(temp);
             this.OP_ADD();
-            this.replaceWithTop(checksum);
+            this.replaceWithTop(checksum);    
+        }
+
+        for (let i = 0; i < 4; i++)  {
+            this.winternitzDecodeNibble(checksumNibbles[i], witness[totalNibbles - 4 + i], publicKeys[totalNibbles - 4 + i]);
         }
 
         this.DATA(7n);
-        this.pick(target[totalNibbles - 1]);
+        this.pick(checksumNibbles[3]);
         this.OP_SUB();
 
         // * 8
@@ -813,20 +820,7 @@ export class Bitcoin {
         this.OP_ADD();
 
         this.DATA(7n);
-        this.pick(target[totalNibbles - 2]);
-        this.OP_SUB();
-        this.OP_ADD();
-
-        // * 8
-        this.OP_DUP();
-        this.OP_ADD();
-        this.OP_DUP();
-        this.OP_ADD();
-        this.OP_DUP();
-        this.OP_ADD();
-
-        this.DATA(7n);
-        this.pick(target[totalNibbles - 3]);
+        this.pick(checksumNibbles[2]);
         this.OP_SUB();
         this.OP_ADD();
 
@@ -839,13 +833,34 @@ export class Bitcoin {
         this.OP_ADD();
 
         this.DATA(7n);
-        this.pick(target[totalNibbles - 4]);
+        this.pick(checksumNibbles[1]);
+        this.OP_SUB();
+        this.OP_ADD();
+
+        // * 8
+        this.OP_DUP();
+        this.OP_ADD();
+        this.OP_DUP();
+        this.OP_ADD();
+        this.OP_DUP();
+        this.OP_ADD();
+
+        this.DATA(7n);
+        this.pick(checksumNibbles[0]);
         this.OP_SUB();
         this.OP_ADD();
 
         this.pick(checksum);
         this.OP_EQUAL();
         this.OP_VERIFY();
+
+        this.drop(checksum);
+    }
+
+    checkInitialTransaction(witness: StackItem[], publicKeys: bigint[]) {
+        for (let i = 0; i < 10; i++) {
+            this.winternitzCheck256(witness.slice(i * 90, i * 90 + 90), publicKeys.slice(i * 90, i * 90 + 90));
+        }
     }
 
     /***  META ***/
@@ -863,5 +878,17 @@ export class Bitcoin {
             }
         });
         return total;
+    }
+
+    programToString() {
+        let s = '';
+        this.opcodes.forEach(op => {
+            if (op.data) {
+                s += `<0x${op.data.toString(16)}>\n`;
+            } else {
+                s += `${op.op}\n`;
+            }
+        });
+        return s;
     }
 }
