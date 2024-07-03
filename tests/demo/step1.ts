@@ -54,6 +54,9 @@ function step1() {
                 winternitzKeys.slice(chunkIndex * 90, chunkIndex * 90 + 90).map(k => k.pblc));
 
             console.log('PAT:');
+            console.log('data size: ', witness.length * 32);
+            console.log('progam size: ', bitcoin.programSizeInBitcoinBytes());
+            console.log('max stack size: ', bitcoin.maxStack);
             console.log('witness: ', witness);
             console.log('program: ', bitcoin.programToString());
         }
@@ -87,12 +90,32 @@ function step1() {
             );
 
             console.log('VIC:');
+            console.log('data size: ', witness.length * 32);
+            console.log('progam size: ', bitcoin.programSizeInBitcoinBytes());
+            console.log('max stack size: ', bitcoin.maxStack);
             console.log('witness: ', witness);
             console.log('program: ', bitcoin.programToString());
         }
 
         if (right - left <= 1) {
             console.log('Found instruction, line: ', middle);
+
+            runner = Runner.load(saved);
+            const instr = runner.instructions[middle];
+            runner.execute(middle - 1);
+            const regsBefore = runner.getRegisterValues();
+            runner.execute(middle);
+            const regsAfter = runner.getRegisterValues();
+        
+            const param1 = regsBefore[instr.param1];
+            const param2 = regsBefore[instr.param2 ?? 0];
+            const target = regsAfter[instr.target ?? 0];
+
+            console.log('regsBefore: ', regsBefore);
+            console.log('param1 index:', instr.param1, ' value: ', param1);
+            console.log('param2 index:', instr.param2, ' value: ', param2);
+            console.log('target index:', instr.target, ' value: ', target);
+        
             return;
         }
     }

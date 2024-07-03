@@ -1,0 +1,188 @@
+import fs from 'fs';
+import groth16Verify, { Key, Proof } from '../../src/generator/step1/verifier';
+import { proof, publicSignals } from './proof';
+import { step1_vm } from '../../src/generator/step1/vm/vm';
+import { Runner } from '../../src/generator/step1/vm/runner';
+import { merkelize } from './merkle';
+import { Bitcoin } from '../../src/generator/step3/bitcoin';
+import { bufferToBigints256, encodeLamportBits, encodeWinternitz, lamportKeys, winternitzKeys } from '../encoding';
+
+function step2() {
+
+
+    const regsBefore = [
+        0n,
+        1n,
+        8n,
+        19937756971775647987995932169929341994314640652964949448313374472400716661030n,
+        2581911344467009335267311115468803099551665605076196740867805258568234346338n,
+        10307601595873709700152284273816112264069230130616436755625194854815875713954n,
+        21575463638280843010398324269430826099269044274347216827212613867836435027261n,
+        2203960485148121921418603742825762020974279258880205651966n,
+        21888242871839275220042445260109153167277707414472061641714758635765020556616n,
+        16469823323077808223889137241176536799009286646108169935659301613961712198316n,
+        8376118865763821496583973867626364092589906065868298776909617916018768340080n,
+        21888242871839275220042445260109153167277707414472061641714758635765020556617n,
+        3505843767911556378687030309984248845540243509899259641013678093033130930403n,
+        2821565182194536844548159561693502659359617185244120367078079554186484126554n,
+        3n,
+        2n,
+        266929791119991161246907387137283842545076965332900288569378510910307636690n,
+        19485874751759354771024239261021720505790618469301721065564631296452457478373n,
+        11559732032986387107991004021392285783925812861821192530917403151452391805634n,
+        10857046999023057135944570762232829481370756359578518086990519993285655852781n,
+        4082367875863433681332203403145435568316851327593401208105741076214120093531n,
+        8495653923123431417604973247489272438418190587263600148770280649306958101930n,
+        9n,
+        21712882250472796272161788137658761599131127155430822464824672498476826388551n,
+        552741532735314699926400759823293923105907069604986766042478074962192337366n,
+        12058235453740420034921457986465505463457514607198777288482514440281218605028n,
+        11454657900582179986942752433396175393379495277505314089098948702824581371073n,
+        14348239919612624225209599824418433914444557994830931450885824657802418934202n,
+        9245012449840884679075676193884780481706956365868051138079687915934413768997n,
+        15438115071310379730640950544985926952604930553405319893567683759101083548862n,
+        19749955201276019113767908335412065539635760453824542580852110315987111407211n,
+        5039646762941336679168675399139810890393860924275729758598296551114657136302n,
+        8081373083339833367863828227041427035692797663482727195083250203573955986378n,
+        15228319439367907688412448440498031133959967042739898244747533922285298263588n,
+        7325414058263354695276256220131713148508401078319479089590352962374400955943n,
+        15787697953497698366259422004335840598898242056369433499534726268976760863408n,
+        13999881966261347350313268261994882673895614399911197048975752238692140366328n,
+        11658042682902220805035875782281846254107538847337155467126794851474468453075n,
+        17111742092987389674133413486604666043472810767103656700764313114323999544388n,
+        4531350982720745483183896166010272188780196700199407980342269744581989148149n,
+        8537072424426339037594105475681425616791387434880920465097584850313527560965n,
+        9802075445186058683936769178514143384687031267769197843391560534835079597863n,
+        2411699281801306923564935501152972918367713935498519592436730569804473762071n,
+        542961677870429289316706958907664752199371035048761897149284127652926867503n,
+        9841644077687891842107824701324051165061919977670341286300780240127706993433n,
+        3973245501156043393965035252994987222825469293526203824011347102421386558530n,
+        5182492167196517803964084985226343839022108025654500361628202698319357889198n,
+        7846584110231304484130591517250695862013449008984130525437610225575769155170n,
+        11n,
+        19820469076730107577691234630797803937210158605698999776717232705083708883455n,
+        1957116455299422228599814074522697916968387987502927430267011457616373934453n,
+        2281491940000016705725984341158967061119400283835135178360094982157089739622n,
+        5841427112246441976950595755661263924572613632441676420331173306436585897299n,
+        17044763525377393976640592939738429796372993961104341549737159144778600756460n,
+        17261423547406455322955480774512181301391284344070441326352827447954601315547n,
+        4038033502548466216853299117557197595317456439113212676986966140547118935390n,
+        14979931607406438617229496433353214240271884060235306147992732465797511575925n,
+        3884310656947019748350781681138566007604225644938748990064161848820211962846n,
+        0n,
+        1957116455299422228599814074522697916968387987502927430267011457616373934453n
+    ];
+    const param1Index = 55;
+    const param1Value = 4038033502548466216853299117557197595317456439113212676986966140547118935390n;
+    const param2Index = 55;
+    const param2Value = 4038033502548466216853299117557197595317456439113212676986966140547118935390n;
+    const targetIndex = 56;
+    const targetValue = 5067076280308709463109923191049609127664263843485530454415936247322380720905n;
+
+    const contentionLine = 10000;
+
+    // Pat
+
+    let runner = Runner.load(saved);
+    let chunkIndex = 20;
+    let right = runner.instructions.length - 1;
+    let left = 0;
+    let lamportKeyIndex = 0;
+    const states: bigint[] = [];
+    let iterations = 0;
+
+    while (true) {
+
+        let middle;
+        if (right - left <= 1) middle = right;
+        else middle = Math.floor((right + left) / 2);
+
+        console.log('******************************************************************************************')
+        console.log('iter: ', iterations++, '    left ', left, '   middle ', middle, '   right ', right);
+
+        // PAT part
+        {
+            runner = Runner.load(saved);
+            runner.execute(middle);
+            let merkleRoot = merkelize(runner.getRegisterValues());
+
+            // insert error in states after contention line
+            if (middle >= contentionLine) merkleRoot++;
+
+            states[middle] = merkleRoot;
+            const bitcoin = new Bitcoin();
+            const witness = bufferToBigints256(encodeWinternitz(merkleRoot, chunkIndex, 256, 12));
+            bitcoin.winternitzCheck256(
+                witness.map(n => bitcoin.addWitness(n)),
+                winternitzKeys.slice(chunkIndex * 90, chunkIndex * 90 + 90).map(k => k.pblc));
+
+            console.log('PAT:');
+            console.log('data size: ', witness.length * 32);
+            console.log('progam size: ', bitcoin.programSizeInBitcoinBytes());
+            console.log('max stack size: ', bitcoin.maxStack);
+            console.log('witness: ', witness);
+            console.log('program: ', bitcoin.programToString());
+        }
+
+        // VIC part
+        {
+            runner = Runner.load(saved);
+            runner.execute(middle);
+            const midState = merkelize(runner.getRegisterValues());
+            runner.execute(right);
+            const rightState = merkelize(runner.getRegisterValues());
+
+            let witness: bigint[];
+            const bitcoin = new Bitcoin();
+            let bit = 0;
+            if (midState != states[middle]) {
+                bit = 0;
+                right = middle;
+            } else if (rightState != states[right]) {
+                bit = 1;
+                left = middle;
+            } else {
+                throw new Error('States agree');
+            }
+
+            witness = bufferToBigints256(encodeLamportBits(BigInt(bit), 1));
+            bitcoin.lamportDecodeBit(
+                bitcoin.newStackItem(0n),
+                bitcoin.addWitness(witness[0]),
+                [lamportKeys[lamportKeyIndex++][0].pblc, lamportKeys[lamportKeyIndex++][1].pblc]
+            );
+
+            console.log('VIC:');
+            console.log('data size: ', witness.length * 32);
+            console.log('progam size: ', bitcoin.programSizeInBitcoinBytes());
+            console.log('max stack size: ', bitcoin.maxStack);
+            console.log('witness: ', witness);
+            console.log('program: ', bitcoin.programToString());
+
+
+        }
+
+        if (right - left <= 1) {
+            console.log('Found instruction, line: ', middle);
+
+            runner = Runner.load(saved);
+            const instr = runner.instructions[middle];
+            runner.execute(middle - 1);
+            const regsBefore = runner.getRegisterValues();
+            runner.execute(middle);
+            const regsAfter = runner.getRegisterValues();
+
+            const param1 = regsBefore[instr.param1];
+            const param2 = regsBefore[instr.param2 ?? 0];
+            const target = regsAfter[instr.target ?? 0];
+
+            console.log('param1: ', param1);
+            console.log('param2: ', param2);
+            console.log('target: ', target);
+
+            return;
+        }
+    }
+}
+
+step2();

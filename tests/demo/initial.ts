@@ -23,13 +23,13 @@ export async function createInitialTx() {
 
     if (!bitcoin.success) throw new Error('Failed');
 
+
+    console.log('PAT:');
     console.log('data size: ', encodedWitness.length * 32);
     console.log('progam size: ', bitcoin.programSizeInBitcoinBytes());
     console.log('max stack size: ', bitcoin.maxStack);
-
-    const program = bitcoin.programToString();
-    fs.writeFileSync('./generated/demo/initial.btc.txt', program);
-    fs.writeFileSync('./generated/demo/initial.data.txt', encodedWitness.map(n => '0x' + n.toString(16)).join('\n'));
+    console.log('witness: ', encodedWitness);
+    console.log('program: ', bitcoin.programToString());
 }
 
 createInitialTx();
