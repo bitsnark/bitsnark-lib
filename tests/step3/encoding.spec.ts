@@ -1,5 +1,6 @@
 import { deleteDir } from "../../src/encoder-decoder/files-utils";
 import { Lamport } from "../../src/encoder-decoder/lamport";
+import { Winternitz } from "../../src/encoder-decoder/winternitz";
 import { Bitcoin } from "../../src/generator/step3/bitcoin";
 import { StackItem } from "../../src/generator/step3/stack";
 import { strToBigint, writeBigintToBuffer, hash, bufferToBigints256, Key, bitsToBigint, nibblesToBigint, bufferToBigints256BE } from "./utils";
@@ -78,10 +79,20 @@ function generatLamport(folder: string, bits: number) {
     lamport.generateKeys(bits);
     return lamport;
 }
+
+
+function generatWinternitz(folder: string) {
+    deleteDir(folder);
+    const winternitz = new Winternitz(folder);
+    winternitz.generateKeys(1, 1);
+    return winternitz;
+}
+
 describe("encoding schemes", function () {
 
     let bitcoin: Bitcoin;
     let lamport: Lamport;
+    let winternitz: Winternitz;
     let encoded;
     let witness: StackItem[];
     let decodedItems: StackItem[];
@@ -186,19 +197,34 @@ describe("encoding schemes", function () {
     });
 
     describe('winternitz 32 bits', () => {
-
         let keyItems: bigint[];
 
         beforeEach(() => {
             bitcoin = new Bitcoin();
-            encoded = encodeWinternitz(testData32Bits, 32, 9);
-            witness = bufferToBigints256(encoded).map(n => bitcoin.addWitness(n));
+
+            winternitz = generatWinternitz('winternitz32');
+            const buffer = Buffer.alloc(4);
+            writeBigintToBuffer(buffer, 0, testData32Bits, 4);
+            console.log('buffer:', buffer, buffer.length);
+            //encoded = encodeWinternitz(testData32Bits, 32, 9);
+            const { encodedData, pubk } = winternitz.encodeBuffer4AddPublic(buffer, 0);
+            encoded = encodedData;
+            console.log('encoded data:', encoded.length, encoded);
+            console.log('pubk data:', pubk.length, pubk);
+
+            witness = bufferToBigints256BE(encoded).map(n => bitcoin.addWitness(n));
+            console.log('witness:', witness.length, witness);
             keyItems = [];
             for (let i = 0; i < 11 + 3; i++) {
-                keyItems.push(winternitzKeys[i].pblc);
+                keyItems.push(
+                    bufferToBigints256BE(pubk.subarray(i * 32, (i + 1) * 32))[0]
+                    //winternitzKeys[i].pblc
+                );
             }
             decodedItems = [];
             for (let i = 0; i < 11 + 3; i++) decodedItems.push(bitcoin.newStackItem(0n));
+            // console.log('encoded', encoded.length, 'witness', witness.length, 'keyItems', keyItems.length);
+
         });
 
         it("positive", async () => {

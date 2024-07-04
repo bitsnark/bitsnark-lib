@@ -116,6 +116,44 @@ export class Winternitz {
         }
     }
 
+    public encodeBuffer32AddPublic(buffer: Buffer, chunckIndex: number): { encodedData: Buffer, pubk: Buffer } {
+        if (buffer.length !== (chunkSize32)) throw new Error('Invalid buffer size');
+
+        const pubKeyBuffer = readFromFile(this.folder,
+            FILE_PREFIX_32 + PUB_KEY_FILE,
+            chunckIndex * 86 * hashSize,
+            86 * hashSize);
+
+        const checksumKeyBuffer = readFromFile(this.folder,
+            FILE_PREFIX_32 + CHECKSUM_PREFIX + PUB_KEY_FILE,
+            chunckIndex * 4 * hashSize,
+            4 * hashSize);
+
+        return {
+            encodedData: this.encodeBuffer(buffer, chunckIndex, chunkSize32),
+            pubk: Buffer.concat([pubKeyBuffer, checksumKeyBuffer])
+        };
+    }
+
+    public encodeBuffer4AddPublic(buffer: Buffer, chunckIndex: number): { encodedData: Buffer, pubk: Buffer } {
+        if (buffer.length !== (chunkSize4)) throw new Error('Invalid buffer size');
+
+        const pubKeyBuffer = readFromFile(this.folder,
+            FILE_PREFIX_4 + PUB_KEY_FILE,
+            chunckIndex * 11 * hashSize,
+            11 * hashSize);
+
+        const checksumKeyBuffer = readFromFile(this.folder,
+            FILE_PREFIX_4 + CHECKSUM_PREFIX + PUB_KEY_FILE,
+            chunckIndex * 3 * hashSize,
+            3 * hashSize);
+
+        return {
+            encodedData: this.encodeBuffer(buffer, chunckIndex, chunkSize4),
+            pubk: Buffer.concat([pubKeyBuffer, checksumKeyBuffer])
+        };
+    }
+
     public encodeBuffer32(buffer: Buffer, chunckIndex: number): Buffer {
         if (buffer.length !== (chunkSize32)) throw new Error('Invalid buffer size');
         return this.encodeBuffer(buffer, chunckIndex, chunkSize32);
@@ -142,7 +180,7 @@ export class Winternitz {
         for (let i = 0; i < nibbleArray.length; i++) {
             checkSum += nibbleArray[i]; //0 -7;
             let iPrvKey = prvKeyBuffer.subarray(i * hashSize, (i + 1) * hashSize);
-            for (let j = valuesPerUnit; j > nibbleArray[i]; j--) {
+            for (let j = valuesPerUnit - 1; j > nibbleArray[i]; j--) {
                 iPrvKey = createHash('sha256').update(iPrvKey).digest();
             }
             iPrvKey.copy(result, i * hashSize, 0, hashSize);
@@ -161,11 +199,8 @@ export class Winternitz {
         for (let i = 0; i < checksumSize; i++) {
             const iChecksumValue = checksumArray[i];
             let icheckSum = checksumKeyBuffer.subarray(i * hashSize, (i + 1) * hashSize);
-            let j = 0;
-            let count = 0;
-            for (j; j <= iChecksumValue; j++) {
+            for (let j = 0; j < iChecksumValue; j++) {
                 icheckSum = createHash('sha256').update(icheckSum).digest();
-                count++;
             }
             icheckSum.copy(result, (nibbleArray.length + i) * hashSize, 0, hashSize);
         }
