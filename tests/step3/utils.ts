@@ -20,6 +20,20 @@ export function bufferToBigints256(buffer: Buffer): bigint[] {
             n += BigInt(buffer[i++]) << (8n * BigInt(j));
         }
         output.push(n);
+
+    }
+    return output;
+}
+
+export function bufferToBigints256BE(buffer: Buffer): bigint[] {
+    if (buffer.length % 32 != 0) throw new Error('invalid size');
+    const output: bigint[] = [];
+    for (let i = 0; i < buffer.length;) {
+        let n = 0n;
+        for (let j = 0; j < 32; j++) {
+            n = (n << 8n) + BigInt(buffer[i++]);
+        }
+        output.push(n);
     }
     return output;
 }

@@ -147,6 +147,15 @@ export class Lamport {
         return result;
     }
 
+    public encodeBufferAddPublic(buffer: Buffer, indexInBits: number) {
+        const pubKeyBuffer = readFromFile(
+            this.folder,
+            PUB_KEY_FILE,
+            indexInBits * valuesPerUnit * hashSize,
+            buffer.length * unitsInOneByte * hashSize * valuesPerUnit);
+        return { pubk: pubKeyBuffer, encodedData: this.encodeBuffer(buffer, indexInBits) };
+    }
+
 
     private createCachFile() {
         const keySize = getFileSizeBytes(this.folder, PUB_KEY_FILE);
