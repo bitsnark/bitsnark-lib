@@ -205,26 +205,17 @@ describe("encoding schemes", function () {
             winternitz = generatWinternitz('winternitz32');
             const buffer = Buffer.alloc(4);
             writeBigintToBuffer(buffer, 0, testData32Bits, 4);
-            console.log('buffer:', buffer, buffer.length);
-            //encoded = encodeWinternitz(testData32Bits, 32, 9);
             const { encodedData, pubk } = winternitz.encodeBuffer4AddPublic(buffer, 0);
             encoded = encodedData;
-            console.log('encoded data:', encoded.length, encoded);
-            console.log('pubk data:', pubk.length, pubk);
-
             witness = bufferToBigints256BE(encoded).map(n => bitcoin.addWitness(n));
-            console.log('witness:', witness.length, witness);
             keyItems = [];
             for (let i = 0; i < 11 + 3; i++) {
                 keyItems.push(
                     bufferToBigints256BE(pubk.subarray(i * 32, (i + 1) * 32))[0]
-                    //winternitzKeys[i].pblc
                 );
             }
             decodedItems = [];
             for (let i = 0; i < 11 + 3; i++) decodedItems.push(bitcoin.newStackItem(0n));
-            // console.log('encoded', encoded.length, 'witness', witness.length, 'keyItems', keyItems.length);
-
         });
 
         it("positive", async () => {
