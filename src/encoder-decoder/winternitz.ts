@@ -1,10 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import { createFolder, readFromFile, isFileExists, getFileSizeBytes, writeToPosInFile, writeToFile } from "./files-utils";
-
 import { PRV_KEY_FILE, PUB_KEY_FILE, CACHE_FILE } from "./files-utils";
-// import { encode } from "node:punycode";
-// import { hash } from "../merkle-proof/sha-256";
-// import { count } from "node:console";
+
 
 export const FILE_PREFIX_32 = "winternitz-32-";
 export const FILE_PREFIX_4 = "winternitz-4-";
@@ -195,7 +192,6 @@ export class Winternitz {
         const checksumBuffer = Buffer.alloc(2);
         checksumBuffer.writeUInt16LE(checkSum);
         const checksumArray = bufferTo3BitArray(checksumBuffer);
-
         for (let i = 0; i < checksumSize; i++) {
             const iChecksumValue = checksumArray[i];
             let icheckSum = checksumKeyBuffer.subarray(i * hashSize, (i + 1) * hashSize);
@@ -204,7 +200,6 @@ export class Winternitz {
             }
             icheckSum.copy(result, (nibbleArray.length + i) * hashSize, 0, hashSize);
         }
-
         return result;
     }
 
@@ -238,15 +233,15 @@ export class Winternitz {
             let iKey = encoded.subarray(i * hashSize, (i + 1) * hashSize);
             let iPubKey = pubKeyBuffer.subarray(i * hashSize, (i + 1) * hashSize);
             for (let j = 0; j < valuesPerUnit; j++) {
+                iKey = createHash('sha256').update(iKey).digest();
                 if (iPubKey.compare(iKey) === 0) {
                     nibbleArray.push(j);
                     checkSum += j;
                     isDecoded = true;
                     break;
                 }
-                iKey = createHash('sha256').update(iKey).digest();
             }
-            if (!isDecoded) throw new Error(`Invalid key`);
+            if (!isDecoded) throw new Error(`Invalid key nibble ${i} key ${iKey}`);
         }
         const resultData = arrayToBuffer(nibbleArray, chunkSize);
 
@@ -262,12 +257,11 @@ export class Winternitz {
         for (let i = 0; i < checksumSize; i++) {
             let iChecksumEncoded = encoded.subarray((dataNibbles + i) * hashSize, (dataNibbles + i + 1) * hashSize);
             const ichecksumKey = checksumKeyBuffer.subarray(i * hashSize, (i + 1) * hashSize);
-            for (let j = valuesPerUnit - 1; j > checksumArray[i]; j--) {
+            for (let j = valuesPerUnit; j > checksumArray[i]; j--) {
                 iChecksumEncoded = createHash('sha256').update(iChecksumEncoded).digest();
             }
             if (iChecksumEncoded.compare(ichecksumKey) !== 0) throw new Error(`Invalid checksum`);
         }
-
         return resultData;
     }
 }
