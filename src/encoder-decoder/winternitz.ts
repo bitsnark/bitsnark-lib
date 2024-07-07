@@ -226,6 +226,7 @@ export class Winternitz {
             chunckIndex * dataNibbles * hashSize,
             dataNibbles * hashSize);
 
+
         let checkSum = 0;
         const nibbleArray = [];
         for (let i = 0; i < dataNibbles; i++) {
@@ -244,7 +245,6 @@ export class Winternitz {
             if (!isDecoded) throw new Error(`Invalid key nibble ${i} key ${iKey}`);
         }
         const resultData = arrayToBuffer(nibbleArray, chunkSize);
-
         const checksumKeyBuffer = readFromFile(this.folder,
             prefix + CHECKSUM_PREFIX + PUB_KEY_FILE,
             chunckIndex * checksumSize * hashSize,
@@ -262,6 +262,38 @@ export class Winternitz {
             }
             if (iChecksumEncoded.compare(ichecksumKey) !== 0) throw new Error(`Invalid checksum`);
         }
+
+        if (!isFileExists(this.folder, prefix + CACHE_FILE)) {
+            const cache = Buffer.alloc(getFileSizeBytes(this.folder, prefix + PUB_KEY_FILE), 0);
+            writeToFile(this.folder, prefix + CACHE_FILE, cache, 'w');
+            const cacheCheckSum = Buffer.alloc(getFileSizeBytes(this.folder, prefix + CHECKSUM_PREFIX + PUB_KEY_FILE), 0);
+            writeToFile(this.folder, prefix + CHECKSUM_PREFIX + CACHE_FILE, cacheCheckSum, 'w');
+        }
+
+        //if all data is legit - check if conflict exists
+        const pubCacheBuffer = readFromFile(this.folder,
+            prefix + CACHE_FILE,
+            chunckIndex * dataNibbles * hashSize,
+            dataNibbles * hashSize);
+
+        const cacheChecksumKeyBuffer = readFromFile(this.folder,
+            prefix + CHECKSUM_PREFIX + CACHE_FILE,
+            chunckIndex * checksumSize * hashSize,
+            checksumSize * hashSize);
+
+        const isEmpty = (buffer: Buffer) => buffer.every(byte => byte === 0);
+
+        console.log(pubCacheBuffer, cacheChecksumKeyBuffer)
+        if (isEmpty(pubCacheBuffer) && isEmpty(cacheChecksumKeyBuffer)) {
+            writeToPosInFile(this.folder, prefix + CACHE_FILE, encoded.subarray(0, dataNibbles * hashSize), chunckIndex * dataNibbles * hashSize);
+            writeToPosInFile(this.folder, prefix + CHECKSUM_PREFIX + CACHE_FILE, encoded.subarray(dataNibbles * hashSize), chunckIndex * checksumSize * hashSize);
+        } else if
+            (pubCacheBuffer.compare(encoded.subarray(0, dataNibbles * hashSize)) !== 0 &&
+            cacheChecksumKeyBuffer.compare(encoded.subarray(dataNibbles, checksumSize * hashSize)) !== 0) {
+
+            throw new Error(`Conflict detected in cache file`);
+        }
+
         return resultData;
     }
 }

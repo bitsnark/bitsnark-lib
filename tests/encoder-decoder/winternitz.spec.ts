@@ -9,14 +9,14 @@ const dataBuffer32 = Buffer.from([
     0x11, 0x0b, 0xf4, 0x73, 0x7a, 0x63, 0x6b, 0xb7
 ]);
 
-// const dataBuffer4 = Buffer.from([
-//     0x5f, 0x8d, 0x2c, 0xd1, 0x7e, 0x34,
-//     0x9e, 0x1f, 0x3b, 0x61, 0x84, 0x7d
-// ]);
-
 const dataBuffer4 = Buffer.from([
-    0xC5, 0x01, 0x00, 0x02
+    0x5f, 0x8d, 0x2c, 0xd1, 0x7e, 0x34,
+    0x9e, 0x1f, 0x3b, 0x61, 0x84, 0x7d
 ]);
+
+// const dataBuffer4 = Buffer.from([
+//     0xC5, 0x01, 0x00, 0x02
+// ]);
 
 // const dataBuffer4 = Buffer.from([
 //     0xc9
@@ -124,6 +124,25 @@ describe(`Test sequence for winternitz signature`, () => {
         const tmpEncoded4 = hashSubKey(encoded4, hashSize * 11);
         expect(() => { winternitz.decodeBuffer4(tmpEncoded4, 0); }).toThrow('Invalid checksum');
     });
+
+    it(`Decode: same block data buffer4 if just like cache`, () => {
+        decoded4 = winternitz.decodeBuffer4(encoded4, 0);
+        expect(Buffer.from(decoded4).compare(dataToEncode4.subarray(0, chunckSize4))).toBe(0);
+    });
+
+    it(`Decode: new block data buffer4 (2) is decoded ok`, () => {
+        const tmpEncoded4 = winternitz.encodeBuffer4(getDataBufferToEncode(dataBuffer4, 8, 4), 2);
+        const tmpDecoded4 = winternitz.decodeBuffer4(tmpEncoded4, 2);
+        expect(Buffer.from(tmpDecoded4).compare(getDataBufferToEncode(dataBuffer4, 8, 4))).toBe(0);
+
+    });
+
+    it(`Decode throws cache error if same block data buffer has different cache`, () => {
+        const tmpEncoded4 = winternitz.encodeBuffer4(Buffer.from([0x3b, 0x61, 0x84, 0x71]), 2);
+        expect(() => { winternitz.decodeBuffer4(tmpEncoded4, 2); }).toThrow('Conflict detected in cache file');
+
+    });
+
 
     const dataToEncode32 = getDataBufferToEncode(dataBuffer32, 0, 32);
     let encoded32: Buffer;
