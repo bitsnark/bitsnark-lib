@@ -1,6 +1,6 @@
 import { Runner } from '../../src/generator/step2/vm/runner';
 import { Bitcoin } from '../../src/generator/step3/bitcoin';
-import { bufferToBigints256 } from '../../src/encoding/encoding';
+import { bufferToBigints256BE } from '../../src/encoding/encoding';
 import { decodeWinternitz32, encodeWinternitz32, getWinternitzPublicKeys32 } from '../../src/encoding/winternitz';
 import { getEncodingIndexForPat, getEncodingIndexForVic, ProtocolStep } from './common';
 import { decodeLamportBit, encodeLamportBit, getLamportPublicKeys } from '../../src/encoding/lamport';
@@ -42,7 +42,7 @@ function patPart(saved: SavedVm<InstrCode>, searchPath: number[], maxIterations:
     const publicKeys: bigint[] = [];
     state.forEach((n, i) => {
         const chunkIndex = getEncodingIndexForPat(ProtocolStep.STEP2, searchPath.length, i);
-        witness.push(...bufferToBigints256(encodeWinternitz32(n, chunkIndex)));
+        witness.push(...bufferToBigints256BE(encodeWinternitz32(n, chunkIndex)));
         publicKeys.push(...getWinternitzPublicKeys32(chunkIndex));
     });
     bitcoin.checkStep2State(

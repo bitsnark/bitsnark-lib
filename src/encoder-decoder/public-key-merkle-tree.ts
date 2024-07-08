@@ -1,6 +1,5 @@
 import { readFromFile, getFileSizeBytes, readTextFile } from "./files-utils";
 import { MerkleTree } from 'merkletreejs';
-import { SHA256 } from 'crypto-js';
 import { PUB_KEY_FILE } from "./files-utils";
 
 export interface iMerkleProof {

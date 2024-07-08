@@ -1,7 +1,7 @@
 import { Bitcoin } from '../../src/generator/step3/bitcoin';
 import { proof, publicSignals } from './proof';
 import { encodeWinternitz256, getWinternitzPublicKeys256 } from '../../src/encoding/winternitz';
-import { bufferToBigints256 } from '../../src/encoding/encoding';
+import { bufferToBigints256BE } from '../../src/encoding/encoding';
 import { getEncodingIndexForPat, ProtocolStep } from './common';
 
 export function createInitialTx(): bigint[] {
@@ -19,7 +19,7 @@ export function createInitialTx(): bigint[] {
         .forEach((w, i) => {
             const chunkIndex = getEncodingIndexForPat(ProtocolStep.INITIAL, 0, i);
             const buffer = encodeWinternitz256(w, chunkIndex);
-            encodedWitness.push(...bufferToBigints256(buffer));
+            encodedWitness.push(...bufferToBigints256BE(buffer));
             publicKeys.push(...getWinternitzPublicKeys256(chunkIndex));
         });
 

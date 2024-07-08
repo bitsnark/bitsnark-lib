@@ -4,7 +4,7 @@ import { step1_vm } from "../../src/generator/step1/vm/vm";
 import { proof, publicSignals } from "./proof";
 import { SavedVm } from '../../src/generator/common/saved-vm';
 import { InstrCode } from '../../src/generator/step1/vm/types';
-import { bufferToBigints256 } from '../../src/encoding/encoding';
+import { bufferToBigints256BE } from '../../src/encoding/encoding';
 import { decodeWinternitz256, encodeWinternitz256, getWinternitzPublicKeys256 } from '../../src/encoding/winternitz';
 
 export enum ProtocolStep {
@@ -29,7 +29,7 @@ export function transitionPatEncode(param1: bigint, param2: bigint, target: bigi
     const publicKeys: bigint[] = [];
     [param1, param2, target].forEach((n, i) => {
         const chunkIndex = getEncodingIndexForPat(ProtocolStep.TRANSITION, 0, i);
-        const twitness = bufferToBigints256(encodeWinternitz256(n, chunkIndex));
+        const twitness = bufferToBigints256BE(encodeWinternitz256(n, chunkIndex));
         witness.push(...twitness);
         publicKeys.push(...getWinternitzPublicKeys256(chunkIndex));
     });

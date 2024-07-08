@@ -1,6 +1,6 @@
 import { Runner } from '../../src/generator/step1/vm/runner';
 import { Bitcoin } from '../../src/generator/step3/bitcoin';
-import { bufferToBigints256 } from '../../src/encoding/encoding';
+import { bufferToBigints256BE } from '../../src/encoding/encoding';
 import { decodeWinternitz256, encodeWinternitz256, getWinternitzPublicKeys256 } from '../../src/encoding/winternitz';
 import { getEncodingIndexForPat, getEncodingIndexForVic, ProtocolStep } from './common';
 import { decodeLamportBit, encodeLamportBit, getLamportPublicKeys } from '../../src/encoding/lamport';
@@ -37,7 +37,7 @@ function patPart(saved: SavedVm<InstrCode>, searchPath: number[]): bigint[] {
 
     const bitcoin = new Bitcoin();
     const chunkIndex = getEncodingIndexForPat(ProtocolStep.STEP1, searchPath.length, 0);
-    const witness = bufferToBigints256(encodeWinternitz256(merkleRoot, chunkIndex));
+    const witness = bufferToBigints256BE(encodeWinternitz256(merkleRoot, chunkIndex));
     bitcoin.winternitzCheck256(
         witness.map(n => bitcoin.addWitness(n)),
         getWinternitzPublicKeys256(chunkIndex));

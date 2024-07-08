@@ -1,13 +1,16 @@
 import { deleteDir } from "../../src/encoder-decoder/files-utils";
 import { Lamport } from "../../src/encoder-decoder/lamport";
 import { Winternitz } from "../../src/encoder-decoder/winternitz";
+import { strToBigint, hash, writeBigintToBuffer, nibblesToBigint, bufferToBigints256BE } from "../../src/encoding/encoding";
+import { encodeWinternitz256, getWinternitzPublicKeys256 } from "../../src/encoding/winternitz";
 import { Bitcoin } from "../../src/generator/step3/bitcoin";
 import { StackItem } from "../../src/generator/step3/stack";
-import { strToBigint, hash, Key, writeBigintToBuffer, bufferToBigints256, bitsToBigint, nibblesToBigint, encodeLamportBits, encodeWinternitz, lamportKeys, winternitzKeys, bufferToBigints256BE } from "../encoding";
 
 const testData32Bits = strToBigint('TEST');
 const testData256Bits = strToBigint('TESTING1TESTING2TESTING3TESTING4');
 
+let lamportKeys = [];
+let winternitzKeys = [];
 
 // const lamportKeys: Key[][] = [];
 for (let i = 0; i < 256; i++) lamportKeys.push([
@@ -45,7 +48,7 @@ describe("encoding schemes", function () {
 
     describe('lamport 32 bits', () => {
 
-    //     let keyItems: bigint[][];
+        //     let keyItems: bigint[][];
 
         beforeEach(() => {
             bitcoin = new Bitcoin();
@@ -59,7 +62,7 @@ describe("encoding schemes", function () {
             witness = bufferToBigints256BE(encoded).map(n => bitcoin.addWitness(n));
 
 
-            keyItems = [];
+            let keyItems = [];
             for (let i = 0; i < 32; i++) {
                 keyItems.push(
                     [
@@ -73,30 +76,30 @@ describe("encoding schemes", function () {
 
         });
 
-    //     it("positive", async () => {
+        //     it("positive", async () => {
 
-    //         bitcoin.lamportDecode(decodedItems, witness, keyItems);
-    //         expect(bitcoin.success).toBe(true);
-    //         const result = bitsToBigint(decodedItems.map(si => si.value ? 1 : 0));
-    //         expect(result).toEqual(testData32Bits);
+        //         bitcoin.lamportDecode(decodedItems, witness, keyItems);
+        //         expect(bitcoin.success).toBe(true);
+        //         const result = bitsToBigint(decodedItems.map(si => si.value ? 1 : 0));
+        //         expect(result).toEqual(testData32Bits);
 
-    //         console.log('32 bits in lamport encoding: ', encoded.length);
-    //         console.log('32 bit lamport decode btc script count', bitcoin.opcodes.length);
-    //         console.log('32 bit lamport decode btc script size', bitcoin.programSizeInBitcoinBytes());
-    //     });
+        //         console.log('32 bits in lamport encoding: ', encoded.length);
+        //         console.log('32 bit lamport decode btc script count', bitcoin.opcodes.length);
+        //         console.log('32 bit lamport decode btc script size', bitcoin.programSizeInBitcoinBytes());
+        //     });
 
-    //     it("negative", async () => {
+        //     it("negative", async () => {
 
-    //         witness[0].value++;
+        //         witness[0].value++;
 
-    //         bitcoin.lamportDecode(decodedItems, witness, keyItems);
-    //         expect(bitcoin.success).toBe(false);
-    //     });
-    // });
+        //         bitcoin.lamportDecode(decodedItems, witness, keyItems);
+        //         expect(bitcoin.success).toBe(false);
+        //     });
+        // });
 
-    // describe('lamport 256 bits', () => {
+        // describe('lamport 256 bits', () => {
 
-    //     let keyItems: bigint[][];
+        //     let keyItems: bigint[][];
 
         beforeEach(() => {
             bitcoin = new Bitcoin();
@@ -108,7 +111,7 @@ describe("encoding schemes", function () {
             encoded = encodedData;
 
             witness = bufferToBigints256BE(encoded).map(n => bitcoin.addWitness(n));
-            keyItems = [];
+            let keyItems = [];
             for (let i = 0; i < 256; i++) {
                 keyItems.push(
                     [
@@ -120,96 +123,97 @@ describe("encoding schemes", function () {
             for (let i = 0; i < 256; i++) decodedItems.push(bitcoin.newStackItem(0n));
         });
 
-    //     it("positive", async () => {
+        //     it("positive", async () => {
 
-    //         bitcoin.lamportDecode(decodedItems, witness, keyItems);
-    //         expect(bitcoin.success).toBe(true);
-    //         const result = bitsToBigint(decodedItems.map(si => si.value ? 1 : 0));
-    //         expect(result).toEqual(testData256Bits);
+        //         bitcoin.lamportDecode(decodedItems, witness, keyItems);
+        //         expect(bitcoin.success).toBe(true);
+        //         const result = bitsToBigint(decodedItems.map(si => si.value ? 1 : 0));
+        //         expect(result).toEqual(testData256Bits);
 
-    //         console.log('256 bits in lamport encoding: ', encoded.length);
-    //         console.log('256 bit lamport decode btc script count', bitcoin.opcodes.length);
-    //         console.log('256 bit lamport decode btc script', bitcoin.programSizeInBitcoinBytes());
-    //     });
+        //         console.log('256 bits in lamport encoding: ', encoded.length);
+        //         console.log('256 bit lamport decode btc script count', bitcoin.opcodes.length);
+        //         console.log('256 bit lamport decode btc script', bitcoin.programSizeInBitcoinBytes());
+        //     });
 
-    //     it("negative", async () => {
+        //     it("negative", async () => {
 
-    //         witness[0].value++;
+        //         witness[0].value++;
 
-    //         bitcoin.lamportDecode(decodedItems, witness, keyItems);
-    //         expect(bitcoin.success).toBe(false);
-    //     });
-    // });
+        //         bitcoin.lamportDecode(decodedItems, witness, keyItems);
+        //         expect(bitcoin.success).toBe(false);
+        //     });
+        // });
 
-    describe('winternitz 32 bits', () => {
-        let keyItems: bigint[];
+        describe('winternitz 32 bits', () => {
+            let keyItems: bigint[];
 
-        beforeEach(() => {
-            bitcoin = new Bitcoin();
-            winternitz = generatWinternitz('winternitz32');
-            const buffer = Buffer.alloc(4);
-            writeBigintToBuffer(buffer, 0, testData32Bits, 4);
-            const { encodedData, pubk } = winternitz.encodeBuffer4AddPublic(buffer, 0);
-            encoded = encodedData;
-            witness = bufferToBigints256BE(encoded).map(n => bitcoin.addWitness(n));
+            beforeEach(() => {
+                bitcoin = new Bitcoin();
+                winternitz = generatWinternitz('winternitz32');
+                const buffer = Buffer.alloc(4);
+                writeBigintToBuffer(buffer, 0, testData32Bits, 4);
+                const { encodedData, pubk } = winternitz.encodeBuffer4AddPublic(buffer, 0);
+                encoded = encodedData;
+                witness = bufferToBigints256BE(encoded).map(n => bitcoin.addWitness(n));
 
-            keyItems = [];
-            for (let i = 0; i < 11 + 3; i++) {
-                keyItems.push(
-                    bufferToBigints256BE(pubk.subarray(i * 32, (i + 1) * 32))[0]
-                );
-            }
-            decodedItems = [];
-            for (let i = 0; i < 11 + 3; i++) decodedItems.push(bitcoin.newStackItem(0n));
+                keyItems = [];
+                for (let i = 0; i < 11 + 3; i++) {
+                    keyItems.push(
+                        bufferToBigints256BE(pubk.subarray(i * 32, (i + 1) * 32))[0]
+                    );
+                }
+                decodedItems = [];
+                for (let i = 0; i < 11 + 3; i++) decodedItems.push(bitcoin.newStackItem(0n));
+            });
+
+            it("positive", async () => {
+                bitcoin.winternitzDecode32(decodedItems, witness, keyItems);
+                expect(bitcoin.success).toBe(true);
+                const result = nibblesToBigint(decodedItems.slice(0, 11).map(si => Number(si.value)));
+                expect(result).toEqual(testData32Bits);
+
+                console.log('32 bits in winternitz encoding: ', encoded.length);
+                console.log('32 bit winternitz decode btc script count', bitcoin.opcodes.length);
+                console.log('32 bit winternitz decode btc script', bitcoin.programSizeInBitcoinBytes());
+            });
+            it("negative", async () => {
+
+                witness[0].value++;
+
+                bitcoin.winternitzDecode32(decodedItems, witness, keyItems);
+                expect(bitcoin.success).toBe(false);
+            });
         });
 
-        it("positive", async () => {
-            bitcoin.winternitzDecode32(decodedItems, witness, keyItems);
-            expect(bitcoin.success).toBe(true);
-            const result = nibblesToBigint(decodedItems.slice(0, 11).map(si => Number(si.value)));
-            expect(result).toEqual(testData32Bits);
+        describe('winternitz 256 bits', () => {
 
-            console.log('32 bits in winternitz encoding: ', encoded.length);
-            console.log('32 bit winternitz decode btc script count', bitcoin.opcodes.length);
-            console.log('32 bit winternitz decode btc script', bitcoin.programSizeInBitcoinBytes());
-        });
-        it("negative", async () => {
+            let keyItems: bigint[];
 
-            witness[0].value++;
+            beforeEach(() => {
+                bitcoin = new Bitcoin();
+                encoded = encodeWinternitz256(testData256Bits, 0);
+                witness = bufferToBigints256BE(encoded).map(n => bitcoin.addWitness(n));
+                keyItems = getWinternitzPublicKeys256(0);
+                decodedItems = [];
+                for (let i = 0; i < 86 + 4; i++) decodedItems.push(bitcoin.newStackItem(0n));
+            });
 
-            bitcoin.winternitzDecode32(decodedItems, witness, keyItems);
-            expect(bitcoin.success).toBe(false);
-        });
-    });
+            it("positive", async () => {
+                bitcoin.winternitzCheck256(witness, keyItems);
+                expect(bitcoin.success).toBe(true);
 
-    describe('winternitz 256 bits', () => {
+                console.log('256 bits in winternitz encoding: ', encoded.length);
+                console.log('256 bit winternitz decode btc script count', bitcoin.opcodes.length);
+                console.log('256 bit winternitz decode btc script', bitcoin.programSizeInBitcoinBytes());
+            });
 
-        let keyItems: bigint[];
+            it("negative", async () => {
 
-        beforeEach(() => {
-            bitcoin = new Bitcoin();
-            encoded = encodeWinternitz256(testData256Bits, 0);
-            witness = bufferToBigints256(encoded).map(n => bitcoin.addWitness(n));
-            keyItems = getWinternitzPublicKeys256(0);
-            decodedItems = [];
-            for (let i = 0; i < 86 + 4; i++) decodedItems.push(bitcoin.newStackItem(0n));
-        });
+                witness[0].value++;
 
-        it("positive", async () => {
-            bitcoin.winternitzCheck256(witness, keyItems);
-            expect(bitcoin.success).toBe(true);
-
-            console.log('256 bits in winternitz encoding: ', encoded.length);
-            console.log('256 bit winternitz decode btc script count', bitcoin.opcodes.length);
-            console.log('256 bit winternitz decode btc script', bitcoin.programSizeInBitcoinBytes());
-        });
-
-        it("negative", async () => {
-
-            witness[0].value++;
-
-            bitcoin.winternitzDecode32(decodedItems, witness, keyItems);
-            expect(bitcoin.success).toBe(false);
+                bitcoin.winternitzDecode32(decodedItems, witness, keyItems);
+                expect(bitcoin.success).toBe(false);
+            });
         });
     });
 });
