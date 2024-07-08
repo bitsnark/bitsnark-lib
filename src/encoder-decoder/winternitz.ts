@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
-import { createFolder, readFromFile, isFileExists, getFileSizeBytes, writeToPosInFile, writeToFile } from "./files-utils";
+import { createFolder, readFromFile, isFileExists, getFileSizeBytes, writeToPosInFile, writeToFile, readTextFile, writeTextToFile } from "./files-utils";
 import { PRV_KEY_FILE, PUB_KEY_FILE, CACHE_FILE } from "./files-utils";
 
 
@@ -65,6 +65,28 @@ export class Winternitz {
         this.folder = folder;
     }
 
+    public createEquivocationScriptFiles(chunckSize32: number) {
+        const prefix = chunckSize32 === 32 ? FILE_PREFIX_32 : FILE_PREFIX_4;
+        const chunckNibbles = chunckSize32 === 32 ? 90 : 14;
+
+        createFolder(`${this.folder}/${prefix}equivocation`);
+        const publickKeySetSize = getFileSizeBytes(this.folder, prefix + PUB_KEY_FILE);
+        const demoTemplate = readTextFile('template.txt');
+
+        for (let i = 0; i < publickKeySetSize / (hashSize * chunckNibbles); i++) {
+            let publicKeySetString = '';
+            for (let s = 0; s < chunckNibbles; s++) {
+                const readFrom = (i * hashSize * chunckNibbles) + s * hashSize;
+                const publicKeyBuffer = readFromFile(this.folder, prefix + PUB_KEY_FILE, readFrom, hashSize);
+                publicKeySetString += publicKeyBuffer.toString('hex') + ',';
+            }
+
+            let leafText = demoTemplate.replace('[index]', i.toString());
+            leafText = leafText.replace('[publicKeySet]', publicKeySetString);
+            writeTextToFile(`${this.folder}/${prefix}equivocation`, `${prefix}${i}.txt`, leafText);
+        }
+    }
+
     public generateKeys(totalChuncks32: number, totalChuncks4: number) {
         createFolder(this.folder);
 
@@ -80,6 +102,8 @@ export class Winternitz {
 
         this.generateKeysSet(FILE_PREFIX_32, pairs32);
         this.generateKeysSet(FILE_PREFIX_4, pairs4);
+        this.createEquivocationScriptFiles(chunkSize4);
+        this.createEquivocationScriptFiles(chunkSize32);
 
         return {
             [`${FILE_PREFIX_32}privateKey`]: `${this.folder}/${FILE_PREFIX_32}${PRV_KEY_FILE}`,
