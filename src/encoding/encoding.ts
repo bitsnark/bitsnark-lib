@@ -11,7 +11,7 @@ export function strToBigint(s: string): bigint {
     return n;
 }
 
-export function bufferToBigints256(buffer: Buffer): bigint[] {
+export function bufferToBigints256BE(buffer: Buffer): bigint[] {
     if (buffer.length % 32 != 0) throw new Error('invalid size');
     const output: bigint[] = [];
     for (let i = 0; i < buffer.length;) {
