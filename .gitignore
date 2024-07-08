@@ -1,4 +1,6 @@
 node_modules
 dist
 .nfs*
-
+generated
+.DS_Store
+.prettierrc
