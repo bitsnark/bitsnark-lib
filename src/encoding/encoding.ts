@@ -86,3 +86,20 @@ export function _256To32BE(n: bigint): bigint[] {
     }
     return r;
 }
+
+export function _32To256LE(na: bigint[]): bigint {
+    let n = 0n;
+    for (let i = 0; i < 8; i++) {
+        n += na[i] << BigInt(i * 32);
+    }
+    return n;
+}
+
+export function _32To256BE(na: bigint[]): bigint {
+    let n = 0n;
+    for (let i = 0; i < 8; i++) {
+        n = n << 32n;
+        n += na[i];
+    }
+    return n;
+}

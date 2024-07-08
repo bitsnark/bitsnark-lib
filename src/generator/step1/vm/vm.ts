@@ -73,7 +73,8 @@ export class VM {
         let t = this.hardcodedCache[value.toString(16)];
         if (t) return t;
 
-        if (this.instructions.length > 0 || this.witness.length > 0) throw new Error('Hardcoded first please');
+        if (this.instructions.length > 0 || this.witness.length > 0) 
+            throw new Error('Hardcoded first please');
         if (value < 0 || value >= 2n ** 256n) throw new Error('Invalid value');
 
         this.hardcoded.push(value);
@@ -237,6 +238,10 @@ export class VM {
                 bit: instr.bit,
             })),
         };
+    }
+
+    getSuccess(): boolean {
+        return this.success?.value != 0n;
     }
 }
 
