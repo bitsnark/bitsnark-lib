@@ -3,7 +3,7 @@ import { Fp2 } from "./algebra/fp2";
 import { G1, G1Point } from "./algebra/G1";
 import { G2, G2Point } from "./algebra/G2";
 import { G3 } from "./algebra/G3";
-import { step1_vm as vm } from "./vm/vm";
+import { step1_vm, step1_vm as vm } from "./vm/vm";
 
 const g1 = new G1();
 const g2 = new G2();
@@ -99,6 +99,9 @@ export class Key {
 }
 
 export default function groth16Verify(key: Key, proof: Proof) {
+
+    step1_vm.startProgram();
+
     let vk_x = g1.makePoint(key.ic[0].x, key.ic[0].y)
 
     for (let i = 0; i < proof.publicSignals.length; i++) {
@@ -111,5 +114,6 @@ export default function groth16Verify(key: Key, proof: Proof) {
 
     let vg1: G1Point[] = [proof.pi_a, key.alpha.neg(), vk_x.neg(), proof.pi_c.neg()]
     let vg2: G2Point[] = [proof.pi_b, key.beta, key.gamma, key.delta]
-    return g3.pairingCheck(vg1, vg2)
+
+    const result = g3.pairingCheck(vg1, vg2)
 }

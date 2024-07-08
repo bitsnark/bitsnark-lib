@@ -171,7 +171,7 @@ function step2(step1Program: Step1Program) {
         proof.makeMerkleProof(instr.param1!)
         proof.freeMerkle()
 
-        validateInstr(proof, instr);
+        validateInstr(proof.reg256A, proof.reg256B, proof.reg256C, instr.name, instr.bit);
         if (!step2_vm.success) {
             throw new Error(`Step2 generation failed at line ${line}`);
         }

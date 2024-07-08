@@ -1,5 +1,5 @@
 import assert from "assert";
-import { hashPair } from "../encoding";
+import { hashPair } from "../../src/encoding/encoding";
 
 function hashLayer(na: bigint[]): bigint[] {
     const newNa: bigint[] = [];

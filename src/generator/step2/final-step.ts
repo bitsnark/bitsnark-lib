@@ -1,9 +1,10 @@
 import { Register } from "../common/register";
-import { step2_vm as vm } from "./vm/vm";
+import { step2_vm, step2_vm as vm } from "./vm/vm";
 import { ProgramLine, SavedVm } from '../common/saved-vm';
 import { InstrCode as Step1_InstrCode } from '../step1/vm/types';
 import { _256, InstrCode as Step2_InstrCode } from '../step2/vm/types';
 import { Merkle, MerkleProve } from './merkle'
+import { _256To32LE } from "../../encoding/encoding";
 
 export class Proof {
     reg256A: _256 = [];
@@ -48,70 +49,41 @@ function verifyMerkleProof(root: _256, regIndex: number, regValue: _256, mp: _25
     MerkleProve(regIndex, regValue, mp, root)
 }
 
-export function validateInstr(proof: Proof, instr: ProgramLine<Step1_InstrCode>) {
-    const a = proof.reg256A;
-    const b = proof.reg256B;
-    const c = proof.reg256C;
+export function validateInstr(a: bigint, b: bigint, c: bigint, name: Step1_InstrCode, bit?: number) {
 
-    switch (instr.name) {
+    const aRegs = _256To32LE(a).map(n => vm.addWitness(n));
+    const bRegs = _256To32LE(b).map(n => vm.addWitness(n));
+    const cRegs = _256To32LE(c).map(n => vm.addWitness(n));
+
+    step2_vm.startProgram();
+
+    switch (name) {
         case Step1_InstrCode.ADDMOD:
-            verifyMerkleProof(proof.merkleRoots[0], instr.param1!, proof.reg256A, proof.merkleProofs[0]);
-            verifyMerkleProof(proof.merkleRoots[0], instr.param2!, proof.reg256B, proof.merkleProofs[1]);
-            verifyMerkleProof(proof.merkleRoots[1], instr.target, proof.reg256C, proof.merkleProofs[2]);        
-            vm.step1_addMod(a, b, c); break;
+            vm.step1_addMod(aRegs, bRegs, cRegs); break;
         case Step1_InstrCode.ANDBIT:
-            verifyMerkleProof(proof.merkleRoots[0], instr.param1!, proof.reg256A, proof.merkleProofs[0]);
-            verifyMerkleProof(proof.merkleRoots[0], instr.param2!, proof.reg256B, proof.merkleProofs[1]);
-            verifyMerkleProof(proof.merkleRoots[1], instr.target, proof.reg256C, proof.merkleProofs[2]);        
-            vm.step1_andBit(a, instr.bit!, b, c); break;
+            vm.step1_andBit(aRegs, bit!, bRegs, cRegs); break;
         case Step1_InstrCode.ANDNOTBIT:
-            verifyMerkleProof(proof.merkleRoots[0], instr.param1!, proof.reg256A, proof.merkleProofs[0]);
-            verifyMerkleProof(proof.merkleRoots[0], instr.param2!, proof.reg256B, proof.merkleProofs[1]);
-            verifyMerkleProof(proof.merkleRoots[1], instr.target, proof.reg256C, proof.merkleProofs[2]);        
-            vm.step1_andNotBit(a, instr.bit!, b, c); break;
+            vm.step1_andNotBit(aRegs, bit!, bRegs, cRegs); break;
         case Step1_InstrCode.MOV:
-            verifyMerkleProof(proof.merkleRoots[0], instr.param1!, proof.reg256A, proof.merkleProofs[0]);
-            verifyMerkleProof(proof.merkleRoots[1], instr.target, proof.reg256C, proof.merkleProofs[2]);        
-            vm.step1_mov(a, c); break;
+            vm.step1_mov(aRegs, cRegs); break;
         case Step1_InstrCode.EQUAL:
-            verifyMerkleProof(proof.merkleRoots[0], instr.param1!, proof.reg256A, proof.merkleProofs[0]);
-            verifyMerkleProof(proof.merkleRoots[0], instr.param2!, proof.reg256B, proof.merkleProofs[1]);
-            verifyMerkleProof(proof.merkleRoots[1], instr.target, proof.reg256C, proof.merkleProofs[2]);        
-            vm.step1_equal(a, b, c); break;
+            vm.step1_equal(aRegs, bRegs, cRegs); break;
         case Step1_InstrCode.MULMOD:
-            verifyMerkleProof(proof.merkleRoots[0], instr.param1!, proof.reg256A, proof.merkleProofs[0]);
-            verifyMerkleProof(proof.merkleRoots[0], instr.param2!, proof.reg256B, proof.merkleProofs[1]);
-            verifyMerkleProof(proof.merkleRoots[1], instr.target, proof.reg256C, proof.merkleProofs[2]);        
-            vm.step1_mulMod(a, b, c); break;
+            vm.step1_mulMod(aRegs, bRegs, cRegs); break;
         case Step1_InstrCode.OR:
-            verifyMerkleProof(proof.merkleRoots[0], instr.param1!, proof.reg256A, proof.merkleProofs[0]);
-            verifyMerkleProof(proof.merkleRoots[0], instr.param2!, proof.reg256B, proof.merkleProofs[1]);
-            verifyMerkleProof(proof.merkleRoots[1], instr.target, proof.reg256C, proof.merkleProofs[2]);        
-            vm.step1_or(a, b, c); break;
+            vm.step1_or(aRegs, bRegs, cRegs); break;
         case Step1_InstrCode.AND:
-            verifyMerkleProof(proof.merkleRoots[0], instr.param1!, proof.reg256A, proof.merkleProofs[0]);
-            verifyMerkleProof(proof.merkleRoots[0], instr.param2!, proof.reg256B, proof.merkleProofs[1]);
-            verifyMerkleProof(proof.merkleRoots[1], instr.target, proof.reg256C, proof.merkleProofs[2]);        
-            vm.step1_and(a, b, c); break;
+            vm.step1_and(aRegs, bRegs, cRegs); break;
         case Step1_InstrCode.NOT:
-            verifyMerkleProof(proof.merkleRoots[0], instr.param1!, proof.reg256A, proof.merkleProofs[0]);
-            verifyMerkleProof(proof.merkleRoots[1], instr.target, proof.reg256C, proof.merkleProofs[2]);        
-            vm.step1_not(a, c); break;
+            vm.step1_not(aRegs, cRegs); break;
         case Step1_InstrCode.SUBMOD:
-            verifyMerkleProof(proof.merkleRoots[0], instr.param1!, proof.reg256A, proof.merkleProofs[0]);
-            verifyMerkleProof(proof.merkleRoots[0], instr.param2!, proof.reg256B, proof.merkleProofs[1]);
-            verifyMerkleProof(proof.merkleRoots[1], instr.target, proof.reg256C, proof.merkleProofs[2]);        
-            vm.step1_subMod(a, b, c); break;
+            vm.step1_subMod(aRegs, bRegs, cRegs); break;
         case Step1_InstrCode.DIVMOD:
-            verifyMerkleProof(proof.merkleRoots[0], instr.param1!, proof.reg256A, proof.merkleProofs[0]);
-            verifyMerkleProof(proof.merkleRoots[0], instr.param2!, proof.reg256B, proof.merkleProofs[1]);
-            verifyMerkleProof(proof.merkleRoots[1], instr.target, proof.reg256C, proof.merkleProofs[2]);        
-            vm.step1_divMod(a, b, c); break;
+            vm.step1_divMod(aRegs, bRegs, cRegs); break;
         case Step1_InstrCode.ASSERTONE:
-            verifyMerkleProof(proof.merkleRoots[0], instr.param1!, proof.reg256A, proof.merkleProofs[0]);
-            vm.step1_assertEqOne(a); break;
+            vm.step1_assertEqOne(aRegs); break;
         case Step1_InstrCode.ASSERTZERO:
-            verifyMerkleProof(proof.merkleRoots[0], instr.param1!, proof.reg256A, proof.merkleProofs[0]);
-            vm.step1_assertEqZero(a); break;
+            vm.step1_assertEqZero(aRegs); break;
     }
 }
+
