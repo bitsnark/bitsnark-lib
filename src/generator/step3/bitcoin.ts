@@ -83,6 +83,10 @@ export class Bitcoin {
         return this.newStackItem(n);
     }
 
+    getTopStackItam(): StackItem {
+        return this.stack.items[this.stack.items.length - 1];
+    }
+
     /// NATIVE OPERATIONS ///
 
     DATA(data: bigint) {
@@ -500,6 +504,43 @@ export class Bitcoin {
         }
     }
 
+    nibbleToBits3(bits: StackItem[], nibble: StackItem) {
+        for (let i = 0; i < 8; i++) {
+            this.OP_0_16(BigInt(i));
+            this.pick(nibble);
+            this.OP_NUMEQUAL();
+            const flag = this.getTopStackItam().value == 1n;
+            const saved = [ bits[0].value, bits[1].value, bits[2]?.value ];
+            this.OP_IF();
+            this.OP_0_16(BigInt(i & 1));
+            this.replaceWithTop(bits[0]);
+            this.OP_0_16(BigInt(i & 2));
+            this.replaceWithTop(bits[1]);
+            if (bits[2]) {
+                this.OP_0_16(BigInt(i & 4));
+                this.replaceWithTop(bits[2]);
+            }
+            this.OP_ENDIF();
+            if (!flag){
+                bits[0].value = saved[0];
+                bits[1].value = saved[1];
+                if (bits[2]) bits[2].value = saved[2];
+            }
+        }
+    }
+
+    nibblesToRegister32(register: SimulatedRegister, nibbles: StackItem[]) {
+        for (let i = 0; i < 11; i++) {
+            this.nibbleToBits3(
+                [ 
+                    register.stackItems[i * 3], 
+                    register.stackItems[i * 3 + 1], 
+                    register.stackItems[i * 3 + 2] 
+                ],
+                nibbles[i]);
+        }
+    }
+
     /********* step 2 *********/
 
     step2_add(a: SimulatedRegister, b: SimulatedRegister, c: SimulatedRegister) {
@@ -658,8 +699,9 @@ export class Bitcoin {
         }
     }
 
-    step2_assertEqual(a: SimulatedRegister, b: SimulatedRegister) {
-        this.assertEqual32(a, b);
+    step2_assertOne(a: SimulatedRegister) {
+        const one = this.newSimulatedRegister(1n);
+        this.assertEqual32(a, one);
     }
 
     /***  Witness decoding ***/
@@ -733,6 +775,66 @@ export class Bitcoin {
         this.replaceWithTop(target); //
         this.drop(pk);
     }
+
+    winternitzCheck32(witness: StackItem[], publicKeys: bigint[]) {
+
+        const totalNibbles = witness.length;
+        const checksum = this.newStackItem(0n, 'checksum');
+        const temp = this.newStackItem(0n, 'temp');
+        const checksumNibbles: StackItem[] = [];
+        for (let i = 0; i < 3; i++) checksumNibbles.push(this.newStackItem(0n, 'cs nibble'));
+
+        for (let i = 0; i < totalNibbles - 3; i++) {
+            this.winternitzDecodeNibble(temp, witness[i], publicKeys[i]);
+            this.pick(checksum);
+            this.pick(temp);
+            this.OP_ADD();
+            this.replaceWithTop(checksum);
+        }
+
+        for (let i = 0; i < 3; i++) {
+            this.winternitzDecodeNibble(checksumNibbles[i], witness[11 + i], publicKeys[11 + i]);
+        }
+
+        this.DATA(7n);
+        this.pick(checksumNibbles[2]);
+        this.OP_SUB();
+
+        // * 8
+        this.OP_DUP();
+        this.OP_ADD();
+        this.OP_DUP();
+        this.OP_ADD();
+        this.OP_DUP();
+        this.OP_ADD();
+
+        this.DATA(7n);
+        this.pick(checksumNibbles[1]);
+        this.OP_SUB();
+        this.OP_ADD();
+
+        // * 8
+        this.OP_DUP();
+        this.OP_ADD();
+        this.OP_DUP();
+        this.OP_ADD();
+        this.OP_DUP();
+        this.OP_ADD();
+
+        this.DATA(7n);
+        this.pick(checksumNibbles[0]);
+        this.OP_SUB();
+        this.OP_ADD();
+
+        this.pick(checksum);
+        this.OP_EQUAL();
+        this.OP_VERIFY();
+
+        this.drop(checksum);
+        this.drop(temp);
+        this.drop(checksumNibbles);
+    }
+
 
     winternitzDecode32(target: StackItem[], witness: StackItem[], publicKeys: bigint[]) {
 
@@ -855,11 +957,31 @@ export class Bitcoin {
         this.OP_VERIFY();
 
         this.drop(checksum);
+        this.drop(temp);
+        this.drop(checksumNibbles);
     }
 
     checkInitialTransaction(witness: StackItem[], publicKeys: bigint[]) {
         for (let i = 0; i < 10; i++) {
             this.winternitzCheck256(witness.slice(i * 90, i * 90 + 90), publicKeys.slice(i * 90, i * 90 + 90));
+        }
+    }
+
+    checkTransitionPatTransaction(witness: StackItem[], publicKeys: bigint[]) {
+        for (let i = 0; i < 3; i++) {
+            this.winternitzCheck256(witness.slice(i * 90, i * 90 + 90), publicKeys.slice(i * 90, i * 90 + 90));
+        }
+    }
+
+    checkTransitionVicTransaction(witness: StackItem[], publicKeys: bigint[][]) {
+        const temp = this.newStackItem(0n);
+        this.lamportDecodeBit(temp, witness[0], publicKeys[0]);
+        this.lamportDecodeBit(temp, witness[1], publicKeys[1]);
+    }
+
+    checkStep2State(witness: StackItem[], publicKeys: bigint[]) {
+        for (let i = 0; i < witness.length / 14; i++) {
+            this.winternitzCheck32(witness.slice(i * 14, i * 14 + 14), publicKeys.slice(i * 14, i * 14 + 14));
         }
     }
 

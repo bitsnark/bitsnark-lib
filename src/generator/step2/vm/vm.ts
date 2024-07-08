@@ -16,7 +16,7 @@ export class VM {
     hardcoded: bigint[] = [];
     witness: bigint[] = [];
     instructions: Instruction[] = [];
-    success = true;
+    success?: Register;
     registers: Register[] = [];
 
     hardcodedCache: any = {};
@@ -40,7 +40,7 @@ export class VM {
     reset() {
         this.registers = this.registers.filter(r => r.hardcoded);
         this.instrCounter = 0;
-        this.success = true;
+        this.success = undefined;
         this.instructions = [];
         this.witness = [];
     }
@@ -56,10 +56,17 @@ export class VM {
         }
         return BigInt('0x' + s);
     }
+
+    startProgram() {
+        if (this.success) throw new Error('Already started');
+        this.success = this.newRegister();
+        this.mov(this.success, this.one);
+    }
     
     /// *** BASIC OPERATIONS ***
 
     private pushInstruction(name: InstrCode, target: Register, param1?: Register, param2?: Register, bit?: number) {
+        if (!this.success) throw new Error('Program not in running state');
         this.instructions.push({ name, target: target.index, param1: param1?.index, param2: param2?.index, bit });
         this.instrCounter++;
         if (this.instrCounter % 1000000 == 0) {
@@ -74,7 +81,8 @@ export class VM {
     }
 
     private fail(msg: string) {
-        this.success = false;
+        if (!this.success) throw new Error('Program not in running state');
+        this.success.value = 0n;
         try {
             throw new Error(msg);
         } catch (e) {
@@ -215,15 +223,22 @@ export class VM {
         this.setRegister(target, a.value ^ 0xffffffffn);
     }
 
-    assertEq(a: Register, b: Register) {
-        this.pushInstruction(InstrCode.ASSERTEQ, a, b);
-        if (a.value != b.value) this.fail('assert equal');
+    assertOne(a: Register) {
+        this.pushInstruction(InstrCode.ASSERTONE, this.success!, a);
+        if (a.value != 1n) this.fail('assert equal');
     }
 
     //**** complex instructions ******/
 
     initHardcoded(hardcoded: bigint[]): Register[] {
         return hardcoded.map(n => this.hardcode(n));
+    }
+
+    assertEq(a: Register, b: Register) {
+        const temp = this.newRegister();
+        this.equal(temp, a, b)
+        this.assertOne(temp);
+        this.freeRegister(temp);
     }
 
     andBitOr(target: Register, a: Register, bit: number, b: Register, c: Register) {
@@ -340,10 +355,12 @@ export class VM {
 
     step1_mulMod(a: _256, b: _256, c: _256) {
         const agg = this.newTemp256();
+        this.mov256(agg, a);
+        this.freeTemp256(a);
+
         const result = this.newTemp256(true);
         const temp = this.newTemp256();
 
-        this.mov256(agg, a);
         for (let i = 0; i < 256; i++) {
             this.andBit256(temp, b[Math.floor(i / 32)], i % 32, agg);
             this.add256Mod(result, result, temp);
@@ -409,6 +426,10 @@ export class VM {
         this.assertEq(a[0], this.one);
     }
 
+    step1_end(a: _256) {
+        this.step1_assertEqOne(a);
+    }
+
     /// *** HIGH LEVEL *** ///
 
     public save(): SavedVm<InstrCode> {
@@ -417,6 +438,7 @@ export class VM {
             witness: this.witness.map(r => r.toString(16)),
             registers: this.registers.length,
             programLength: this.instructions.length,
+            successIndex: this.success?.index ?? 0,
             program: this.instructions.map(instr => ({
                 name: instr.name,
                 target: instr.target,

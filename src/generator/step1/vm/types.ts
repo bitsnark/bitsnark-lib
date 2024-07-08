@@ -11,7 +11,7 @@ export enum InstrCode {
     SUBMOD = 'SUBMOD',
     DIVMOD = 'DIVMOD',
     ASSERTONE = 'ASSERTONE',
-    ASSERTZERO = 'ASSERTZERO'
+    ASSERTZERO = 'ASSERTZERO',
 }
 
 export interface Instruction {
