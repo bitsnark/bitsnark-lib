@@ -16,21 +16,23 @@ const _9 = Fp.hardcoded(9n);
 const _11 = Fp.hardcoded(11n);
 const _12 = Fp.hardcoded(12n);
 
-describe('Algebra', () => {
+const x = Fp2.hardcoded(1n, 0n);
+const f = Fp2.hardcoded(1n, 2n);
+const fpx = Fp2.hardcoded(2n, 2n);
 
-	let g1: G1;
-	let g2: G2;
-	let g3: G3;
+const g1 = new G1();
+const g2 = new G2();
+const g3 = new G3();
+
+describe('Algebra', () => {
 
 	beforeEach(() => {
 		vm.reset();
-		g1 = new G1();
-		g2 = new G2();
-		g3 = new G3();
+		vm.startProgram();
 	});
 
 	afterEach(() => {
-		expect(vm.success).to.eq(true);
+		expect(vm.success?.value).to.eq(1n);
 	});
 
 	describe('Fp', () => {
@@ -50,23 +52,18 @@ describe('Algebra', () => {
 			expect(p1.eq(p2).value).eq(1n);
 		}
 
-		const x = Fp2.hardcoded(1n, 0n);
-		const f = Fp2.hardcoded(1n, 2n);
-		const fpx = Fp2.hardcoded(2n, 2n);
-		const one = x.one();
-
 		it('x + f = fpx', () => checkFp2(x.add(f), fpx));
 		it('f/f = 1', () => {
 			const t1 = f.inv();
 			const t2 = f.mul(t1);
-			checkFp2(f.div(f), one);
+			checkFp2(f.div(f), x.one());
 		});
 		it('1/f + x/f = (1 + x)/f', () => {
-			const a = one.div(f).add(x.div(f));
-			const b = one.add(x).div(f);
+			const a = x.one().div(f).add(x.div(f));
+			const b = x.one().add(x).div(f);
 			checkFp2(a, b);
 		});
-		it('1*f + x*f = (1 + x)*f', () => checkFp2(one.mul(f).add(x.mul(f)), one.add(x).mul(f)));
+		it('1*f + x*f = (1 + x)*f', () => checkFp2(x.one().mul(f).add(x.mul(f)), x.one().add(x).mul(f)));
 	});
 
 	describe('G1', () => {
@@ -100,8 +97,8 @@ describe('Algebra', () => {
 		});
 
 		it('assert G1*9', () => {
-			const a = gen.mul(vm.hardcode(9n));
-			a.assertPoint();
+			const g1times9 = gen.mul(_9.getRegister());
+			g1times9.assertPoint();
 		});
 	});
 

@@ -58,7 +58,8 @@ export class VM {
     }
 
     startProgram() {
-        if (this.success) throw new Error('Already started');
+        if (this.success) 
+            throw new Error('Already started');
         this.success = this.newRegister();
         this.mov(this.success, this.one);
     }
@@ -66,7 +67,8 @@ export class VM {
     /// *** BASIC OPERATIONS ***
 
     private pushInstruction(name: InstrCode, target: Register, param1?: Register, param2?: Register, bit?: number) {
-        if (!this.success) throw new Error('Program not in running state');
+        if (!this.success) 
+            throw new Error('Program not in running state');
         this.instructions.push({ name, target: target.index, param1: param1?.index, param2: param2?.index, bit });
         this.instrCounter++;
         if (this.instrCounter % 1000000 == 0) {
@@ -356,7 +358,6 @@ export class VM {
     step1_mulMod(a: _256, b: _256, c: _256) {
         const agg = this.newTemp256();
         this.mov256(agg, a);
-        this.freeTemp256(a);
 
         const result = this.newTemp256(true);
         const temp = this.newTemp256();
@@ -447,6 +448,10 @@ export class VM {
                 data: instr.bit
             })),
         };
+    }
+
+    getSuccess(): boolean {
+        return this.success?.value == 1n;
     }
 }
 

@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import { step2_vm } from '../../src/generator/step2/vm/vm';
 import { sha256, sha256pair } from '../../src/generator/step2/sha-256';
 import { Register } from '../../src/generator/common/register';
+import { _256To32BE, _32To256BE, hash, hashPair } from '../../src/encoding/encoding';
 
 describe("SHA256 tests", function () {
     const n = 123456789012345678901234567890n;
@@ -19,6 +20,7 @@ describe("SHA256 tests", function () {
         step2_vm.reset();
         const h1 = hash(n);
         const regs: Register[] = _256To32BE(n).map(n => step2_vm.addWitness(n));
+        step2_vm.startProgram();
         const h2regs = sha256(regs);
         let h2 = _32To256BE(h2regs.map(r => r.value));
         expect(h1).toEqual(h2);
@@ -32,6 +34,7 @@ describe("SHA256 tests", function () {
         const bRegs: Register[] = _256To32BE(n2).map(n => step2_vm.addWitness(n));
         const targetRegs: Register[] = [];
         for (let i = 0; i < 8; i++) targetRegs.push(step2_vm.newRegister());
+        step2_vm.startProgram();
         sha256pair(targetRegs, aRegs, bRegs);
         let h2 = _32To256BE(targetRegs.map(r => r.value));
         expect(h1).toEqual(h2);

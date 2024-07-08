@@ -60,12 +60,12 @@ describe("groth16 verify", function () {
 
         it("groth16 verify SUCCESS", async () => {
             groth16Verify(Key.fromSnarkjs(vKey), Proof.fromSnarkjs(proof, publicSignals));
-            assert(vm.success == true);
+            assert(vm.getSuccess());
         });
     
         it("groth16 verify FAIL", async () => {
             groth16Verify(Key.fromSnarkjs(vKey), Proof.fromSnarkjs(proof, badPublicSignals));
-            assert(vm.success == false);
+            assert(!vm.getSuccess());
         }); 
     });
 
@@ -80,7 +80,7 @@ describe("groth16 verify", function () {
             _vm = vm;
 
             groth16Verify(Key.fromSnarkjs(vKey), Proof.fromSnarkjs(proof, publicSignals));
-            assert(vm.success == true);
+            assert(vm.getSuccess());
             vm.optimizeRegs();
             program = vm.save();
             failProgram = vm.save();
@@ -90,13 +90,13 @@ describe("groth16 verify", function () {
         it("runner SUCCESS", async () => {
             const runner = Runner.load(program);
             runner.execute();
-            assert(runner.success == true);
+            assert(runner.getSuccess());
         });
     
         it("runner FAIL", async () => {
             const runner = Runner.load(failProgram);
             runner.execute();
-            assert(runner.success == false);
+            assert(!runner.getSuccess());
         }); 
     });
 });

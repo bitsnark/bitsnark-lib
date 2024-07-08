@@ -6,6 +6,10 @@ import { VM, step1_vm as vm } from '../../src/generator/step1/vm/vm';
 import { curveOrder, G3 } from '../../src/generator/step1/algebra/G3';
 import { Fp12t } from '../../src/generator/step1/algebra/fp12t';
 
+const _27 = vm.hardcode(27n);
+const _37 = vm.hardcode(37n);
+const _999 = vm.hardcode(999n);
+
 describe('Pairing', () => {
 
     let gen1: G1Point;
@@ -20,13 +24,14 @@ describe('Pairing', () => {
         g1 = new G1();
         g2 = new G2();
         g3 = new G3();
+        vm.startProgram();
 
         gen1 = g1.generator;
         gen2 = g2.generator;
     });
 
     afterEach(() => {
-        expect(vm.success).to.eq(true);
+        expect(vm.getSuccess()).to.eq(true);
     });
 
     it('Pairing check against negative in G1', () => {
@@ -76,9 +81,6 @@ describe('Pairing', () => {
     });
 
     it('Composite check passed', () => {
-        const _27 = vm.hardcode(27n);
-        const _37 = vm.hardcode(37n);
-        const _999 = vm.hardcode(999n);
         const p3 = g3.optimalAte(gen1.mul(_37), gen2.mul(_27));
         const po3 = g3.optimalAte(gen1.mul(_999), gen2);
         expect(p3.eq(po3).value).eq(1n);
