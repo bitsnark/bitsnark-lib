@@ -10,6 +10,7 @@ export interface SavedVm<InstrCode> {
     hardcoded: string[];
     witness: string[];
     registers: number;
+    successIndex: number;
     programLength: number;
     program: ProgramLine<InstrCode>[];
 }

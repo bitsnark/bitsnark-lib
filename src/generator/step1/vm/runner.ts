@@ -1,3 +1,4 @@
+import { merkelize } from "../../../../tests/demo/merkle";
 import { modInverse } from "../../common/math-utils";
 import { prime_bigint } from "../../common/prime";
 import { Register } from "../../common/register";
@@ -11,7 +12,7 @@ export class Runner {
     hardcoded: bigint[] = []
     instructions: Instruction[] = [];
     current: number = 0;
-    success = true;
+    successIndex: number = 0;
 
     private constructor() {
     }
@@ -52,12 +53,17 @@ export class Runner {
             bit:inst.bit,
             toString: function() { return `${this.name} ${this.target} ${this.param1} ${this.param2} ${this.bit}`; }
         }));
+        runner.successIndex = obj.successIndex;
         runner.hardcoded.forEach(n => runner.hardcode(n));
         runner.witness.forEach(n => runner.addWitness(n));
         return runner;
     }
 
     private executeOne() {
+        if (this.current >= this.instructions.length) {
+            this.current++;
+            return;
+        }
         const instr = this.instructions[this.current];
         let target = this.registers[instr.target];
         if (!target) {
@@ -119,12 +125,12 @@ export class Runner {
                 break;
             case InstrCode.ASSERTONE:
                 if (param1.value != 1n) {
-                    this.success = false;
+                    target.value = 0n;
                 }
                 break;
             case InstrCode.ASSERTZERO:
                 if (param1.value != 0n) {
-                    this.success = false;
+                    target.value = 0n;
                 }
                 break;
         }
@@ -138,11 +144,26 @@ export class Runner {
         }
     }
 
-    public getRegisters() {
-        return this.registers;
-    }
-
     public getRegisterValues(): bigint[] {
         return this.registers.map(r => r.value);
+    }
+
+    public getStateRoot(): bigint {
+        return merkelize(this.getRegisterValues());
+    }
+
+    public getInstruction(line: number): Instruction {
+        if (line >= this.instructions.length) {
+            return {
+                name: InstrCode.ASSERTONE,
+                param1: this.successIndex,
+                target: this.successIndex
+            };
+        }
+        return this.instructions[line];
+    }
+
+    public getSuccess(): boolean {
+        return this.registers[this.successIndex].value != 0n;
     }
 }

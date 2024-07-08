@@ -9,7 +9,7 @@ export class Runner {
     hardcoded: bigint[] = []
     instructions: Instruction[] = [];
     current: number = 0;
-    success = true;
+    successIndex: number = 0;
 
     private constructor() {
     }
@@ -52,11 +52,17 @@ export class Runner {
         }));
         runner.hardcoded.forEach(n => runner.hardcode(n));
         runner.witness.forEach(n => runner.addWitness(n));
+        runner.successIndex = obj.successIndex;
         return runner;
     }
 
     private executeOne() {
         const instr = this.instructions[this.current];
+        if (!instr) {
+            this.current++;
+            return;
+        }
+
         let target = this.registers[instr.target];
         if (!target) {
             target = {
@@ -118,9 +124,8 @@ export class Runner {
             case InstrCode.NOT:
                 target.value = !param1.value ? 1n : 0n;
                 break;
-            case InstrCode.ASSERTEQ:
-                if (!param2) throw new Error(`Invalid param2 line: ${this.current}`);
-                if (param1.value != param2.value) this.success = false;
+            case InstrCode.ASSERTONE:
+                target.value = param1.value == 1n ? 1n : 0n;
                 break;
         }
         this.current++;
@@ -135,5 +140,24 @@ export class Runner {
 
     public getRegisters() {
         return this.registers;
+    }
+
+    public getRegisterValuesNoHardcoded(): bigint[] {
+        return this.registers.filter(r => !r.hardcoded).map(r => r.value);
+    }
+
+    public getInstruction(line: number): Instruction {
+        if (line >= this.instructions.length) {
+            return {
+                name: InstrCode.ASSERTONE,
+                param1: this.successIndex,
+                target: this.successIndex
+            };
+        }
+        return this.instructions[line];
+    }
+
+    public getSuccess(): boolean {
+        return this.registers[this.successIndex].value != 0n;
     }
 }
