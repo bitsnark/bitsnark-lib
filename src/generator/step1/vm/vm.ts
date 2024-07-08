@@ -13,7 +13,7 @@ export class VM {
     hardcoded: bigint[] = [];
     witness: bigint[] = [];
     instructions: Instruction[] = [];
-    success = true;
+    success?: Register;
     registers: Register[] = [];
 
     hardcodedCache: any = {};
@@ -27,7 +27,7 @@ export class VM {
     public reset() {
         this.registers = this.registers.filter(r => r.hardcoded);
         this.instrCounter = 0;
-        this.success = true;
+        this.success = undefined;
         this.instructions = [];
         this.witness = [];
     }
@@ -35,6 +35,7 @@ export class VM {
     /// *** BASIC OPERATIONS ***
 
     private pushInstruction(name: InstrCode, target: Register, param1: Register, param2?: Register, bit?: number) {
+        if (!this.success) throw new Error('Invalid state');
         this.instructions.push({ name, target: target.index, param1: param1.index, param2: param2?.index, bit });
         // if (this.instructions.length-1 == 24659)
         //     throw new Error('fubar');
@@ -51,15 +52,14 @@ export class VM {
     }
 
     private fail(msg: string) {
-        this.success = false;
+        if (!this.success) throw new Error('Program not in running state');
+        this.success.value = 0n;
         try {
             throw new Error(msg);
         } catch (e) {
             console.error(e);
         }
     }
-
-    /// *** BASIC INSTRUCTIONS *** ///
 
     public newRegister(): Register {
         let r = { value: 0n, index: this.registers.length, hardcoded: false, witness: false };
@@ -96,15 +96,13 @@ export class VM {
         return t;
     }
 
-    // public gcEnter() {
-    //     this.state.gcEnter();
-    // }
+    public startProgram() {
+        if (this.success) throw new Error('Already started');
+        this.success = this.newRegister();
+        this.mov(this.success, this.one);
+    }
 
-    // public gcExit(toKeep: Register[]) {
-    //     this.state.gcExit(toKeep);
-    // }
-
-    //****      ******/
+    /// *** BASIC INSTRUCTIONS *** ///
 
     addMod(target: Register, a: Register, b: Register) {
         this.pushInstruction(InstrCode.ADDMOD, target, a, b);
@@ -167,13 +165,18 @@ export class VM {
         this.setRegister(target, v);
     }
 
+    mov(target: Register, a: Register) {
+        this.pushInstruction(InstrCode.MOV, target, a);
+        this.setRegister(target, a.value);
+    }
+
     assertEqZero(r: Register) {
-        this.pushInstruction(InstrCode.ASSERTZERO, r, r);
+        this.pushInstruction(InstrCode.ASSERTZERO, this.success!, r);
         if (r.value != 0n) this.fail('assert zero');
     }
 
     assertEqOne(r: Register) {
-        this.pushInstruction(InstrCode.ASSERTONE, r, r);
+        this.pushInstruction(InstrCode.ASSERTONE, this.success!, r);
         if (r.value != 1n) this.fail('assert one');
     }
 
@@ -186,14 +189,15 @@ export class VM {
     }
 
     ignoreFailureInExactlyOne(a: () => void, b: () => void) {
+        if (!this.success) throw new Error('Invalid state');
         let count = 0;
         let f = this.success;
         a();
         count += this.success ? 0 : 1;
-        this.success = true;
+        this.success.value = 1n;
         b();
         count += this.success ? 0 : 1;
-        this.success = count == 1;
+        this.success.value = count == 1 ? 1n : 0n;
     }
 
     assertEq(a: Register, b: Register) {
@@ -224,12 +228,13 @@ export class VM {
             witness: this.witness.map(r => r.toString(16)),
             registers: this.registers.length,
             programLength: this.instructions.length,
+            successIndex: this.success?.index ?? 0,
             program: this.instructions.map(instr => ({
                 name: instr.name,
                 target: instr.target,
                 param1: instr.param1,
                 param2: instr.param2,
-                bit: instr.bit
+                bit: instr.bit,
             })),
         };
     }
