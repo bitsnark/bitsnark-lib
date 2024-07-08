@@ -8,14 +8,10 @@ export const FILE_PREFIX_4 = "winternitz-4-";
 export const CHECKSUM_PREFIX = "checksum-";
 
 const nibbleSizeInBits = 3;
-const valuesPerUnit = 2 ** nibbleSizeInBits; //256;
+const valuesPerUnit = 2 ** nibbleSizeInBits;
 const hashSize: number = 32;
-const bitsInByte = 8;
-const checksumBytes = 2;
 const chunkSize32 = 32;
 const chunkSize4 = 4;
-
-
 const checksum4BytesSize = 3;
 const checksum32BytesSize = 4;
 
@@ -62,8 +58,6 @@ function arrayToBuffer(arr: number[], bufferSize: number): Buffer {
     return buffer;
 }
 
-
-
 export class Winternitz {
     private folder: string;
 
@@ -81,23 +75,17 @@ export class Winternitz {
             throw new Error(`Winternitz public key files already exists in ${this.folder} directory.\n`);
         }
 
-        const pairs4 = totalChuncks4 * Math.ceil(chunkSize4 * 8 / nibbleSizeInBits);
-        const pairs32 = totalChuncks32 * Math.ceil(chunkSize32 * 8 / nibbleSizeInBits);
+        const pairs4 = totalChuncks4 * Math.ceil(chunkSize4 * 8 / nibbleSizeInBits) + totalChuncks4 * checksum4BytesSize;
+        const pairs32 = totalChuncks32 * Math.ceil(chunkSize32 * 8 / nibbleSizeInBits) + totalChuncks32 * checksum32BytesSize
 
         this.generateKeysSet(FILE_PREFIX_32, pairs32);
-        this.generateKeysSet(FILE_PREFIX_32 + CHECKSUM_PREFIX, totalChuncks32 * checksum32BytesSize);
         this.generateKeysSet(FILE_PREFIX_4, pairs4);
-        this.generateKeysSet(FILE_PREFIX_4 + CHECKSUM_PREFIX, totalChuncks4 * checksum4BytesSize);
 
         return {
             [`${FILE_PREFIX_32}privateKey`]: `${this.folder}/${FILE_PREFIX_32}${PRV_KEY_FILE}`,
-            [`${FILE_PREFIX_32}${CHECKSUM_PREFIX}privateKey`]: `${this.folder}/${FILE_PREFIX_32}${CHECKSUM_PREFIX}${PRV_KEY_FILE}`,
             [`${FILE_PREFIX_32}publicKey`]: `${this.folder}/${FILE_PREFIX_32}${PUB_KEY_FILE}`,
-            [`${FILE_PREFIX_32}${CHECKSUM_PREFIX}publicKey`]: `${this.folder}/${FILE_PREFIX_32}${CHECKSUM_PREFIX}${PUB_KEY_FILE}`,
             [`${FILE_PREFIX_4}privateKey`]: `${this.folder}/${FILE_PREFIX_4}${PRV_KEY_FILE}`,
-            [`${FILE_PREFIX_4}${CHECKSUM_PREFIX}privateKey`]: `${this.folder}/${FILE_PREFIX_4}${CHECKSUM_PREFIX}${PRV_KEY_FILE}`,
             [`${FILE_PREFIX_4}publicKey`]: `${this.folder}/${FILE_PREFIX_4}${PUB_KEY_FILE}`,
-            [`${FILE_PREFIX_4}${CHECKSUM_PREFIX}publicKey`]: `${this.folder}/${FILE_PREFIX_4}${CHECKSUM_PREFIX}${PUB_KEY_FILE}`
         };
     }
 
@@ -118,17 +106,12 @@ export class Winternitz {
 
         const pubKeyBuffer = readFromFile(this.folder,
             FILE_PREFIX_32 + PUB_KEY_FILE,
-            chunckIndex * 86 * hashSize,
-            86 * hashSize);
-
-        const checksumKeyBuffer = readFromFile(this.folder,
-            FILE_PREFIX_32 + CHECKSUM_PREFIX + PUB_KEY_FILE,
-            chunckIndex * 4 * hashSize,
-            4 * hashSize);
+            chunckIndex * 90 * hashSize,
+            90 * hashSize);
 
         return {
             encodedData: this.encodeBuffer(buffer, chunckIndex, chunkSize32),
-            pubk: Buffer.concat([pubKeyBuffer, checksumKeyBuffer])
+            pubk: pubKeyBuffer
         };
     }
 
@@ -137,17 +120,12 @@ export class Winternitz {
 
         const pubKeyBuffer = readFromFile(this.folder,
             FILE_PREFIX_4 + PUB_KEY_FILE,
-            chunckIndex * 11 * hashSize,
-            11 * hashSize);
-
-        const checksumKeyBuffer = readFromFile(this.folder,
-            FILE_PREFIX_4 + CHECKSUM_PREFIX + PUB_KEY_FILE,
-            chunckIndex * 3 * hashSize,
-            3 * hashSize);
+            chunckIndex * 14 * hashSize,
+            14 * hashSize);
 
         return {
             encodedData: this.encodeBuffer(buffer, chunckIndex, chunkSize4),
-            pubk: Buffer.concat([pubKeyBuffer, checksumKeyBuffer])
+            pubk: pubKeyBuffer
         };
     }
 
@@ -170,12 +148,12 @@ export class Winternitz {
         const prvKeyBuffer = readFromFile(
             this.folder,
             prefix + PRV_KEY_FILE,
-            chunckIndex * nibbleArray.length * hashSize,
-            nibbleArray.length * hashSize);
+            chunckIndex * (nibbleArray.length + checksumSize) * hashSize,
+            (nibbleArray.length + checksumSize) * hashSize);
 
         let checkSum = 0;
         for (let i = 0; i < nibbleArray.length; i++) {
-            checkSum += nibbleArray[i]; //0 -7;
+            checkSum += nibbleArray[i];
             let iPrvKey = prvKeyBuffer.subarray(i * hashSize, (i + 1) * hashSize);
             for (let j = valuesPerUnit - 1; j > nibbleArray[i]; j--) {
                 iPrvKey = createHash('sha256').update(iPrvKey).digest();
@@ -183,23 +161,18 @@ export class Winternitz {
             iPrvKey.copy(result, i * hashSize, 0, hashSize);
         }
 
-        const checksumKeyBuffer = readFromFile(
-            this.folder,
-            prefix + CHECKSUM_PREFIX + PRV_KEY_FILE,
-            chunckIndex * hashSize * checksumSize,
-            checksumSize * hashSize);
-
         const checksumBuffer = Buffer.alloc(2);
         checksumBuffer.writeUInt16LE(checkSum);
         const checksumArray = bufferTo3BitArray(checksumBuffer);
-        for (let i = 0; i < checksumSize; i++) {
-            const iChecksumValue = checksumArray[i];
-            let icheckSum = checksumKeyBuffer.subarray(i * hashSize, (i + 1) * hashSize);
+        for (let i = nibbleArray.length; i < nibbleArray.length + checksumSize; i++) {
+            const iChecksumValue = checksumArray[i - nibbleArray.length];
+            let icheckSum = prvKeyBuffer.subarray(i * hashSize, (i + 1) * hashSize);
             for (let j = 0; j < iChecksumValue; j++) {
                 icheckSum = createHash('sha256').update(icheckSum).digest();
             }
-            icheckSum.copy(result, (nibbleArray.length + i) * hashSize, 0, hashSize);
+            icheckSum.copy(result, i * hashSize, 0, hashSize);
         }
+
         return result;
     }
 
@@ -223,8 +196,8 @@ export class Winternitz {
 
         const pubKeyBuffer = readFromFile(this.folder,
             prefix + PUB_KEY_FILE,
-            chunckIndex * dataNibbles * hashSize,
-            dataNibbles * hashSize);
+            chunckIndex * (dataNibbles + checksumSize) * hashSize,
+            (dataNibbles + checksumSize) * hashSize);
 
 
         let checkSum = 0;
@@ -245,19 +218,14 @@ export class Winternitz {
             if (!isDecoded) throw new Error(`Invalid key nibble ${i} key ${iKey}`);
         }
         const resultData = arrayToBuffer(nibbleArray, chunkSize);
-        const checksumKeyBuffer = readFromFile(this.folder,
-            prefix + CHECKSUM_PREFIX + PUB_KEY_FILE,
-            chunckIndex * checksumSize * hashSize,
-            checksumSize * hashSize);
 
         const checksumBuffer = Buffer.alloc(2);
         checksumBuffer.writeUInt16LE(checkSum);
         const checksumArray = bufferTo3BitArray(checksumBuffer);
-
-        for (let i = 0; i < checksumSize; i++) {
-            let iChecksumEncoded = encoded.subarray((dataNibbles + i) * hashSize, (dataNibbles + i + 1) * hashSize);
-            const ichecksumKey = checksumKeyBuffer.subarray(i * hashSize, (i + 1) * hashSize);
-            for (let j = valuesPerUnit; j > checksumArray[i]; j--) {
+        for (let i = dataNibbles; i < dataNibbles + checksumSize; i++) {
+            let iChecksumEncoded = encoded.subarray(i * hashSize, (i + 1) * hashSize);
+            const ichecksumKey = pubKeyBuffer.subarray(i * hashSize, (i + 1) * hashSize);
+            for (let j = valuesPerUnit; j > checksumArray[i - dataNibbles]; j--) {
                 iChecksumEncoded = createHash('sha256').update(iChecksumEncoded).digest();
             }
             if (iChecksumEncoded.compare(ichecksumKey) !== 0) throw new Error(`Invalid checksum`);
@@ -266,31 +234,19 @@ export class Winternitz {
         if (!isFileExists(this.folder, prefix + CACHE_FILE)) {
             const cache = Buffer.alloc(getFileSizeBytes(this.folder, prefix + PUB_KEY_FILE), 0);
             writeToFile(this.folder, prefix + CACHE_FILE, cache, 'w');
-            const cacheCheckSum = Buffer.alloc(getFileSizeBytes(this.folder, prefix + CHECKSUM_PREFIX + PUB_KEY_FILE), 0);
-            writeToFile(this.folder, prefix + CHECKSUM_PREFIX + CACHE_FILE, cacheCheckSum, 'w');
         }
 
-        //if all data is legit - check if conflict exists
         const pubCacheBuffer = readFromFile(this.folder,
             prefix + CACHE_FILE,
-            chunckIndex * dataNibbles * hashSize,
-            dataNibbles * hashSize);
-
-        const cacheChecksumKeyBuffer = readFromFile(this.folder,
-            prefix + CHECKSUM_PREFIX + CACHE_FILE,
-            chunckIndex * checksumSize * hashSize,
-            checksumSize * hashSize);
+            chunckIndex * (dataNibbles + checksumSize) * hashSize,
+            (dataNibbles + checksumSize) * hashSize);
 
         const isEmpty = (buffer: Buffer) => buffer.every(byte => byte === 0);
 
-        console.log(pubCacheBuffer, cacheChecksumKeyBuffer)
-        if (isEmpty(pubCacheBuffer) && isEmpty(cacheChecksumKeyBuffer)) {
-            writeToPosInFile(this.folder, prefix + CACHE_FILE, encoded.subarray(0, dataNibbles * hashSize), chunckIndex * dataNibbles * hashSize);
-            writeToPosInFile(this.folder, prefix + CHECKSUM_PREFIX + CACHE_FILE, encoded.subarray(dataNibbles * hashSize), chunckIndex * checksumSize * hashSize);
+        if (isEmpty(pubCacheBuffer)) {
+            writeToPosInFile(this.folder, prefix + CACHE_FILE, encoded, chunckIndex * (dataNibbles + checksumSize) * hashSize);
         } else if
-            (pubCacheBuffer.compare(encoded.subarray(0, dataNibbles * hashSize)) !== 0 &&
-            cacheChecksumKeyBuffer.compare(encoded.subarray(dataNibbles, checksumSize * hashSize)) !== 0) {
-
+            (pubCacheBuffer.compare(encoded.subarray(0, (dataNibbles + checksumSize) * hashSize)) !== 0) {
             throw new Error(`Conflict detected in cache file`);
         }
 
