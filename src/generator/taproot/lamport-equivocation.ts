@@ -4,7 +4,7 @@ import { Bitcoin } from "../step3/bitcoin";
 import { Node, taprootOutputScript } from "./taproot";
 
 const steps = [ProtocolStep.STEP1, ProtocolStep.TRANSITION, ProtocolStep.STEP2];
-const iterationsPerStep = 19;
+const iterationsPerStep = 32;
 
 class LamportEquivocastionTaprootNode extends Node {
 
