@@ -1,4 +1,4 @@
-import { merkelize } from "../../../../tests/demo/merkle";
+import { calculateMerkleRoot } from "../../../../tests/demo/merkle";
 import { modInverse } from "../../common/math-utils";
 import { prime_bigint } from "../../common/prime";
 import { Register } from "../../common/register";
@@ -149,7 +149,7 @@ export class Runner {
     }
 
     public getStateRoot(): bigint {
-        return merkelize(this.getRegisterValues());
+        return calculateMerkleRoot(this.getRegisterValues());
     }
 
     public getInstruction(line: number): Instruction {

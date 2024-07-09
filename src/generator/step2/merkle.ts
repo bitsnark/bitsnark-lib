@@ -68,33 +68,26 @@ export class Merkle {
     }
 }
 
-export function MerkleProve(index: number, transaction: Register[], proof: Register[][], root: Register[]) : boolean {
-    let hash: Register[] = []
-    let hashtmp: Register[] = []
-    for (let i = 0; i < root.length; i++) {
-        hash.push(step2_vm.newRegister())
-        step2_vm.mov(hash[i], transaction[i])
-        hashtmp.push(step2_vm.newRegister())
+export function verifyMerkleProof(index: number, proof: Register[][]) {
+    let hash: Register[] = [];
+    let tempHash: Register[] = [];
+    for (let i = 0; i < 8; i++) {
+        hash.push(step2_vm.newRegister());
+        step2_vm.mov(hash[i], proof[0][i]);
+        tempHash.push(step2_vm.newRegister());
     }
-    for (let i = 0; i < proof.length; i++) {
+    for (let i = 1; i < proof.length - 1; i++) {
         if ((index & 1) == 0) {
-            sha256pair(hashtmp, hash, proof[i])
+            sha256pair(tempHash, hash, proof[i]);
         } else {
-            sha256pair(hashtmp, proof[i], hash)
+            sha256pair(tempHash, proof[i], hash);
         }
-        for (let j = 0; j < root.length; j++) {
-            step2_vm.mov(hash[j], hashtmp[j])
-        }
-        index = index >> 1
+        for (let j = 0; j < 8; j++) step2_vm.mov(hash[j], tempHash[j]);
+        index = index >> 1;
     }
-    let proved = true
-    for (let i = 0; i < root.length; i++) {
-        step2_vm.assertEq(hash[i], root[i])
-        proved = proved && (hash[i].value == root[i].value)
+    for (let i = 0; i < 8; i++) {
+        step2_vm.assertEq(hash[i], proof[proof.length - 1][i]);
     }
-    for (let i = 0; i < root.length; i++) {
-        step2_vm.freeRegister(hash[i])
-        step2_vm.freeRegister(hashtmp[i])
-    }
-    return proved
+    step2_vm.freeRegister(hash);
+    step2_vm.freeRegister(tempHash);
 }

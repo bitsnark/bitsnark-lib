@@ -10,7 +10,7 @@ function hashLayer(na: bigint[]): bigint[] {
     return newNa;
 }
 
-export function merkelize(na: bigint[]): bigint {
+export function calculateMerkleRoot(na: bigint[]): bigint {
     while (na.length > 1) {
         na = hashLayer(na);
     }
@@ -30,6 +30,7 @@ export function makeMerkleProof(na: bigint[], leafIndex: number) {
 }
 
 export function verifyMerkleProof(proof: bigint[], leafIndex: number): boolean {
+    proof = proof.map(n => n);
     while (proof.length > 2) {
         const a = proof.shift()!;
         const b = proof.shift()!;
@@ -41,7 +42,7 @@ export function verifyMerkleProof(proof: bigint[], leafIndex: number): boolean {
 }
 
 function test(test1: bigint[], leafIndex: number) {
-    const root = merkelize(test1);
+    const root = calculateMerkleRoot(test1);
     const proof = makeMerkleProof(test1, leafIndex);
     assert(proof[0] == test1[leafIndex]);
     assert(proof[proof.length - 1] == root);

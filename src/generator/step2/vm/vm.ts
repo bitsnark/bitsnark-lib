@@ -105,8 +105,9 @@ export class VM {
         return r;
     }
 
-    public freeRegister(r: Register) {
-        this.pool.push(r);
+    public freeRegister(r: Register | Register[]) {
+        if (Array.isArray(r)) r.forEach(tr => this.freeRegister(tr));
+        else this.pool.push(r);
     }
 
     public newTemp256(makeZero?: boolean): _256 {
