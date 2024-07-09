@@ -8,7 +8,10 @@ import { InstrCode as Step1_InstrCode } from './step1/vm/types';
 import { InstrCode as Step2_InstrCode } from './step2/vm/types';
 import { Proof as Step2_Proof, validateInstr } from './step2/final-step';
 import { Runner as Step1_Runner } from './step1/vm/runner';
+import { Runner as Step2_Runner } from './step2/vm/runner';
 import { Register } from './common/register';
+import { verifyStep2Instr } from './step3/verify-step2-instr';
+import { Bitcoin } from './step3/bitcoin';
 
 type Step1Program = SavedVm<Step1_InstrCode>;
 type Step2Program = SavedVm<Step2_InstrCode>;
@@ -130,62 +133,48 @@ function step1(): Step1Program {
         "curve": "bn128"
     };
     const publicSignals = ["19820469076730107577691234630797803937210158605698999776717232705083708883456", "11"];
-
     groth16Verify(Key.fromSnarkjs(vKey), Step1_Proof.fromSnarkjs(proof, publicSignals));
     if (!step1_vm.success) throw new Error('Failed.');
     step1_vm.optimizeRegs();
-
     return step1_vm.save();
 }
 
 function step2(step1Program: Step1Program) {
 
-    const runner = Step1_Runner.load(step1Program);
+    const step1Runner = Step1_Runner.load(step1Program);
+    console.log('step 1 program size: ', step1Runner.instructions.length);
         
-    step1Program.program.forEach((instr, line) => {
-        console.log(line);
+    step1Program.program.forEach((instr, step1_line) => {
 
-        const regsBefore = runner.getRegisterValues();
-        runner.execute(line);
-        const regsAfter = runner.getRegisterValues();
-        const proof = new Step2_Proof();
+        const regsBefore = step1Runner.getRegisterValues();
+        step1Runner.execute(step1_line);
+        const regsAfter = step1Runner.getRegisterValues();
+
+        const a = regsBefore[instr.param1!];
+        const b = regsBefore[instr.param2!];
+        const c = regsAfter[instr.target!];
+
         step2_vm.reset();
-
-        function nTo_256(n: bigint): Register[] {
-            const ra: Register[] = [];
-            for(let i = 0; i < 8; i++) {
-                ra[i] = step2_vm.addWitness(n & 0xffffffffn);
-                n = n >> 32n;
-            }
-            return ra;
-        }
-
-        proof.makeMerkle(regsBefore)
-        proof.reg256A = nTo_256(regsBefore[instr.param1!]);
-        proof.makeMerkleProof(instr.param1!)
-        proof.reg256B = nTo_256(regsBefore[instr.param2!]);
-        proof.makeMerkleProof(instr.param2!)
-        proof.freeMerkle()
-        proof.makeMerkle(regsAfter)
-        proof.reg256C = nTo_256(regsAfter[instr.target!]);
-        proof.makeMerkleProof(instr.param1!)
-        proof.freeMerkle()
-
-        validateInstr(proof.reg256A, proof.reg256B, proof.reg256C, instr.name, instr.bit);
+        validateInstr(a, b, c, instr.name, instr.bit);
         if (!step2_vm.success) {
-            throw new Error(`Step2 generation failed at line ${line}`);
-        }
-        
+            throw new Error(`Step2 generation failed at line ${step1_line}`);
+        }        
+
         const step2_program = step2_vm.save();
-        //saveFile(`./generated/step2/step2_${line}.json`, step2_program);
+        const step2Runner = Step2_Runner.load(step2_program);
+
+        console.log('step 2 program size: ', step2Runner.instructions.length, ' instr: ', instr.name);
+
+        step2Runner.instructions.forEach((instr, line) => {
+
+            //console.log('step 1 line: ', step1_line, ' step 2 line: ', line);
+
+            const bitcoin = new Bitcoin();
+            verifyStep2Instr(bitcoin, instr, a, b, c);
+
+        });
     });
 }
 
-function saveFile(path: string, obj: any) {
-    fs.writeFileSync(path, JSON.stringify(obj, undefined, 4), {});
-}
-
 const step1_program = step1();
-saveFile('./generated/step1.json', step1_program);
-
 step2(step1_program);

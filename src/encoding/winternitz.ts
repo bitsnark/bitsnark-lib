@@ -1,4 +1,4 @@
-import { hash, writeBigintToBuffer } from "./encoding";
+import { bigintToBufferBE, hash, padHex } from "./encoding";
 
 const winternitzSecret = 0x92654528273736353535555533553553874383876346n;
 
@@ -61,16 +61,16 @@ export function encodeWinternitz32(input: bigint, chunkIndex: number): Buffer {
     const dataNibbles = 11;
     const hashSizeBytes = 32;
     const outputSizeBytes = (dataNibbles + checksumNibbles) * hashSizeBytes;
-    let output = Buffer.alloc(outputSizeBytes);
+    let output = Buffer.from([]);
     let checksum = 0;
     const privateKeys = getWinternitzPrivateKeys32(chunkIndex);
     toNibbles(input, dataNibbles).forEach((nibble, i) => {
         checksum += nibble;
         const t = 7 - nibble;
-        writeBigintToBuffer(output, i * hashSizeBytes, hash(privateKeys[i], t), hashSizeBytes);
+        output = Buffer.concat([output, bigintToBufferBE(hash(privateKeys[i], t), hashSizeBytes)]);
     });
     toNibbles(BigInt(checksum), checksumNibbles).forEach((nibble, i) => {
-        writeBigintToBuffer(output, (dataNibbles + i) * hashSizeBytes, hash(privateKeys[11 + i], nibble), hashSizeBytes);
+        output = Buffer.concat([output, bigintToBufferBE(hash(privateKeys[11 + i], nibble), hashSizeBytes)]);
     });
     return output;
 }
@@ -102,16 +102,16 @@ export function encodeWinternitz256(input: bigint, chunkIndex: number): Buffer {
     const dataNibbles = 86;
     const hashSizeBytes = 32;
     const outputSizeBytes = (dataNibbles + checksumNibbles) * hashSizeBytes;
-    let output = Buffer.alloc(outputSizeBytes);
+    let output = Buffer.from([]);
     let checksum = 0;
     const privateKeys = getWinternitzPrivateKeys256(chunkIndex);
     toNibbles(input, dataNibbles).forEach((nibble, i) => {
         checksum += nibble;
         const t = 7 - nibble;
-        writeBigintToBuffer(output, i * hashSizeBytes, hash(privateKeys[i], t), hashSizeBytes);
+        output = Buffer.concat([output, bigintToBufferBE(hash(privateKeys[i], t), hashSizeBytes)]);
     });
     toNibbles(BigInt(checksum), checksumNibbles).forEach((nibble, i) => {
-        writeBigintToBuffer(output, (dataNibbles + i) * hashSizeBytes, hash(privateKeys[86 + i], nibble), hashSizeBytes);
+        output = Buffer.concat([output, bigintToBufferBE(hash(privateKeys[86 + i], nibble), hashSizeBytes)]);
     });
     return output;
 }
@@ -137,3 +137,5 @@ export function decodeWinternitz256(input: bigint[], chunkIndex: number): bigint
     });
     return n;
 }
+
+

@@ -32,7 +32,6 @@ export abstract class Node {
         if (this.isLeaf()) {
             return taggedHash('TapLeaf', Buffer.concat([Buffer.from([0xc0]), this.getScript()]));
         } else {
-            const n = this.fromPath(this.path);
             let left_h = this.fromPath(this.getPathLeft()).getHash();
             let right_h = this.fromPath(this.getPathRight()).getHash();
             if (right_h.compare(left_h) == -1) {
