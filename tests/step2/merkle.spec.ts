@@ -75,6 +75,9 @@ describe("SHA256 tests", function () {
         verifyMerkleProof(3, witness);
 
         expect(step2_vm.getSuccess()).toBe(true);
+
+        console.log('program size: ', step2_vm.instructions.length);
+        console.log('registers: ', step2_vm.registers.filter(r => !r.hardcoded).length);
     });
 
     it('Merkle proof negative', () => {

@@ -3,14 +3,6 @@ import { Register } from "../../common/register";
 import { SavedVm } from "../../common/saved-vm";
 import { Instruction, InstrCode, _256 } from "./types";
 
-function _256toN(ra: _256): bigint {
-    let n = 0n;
-    for (let i = 0; i < 8; i++) {
-        n = n + (ra[i].value << BigInt(i * 32));
-    }
-    return n;
-}
-
 export class VM {
 
     hardcoded: bigint[] = [];
