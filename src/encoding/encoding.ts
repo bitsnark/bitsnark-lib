@@ -46,13 +46,6 @@ export function hashPair(inputA: bigint, inputB: bigint): bigint {
         .digest('hex'));
 }
 
-export function writeBigintToBuffer(target: Buffer, index: number, n: bigint, bytes: number) {
-    for (let i = 0; i < bytes; i++) {
-        target.writeUint8(Number(n & 0xffn), index + i);
-        n = n >> 8n;
-    }
-}
-
 export function bitsToBigint(bits: number[]): bigint {
     let n = 0n;
     for (let i = 0; i < bits.length; i++) {
