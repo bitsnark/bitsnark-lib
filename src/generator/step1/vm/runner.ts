@@ -1,4 +1,4 @@
-import { calculateMerkleRoot } from "../../../../tests/demo/merkle";
+import { calculateMerkleRoot } from "../../../encoding/merkle";
 import { modInverse } from "../../common/math-utils";
 import { prime_bigint } from "../../common/prime";
 import { Register } from "../../common/register";

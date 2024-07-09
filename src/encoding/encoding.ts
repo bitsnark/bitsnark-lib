@@ -11,6 +11,10 @@ export function strToBigint(s: string): bigint {
     return n;
 }
 
+export function bigintToBufferBE(n: bigint, bytes: number): Buffer {
+    return Buffer.from(padHex(n.toString(16), bytes), 'hex');
+}
+
 export function bufferToBigints256BE(buffer: Buffer): bigint[] {
     if (buffer.length % 32 != 0) throw new Error('invalid size');
     const output: bigint[] = [];

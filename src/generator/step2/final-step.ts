@@ -3,7 +3,7 @@ import { step2_vm, step2_vm as vm } from "./vm/vm";
 import { ProgramLine, SavedVm } from '../common/saved-vm';
 import { InstrCode as Step1_InstrCode } from '../step1/vm/types';
 import { _256, InstrCode as Step2_InstrCode } from '../step2/vm/types';
-import { Merkle, MerkleProve } from './merkle'
+import { Merkle } from './merkle'
 import { _256To32LE } from "../../encoding/encoding";
 
 export class Proof {
@@ -43,10 +43,6 @@ export class Proof {
             this.merkle.Free()
         }
     }
-}
-
-function verifyMerkleProof(root: _256, regIndex: number, regValue: _256, mp: _256[]) {
-    MerkleProve(regIndex, regValue, mp, root)
 }
 
 export function validateInstr(a: bigint, b: bigint, c: bigint, name: Step1_InstrCode, bit?: number) {
