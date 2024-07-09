@@ -1,7 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import { createFolder, readFromFile, isFileExists, getFileSizeBytes, writeToPosInFile, writeToFile, deleteDir, readTextFile, writeTextToFile } from "./files-utils";
 import { PRV_KEY_FILE, PUB_KEY_FILE, CACHE_FILE } from "./files-utils";
-import { PublickKeyMerkleTree, iMerkleProof } from './public-key-merkle-tree';
+import { iMerkleProof, PublickKeyMerkleTree } from "./public-key-merkle-tree";
 // import { hash } from "../merkle-proof/sha-256";
 
 

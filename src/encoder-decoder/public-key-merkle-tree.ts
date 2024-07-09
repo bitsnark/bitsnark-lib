@@ -1,6 +1,7 @@
 import { readFromFile, getFileSizeBytes, readTextFile } from "./files-utils";
 import { MerkleTree } from 'merkletreejs';
 import { PUB_KEY_FILE } from "./files-utils";
+import { createHash } from "crypto";
 
 export interface iMerkleProof {
     proof: {
@@ -9,6 +10,10 @@ export interface iMerkleProof {
     }[];
     leaf: string;
     isVerified: boolean;
+}
+
+function localHash(b: Buffer): Buffer {
+    return createHash('sha256').update(b).digest();
 }
 
 export class PublickKeyMerkleTree {
@@ -22,7 +27,7 @@ export class PublickKeyMerkleTree {
         this.elementSize = elementSize;
         this.setSize = setSize;
         this.folder = folder;
-        this.merkleTree = new MerkleTree([], SHA256);
+        this.merkleTree = new MerkleTree([], localHash);
     }
 
     createMerkleTreeFromPublickKey(): MerkleTree {
@@ -42,7 +47,7 @@ export class PublickKeyMerkleTree {
                 );
             }
 
-            this.merkleTree = new MerkleTree(this.merkleTreeLeaves, (SHA256));
+            this.merkleTree = new MerkleTree(this.merkleTreeLeaves, localHash);
         }
         return this.merkleTree;
     }

@@ -24,6 +24,10 @@ export function getEncodingIndexForVic(step: ProtocolStep, iteration: number): n
     return Number(step) * 32 + iteration;
 }
 
+export function reverseEncodingIndexForVic(n: number): { step: ProtocolStep, iteration: number } {
+    return { step: Math.floor(n / 32), iteration: n % 32 };
+}
+
 export function transitionPatEncode(param1: bigint, param2: bigint, target: bigint): { witness: bigint[], publicKeys: bigint[] } {
     const witness: bigint[] = [];
     const publicKeys: bigint[] = [];
