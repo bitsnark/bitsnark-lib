@@ -57,7 +57,7 @@ describe("encoding schemes", function () {
 
             keyItems = [];
             for (let i = 0; i < 32; i++) {
-                keyItems.push([ allKeysBn[i * 2], allKeysBn[i * 2 + 1] ]);
+                keyItems.push([allKeysBn[i * 2], allKeysBn[i * 2 + 1]]);
             }
 
             decodedItems = [];
