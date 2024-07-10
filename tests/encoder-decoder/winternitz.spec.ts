@@ -9,30 +9,19 @@ const dataBuffer32 = Buffer.from([
     0x11, 0x0b, 0xf4, 0x73, 0x7a, 0x63, 0x6b, 0xb7
 ]);
 
-// const dataBuffer4 = Buffer.from([
-//     0x5f, 0x8d, 0x2c, 0xd1, 0x7e, 0x34,
-//     0x9e, 0x1f, 0x3b, 0x61, 0x84, 0x7d
-// ]);
-
 const dataBuffer4 = Buffer.from([
-    0xC5, 0x01, 0x00, 0x02
+    0x5f, 0x8d, 0x2c, 0xd1, 0x7e, 0x34,
+    0x9e, 0x1f, 0x3b, 0x61, 0x84, 0x7d
 ]);
 
-// const dataBuffer4 = Buffer.from([
-//     0xc9
-// ]);
 
 const PRV_KEY_FILE = "prv.bin";
 const PUB_KEY_FILE = "pub.bin";
-const CACHE_FILE = "cache.bin";
 export const FILE_PREFIX_32 = "winternitz-32-";
 export const FILE_PREFIX_4 = "winternitz-4-";
-export const CHECKSUM_PREFIX = "checksum-";
-const checksumBytes = 2;
 const chunckSize32 = 32;
 const chunckSize4 = 4;
 const hashSize = 32;
-const valuesPerUnit = 8;
 
 
 const totalChuncks32 = dataBuffer32.length / chunckSize32;
@@ -64,16 +53,12 @@ describe(`Test sequence for winternitz signature`, () => {
         expect(winternitz).toBeInstanceOf(Winternitz);
     });
 
-    it('Generate keys - returning 8 files location ', () => {
+    it('Generate keys - returning 4 files location ', () => {
         const obj = winternitz.generateKeys(dataBuffer32.length / chunckSize32, dataBuffer4.length / chunckSize4);
-        expect(Object.entries(obj).length).toBe(8);
+        expect(Object.entries(obj).length).toBe(4);
     });
 
-    it(`Check that a 8 file was added to ${folder}`, () => {
-        expect(isFileExists(folder, `${FILE_PREFIX_32}${CHECKSUM_PREFIX}${PRV_KEY_FILE}`)).toBe(true);
-        expect(isFileExists(folder, `${FILE_PREFIX_4}${CHECKSUM_PREFIX}${PRV_KEY_FILE}`)).toBe(true);
-        expect(isFileExists(folder, `${FILE_PREFIX_32}${CHECKSUM_PREFIX}${PUB_KEY_FILE}`)).toBe(true);
-        expect(isFileExists(folder, `${FILE_PREFIX_4}${CHECKSUM_PREFIX}${PUB_KEY_FILE}`)).toBe(true);
+    it(`Check that a 4 file was added to ${folder}`, () => {
         expect(isFileExists(folder, `${FILE_PREFIX_32}${PRV_KEY_FILE}`)).toBe(true);
         expect(isFileExists(folder, `${FILE_PREFIX_4}${PRV_KEY_FILE}`)).toBe(true);
         expect(isFileExists(folder, `${FILE_PREFIX_32}${PUB_KEY_FILE}`)).toBe(true);
@@ -81,20 +66,14 @@ describe(`Test sequence for winternitz signature`, () => {
     });
 
     it(`Size of all four 32byte data files is correct`, () => {
-        expect(getFileSizeBytes(folder, `${FILE_PREFIX_32}${PRV_KEY_FILE}`)).toBe(totalChuncks32 * 86 * hashSize);
-        expect(getFileSizeBytes(folder, `${FILE_PREFIX_32}${PUB_KEY_FILE}`)).toBe(totalChuncks32 * 86 * hashSize);
-        expect(getFileSizeBytes(folder, `${FILE_PREFIX_32}${CHECKSUM_PREFIX}${PRV_KEY_FILE}`)).toBe(totalChuncks32 * 4 * hashSize);
-        expect(getFileSizeBytes(folder, `${FILE_PREFIX_32}${CHECKSUM_PREFIX}${PRV_KEY_FILE}`)).toBe(totalChuncks32 * 4 * hashSize);
+        expect(getFileSizeBytes(folder, `${FILE_PREFIX_32}${PRV_KEY_FILE}`)).toBe(totalChuncks32 * 90 * hashSize);
+        expect(getFileSizeBytes(folder, `${FILE_PREFIX_32}${PUB_KEY_FILE}`)).toBe(totalChuncks32 * 90 * hashSize);
     });
 
     it(`Size of all four 4byte data files is correct`, () => {
-        expect(getFileSizeBytes(folder, `${FILE_PREFIX_4}${PRV_KEY_FILE}`)).toBe(totalChuncks4 * 11 * hashSize);
-        expect(getFileSizeBytes(folder, `${FILE_PREFIX_4}${PUB_KEY_FILE}`)).toBe(totalChuncks4 * 11 * hashSize);
-        expect(getFileSizeBytes(folder, `${FILE_PREFIX_4}${CHECKSUM_PREFIX}${PRV_KEY_FILE}`)).toBe(totalChuncks4 * 3 * hashSize);
-        expect(getFileSizeBytes(folder, `${FILE_PREFIX_4}${CHECKSUM_PREFIX}${PRV_KEY_FILE}`)).toBe(totalChuncks4 * 3 * hashSize);
+        expect(getFileSizeBytes(folder, `${FILE_PREFIX_4}${PRV_KEY_FILE}`)).toBe(totalChuncks4 * 14 * hashSize);
+        expect(getFileSizeBytes(folder, `${FILE_PREFIX_4}${PUB_KEY_FILE}`)).toBe(totalChuncks4 * 14 * hashSize);
     });
-
-
 
     it('Throw an error on a second attempt to generate keys for the same folder', () => {
         expect(() => { winternitz.generateKeys(dataBuffer32.length, dataBuffer4.length); }).toThrow();
@@ -124,6 +103,25 @@ describe(`Test sequence for winternitz signature`, () => {
         const tmpEncoded4 = hashSubKey(encoded4, hashSize * 11);
         expect(() => { winternitz.decodeBuffer4(tmpEncoded4, 0); }).toThrow('Invalid checksum');
     });
+
+    it(`Decode: same block data buffer4 if just like cache`, () => {
+        decoded4 = winternitz.decodeBuffer4(encoded4, 0);
+        expect(Buffer.from(decoded4).compare(dataToEncode4.subarray(0, chunckSize4))).toBe(0);
+    });
+
+    it(`Decode: new block data buffer4 (2) is decoded ok`, () => {
+        const tmpEncoded4 = winternitz.encodeBuffer4(getDataBufferToEncode(dataBuffer4, 8, 4), 2);
+        const tmpDecoded4 = winternitz.decodeBuffer4(tmpEncoded4, 2);
+        expect(Buffer.from(tmpDecoded4).compare(getDataBufferToEncode(dataBuffer4, 8, 4))).toBe(0);
+
+    });
+
+    it(`Decode throws cache error if same block data buffer has different cache`, () => {
+        const tmpEncoded4 = winternitz.encodeBuffer4(Buffer.from([0x3b, 0x61, 0x84, 0x71]), 2);
+        expect(() => { winternitz.decodeBuffer4(tmpEncoded4, 2); }).toThrow('Conflict detected in cache file');
+
+    });
+
 
     const dataToEncode32 = getDataBufferToEncode(dataBuffer32, 0, 32);
     let encoded32: Buffer;

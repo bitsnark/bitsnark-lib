@@ -51,8 +51,8 @@ export class Lamport {
     }
 
 
-    public createLamportEcvivocationScriptFiles() {
-        createFolder(`${this.folder}/$lamport-ecvivocation`);
+    public createLamportEquivocationScriptFiles() {
+        createFolder(`${this.folder}/$lamport-equivocation`);
 
         const publickKeySetSize = getFileSizeBytes(this.folder, PUB_KEY_FILE);
         const demoTemplate = readTextFile('template.txt');
@@ -66,7 +66,7 @@ export class Lamport {
                 publicKeySetString += publicKeyBuffer.toString('hex') + ',';
             }
 
-            writeTextToFile(`${this.folder}/$lamport-ecvivocation`, `${FILE_PREFIX}${i}.txt`,
+            writeTextToFile(`${this.folder}/$lamport-equivocation`, `${FILE_PREFIX}${i}.txt`,
                 this.merkle.createLeafScript(
                     demoTemplate,
                     publicKeySetString,
@@ -100,7 +100,7 @@ export class Lamport {
         }
 
         const equivocationMerkleRoot = this.merkle.createMerkleRootFromPublicKey();
-        this.createLamportEcvivocationScriptFiles();
+        this.createLamportEquivocationScriptFiles();
         return {
             privateKey: `${this.folder}/${PRV_KEY_FILE}`,
             publicKey: `${this.folder}/${PUB_KEY_FILE}`,
