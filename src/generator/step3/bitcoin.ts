@@ -1019,11 +1019,11 @@ export class Bitcoin {
     programToBinary(): Buffer {
         const byteArray: number[] = [];
         this.opcodes.forEach(opcode => {
-            if (opcode.op = OpcodeType.DATA) {
+            if (opcode.op == OpcodeType.DATA) {
                 byteArray.push(opcode.dataSizeInBytes!);
                 byteArray.push(...Buffer.from(padHex(opcode.data!.toString(16), opcode.dataSizeInBytes!), 'hex'));
             } else {
-                byteArray.push(opcodeValues[opcode.op]);
+                byteArray.push(opcodeValues[opcode.op!]);
             }
         });
         return Buffer.from(byteArray);

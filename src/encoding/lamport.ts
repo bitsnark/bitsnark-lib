@@ -1,4 +1,4 @@
-import { hash, writeBigintToBuffer } from "./encoding";
+import { hash } from "./encoding";
 
 const lamportSecret0 = 0x926545282738288272625524244424424424365542345634563456876346n;
 const lamportSecret1 = 0x926545289734658217362726255242444244213452345423454383876346n;
