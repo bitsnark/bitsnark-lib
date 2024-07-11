@@ -45,12 +45,13 @@ export class Bitcoin {
 
     newStackItem(value?: bigint, dataSizeInBytes?: number): StackItem {
         value = value ?? 0n;
-        if (value < 0 || value > 16 && !dataSizeInBytes) throw new Error('Invalid value');
+        if (value < 0 || value > 16 && !dataSizeInBytes) 
+            throw new Error('Invalid value');
         if (dataSizeInBytes && dataSizeInBytes != 1 && dataSizeInBytes != 4 && dataSizeInBytes != 32) throw new Error('Invalid value');
-        const si = this.stack.newItem(value);
-        this.DATA(value, dataSizeInBytes);
+        const si = this.DATA(value, dataSizeInBytes);
         this.maxStack = Math.max(this.maxStack, this.stack.items.length);
-        if (this.stack.items.length + this.altStack.length > 1000) throw new Error('Stack too big');
+        if (this.stack.items.length + this.altStack.length > 1000) 
+            throw new Error('Stack too big');
         return si;
     }
 
@@ -91,14 +92,14 @@ export class Bitcoin {
 
     /// NATIVE OPERATIONS ///
 
-    DATA(data: bigint, dataSizeInBytes?: number) {
+    DATA(data: bigint, dataSizeInBytes?: number): StackItem {
         if (data >= 0 && data <= 16) {
             this.opcodes.push({ op: hardcode(data) });
         } else {
             if (!dataSizeInBytes) throw new Error('Invalid value');
             this.opcodes.push({ op: OpcodeType.DATA, data, dataSizeInBytes });
         }
-        this.stack.newItem(data);
+        return this.stack.newItem(data);
     }
 
     OP_ROLL() {

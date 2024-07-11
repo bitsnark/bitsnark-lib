@@ -133,8 +133,6 @@ export function taprootOutputScript(internalPubkey: Buffer, scriptTree: TapNode)
     return Buffer.concat([Buffer.from([0x51, 0x20]), output_pubkey]);
 }
 
-
-
 function getProof(node: TapNode, path: number[]): Buffer {
     if (node.isLeaf()) return Buffer.alloc(0);
     const t = path[0];
