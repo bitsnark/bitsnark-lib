@@ -63,7 +63,7 @@ export function all() {
 
     if (selection != 2) throw new Error('Not implemented');
 
-    const runner = Runner.load(step1SavedVm);
+    const runner = Runner.load(step1SavedVm); 
     const instr = runner.getInstruction(lineNumber);
     const [ a, b, c ] = transitionPatDecode(encodedRegisters);
 
