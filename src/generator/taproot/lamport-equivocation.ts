@@ -1,23 +1,25 @@
-import { ProtocolStep } from "../../../tests/demo/common";
 import { getLamportPublicKey } from "../../encoding/lamport";
 import { Bitcoin } from "../step3/bitcoin";
 import { TapNode, taprootOutputScript } from "./taproot";
 
-const steps = [ProtocolStep.STEP1, ProtocolStep.TRANSITION, ProtocolStep.STEP2];
-const iterationsPerStep = 32;
+const treeDepth = 7;
 
-class LamportEquivocastionTaprootNode extends TapNode {
+class LamportEquivocationTaprootNode extends TapNode {
 
-    constructor(path?: number[]) {
-        super(path ?? []);
+    constructor(private path: number[]) {
+        super();
     }
 
-    fromPath(path: number[]): TapNode {
-        return new LamportEquivocastionTaprootNode(path);
+    getLeft(): TapNode {
+        return new LamportEquivocationTaprootNode([ ...this.path, 0 ]);
+    }
+
+    getRight(): TapNode {
+        return new LamportEquivocationTaprootNode([ ...this.path, 1 ]);
     }
 
     isLeaf(): boolean {
-        return this.path.length == steps.length * iterationsPerStep;
+        return this.path.length == treeDepth;
     }
 
     getScript(): Buffer {
@@ -33,5 +35,6 @@ class LamportEquivocastionTaprootNode extends TapNode {
 }
 
 export function makeLamportEquivocationTaproot(internalPublicKey: Buffer) {
-    return taprootOutputScript(internalPublicKey, new LamportEquivocastionTaprootNode());
+    return taprootOutputScript(internalPublicKey, new LamportEquivocationTaprootNode([]));
 }
+

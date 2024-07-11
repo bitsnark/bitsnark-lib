@@ -1,3 +1,4 @@
+import { makeLamportEquivocationTaproot } from "../../src/generator/taproot/lamport-equivocation";
 import { TapNode, taprootOutputScript } from "../../src/generator/taproot/taproot";
 
 const testVectors = require('./test-vectors.json');
@@ -36,6 +37,13 @@ describe('taproot', () => {
         console.log(result.toString('hex'));
         const expected = testcase.expected.scriptPubKey;
         expect(result.toString('hex')).toBe(expected);
+    });
+
+    it('Lamport equivocation script', () => {
+        const testcase = testVectors.scriptPubKey[6];
+        const publicKey = testcase.given.internalPubkey;
+        const r = makeLamportEquivocationTaproot(Buffer.from(publicKey, 'hex'));
+        expect(r.toString('hex')).toEqual('5120ac817424521b1ef0c393b689c6d98985e8978fe309e9e06a031ebb925da9d88a');
     });
 
     // it ('scriptPubKey', () => {
