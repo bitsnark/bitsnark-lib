@@ -1,4 +1,5 @@
 import { padHex } from "../../encoding/encoding";
+import { Register } from "../common/register";
 import { hardcode, OpcodeType, opcodeValues } from "./bitcoin-opcodes";
 import { StackItem, Stack } from "./stack";
 import { createHash } from 'crypto';
@@ -480,6 +481,17 @@ export class Bitcoin {
     assertEqual32(a: SimulatedRegister, b: SimulatedRegister) {
         for (let i = 0; i < 32; i++) {
             this.assertEqual(a.stackItems[i], b.stackItems[i]);
+        }
+    }
+
+    assertNotEqualMany(a: StackItem[], b: StackItem[]) {
+        if (a.length != b.length) throw new Error('Wrong length');
+        for (let i = 0; i < a.length; i++) {
+            this.pick(a[i]);
+            this.pick(b[i]);
+            this.OP_NUMEQUAL();
+            this.OP_NOT();
+            this.OP_VERIFY();
         }
     }
 
