@@ -1,21 +1,13 @@
 import { deleteDir } from "../../src/encoder-decoder/files-utils";
 import { Lamport } from "../../src/encoder-decoder/lamport";
 import { Winternitz } from "../../src/encoder-decoder/winternitz";
-import { bigintToBufferBE, bitsToBigint, bufferToBigints256BE, hash, Key, nibblesToBigint, strToBigint } from "../../src/encoding/encoding";
+import { bigintToBufferBE, bitsToBigint, bufferToBigints256BE, bufferToBigintsBE, hash, Key, nibblesToBigint, strToBigint } from "../../src/encoding/encoding";
 import { Bitcoin } from "../../src/generator/step3/bitcoin";
 import { StackItem } from "../../src/generator/step3/stack";
+import { createHash } from "node:crypto";
 
 const testData32Bits = strToBigint('TEST');
 const testData256Bits = strToBigint('TESTING1TESTING2TESTING3TESTING4');
-
-// const lamportKeys: Key[][] = [];
-// for (let i = 0; i < 256; i++) lamportKeys.push([
-//     { prvt: hash(BigInt(i), 1), pblc: hash(BigInt(i), 2) },
-//     { prvt: hash(1000000n + BigInt(i), 1), pblc: hash(1000000n + BigInt(i), 2) }
-// ]);
-
-// const winternitzKeys: Key[] = [];
-// for (let i = 0; i < 256; i++) winternitzKeys.push({ prvt: hash(BigInt(i)), pblc: hash(BigInt(i), 9) });
 
 function generatLamport(folder: string, bits: number) {
     deleteDir(folder);
@@ -32,7 +24,6 @@ function generatWinternitz(folder: string) {
 }
 
 describe("encoding schemes", function () {
-
     let bitcoin: Bitcoin;
     let lamport: Lamport;
     let winternitz: Winternitz;
@@ -40,8 +31,9 @@ describe("encoding schemes", function () {
     let witness: StackItem[];
     let decodedItems: StackItem[];
 
-    describe('lamport 32 bits', () => {
+    let keyHashed
 
+    describe('lamport 32 bits', () => {
         let keyItems: bigint[][];
 
         beforeEach(() => {
@@ -62,15 +54,25 @@ describe("encoding schemes", function () {
 
             decodedItems = [];
             for (let i = 0; i < 32; i++) decodedItems.push(bitcoin.newStackItem(0n));
+        });
 
+        it("hash decoded", () => {
+            for (let i = 0; i < 32; i++) {
+                let hex = witness[i].value.toString(16);
+                while (hex.length < 64) hex = '0' + hex;
+                const h = createHash('sha256').update(hex, 'hex').digest('hex');
+                keyHashed = BigInt('0x' + h)
+                const flag = keyHashed === keyItems[i][0] || keyHashed === keyItems[i][1]
+                expect(flag).toBe(true);
+            }
         });
 
         it("positive", () => {
-
             bitcoin.lamportDecode(decodedItems, witness, keyItems);
             expect(bitcoin.success).toBe(true);
             const result = bitsToBigint(decodedItems.map(si => si.value ? 1 : 0));
-            expect(result).toEqual(testData32Bits);
+            const fixResult = bufferToBigintsBE(bigintToBufferBE(result, 4).reverse(), 4);
+            expect(fixResult[0]).toEqual(testData32Bits);
 
             console.log('32 bits in lamport encoding: ', encoded.length);
             console.log('32 bit lamport decode btc script count', bitcoin.opcodes.length);
@@ -78,16 +80,13 @@ describe("encoding schemes", function () {
         });
 
         it("negative", () => {
-
             witness[0].value++;
-
             bitcoin.lamportDecode(decodedItems, witness, keyItems);
             expect(bitcoin.success).toBe(false);
         });
     });
 
     describe('lamport 256 bits', () => {
-
         let keyItems: bigint[][];
 
         beforeEach(() => {
@@ -112,11 +111,11 @@ describe("encoding schemes", function () {
         });
 
         it("positive", () => {
-
             bitcoin.lamportDecode(decodedItems, witness, keyItems);
             expect(bitcoin.success).toBe(true);
             const result = bitsToBigint(decodedItems.map(si => si.value ? 1 : 0));
-            expect(result).toEqual(testData256Bits);
+            const fixResult = bufferToBigintsBE(bigintToBufferBE(result, 32).reverse(), 4);
+            expect(fixResult[0]).toEqual(testData256Bits);
 
             console.log('256 bits in lamport encoding: ', encoded.length);
             console.log('256 bit lamport decode btc script count', bitcoin.opcodes.length);
@@ -124,9 +123,7 @@ describe("encoding schemes", function () {
         });
 
         it("negative", () => {
-
             witness[0].value++;
-
             bitcoin.lamportDecode(decodedItems, witness, keyItems);
             expect(bitcoin.success).toBe(false);
         });
@@ -154,19 +151,20 @@ describe("encoding schemes", function () {
         });
 
         it("positive", () => {
+            bitcoin.winternitzCheck32(witness, keyItems);
+            expect(bitcoin.success).toBe(true);
             bitcoin.winternitzDecode32(decodedItems, witness, keyItems);
             expect(bitcoin.success).toBe(true);
             const result = nibblesToBigint(decodedItems.slice(0, 11).map(si => Number(si.value)));
-            expect(result).toEqual(testData32Bits);
+            const fixResult = bufferToBigintsBE(bigintToBufferBE(result, 4).reverse(), 4);
+            expect(fixResult[0]).toEqual(testData32Bits);
 
             console.log('32 bits in winternitz encoding: ', encoded.length);
             console.log('32 bit winternitz decode btc script count', bitcoin.opcodes.length);
             console.log('32 bit winternitz decode btc script', bitcoin.programSizeInBitcoinBytes());
         });
         it("negative", () => {
-
             witness[0].value++;
-
             bitcoin.winternitzDecode32(decodedItems, witness, keyItems);
             expect(bitcoin.success).toBe(false);
         });
@@ -205,9 +203,7 @@ describe("encoding schemes", function () {
         });
 
         it("negative", () => {
-
             witness[0].value++;
-
             bitcoin.winternitzDecode32(decodedItems, witness, keyItems);
             expect(bitcoin.success).toBe(false);
         });

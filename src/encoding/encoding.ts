@@ -1,6 +1,6 @@
 import { createHash } from "crypto";
 
-export interface Key { prvt: bigint, pblc: bigint };
+export interface Key { prvt: bigint, pblc: bigint }
 
 export function strToBigint(s: string): bigint {
     let n = 0n;
@@ -17,16 +17,21 @@ export function bigintToBufferBE(n: bigint, bytes: number): Buffer {
 
 export function bufferToBigints256BE(buffer: Buffer): bigint[] {
     if (buffer.length % 32 != 0) throw new Error('invalid size');
+    return bufferToBigintsBE(buffer, 32);
+}
+
+export function bufferToBigintsBE(buffer: Buffer, size: number): bigint[] {
     const output: bigint[] = [];
     for (let i = 0; i < buffer.length;) {
         let n = 0n;
-        for (let j = 0; j < 32; j++) {
-            n += BigInt(buffer[i++]) << (8n * BigInt(j));
+        for (let j = 0; j < size; j++) {
+            n = (n << 8n) + BigInt(buffer[i++]);
         }
         output.push(n);
     }
     return output;
 }
+
 
 export function padHex(s: string, bytes: number): string {
     while (s.length < bytes * 2) s = '0' + s;
@@ -37,7 +42,7 @@ export function hash(input: bigint, times: number = 1): bigint {
     let t = input;
     for (let i = 0; i < times; i++) {
         let s1 = padHex(t.toString(16), 32);
-        let s2 = createHash('sha256').update(s1,'hex').digest('hex');
+        let s2 = createHash('sha256').update(s1, 'hex').digest('hex');
         t = BigInt('0x' + s2);
     }
     return t;
