@@ -216,5 +216,28 @@ def debug_print_vars() -> None:
         for var_name, var_val in frame.f_locals.items():
             print('   ' + var_name.rjust(11, ' '), '==', pretty(var_val))
 
-if __name__ == '__main__':
-    test_vectors()
+# if __name__ == '__main__':
+#    test_vectors()
+
+
+def compact_size(l):
+    if l <= 252:
+        compactsize = bytes([l])
+    if l > 252 and l <= 65535:
+        compactsize = bytes([0xfd, l & 0xff, l >> 8])
+    if l > 65535 and l <= 4294967295:
+        compactsize = bytes([0xfe, (l & 0xff), (l >> 8) & 0xff, (l >> 16) & 0xff, (l >> 24) & 0xff])
+    return compactsize
+
+# print(compact_size(0).hex())
+# print(compact_size(252).hex())
+# print(compact_size(253).hex())
+# print(compact_size(65535).hex())
+# print(compact_size(65536).hex())
+# print(compact_size(4294967295).hex())
+
+
+script = bytes.fromhex("2071981521ad9fc9036687364118fb6ccd2035b96a423c59c5430e98310a11abe2ac")
+t = tagged_hash("TapLeaf", bytes.fromhex("c0") + compact_size(len(script)) + script)
+print(t.hex())
+

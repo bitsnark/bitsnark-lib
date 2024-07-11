@@ -8,10 +8,10 @@ export function createChallengeTx(savedProgram: SavedVm<InstrCode>, encodedWitne
     const runner = Runner.load(savedProgram);
     runner.execute();
 
-    // if (runner.getSuccess()) {
-    //     console.log('Proof checks out');
-    //     return false;
-    // }
+    if (runner.getSuccess()) {
+        console.log('Proof checks out');
+        return false;
+    }
 
     const bitcoin = new Bitcoin();
     const witness: bigint[] = [];
