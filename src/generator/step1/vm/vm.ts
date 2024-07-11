@@ -54,11 +54,6 @@ export class VM {
     private fail(msg: string) {
         if (!this.success) throw new Error('Program not in running state');
         this.success.value = 0n;
-        try {
-            throw new Error(msg);
-        } catch (e) {
-            console.error(e);
-        }
     }
 
     public newRegister(): Register {
