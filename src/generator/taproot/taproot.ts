@@ -11,23 +11,10 @@ type Point = bigint[] | null;
 
 export abstract class TapNode {
 
-    path: number[];
-
-    constructor(_path: number[]) {
-        this.path = _path;
-    }
-
-    abstract fromPath(path: number[]): TapNode;
     abstract isLeaf(): boolean;
     abstract getScript(): Buffer;
-
-    getPathLeft(): number[] {
-        return [...this.path, 0];
-    }
-
-    getPathRight(): number[] {
-        return [...this.path, 1];
-    }
+    abstract getLeft(): TapNode;
+    abstract getRight(): TapNode;
 
     getHash(): Buffer {
         if (this.isLeaf()) {
@@ -35,8 +22,8 @@ export abstract class TapNode {
             return taggedHash('TapLeaf',
                 Buffer.concat([Buffer.from([taprootVersion]), compactSize(script.length), script]));
         } else {
-            let left_h = this.fromPath(this.getPathLeft()).getHash();
-            let right_h = this.fromPath(this.getPathRight()).getHash();
+            let left_h = this.getLeft().getHash();
+            let right_h = this.getRight().getHash();
             if (right_h.compare(left_h) == -1) {
                 [left_h, right_h] = [right_h, left_h];
             }
@@ -146,30 +133,30 @@ export function taprootOutputScript(internalPubkey: Buffer, scriptTree: TapNode)
     return Buffer.concat([Buffer.from([0x51, 0x20]), output_pubkey]);
 }
 
-function getProof(rootNode: TapNode, path: number[]): Buffer {
-    if (path.length == 0) return Buffer.alloc(0);
-    const backPath = [];
-    for (let i = 0; i < path.length; i++) {
-        backPath.push(1 - path[i]);
-        const siblingHash = rootNode.fromPath(     );
+// function getProof(rootNode: TapNode, path: number[]): Buffer {
+//     if (path.length == 0) return Buffer.alloc(0);
+//     const backPath = [];
+//     for (let i = 0; i < path.length; i++) {
+//         backPath.push(1 - path[i]);
+//         const siblingHash = rootNode.fromPath(     );
 
-    }
-    const t = path[0];
+//     }
+//     const t = path[0];
 
 
-    const leafHash = this.isLeaf() ? this.getHash() : Buffer.alloc(0);
-    const newPath = this.path.map(n => n);
-    newPath[newPath.length - 1] = 1 - newPath[newPath.length - 1];
-    const siblingHash = this.fromPath(newPath).getHash();
-    newPath.pop();
-    const parentProof = newPath.length > 0 ? this.fromPath(newPath).getProof() : Buffer.alloc(0);
-    return Buffer.concat([leafHash, siblingHash, parentProof]);
-}
+//     const leafHash = this.isLeaf() ? this.getHash() : Buffer.alloc(0);
+//     const newPath = this.path.map(n => n);
+//     newPath[newPath.length - 1] = 1 - newPath[newPath.length - 1];
+//     const siblingHash = this.fromPath(newPath).getHash();
+//     newPath.pop();
+//     const parentProof = newPath.length > 0 ? this.fromPath(newPath).getProof() : Buffer.alloc(0);
+//     return Buffer.concat([leafHash, siblingHash, parentProof]);
+// }
 
-export function taprootControlBlock(internalPubkey: Buffer, scriptTree: TapNode, path: number[]): Buffer {
-    const versionBuf = Buffer.from([taprootVersion << 1]);
-    const P = lift_x(bigintFromBytes(internalPubkey));
-    const keyBuf = Buffer.from(x(P).toString(16), 'hex');
-    const proof = scriptTree.fromPath(path).getProof();
-    return Buffer.concat([versionBuf, keyBuf, proof]);
-}
+// export function taprootControlBlock(internalPubkey: Buffer, scriptTree: TapNode, path: number[]): Buffer {
+//     const versionBuf = Buffer.from([taprootVersion << 1]);
+//     const P = lift_x(bigintFromBytes(internalPubkey));
+//     const keyBuf = Buffer.from(x(P).toString(16), 'hex');
+//     const proof = scriptTree.fromPath(path).getProof();
+//     return Buffer.concat([versionBuf, keyBuf, proof]);
+// }

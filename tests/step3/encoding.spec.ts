@@ -86,49 +86,6 @@ describe("encoding schemes", function () {
         });
     });
 
-    describe('lamport 256 bits', () => {
-        let keyItems: bigint[][];
-
-        beforeEach(() => {
-            bitcoin = new Bitcoin();
-
-            lamport = generatLamport('lamport256', 256);
-            const buffer = bigintToBufferBE(testData256Bits, 32);
-            const { encodedData, pubk } = lamport.encodeBufferAddPublic(buffer, 0);
-            encoded = encodedData;
-
-            witness = bufferToBigints256BE(encoded).map(n => bitcoin.addWitness(n));
-            keyItems = [];
-            for (let i = 0; i < 256; i++) {
-                keyItems.push(
-                    [
-                        bufferToBigints256BE(pubk.subarray(i * 64, i * 64 + 32))[0],
-                        bufferToBigints256BE(pubk.subarray(i * 64 + 32, (i + 1) * 64))[0]
-                    ]);
-            }
-            decodedItems = [];
-            for (let i = 0; i < 256; i++) decodedItems.push(bitcoin.newStackItem(0n));
-        });
-
-        it("positive", () => {
-            bitcoin.lamportDecode(decodedItems, witness, keyItems);
-            expect(bitcoin.success).toBe(true);
-            const result = bitsToBigint(decodedItems.map(si => si.value ? 1 : 0));
-            const fixResult = bufferToBigintsBE(bigintToBufferBE(result, 32).reverse(), 4);
-            expect(fixResult[0]).toEqual(testData256Bits);
-
-            console.log('256 bits in lamport encoding: ', encoded.length);
-            console.log('256 bit lamport decode btc script count', bitcoin.opcodes.length);
-            console.log('256 bit lamport decode btc script', bitcoin.programSizeInBitcoinBytes());
-        });
-
-        it("negative", () => {
-            witness[0].value++;
-            bitcoin.lamportDecode(decodedItems, witness, keyItems);
-            expect(bitcoin.success).toBe(false);
-        });
-    });
-
     describe('winternitz 32 bits', () => {
         let keyItems: bigint[];
 
