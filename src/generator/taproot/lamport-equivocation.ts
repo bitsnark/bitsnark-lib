@@ -1,18 +1,18 @@
 import { ProtocolStep } from "../../../tests/demo/common";
 import { getLamportPublicKey } from "../../encoding/lamport";
 import { Bitcoin } from "../step3/bitcoin";
-import { Node, taprootOutputScript } from "./taproot";
+import { TapNode, taprootOutputScript } from "./taproot";
 
 const steps = [ProtocolStep.STEP1, ProtocolStep.TRANSITION, ProtocolStep.STEP2];
 const iterationsPerStep = 32;
 
-class LamportEquivocastionTaprootNode extends Node {
+class LamportEquivocastionTaprootNode extends TapNode {
 
     constructor(path?: number[]) {
         super(path ?? []);
     }
 
-    fromPath(path: number[]): Node {
+    fromPath(path: number[]): TapNode {
         return new LamportEquivocastionTaprootNode(path);
     }
 

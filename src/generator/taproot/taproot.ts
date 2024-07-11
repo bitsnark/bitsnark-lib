@@ -1,5 +1,6 @@
 import { createHash } from "crypto";
 
+const taprootVersion = 0xc0;
 const p = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2Fn;
 const SECP256K1_ORDER = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141n;
 const G = [
@@ -8,7 +9,7 @@ const G = [
 
 type Point = bigint[] | null;
 
-export abstract class Node {
+export abstract class TapNode {
 
     path: number[];
 
@@ -16,7 +17,7 @@ export abstract class Node {
         this.path = _path;
     }
 
-    abstract fromPath(path: number[]): Node;
+    abstract fromPath(path: number[]): TapNode;
     abstract isLeaf(): boolean;
     abstract getScript(): Buffer;
 
@@ -30,20 +31,29 @@ export abstract class Node {
 
     getHash(): Buffer {
         if (this.isLeaf()) {
-            return taggedHash('TapLeaf', Buffer.concat([Buffer.from([0xc0]), this.getScript()]));
+            const script = this.getScript();
+            return taggedHash('TapLeaf',
+                Buffer.concat([Buffer.from([taprootVersion]), compactSize(script.length), script]));
         } else {
             let left_h = this.fromPath(this.getPathLeft()).getHash();
             let right_h = this.fromPath(this.getPathRight()).getHash();
             if (right_h.compare(left_h) == -1) {
                 [left_h, right_h] = [right_h, left_h];
             }
-            return Buffer.concat([left_h, right_h]);
+            return taggedHash('TapBranch', Buffer.concat([left_h, right_h]));
         }
     }
 }
 
+function compactSize(l: number): Buffer {
+    if (l <= 252) return Buffer.from([l]);
+    if (l > 252 && l <= 65535) return Buffer.from([0xfd, l & 0xff, l >> 8]);
+    if (l > 65535 && l <= 4294967295) return Buffer.from([0xfe, (l & 0xff), (l >> 8) & 0xff, (l >> 16) & 0xff, (l >> 24) & 0xff]);
+    throw new Error('Too big');
+}
+
 function taggedHash(tag: string, msg: Buffer): Buffer {
-    const tagHash = createHash('sha256').update(tag, 'ascii').digest();
+    const tagHash = createHash('sha256').update(tag, 'utf-8').digest();
     return createHash('sha256').update(Buffer.concat([tagHash, tagHash, msg])).digest();
 }
 
@@ -130,9 +140,36 @@ function taprootTweakSecretKey(_seckey0: Buffer, h: Buffer) {
 }
 
 // Given an internal public key and a tree of scripts, compute the output script.
-export function taprootOutputScript(internalPubkey: Buffer, scriptTree: Node): Buffer {
+export function taprootOutputScript(internalPubkey: Buffer, scriptTree: TapNode): Buffer {
     const h = scriptTree.getHash();
     const [_, output_pubkey] = taprootTweakPubkey(internalPubkey, h);
     return Buffer.concat([Buffer.from([0x51, 0x20]), output_pubkey]);
 }
 
+function getProof(rootNode: TapNode, path: number[]): Buffer {
+    if (path.length == 0) return Buffer.alloc(0);
+    const backPath = [];
+    for (let i = 0; i < path.length; i++) {
+        backPath.push(1 - path[i]);
+        const siblingHash = rootNode.fromPath(     );
+
+    }
+    const t = path[0];
+
+
+    const leafHash = this.isLeaf() ? this.getHash() : Buffer.alloc(0);
+    const newPath = this.path.map(n => n);
+    newPath[newPath.length - 1] = 1 - newPath[newPath.length - 1];
+    const siblingHash = this.fromPath(newPath).getHash();
+    newPath.pop();
+    const parentProof = newPath.length > 0 ? this.fromPath(newPath).getProof() : Buffer.alloc(0);
+    return Buffer.concat([leafHash, siblingHash, parentProof]);
+}
+
+export function taprootControlBlock(internalPubkey: Buffer, scriptTree: TapNode, path: number[]): Buffer {
+    const versionBuf = Buffer.from([taprootVersion << 1]);
+    const P = lift_x(bigintFromBytes(internalPubkey));
+    const keyBuf = Buffer.from(x(P).toString(16), 'hex');
+    const proof = scriptTree.fromPath(path).getProof();
+    return Buffer.concat([versionBuf, keyBuf, proof]);
+}
