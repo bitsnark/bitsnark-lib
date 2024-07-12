@@ -1,5 +1,7 @@
+import { Winternitz } from "../../src/encoder-decoder/winternitz";
 import { makeLamportEquivocationTaproot } from "../../src/generator/taproot/lamport-equivocation";
 import { TapNode, taprootControlBlock, taprootOutputScript } from "../../src/generator/taproot/taproot";
+import { makeWinternitzEquivocationTaproot } from "../../src/generator/taproot/winternitz-equivocation";
 
 const testVectors = require('./test-vectors.json');
 
@@ -32,7 +34,7 @@ class TestNode extends TapNode {
 
 describe('taproot', () => {
 
-    it ('scriptPubKey', () => {
+    it('scriptPubKey', () => {
         const testcase = testVectors.scriptPubKey[6];
         const publicKey = testcase.given.internalPubkey;
         const scriptTree = testcase.given.scriptTree;
@@ -50,7 +52,19 @@ describe('taproot', () => {
         expect(r.toString('hex')).toEqual('5120ac817424521b1ef0c393b689c6d98985e8978fe309e9e06a031ebb925da9d88a');
     });
 
-    it ('control block 1', () => {
+    it('Winternitz4 equivocation script', () => {
+        const testcase = testVectors.scriptPubKey[6];
+        const publicKey = testcase.given.internalPubkey;
+        const r = makeWinternitzEquivocationTaproot(Buffer.from(publicKey, 'hex'));
+
+
+        // const testcase = testVectors.scriptPubKey[6];
+        // const publicKey = testcase.given.internalPubkey;
+        // const r = makeLamportEquivocationTaproot(Buffer.from(publicKey, 'hex'));
+        // expect(r.toString('hex')).toEqual('5120ac817424521b1ef0c393b689c6d98985e8978fe309e9e06a031ebb925da9d88a');
+    });
+
+    it('control block 1', () => {
         const testcase = testVectors.scriptPubKey[6];
         const publicKey = testcase.given.internalPubkey;
         const scriptTree = testcase.given.scriptTree;
@@ -62,7 +76,7 @@ describe('taproot', () => {
         expect(result.toString('hex')).toBe(expected);
     });
 
-    it ('control block 2', () => {
+    it('control block 2', () => {
         const testcase = testVectors.scriptPubKey[6];
         const publicKey = testcase.given.internalPubkey;
         const scriptTree = testcase.given.scriptTree;
@@ -74,7 +88,7 @@ describe('taproot', () => {
         expect(result.toString('hex')).toBe(expected);
     });
 
-    it ('control block 3', () => {
+    it('control block 3', () => {
         const testcase = testVectors.scriptPubKey[6];
         const publicKey = testcase.given.internalPubkey;
         const scriptTree = testcase.given.scriptTree;
