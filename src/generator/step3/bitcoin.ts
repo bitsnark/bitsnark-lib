@@ -1,4 +1,5 @@
 import { padHex } from "../../encoding/encoding";
+import { decodeWinternitz32 } from "../../encoding/winternitz";
 import { Register } from "../common/register";
 import { hardcode, OpcodeType, opcodeValues } from "./bitcoin-opcodes";
 import { StackItem, Stack } from "./stack";
@@ -849,7 +850,6 @@ export class Bitcoin {
         this.drop(checksumNibbles);
     }
 
-
     winternitzDecode32(target: StackItem[], witness: StackItem[], publicKeys: bigint[]) {
 
         const totalNibbles = witness.length;
@@ -901,6 +901,13 @@ export class Bitcoin {
         this.OP_VERIFY();
 
         this.drop(checksum);
+    }
+
+    winternitzEquivocation32(target: StackItem[], witness: StackItem[], publicKeys: bigint[]) {
+        //devide the witness in two 14 items arrays
+        this.assertNotEqualMany(witness.slice(0, 13), witness.slice(14));
+        this.winternitzDecode32(target, witness.slice(0, 13), publicKeys);
+        this.winternitzDecode32(target, witness.slice(14), publicKeys);
     }
 
     winternitzCheck256(witness: StackItem[], publicKeys: bigint[]) {
