@@ -55,7 +55,16 @@ export class Bitcoin {
         return si;
     }
 
+    newNibbles32(): StackItem[] {
+        return this.newNibbles(14);
+    }
+
+    newNibbles(count: number): StackItem[] {
+        return new Array(count).fill(0).map(() => this.newStackItem(0n));
+    }
+
     private getRelativeStackPosition(si: StackItem): number {
+
         const index = this.stack.findIndex(si);
         if (index < 0)
             throw new Error('Invalid relative position');
@@ -79,6 +88,7 @@ export class Bitcoin {
     addWitness(n: bigint): StackItem {
         const si = this.stack.newItem(n);
         this.maxStack = Math.max(this.maxStack, this.stack.items.length);
+        this.witness.push(n);
         return si;
     }
 
@@ -434,6 +444,12 @@ export class Bitcoin {
         this.OP_NUMEQUALVERIFY()
     }
 
+    assertOne(a: StackItem) {
+        this.pick(a);
+        this.OP_0_16(1n);
+        this.OP_NUMEQUALVERIFY()
+    }
+
     assertEqual(a: StackItem, b: StackItem) {
         this.pick(a);
         this.pick(b);
@@ -553,6 +569,15 @@ export class Bitcoin {
                     register.stackItems[i * 3 + 2]
                 ],
                 nibbles[i]);
+        }
+    }
+
+    /********* step 1 *********/
+
+    step1_assertOne(nibbles: StackItem[]) {
+        for (let i = 0; i < nibbles.length; i++) {
+            if (i == 0) this.assertOne(nibbles[i]);
+            else this.assertZero(nibbles[i]);
         }
     }
 
@@ -714,9 +739,11 @@ export class Bitcoin {
         }
     }
 
-    step2_assertOne(a: SimulatedRegister) {
-        const one = this.newSimulatedRegister(1n);
-        this.assertEqual32(a, one);
+    step2_assertOne(nibbles: StackItem[]) {
+        for (let i = 0; i < nibbles.length; i++) {
+            if (i == 0) this.assertOne(nibbles[i]);
+            else this.assertZero(nibbles[i]);
+        }        
     }
 
     /***  Witness decoding ***/
@@ -793,13 +820,11 @@ export class Bitcoin {
 
     winternitzCheck32(witness: StackItem[], publicKeys: bigint[]) {
 
-        const totalNibbles = witness.length;
         const checksum = this.newStackItem(0n);
         const temp = this.newStackItem(0n);
-        const checksumNibbles: StackItem[] = [];
-        for (let i = 0; i < 3; i++) checksumNibbles.push(this.newStackItem(0n));
+        const checksumNibbles: StackItem[] = this.newNibbles(3);
 
-        for (let i = 0; i < totalNibbles - 3; i++) {
+        for (let i = 0; i < 11; i++) {
             this.winternitzDecodeNibble(temp, witness[i], publicKeys[i]);
             this.pick(checksum);
             this.pick(temp);
@@ -853,7 +878,7 @@ export class Bitcoin {
 
     winternitzDecode32(target: StackItem[], witness: StackItem[], publicKeys: bigint[]) {
 
-        const totalNibbles = witness.length;
+        const totalNibbles = 14;
         const checksum = this.newStackItem(0n);
 
         for (let i = 0; i < totalNibbles; i++) {
@@ -906,7 +931,7 @@ export class Bitcoin {
 
     winternitzCheck256(witness: StackItem[], publicKeys: bigint[]) {
 
-        const totalNibbles = witness.length;
+        const totalNibbles = 90;
         const temp = this.newStackItem(0n);
         const checksumNibbles: StackItem[] = [];
         for (let i = 0; i < 4; i++) checksumNibbles.push(this.newStackItem(0n));
@@ -976,6 +1001,76 @@ export class Bitcoin {
         this.drop(checksumNibbles);
     }
 
+    winternitzDecode256(target: StackItem[], witness: StackItem[], publicKeys: bigint[]) {
+
+        const totalNibbles = 90;
+        const checksumNibbles: StackItem[] = [];
+        for (let i = 0; i < 4; i++) checksumNibbles.push(this.newStackItem(0n));
+        const checksum = this.newStackItem(0n);
+
+        for (let i = 0; i < totalNibbles - 4; i++) {
+            this.winternitzDecodeNibble(target[i], witness[i], publicKeys[i]);
+            this.pick(checksum);
+            this.pick(target[i]);
+            this.OP_ADD();
+            this.replaceWithTop(checksum);
+        }
+
+        for (let i = 0; i < 4; i++) {
+            this.winternitzDecodeNibble(checksumNibbles[i], witness[totalNibbles - 4 + i], publicKeys[totalNibbles - 4 + i]);
+        }
+
+        this.DATA(7n);
+        this.pick(checksumNibbles[3]);
+        this.OP_SUB();
+
+        // * 8
+        this.OP_DUP();
+        this.OP_ADD();
+        this.OP_DUP();
+        this.OP_ADD();
+        this.OP_DUP();
+        this.OP_ADD();
+
+        this.DATA(7n);
+        this.pick(checksumNibbles[2]);
+        this.OP_SUB();
+        this.OP_ADD();
+
+        // * 8
+        this.OP_DUP();
+        this.OP_ADD();
+        this.OP_DUP();
+        this.OP_ADD();
+        this.OP_DUP();
+        this.OP_ADD();
+
+        this.DATA(7n);
+        this.pick(checksumNibbles[1]);
+        this.OP_SUB();
+        this.OP_ADD();
+
+        // * 8
+        this.OP_DUP();
+        this.OP_ADD();
+        this.OP_DUP();
+        this.OP_ADD();
+        this.OP_DUP();
+        this.OP_ADD();
+
+        this.DATA(7n);
+        this.pick(checksumNibbles[0]);
+        this.OP_SUB();
+        this.OP_ADD();
+
+        this.pick(checksum);
+        this.OP_EQUAL();
+        this.OP_VERIFY();
+
+        this.drop(checksum);
+        this.drop(checksumNibbles);
+    }
+
     checkInitialTransaction(witness: StackItem[], publicKeys: bigint[]) {
         for (let i = 0; i < 10; i++) {
             this.winternitzCheck256(witness.slice(i * 90, i * 90 + 90), publicKeys.slice(i * 90, i * 90 + 90));
@@ -997,6 +1092,16 @@ export class Bitcoin {
     checkStep2State(witness: StackItem[], publicKeys: bigint[]) {
         for (let i = 0; i < witness.length / 14; i++) {
             this.winternitzCheck32(witness.slice(i * 14, i * 14 + 14), publicKeys.slice(i * 14, i * 14 + 14));
+        }
+    }
+
+    verifySearchPath(searchPathWitness: StackItem[], searchPath: number[], publicKeys: bigint[][]) {
+        const temp = this.newStackItem();
+        if (searchPathWitness.length != searchPath.length) throw new Error('Wrong lengths');
+        for (let i = 0; i < searchPathWitness.length; i++) {
+            this.lamportDecodeBit(temp, searchPathWitness[i], publicKeys[i]);
+            if (searchPath[i] == 1) this.assertOne(temp);
+            else this.assertZero(temp);
         }
     }
 

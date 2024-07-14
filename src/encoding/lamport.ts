@@ -4,7 +4,7 @@ const lamportSecret0 = 0x9265452827382882726255242444244244243655423456345634568
 const lamportSecret1 = 0x926545289734658217362726255242444244213452345423454383876346n;
 
 function getLamportPrivateKey(index: number, bit: number): bigint {
-    return hash(bit ? lamportSecret1 : lamportSecret0 + BigInt(index), 1);
+    return hash((bit ? lamportSecret1 : lamportSecret0) + BigInt(index), 1);
 }
 
 export function getLamportPublicKey(index: number, bit: number): bigint {

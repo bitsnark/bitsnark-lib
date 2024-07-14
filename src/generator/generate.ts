@@ -12,6 +12,7 @@ import { Runner as Step2_Runner } from './step2/vm/runner';
 import { Register } from './common/register';
 import { verifyStep2Instr } from './step3/verify-step2-instr';
 import { Bitcoin } from './step3/bitcoin';
+import { Compressor } from './taproot/compressor';
 
 type Step1Program = SavedVm<Step1_InstrCode>;
 type Step2Program = SavedVm<Step2_InstrCode>;
@@ -139,7 +140,7 @@ function step1(): Step1Program {
     return step1_vm.save();
 }
 
-function step2(step1Program: Step1Program) {
+function step2(compressor: Compressor, step1Program: Step1Program) {
 
     const step1Runner = Step1_Runner.load(step1Program);
     console.log('step 1 program size: ', step1Runner.instructions.length);
@@ -169,12 +170,20 @@ function step2(step1Program: Step1Program) {
 
             //console.log('step 1 line: ', step1_line, ' step 2 line: ', line);
 
+            const regsBefore = step1Runner.getRegisterValues();
+            step1Runner.execute(step1_line);
+            const regsAfter = step1Runner.getRegisterValues();
+            const a = regsBefore[instr.param1!];
+            const b = regsBefore[instr.param2!];
+            const c = regsAfter[instr.target!];
+    
             const bitcoin = new Bitcoin();
             verifyStep2Instr(bitcoin, instr, a, b, c);
-
+            compressor.addItem(bitcoin.programToBinary());
         });
     });
 }
 
+const compressor = new Compressor(19 + 5);
 const step1_program = step1();
-step2(step1_program);
+step2(compressor, step1_program);
