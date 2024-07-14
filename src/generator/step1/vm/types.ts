@@ -21,3 +21,19 @@ export interface Instruction {
     param2?: number;
     bit?: number;
 }
+
+export const instrParamOptions = {
+    [InstrCode.ADDMOD]: [ true, true, true ],
+    [InstrCode.ANDBIT]: [ true, true, true ],
+    [InstrCode.ANDNOTBIT]: [ true, true, true ],
+    [InstrCode.MOV]: [ true, false, true ],
+    [InstrCode.EQUAL]: [ true, true, true ],
+    [InstrCode.MULMOD]: [ true, true, true ],
+    [InstrCode.OR]: [ true, true, true ],
+    [InstrCode.AND]: [ true, true, true ],
+    [InstrCode.NOT]: [ true, false, true ],
+    [InstrCode.SUBMOD]: [ true, true, true ],
+    [InstrCode.DIVMOD]: [ true, true, true ],
+    [InstrCode.ASSERTONE]: [ true, false, true ],
+    [InstrCode.ASSERTZERO]: [ true, false, true ],
+};

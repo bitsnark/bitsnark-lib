@@ -19,17 +19,26 @@ export abstract class TapNode {
     getHash(): Buffer {
         if (this.isLeaf()) {
             const script = this.getScript();
-            return taggedHash('TapLeaf',
-                Buffer.concat([Buffer.from([taprootVersion]), compactSize(script.length), script]));
+            return getHash(script);
         } else {
             let left_h = this.getLeft()!.getHash();
             let right_h = this.getRight()!.getHash();
-            if (right_h.compare(left_h) == -1) {
-                [left_h, right_h] = [right_h, left_h];
-            }
-            return taggedHash('TapBranch', Buffer.concat([left_h, right_h]));
+            return combineHashes(left_h, right_h);
         }
     }
+}
+
+export function getHash(script: Buffer): Buffer {
+    return taggedHash('TapLeaf',
+        Buffer.concat([Buffer.from([taprootVersion]), compactSize(script.length), script]));
+
+}
+
+export function combineHashes(left_h: Buffer, right_h: Buffer): Buffer {
+    if (right_h.compare(left_h) == -1) {
+        [left_h, right_h] = [right_h, left_h];
+    }
+    return taggedHash('TapBranch', Buffer.concat([left_h, right_h]));    
 }
 
 function compactSize(l: number): Buffer {
@@ -133,8 +142,6 @@ export function taprootOutputScript(internalPubkey: Buffer, scriptTree: TapNode)
     return Buffer.concat([Buffer.from([0x51, 0x20]), output_pubkey]);
 }
 
-
-
 function getProof(node: TapNode, path: number[]): Buffer {
     if (node.isLeaf()) return Buffer.alloc(0);
     const t = path[0];
@@ -155,4 +162,16 @@ export function taprootControlBlock(internalPubkey: Buffer, rootNode: TapNode, p
     const keyBuf = Buffer.from(x(P).toString(16), 'hex');
     const proof = getProof(rootNode, path);
     return Buffer.concat([versionBuf, keyBuf, proof]);
+}
+
+export function simpleTaproot(internalPubkey: Buffer, script: Buffer): { root: Buffer, controlBlock: Buffer } {
+    const versionBuf = Buffer.from([taprootVersion | 0x01]);
+    const hash = taggedHash('TapLeaf',
+        Buffer.concat([versionBuf, compactSize(script.length), script]));
+    const [_, output_pubkey] = taprootTweakPubkey(internalPubkey, hash);
+    const root = Buffer.concat([Buffer.from([0x51, 0x20]), output_pubkey]);
+    const P = lift_x(bigintFromBytes(internalPubkey));
+    const keyBuf = Buffer.from(x(P).toString(16), 'hex');
+    const controlBlock = Buffer.concat([versionBuf, keyBuf]);
+    return { root, controlBlock };
 }

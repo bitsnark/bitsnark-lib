@@ -1,31 +1,48 @@
-import fs from 'fs';
-import groth16Verify, { Key, Proof } from "../../src/generator/step1/verifier";
-import { step1_vm } from "../../src/generator/step1/vm/vm";
-import { proof, publicSignals } from "./proof";
-import { SavedVm } from '../../src/generator/common/saved-vm';
-import { InstrCode } from '../../src/generator/step1/vm/types';
 import { bufferToBigints256BE } from '../../src/encoding/encoding';
 import { decodeWinternitz256, encodeWinternitz256, getWinternitzPublicKeys256 } from '../../src/encoding/winternitz';
 
 export enum ProtocolStep {
-    INITIAL,
-    CHALLENGE,
-    STEP1,
-    TRANSITION,
-    STEP2,
-    FINAL
+    INITIAL = 'INITIAL',
+    CHALLENGE = 'CHALLENGE',
+    STEP1 = 'STEP1',
+    TRANSITION = 'TRANSITION',
+    STEP2 = 'STEP2',
+    FINAL = 'FINAL'
 };
 
+const stepToNum = {
+    [ProtocolStep.INITIAL]: 0,
+    [ProtocolStep.CHALLENGE]: 1,
+    [ProtocolStep.STEP1]: 2,
+    [ProtocolStep.TRANSITION]: 3,
+    [ProtocolStep.STEP2]: 4,
+    [ProtocolStep.FINAL]: 5,
+};
+
+const numToStep = [
+    ProtocolStep.INITIAL,
+    ProtocolStep.CHALLENGE,
+    ProtocolStep.STEP1,
+    ProtocolStep.TRANSITION,
+    ProtocolStep.STEP2,
+    ProtocolStep.FINAL,
+];
+
+export enum ProtocolRole {
+    PAT = 'PAT',
+    VIC = 'VIC'
+}
+
 export function getEncodingIndexForPat(step: ProtocolStep, iteration: number, registerIndex: number): number {
-    return Number(step) * 1000000 + iteration * 256 * 256 + registerIndex * 256;
+    return stepToNum[step] * 1000000 + iteration * 256 * 256 + registerIndex * 256;
 }
 
 export function getEncodingIndexForVic(step: ProtocolStep, iteration: number): number {
-    return Number(step) * 32 + iteration;
+    return stepToNum[step] * 32 + iteration;
 }
 
 export function reverseEncodingIndexForVic(n: number): { step: ProtocolStep, iteration: number } {
-    return { step: Math.floor(n / 32), iteration: n % 32 };
+    return { step: numToStep[Math.floor(n / 32)], iteration: n % 32 };
 }
 
 export function transitionPatEncode(param1: bigint, param2: bigint, target: bigint): { witness: bigint[], publicKeys: bigint[] } {

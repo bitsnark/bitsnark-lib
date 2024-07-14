@@ -2,7 +2,10 @@ import { Bitcoin } from '../../src/generator/step3/bitcoin';
 import { proof, publicSignals } from './proof';
 import { encodeWinternitz256, getWinternitzPublicKeys256 } from '../../src/encoding/winternitz';
 import { bufferToBigints256BE } from '../../src/encoding/encoding';
-import { getEncodingIndexForPat, ProtocolStep } from './common';
+import { getEncodingIndexForPat, ProtocolRole, ProtocolStep } from './common';
+import { simpleTaproot } from '../../src/generator/taproot/taproot';
+import { internalPblicKey } from './public-key';
+import { writeToFile } from './utils';
 
 export function createInitialTx(): bigint[] {
 
@@ -29,13 +32,7 @@ export function createInitialTx(): bigint[] {
 
     if (!bitcoin.success) throw new Error('Failed');
 
-    console.log('********************************************************************************')
-    console.log('Initial (PAT):');
-    console.log('data size: ', encodedWitness.length * 32);
-    console.log('progam size: ', bitcoin.programSizeInBitcoinBytes());
-    console.log('max stack size: ', bitcoin.maxStack);
-    console.log('witness: ', encodedWitness.map(n => n.toString(16)));
-    // console.log('program: ', bitcoin.programToString());
+    writeToFile(bitcoin, ProtocolStep.INITIAL, ProtocolRole.PAT);
 
     return encodedWitness;
 }

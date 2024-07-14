@@ -2,10 +2,13 @@ import { Runner } from '../../src/generator/step1/vm/runner';
 import { Bitcoin } from '../../src/generator/step3/bitcoin';
 import { bufferToBigints256BE } from '../../src/encoding/encoding';
 import { decodeWinternitz256, encodeWinternitz256, getWinternitzPublicKeys256 } from '../../src/encoding/winternitz';
-import { getEncodingIndexForPat, getEncodingIndexForVic, ProtocolStep } from './common';
+import { getEncodingIndexForPat, getEncodingIndexForVic, ProtocolRole, ProtocolStep } from './common';
 import { decodeLamportBit, encodeLamportBit, getLamportPublicKeys } from '../../src/encoding/lamport';
 import { SavedVm } from '../../src/generator/common/saved-vm';
 import { InstrCode } from '../../src/generator/step1/vm/types';
+import { simpleTaproot } from '../../src/generator/taproot/taproot';
+import { internalPblicKey } from './public-key';
+import { writeToFile } from './utils';
 
 const maxLineCount = 2 ** 19 - 1;
 const iterations = 19;
@@ -28,7 +31,7 @@ function getLineNumber(path: number[]): { left: number, middle: number, right: n
     return { left, middle, right };
 }
 
-function patPart(saved: SavedVm<InstrCode>, searchPath: number[]): bigint[] {
+function patPart(saved: SavedVm<InstrCode>, searchPath: number[], iteration: number): bigint[] {
 
     const runner = Runner.load(saved);
     const line = getLineNumber(searchPath).middle;
@@ -41,20 +44,15 @@ function patPart(saved: SavedVm<InstrCode>, searchPath: number[]): bigint[] {
     bitcoin.winternitzCheck256(
         witness.map(n => bitcoin.addWitness(n)),
         getWinternitzPublicKeys256(chunkIndex));
+        
     if (!bitcoin.success) throw new Error('Failed');
 
-    console.log('********************************************************************************')
-    console.log(`Step 1 iteration ${searchPath.length + 1} (PAT):`);
-    console.log('data size: ', witness.length * 32);
-    console.log('progam size: ', bitcoin.programSizeInBitcoinBytes());
-    console.log('max stack size: ', bitcoin.maxStack);
-    // console.log('witness: ', witness);
-    //console.log('program: ', bitcoin.programToString());
-
+    writeToFile(bitcoin, ProtocolStep.STEP1, ProtocolRole.PAT, iteration);
+    
     return witness;
 }
 
-function vicPart(saved: SavedVm<InstrCode>, searchPath: number[], encodedStateRoot: bigint[]): bigint {
+function vicPart(saved: SavedVm<InstrCode>, searchPath: number[], encodedStateRoot: bigint[], iteration: number): bigint {
 
     const runner = Runner.load(saved);
     const middle = getLineNumber(searchPath).middle;
@@ -76,15 +74,10 @@ function vicPart(saved: SavedVm<InstrCode>, searchPath: number[], encodedStateRo
         bitcoin.newStackItem(0n),
         bitcoin.addWitness(witness),
         getLamportPublicKeys(chunkIndex, 1)[0]);
+
     if (!bitcoin.success) throw new Error('Failed');
 
-    console.log('********************************************************************************')
-    console.log(`Step 1 iteration ${searchPath.length + 1} (VIC):`);
-    console.log('data size: ', 32);
-    console.log('progam size: ', bitcoin.programSizeInBitcoinBytes());
-    console.log('max stack size: ', bitcoin.maxStack);
-    // console.log('witness: ', witness);
-    //console.log('program: ', bitcoin.programToString());
+    writeToFile(bitcoin, ProtocolStep.STEP1, ProtocolRole.VIC, iteration);
     
     return witness;
 }
@@ -97,8 +90,8 @@ export function step1(savedProgram: SavedVm<InstrCode>): number[] {
 
         console.log(' ***   ', getLineNumber(searchPath));
 
-        const encodedStateRoot = patPart(savedProgram, searchPath);
-        const encodedDirection = vicPart(savedProgram, searchPath, encodedStateRoot);
+        const encodedStateRoot = patPart(savedProgram, searchPath, iteration);
+        const encodedDirection = vicPart(savedProgram, searchPath, encodedStateRoot, iteration);
         const direction = decodeLamportBit(encodedDirection, getEncodingIndexForVic(ProtocolStep.STEP1, iteration));
         searchPath.push(direction);
     }
