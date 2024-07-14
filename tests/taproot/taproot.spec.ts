@@ -53,15 +53,10 @@ describe('taproot', () => {
     });
 
     it('Winternitz4 equivocation script', () => {
-        const testcase = testVectors.scriptPubKey[6];
+        const testcase = testVectors.scriptPubKey[2];
         const publicKey = testcase.given.internalPubkey;
         const r = makeWinternitzEquivocationTaproot(Buffer.from(publicKey, 'hex'));
-
-
-        // const testcase = testVectors.scriptPubKey[6];
-        // const publicKey = testcase.given.internalPubkey;
-        // const r = makeLamportEquivocationTaproot(Buffer.from(publicKey, 'hex'));
-        // expect(r.toString('hex')).toEqual('5120ac817424521b1ef0c393b689c6d98985e8978fe309e9e06a031ebb925da9d88a');
+        expect(r.toString('hex')).toEqual('5120d4314353952493527780c24fa4d63228bd92ae51d95ed53438f55d8818a51857');
     });
 
     it('control block 1', () => {
