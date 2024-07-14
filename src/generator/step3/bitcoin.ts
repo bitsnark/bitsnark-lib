@@ -903,11 +903,11 @@ export class Bitcoin {
         this.drop(checksum);
     }
 
-    winternitzEquivocation32(target: StackItem[], witness: StackItem[], publicKeys: bigint[]) {
+    winternitzEquivocation32(target: StackItem[], witnessA: StackItem[], witnessB: StackItem[], publicKeys: bigint[]) {
         //devide the witness in two 14 items arrays
-        this.assertNotEqualMany(witness.slice(0, 13), witness.slice(14));
-        this.winternitzDecode32(target, witness.slice(0, 13), publicKeys);
-        this.winternitzDecode32(target, witness.slice(14), publicKeys);
+        this.assertNotEqualMany(witnessA, witnessB);
+        this.winternitzDecode32(target, witnessA, publicKeys);
+        this.winternitzDecode32(target, witnessB, publicKeys);
     }
 
     winternitzCheck256(witness: StackItem[], publicKeys: bigint[]) {
