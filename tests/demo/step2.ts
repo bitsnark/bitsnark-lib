@@ -2,10 +2,13 @@ import { Runner } from '../../src/generator/step2/vm/runner';
 import { Bitcoin } from '../../src/generator/step3/bitcoin';
 import { bufferToBigints256BE } from '../../src/encoding/encoding';
 import { decodeWinternitz32, encodeWinternitz32, getWinternitzPublicKeys32 } from '../../src/encoding/winternitz';
-import { getEncodingIndexForPat, getEncodingIndexForVic, ProtocolStep } from './common';
+import { getEncodingIndexForPat, getEncodingIndexForVic, ProtocolRole, ProtocolStep } from './common';
 import { decodeLamportBit, encodeLamportBit, getLamportPublicKeys } from '../../src/encoding/lamport';
 import { SavedVm } from '../../src/generator/common/saved-vm';
 import { InstrCode } from '../../src/generator/step2/vm/types';
+import { internalPblicKey } from './public-key';
+import { simpleTaproot } from '../../src/generator/taproot/taproot';
+import { writeToFile } from './utils';
 
 function compare(a: bigint[], b: bigint[]): boolean {
     if (!(a && b) || a.length != b.length) return false;
@@ -30,7 +33,7 @@ function getLineNumber(path: number[], maxIterations: number): { left: number, m
     return { left, middle, right };
 }
 
-function patPart(saved: SavedVm<InstrCode>, searchPath: number[], maxIterations: number): bigint[] {
+function patPart(saved: SavedVm<InstrCode>, searchPath: number[], maxIterations: number, iteration: number): bigint[] {
 
     const runner = Runner.load(saved);
     const line = getLineNumber(searchPath, maxIterations).middle;
@@ -48,20 +51,15 @@ function patPart(saved: SavedVm<InstrCode>, searchPath: number[], maxIterations:
     bitcoin.checkStep2State(
         witness.map(n => bitcoin.addWitness(n)),
         publicKeys);
+        
     if (!bitcoin.success) throw new Error('Failed');
 
-    console.log('********************************************************************************')
-    console.log(`Step 2 iteration ${searchPath.length + 1} (PAT):`);
-    console.log('data size: ', witness.length * 32);
-    console.log('progam size: ', bitcoin.programSizeInBitcoinBytes());
-    console.log('max stack size: ', bitcoin.maxStack);
-    // console.log('witness: ', witness);
-    // console.log('program: ', bitcoin.programToString());
+    writeToFile(bitcoin, ProtocolStep.STEP2, ProtocolRole.PAT, iteration);
 
     return witness;
 }
 
-function vicPart(saved: SavedVm<InstrCode>, searchPath: number[], encodedState: bigint[], maxIterations: number): bigint {
+function vicPart(saved: SavedVm<InstrCode>, searchPath: number[], encodedState: bigint[], maxIterations: number, iteration: number): bigint {
 
     const runner = Runner.load(saved);
     const middle = getLineNumber(searchPath, maxIterations).middle;
@@ -86,16 +84,11 @@ function vicPart(saved: SavedVm<InstrCode>, searchPath: number[], encodedState: 
         bitcoin.newStackItem(0n),
         bitcoin.addWitness(witness),
         getLamportPublicKeys(chunkIndex, 1)[0]);
+
     if (!bitcoin.success) throw new Error('Failed');
 
-    console.log('********************************************************************************')
-    console.log(`Step 2 iteration ${searchPath.length + 1} (VIC):`);
-    console.log('data size: ', 32);
-    console.log('progam size: ', bitcoin.programSizeInBitcoinBytes());
-    console.log('max stack size: ', bitcoin.maxStack);
-    // console.log('witness: ', witness);
-    //console.log('program: ', bitcoin.programToString());
-    
+    writeToFile(bitcoin, ProtocolStep.STEP2, ProtocolRole.VIC, iteration);
+
     return witness;
 }
 
@@ -108,8 +101,8 @@ export function step2(savedProgram: SavedVm<InstrCode>): number[] {
 
         console.log(' ***   ', getLineNumber(searchPath, iterations));
 
-        const encodedState = patPart(savedProgram, searchPath, iterations);
-        const encodedDirection = vicPart(savedProgram, searchPath, encodedState, iterations);
+        const encodedState = patPart(savedProgram, searchPath, iterations, iteration);
+        const encodedDirection = vicPart(savedProgram, searchPath, encodedState, iterations, iteration);
         const direction = decodeLamportBit(encodedDirection, getEncodingIndexForVic(ProtocolStep.STEP1, iteration));
         searchPath.push(direction);
     }

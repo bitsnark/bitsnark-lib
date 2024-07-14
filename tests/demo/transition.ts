@@ -2,8 +2,9 @@ import { Runner } from '../../src/generator/step1/vm/runner';
 import { Bitcoin } from '../../src/generator/step3/bitcoin';
 import { InstrCode } from '../../src/generator/step1/vm/types';
 import { SavedVm } from '../../src/generator/common/saved-vm';
-import { getEncodingIndexForVic, ProtocolStep, transitionPatDecode, transitionPatEncode } from './common';
+import { getEncodingIndexForVic, ProtocolRole, ProtocolStep, transitionPatDecode, transitionPatEncode } from './common';
 import { encodeLamportBit, getLamportPublicKeys } from '../../src/encoding/lamport';
+import { writeToFile } from './utils';
 
 const maxLineCount = 2 ** 19 - 1;
 const iterations = 19;
@@ -28,13 +29,9 @@ function patPart(savedProgram: SavedVm<InstrCode>, line: number): bigint[] {
 
     bitcoin.checkTransitionPatTransaction(witness.map(n => bitcoin.addWitness(n)), publicKeys);
 
-    console.log('********************************************************************************')
-    console.log(`Transition (PAT):`);
-    console.log('data size: ', witness.length * 32);
-    console.log('progam size: ', bitcoin.programSizeInBitcoinBytes());
-    console.log('max stack size: ', bitcoin.maxStack);
-    // console.log('witness: ', witnesses.flat());
-    // console.log('program: ', bitcoin.programToString());
+    if (!bitcoin.success) throw new Error('Failed');
+
+    writeToFile(bitcoin, ProtocolStep.TRANSITION, ProtocolRole.PAT);
 
     return witness;
 }
@@ -70,13 +67,9 @@ function vicPart(savedProgram: SavedVm<InstrCode>, line: number, encodedData: bi
             getLamportPublicKeys(getEncodingIndexForVic(ProtocolStep.TRANSITION, 1), 1)[0],
         ]);
 
-    console.log('********************************************************************************')
-    console.log(`Transition (VIC):`);
-    console.log('data size: ', witness.length * 32);
-    console.log('progam size: ', bitcoin.programSizeInBitcoinBytes());
-    console.log('max stack size: ', bitcoin.maxStack);
-    // console.log('witness: ', witnesses.flat());
-    // console.log('program: ', bitcoin.programToString());
+    if (!bitcoin.success) throw new Error('Failed');
+
+    writeToFile(bitcoin, ProtocolStep.TRANSITION, ProtocolRole.VIC);
 
     return witness;
 }

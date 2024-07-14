@@ -2,6 +2,8 @@ import { SavedVm } from '../../src/generator/common/saved-vm';
 import { Runner } from '../../src/generator/step1/vm/runner';
 import { InstrCode } from '../../src/generator/step1/vm/types';
 import { Bitcoin } from '../../src/generator/step3/bitcoin';
+import { ProtocolStep, ProtocolRole } from './common';
+import { writeToFile } from './utils';
 
 export function createChallengeTx(savedProgram: SavedVm<InstrCode>, encodedWitness: bigint[]): boolean {
 
@@ -16,13 +18,9 @@ export function createChallengeTx(savedProgram: SavedVm<InstrCode>, encodedWitne
     const bitcoin = new Bitcoin();
     const witness: bigint[] = [];
 
-    console.log('********************************************************************************')
-    console.log('Challenge (VIC):');
-    console.log('data size: ', witness.length * 32);
-    console.log('progam size: ', bitcoin.programSizeInBitcoinBytes());
-    console.log('max stack size: ', bitcoin.maxStack);
-    console.log('witness: ', witness.map(n  => n.toString(16)));
-    // console.log('program: ', bitcoin.programToString());
+    if (!bitcoin.success) throw new Error('Failed');
 
+    writeToFile(bitcoin, ProtocolStep.CHALLENGE, ProtocolRole.VIC);
+    
     return true;
 }
