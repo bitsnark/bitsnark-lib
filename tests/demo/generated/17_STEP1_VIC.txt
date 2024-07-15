@@ -1,0 +1,12 @@
+{
+	"title": "STEP1 VIC 7",
+	"data size (bytes)": 32,
+	"progam size (bytes)": 90,
+	"max stack size": 3,
+	"witness": [
+		"f5d040d50ac154802e1fbd18dc9d1c754530f950919d6cb587138be0ebd7fc40"
+	],
+	"taproot hash": "51208b7b4b87a0ef43d2f6642bf2a3d87fbd07227f36a1b129a241ea6753e4d797c1",
+	"control block": "c155adf4e8967fbd2e29f20ac896e60c3b0f1d5b0efa9d34941b5958c7b0a0312d",
+	"program": "0000007a755279a8202acc7fba042a28f047d379bcfc124bec2cb07390f163e412ecf1e8f91da63937877a755279a8204ce9293c19afbae3e0ea6406d71c4f7bdb0bdfc922ebb02610dee721d120c8b1877a75517951799b6977"
+}

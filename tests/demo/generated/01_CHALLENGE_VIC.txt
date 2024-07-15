@@ -1,0 +1,10 @@
+{
+	"title": "CHALLENGE VIC",
+	"data size (bytes)": 0,
+	"progam size (bytes)": 0,
+	"max stack size": 0,
+	"witness": [],
+	"taproot hash": "5120897c7102aa524a5299c4b2a2e1ca028cc95b4e27e7626b9fbbe170b9e0dc9066",
+	"control block": "c155adf4e8967fbd2e29f20ac896e60c3b0f1d5b0efa9d34941b5958c7b0a0312d",
+	"program": ""
+}
