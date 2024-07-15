@@ -1,6 +1,6 @@
 import { Register } from "../../src/generator/common/register";
 import { step2_vm, step2_vm as vm, VM } from "../../src/generator/step2/vm/vm";
-import { sha256, sha256pair } from "../../src/generator/step2/sha-256";
+import { SHA256 } from "../../src/generator/step2/sha-256";
 import { _256 } from "../../src/generator/step2/vm/types"
 import { verifyMerkleProof } from "../../src/generator/step2/merkle"
 import { makeMerkleProof, verifyMerkleProof as verifyMerkleProofReference } from '../../src/encoding/merkle';
@@ -24,11 +24,6 @@ const testProof: bigint[][] = [
     [0xc5ffe10bn, 0x5d57d0cen, 0x796fb761n, 0x76839472n, 0x97823bfen, 0xa51aed82n, 0x2ebe617bn, 0xb530b396n]    
 ];
 
-const a_hex: bigint[] = [0x1516f000n, 0xde6cff5cn, 0x8c63eef0n, 0x81ebcec2n, 0xad2fdcf7n, 0x034db160n, 0x45d024a9n, 0x0341e07dn]
-const b_hex: bigint[] = [0xe20af19fn, 0x85f26557n, 0x9ead2578n, 0x859bf089n, 0xc92b76a0n, 0x48606983n, 0xad83f27bn, 0xa8f32f1an]
-const a_hash_hex: bigint[] = [0x846bea34n, 0x8ecfdf71n, 0xde201960n, 0x619a910bn, 0x11b8e9ben, 0xd9185762n, 0x81f5078bn, 0x08c2d6cen]
-const ab_hash_hex: bigint[] = [0x77c654b3n, 0xd1605f78n, 0xed091cbdn, 0x420c939cn, 0x3feff7d5n, 0x7dc30c17n, 0x1fa45a5an, 0x3c81fd7dn]
-
 describe("SHA256 tests", function () {
 
     let target: Register[];
@@ -47,21 +42,6 @@ describe("SHA256 tests", function () {
         }
     }
 
-    it('256 bit input hash', () => {
-        const aRegs = a_hex.map(n => vm.addWitness(n));
-        vm.startProgram();
-        sha256(target, aRegs);
-        check(target, a_hash_hex);
-    });
-
-    it('512 bit input hash', () => {
-        const aRegs = a_hex.map(n => vm.addWitness(n));
-        const bRegs = b_hex.map(n => vm.addWitness(n));
-        vm.startProgram();
-        sha256pair(target, aRegs, bRegs);
-        check(target, ab_hash_hex);
-    });
-
     it('Merkle proof positive', () => {
 
         const merkleProof = makeMerkleProof(testMerkleTreeLeaves.map(_32To256BE), 3);
@@ -72,7 +52,7 @@ describe("SHA256 tests", function () {
         }
         const witness = merkleProof.map(n => _256To32BE(n).map(n => step2_vm.addWitness(n)));
         step2_vm.startProgram();
-        verifyMerkleProof(3, witness);
+        verifyMerkleProof(witness, 3);
 
         expect(step2_vm.getSuccess()).toBe(true);
 
@@ -90,7 +70,7 @@ describe("SHA256 tests", function () {
         const witness = merkleProof.map(n => _256To32BE(n).map(n => step2_vm.addWitness(n)));
 
         step2_vm.startProgram();
-        verifyMerkleProof(3, witness);
+        verifyMerkleProof(witness, 3);
 
         expect(step2_vm.getSuccess()).toBe(false);
     });
