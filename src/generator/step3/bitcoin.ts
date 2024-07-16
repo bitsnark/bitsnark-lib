@@ -1129,7 +1129,17 @@ export class Bitcoin {
         return total;
     }
 
+    private verifyEndsWithOP_1() {
+        if (this.opcodes.length == 0 || this.opcodes[this.opcodes.length - 1].op != OpcodeType.OP_1) {
+            this.opcodes.push({ op: OpcodeType.OP_1 });
+        }
+    }
+
     programToString(): string {
+
+        // program has to end with 1 on the stack
+        this.verifyEndsWithOP_1();
+
         let s = '';
         this.opcodes.forEach(op => {
             if (op.data) {
@@ -1142,6 +1152,10 @@ export class Bitcoin {
     }
 
     programToBinary(): Buffer {
+
+        // program has to end with 1 on the stack
+        this.verifyEndsWithOP_1();
+
         const byteArray: number[] = [];
         this.opcodes.forEach(opcode => {
             if (opcode.op == OpcodeType.DATA) {

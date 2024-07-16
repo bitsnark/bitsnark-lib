@@ -53,6 +53,7 @@
     "bigint-isqrt": "^0.3.2",
     "bitcoin-core": "^4.2.0",
     "bitcoinjs-lib": "^6.1.6",
+    "bscript-parser": "^0.1.0",
     "crypto-js": "^4.2.0",
     "ecpair": "^2.1.0",
     "sitka": "^1.1.1",
