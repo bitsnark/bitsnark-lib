@@ -3,29 +3,28 @@ import { ECPairFactory } from 'ecpair';
 import * as ecc from 'tiny-secp256k1';
 const Client = require('bitcoin-core');
 
-
 bitcoin.initEccLib(ecc);
 const ECPair = ECPairFactory(ecc);
-const network = bitcoin.networks.testnet;
+const network = bitcoin.networks.regtest;
 
 // Bitcoin Core RPC client setup
 const client = new Client({
-  network: 'testnet',
+  network: 'regtest',
   username: 'rpcuser',
   password: 'rpcpassword',
   host: '127.0.0.1',
-  port: 18332
+  port: 18443
 });
 
 async function createAndSendTransaction() {
   // Generate a key pair
-  const keyPair = ECPair.makeRandom({ network });
+  const keyPair = ECPair.fromPrivateKey(Buffer.from('023c8f4b28d12af26c29b4765dd33c4a3c0b685ab1a47a9fcfe9b2117ad011ea', 'hex')); //.makeRandom({ network });
   const pubkey = keyPair.publicKey;
   const prvkey = keyPair.privateKey;
   const p2wpkhAddress = bitcoin.payments.p2wpkh({ pubkey, network }).address;
 
   console.log('private key: ', prvkey?.toString('hex'));
-  console.log('address: ', p2wpkhAddress!);
+  console.log('p2wpkhAddress: ', p2wpkhAddress!);
 
   // Create a Taproot script
   const scriptTree = {
@@ -41,12 +40,13 @@ async function createAndSendTransaction() {
     network
   });
 
+
   // Create the transaction
   const psbt = new bitcoin.Psbt({ network });
 
   try {
     // Fetch an unspent transaction output (UTXO) from the Bitcoin Core node
-    const utxos = await client.listUnspent(1, 9999999, [address]);
+    const utxos = await client.listUnspent(1, 9999999, []);
     if (utxos.length === 0) {
       throw new Error('No available UTXOs');
     }
