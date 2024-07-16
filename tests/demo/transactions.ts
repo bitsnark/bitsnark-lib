@@ -21,7 +21,7 @@ async function createAndSendTransaction() {
   const keyPair = ECPair.fromPrivateKey(Buffer.from('023c8f4b28d12af26c29b4765dd33c4a3c0b685ab1a47a9fcfe9b2117ad011ea', 'hex')); //.makeRandom({ network });
   const pubkey = keyPair.publicKey;
   const prvkey = keyPair.privateKey;
-  const p2wpkhAddress = bitcoin.payments.p2wpkh({ pubkey, network }).address;
+  const p2wpkhAddress = bitcoin.payments.p2tr({ pubkey, network }).address;
 
   console.log('private key: ', prvkey?.toString('hex'));
   console.log('p2wpkhAddress: ', p2wpkhAddress!);
