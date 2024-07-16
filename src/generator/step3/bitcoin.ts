@@ -740,7 +740,14 @@ export class Bitcoin {
         }
     }
 
-    step2_assertOne(nibbles: StackItem[]) {
+    step2_assertOne(a: SimulatedRegister) {
+        for (let i = 0; i < a.stackItems.length; i++) {
+            if (i == 0) this.assertOne(a.stackItems[i]);
+            else this.assertZero(a.stackItems[i]);
+        }        
+    }
+
+    step2_assertOneNibbles(nibbles: StackItem[]) {
         for (let i = 0; i < nibbles.length; i++) {
             if (i == 0) this.assertOne(nibbles[i]);
             else this.assertZero(nibbles[i]);
