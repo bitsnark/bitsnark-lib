@@ -44,62 +44,58 @@ async function createAndSendTransaction() {
   // Create the transaction
   const psbt = new bitcoin.Psbt({ network });
 
-  try {
-    // Fetch an unspent transaction output (UTXO) from the Bitcoin Core node
-    const utxos = await client.listUnspent(1, 9999999, []);
-    if (utxos.length === 0) {
-      throw new Error('No available UTXOs');
-    }
-
-    const utxo = utxos[0];
-
-    // Add input
-    psbt.addInput({
-      hash: utxo.txid,
-      index: utxo.vout,
-      witnessUtxo: {
-        script: output!,
-        value: Math.round(utxo.amount * 100000000) // Convert BTC to satoshis
-      },
-      tapInternalKey: pubkey.slice(1, 33),
-      tapMerkleRoot: bitcoin.crypto.taggedHash('TapLeaf', scriptTree.output)
-    });
-
-    // Add output (replace with your actual output data)
-    const recipientAddress = 'recipient_address';
-    const sendAmount = 90000; // Amount in satoshis
-    psbt.addOutput({
-      address: recipientAddress,
-      value: sendAmount
-    });
-
-    // Calculate and add change output if necessary
-    const fee = 1000; // Set an appropriate fee
-    const changeAmount = Math.round(utxo.amount * 100000000) - sendAmount - fee;
-    if (changeAmount > 0) {
-      psbt.addOutput({
-        address: address!, // Send change back to our address
-        value: changeAmount
-      });
-    }
-
-    // Sign the transaction
-    psbt.signInput(0, keyPair);
-
-    // Finalize and extract the transaction
-    psbt.finalizeAllInputs();
-    const tx = psbt.extractTransaction();
-
-    console.log('Transaction ID:', tx.getId());
-    console.log('Raw transaction:', tx.toHex());
-
-    // Send the transaction
-    const txid = await client.sendRawTransaction(tx.toHex());
-    console.log('Transaction sent. TXID:', txid);
-
-  } catch (error: any) {
-    console.error('Error:', error.message);
+  // Fetch an unspent transaction output (UTXO) from the Bitcoin Core node
+  const utxos = await client.listUnspent(1, 9999999, []);
+  if (utxos.length === 0) {
+    throw new Error('No available UTXOs');
   }
+
+  const utxo = utxos[0];
+
+  // Add input
+  psbt.addInput({
+    hash: utxo.txid,
+    index: utxo.vout,
+    witnessUtxo: {
+      script: output!,
+      value: Math.round(utxo.amount * 100000000) // Convert BTC to satoshis
+    },
+    tapInternalKey: pubkey.slice(1, 33),
+    tapMerkleRoot: bitcoin.crypto.taggedHash('TapLeaf', scriptTree.output)
+  });
+
+  // Add output (replace with your actual output data)
+  const recipientAddress = 'recipient_address';
+  const sendAmount = 90000; // Amount in satoshis
+  psbt.addOutput({
+    address: recipientAddress,
+    value: sendAmount
+  });
+
+  // Calculate and add change output if necessary
+  const fee = 1000; // Set an appropriate fee
+  const changeAmount = Math.round(utxo.amount * 100000000) - sendAmount - fee;
+  if (changeAmount > 0) {
+    psbt.addOutput({
+      address: address!, // Send change back to our address
+      value: changeAmount
+    });
+  }
+
+  // Sign the transaction
+  psbt.signInput(0, keyPair);
+
+  // Finalize and extract the transaction
+  psbt.finalizeAllInputs();
+  const tx = psbt.extractTransaction();
+
+  console.log('Transaction ID:', tx.getId());
+  console.log('Raw transaction:', tx.toHex());
+
+  // Send the transaction
+  const txid = await client.sendRawTransaction(tx.toHex());
+  console.log('Transaction sent. TXID:', txid);
+
 }
 
 createAndSendTransaction();

@@ -3,47 +3,7 @@ import { step2_vm, step2_vm as vm } from "./vm/vm";
 import { ProgramLine, SavedVm } from '../common/saved-vm';
 import { InstrCode as Step1_InstrCode } from '../step1/vm/types';
 import { _256, InstrCode as Step2_InstrCode } from '../step2/vm/types';
-import { Merkle } from './merkle'
 import { _256To32LE } from "../../encoding/encoding";
-
-export class Proof {
-    reg256A: _256 = [];
-    reg256B: _256 = [];
-    reg256C: _256 = [];
-    merkleRoots: _256[] = []
-    merkleProofs: _256[][] = [];
-    merkle: Merkle | undefined
-
-    makeMerkle(registers: bigint[]) {
-        let transactions: Register[][] = []
-        for (let i = 0; i < registers.length; i++) {
-            let transaction = vm.newTemp256(true)
-            let value = registers[i]
-            for (let j = 0; j < 8; j++) {
-                vm.setRegister(transaction[j], value & 0xffffffffn)
-                value = value >> 32n
-            }
-            transactions.push(transaction)
-        }
-        this.merkle = new Merkle(transactions)
-        this.merkleRoots.push(this.merkle.GetRoot())
-        for (let i = 0; i < transactions.length; i++) {
-            vm.freeTemp256(transactions[i])
-        }
-    }
-
-    makeMerkleProof(index: number) {
-        if (this.merkle !== undefined) {
-            this.merkleProofs.push(this.merkle.GetProof(index))
-        }
-    }
-
-    freeMerkle() {
-        if (this.merkle !== undefined) {
-            this.merkle.Free()
-        }
-    }
-}
 
 export function validateInstr(a: bigint, b: bigint, c: bigint, name: Step1_InstrCode, bit?: number) {
 
