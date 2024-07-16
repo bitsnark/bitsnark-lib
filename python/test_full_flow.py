@@ -3,7 +3,7 @@ from .docker_compose import start_stop_docker_compose
 from .bitcoin_rpc import BitcoinRPC
 from .bitcoin_wallet import BitcoinWallet
 
-RPC_BASE_URL = "http://polaruser:polarpass@localhost:18443"
+RPC_BASE_URL = "http://rpcuser:rpcpassword@localhost:18443"
 
 @start_stop_docker_compose
 def main():

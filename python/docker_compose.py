@@ -115,7 +115,7 @@ def start_stop_docker_compose(func):
 
 @start_stop_docker_compose
 def _main():
-    print("bitcoind regtest rpc available at http://polaruser:polarpass@localhost:18443")
+    print("bitcoind regtest rpc available at http://rpcuser:rpcpassword@localhost:18443")
     print("Ctrl-C to quit")
     while True:
         try:
