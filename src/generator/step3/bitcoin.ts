@@ -740,7 +740,14 @@ export class Bitcoin {
         }
     }
 
-    step2_assertOne(nibbles: StackItem[]) {
+    step2_assertOne(a: SimulatedRegister) {
+        for (let i = 0; i < a.stackItems.length; i++) {
+            if (i == 0) this.assertOne(a.stackItems[i]);
+            else this.assertZero(a.stackItems[i]);
+        }        
+    }
+
+    step2_assertOneNibbles(nibbles: StackItem[]) {
         for (let i = 0; i < nibbles.length; i++) {
             if (i == 0) this.assertOne(nibbles[i]);
             else this.assertZero(nibbles[i]);
@@ -1129,7 +1136,17 @@ export class Bitcoin {
         return total;
     }
 
+    private verifyEndsWithOP_1() {
+        if (this.opcodes.length == 0 || this.opcodes[this.opcodes.length - 1].op != OpcodeType.OP_1) {
+            this.opcodes.push({ op: OpcodeType.OP_1 });
+        }
+    }
+
     programToString(): string {
+
+        // program has to end with 1 on the stack
+        this.verifyEndsWithOP_1();
+
         let s = '';
         this.opcodes.forEach(op => {
             if (op.data) {
@@ -1142,6 +1159,10 @@ export class Bitcoin {
     }
 
     programToBinary(): Buffer {
+
+        // program has to end with 1 on the stack
+        this.verifyEndsWithOP_1();
+
         const byteArray: number[] = [];
         this.opcodes.forEach(opcode => {
             if (opcode.op == OpcodeType.DATA) {

@@ -147,7 +147,7 @@ export function finalStep(step1_lineNumber: number, selection: number, step2_lin
         //     bitcoin.step2_not(aReg, cReg);
         //     break;
         case InstrCode.ASSERTONE:
-            bitcoin.step2_assertOne(param1Nibbles!);
+            bitcoin.step2_assertOneNibbles(param1Nibbles!);
             break;
         default:
             throw new Error('Not implemented');

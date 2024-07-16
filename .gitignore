@@ -4,3 +4,7 @@ dist
 /generated
 .DS_Store
 .prettierrc
+
+venv/
+__pycache__/
+.pytest-cache/

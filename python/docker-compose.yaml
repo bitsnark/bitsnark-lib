@@ -1,0 +1,33 @@
+  services:
+    bitcoind:
+      environment:
+        USERID: ${USERID:-1000}
+        GROUPID: ${GROUPID:-1000}
+      stop_grace_period: 5m
+      image: polarlightning/bitcoind:26.0
+      hostname: bitcoind
+      command: >-
+        bitcoind -server=1 -regtest=1
+        -rpcuser=rpcuser -rpcpassword=rpcpassword
+        -debug=1 -zmqpubrawblock=tcp://0.0.0.0:28334
+        -zmqpubrawtx=tcp://0.0.0.0:28335 -zmqpubhashblock=tcp://0.0.0.0:28336
+        -txindex=1 -dnsseed=0 -upnp=0 -rpcbind=0.0.0.0 -rpcallowip=0.0.0.0/0
+        -rpcport=18443 -rest -listen=1 -listenonion=0 -fallbackfee=0.0002
+        -blockfilterindex=1 -peerblockfilters=1
+      healthcheck:
+        test: [
+          "CMD",
+          "bitcoin-cli",
+          "-chain=regtest",
+          "-rpcuser=rpcuser",
+          "-rpcpassword=rpcpassword",
+          "getblockchaininfo"
+        ]
+        interval: 2s
+#      volumes:
+#        - ./volumes/bitcoind/bitcoind:/home/bitcoin/.bitcoin
+      ports:
+        - '18443:18443'
+        - '19444:18444'
+        - '28334:28334'
+        - '29335:28335'
