@@ -21,7 +21,7 @@ const scriptHex = obj.program;
 let scriptText = BScript.rawToAsm(scriptHex, 'hex');
 
 function pushdata(s: String): string[] {
-    if (s.length % 2 != 0) throw new Error('Invalid length');
+    if (s.length % 2 != 0 || s.length > 512) throw new Error('Invalid length');
     const l = s.length / 2;
     return ['OP_PUSHDATA1', l.toString(16), '0x' + s];
 }
