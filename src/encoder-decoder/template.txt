@@ -1,1 +1,0 @@
-Demo script index:[[index]] public keys [[publicKeySet]]
