@@ -65,52 +65,15 @@ export class Winternitz {
         this.folder = folder;
     }
 
-    public createEquivocationScriptFiles(chunckSize32: number) {
-        const prefix = chunckSize32 === 32 ? FILE_PREFIX_32 : FILE_PREFIX_4;
-        const chunckNibbles = chunckSize32 === 32 ? 90 : 14;
-
-        createFolder(`${this.folder}/${prefix}equivocation`);
-        const publickKeySetSize = getFileSizeBytes(this.folder, prefix + PUB_KEY_FILE);
-        const demoTemplate = readTextFile('template.txt');
-
-        for (let i = 0; i < publickKeySetSize / (hashSize * chunckNibbles); i++) {
-            let publicKeySetString = '';
-            for (let s = 0; s < chunckNibbles; s++) {
-                const readFrom = (i * hashSize * chunckNibbles) + s * hashSize;
-                const publicKeyBuffer = readFromFile(this.folder, prefix + PUB_KEY_FILE, readFrom, hashSize);
-                publicKeySetString += publicKeyBuffer.toString('hex') + ',';
-            }
-
-            let leafText = demoTemplate.replace('[index]', i.toString());
-            leafText = leafText.replace('[publicKeySet]', publicKeySetString);
-            writeTextToFile(`${this.folder}/${prefix}equivocation`, `${prefix}${i}.txt`, leafText);
-        }
-    }
 
     public generateKeys(totalChuncks32: number, totalChuncks4: number) {
-        createFolder(this.folder);
-
-        if (isFileExists(this.folder, FILE_PREFIX_32 + PUB_KEY_FILE) ||
-            isFileExists(this.folder, FILE_PREFIX_4 + PUB_KEY_FILE) ||
-            isFileExists(this.folder, FILE_PREFIX_32 + PRV_KEY_FILE) ||
-            isFileExists(this.folder, FILE_PREFIX_4 + PRV_KEY_FILE)) {
-            throw new Error(`Winternitz public key files already exists in ${this.folder} directory.\n`);
-        }
+        createFolder(this.folder, true);
 
         const pairs4 = totalChuncks4 * Math.ceil(chunkSize4 * 8 / nibbleSizeInBits) + totalChuncks4 * checksum4BytesSize;
         const pairs32 = totalChuncks32 * Math.ceil(chunkSize32 * 8 / nibbleSizeInBits) + totalChuncks32 * checksum32BytesSize
 
         this.generateKeysSet(FILE_PREFIX_32, pairs32);
         this.generateKeysSet(FILE_PREFIX_4, pairs4);
-        this.createEquivocationScriptFiles(chunkSize4);
-        this.createEquivocationScriptFiles(chunkSize32);
-
-        return {
-            [`${FILE_PREFIX_32}privateKey`]: `${this.folder}/${FILE_PREFIX_32}${PRV_KEY_FILE}`,
-            [`${FILE_PREFIX_32}publicKey`]: `${this.folder}/${FILE_PREFIX_32}${PUB_KEY_FILE}`,
-            [`${FILE_PREFIX_4}privateKey`]: `${this.folder}/${FILE_PREFIX_4}${PRV_KEY_FILE}`,
-            [`${FILE_PREFIX_4}publicKey`]: `${this.folder}/${FILE_PREFIX_4}${PUB_KEY_FILE}`,
-        };
     }
 
     private generateKeysSet(prefix: string, totalUnits: number) {
@@ -134,7 +97,7 @@ export class Winternitz {
             90 * hashSize);
 
         return {
-            encodedData: this.encodeBuffer(buffer, chunckIndex, chunkSize32),
+            encodedData: this.encodeBuffer(buffer, chunckIndex),
             pubk: pubKeyBuffer
         };
     }
@@ -148,54 +111,91 @@ export class Winternitz {
             14 * hashSize);
 
         return {
-            encodedData: this.encodeBuffer(buffer, chunckIndex, chunkSize4),
+            encodedData: this.encodeBuffer(buffer, chunckIndex),
             pubk: pubKeyBuffer
         };
     }
 
     public encodeBuffer32(buffer: Buffer, chunckIndex: number): Buffer {
         if (buffer.length !== (chunkSize32)) throw new Error('Invalid buffer size');
-        return this.encodeBuffer(buffer, chunckIndex, chunkSize32);
+        return this.encodeBuffer(buffer, chunckIndex);
     }
 
     public encodeBuffer4(buffer: Buffer, chunckIndex: number): Buffer {
         if (buffer.length !== (chunkSize4)) throw new Error('Invalid buffer size');
-        return this.encodeBuffer(buffer, chunckIndex, chunkSize4);
+        return this.encodeBuffer(buffer, chunckIndex);
     }
 
-    private encodeBuffer(buffer: Buffer, chunckIndex: number, chunkSize: number) {
-        const nibbleArray = bufferTo3BitArray(buffer);
-        const prefix = chunkSize === chunkSize32 ? FILE_PREFIX_32 : FILE_PREFIX_4;
-        const checksumSize = chunkSize === chunkSize32 ? checksum32BytesSize : checksum4BytesSize;
-        const result = Buffer.alloc((nibbleArray.length + checksumSize) * hashSize);
+    private getPrefix(chunkSize: number): string {
+        return chunkSize === chunkSize32 ? FILE_PREFIX_32 : FILE_PREFIX_4;
+    }
 
-        const prvKeyBuffer = readFromFile(
+    private readBufferFromPrvKeyFile(chunckIndex: number, chunkSize: number) {
+        return this.readKeyBufferFromFile(chunckIndex, chunkSize, PRV_KEY_FILE);
+    }
+
+    private readBufferFromPubKeyFile(chunckIndex: number, chunkSize: number) {
+        return this.readKeyBufferFromFile(chunckIndex, chunkSize, PUB_KEY_FILE);
+    }
+
+    private readBufferFromCachedFile(chunckIndex: number, chunkSize: number) {
+        return this.readKeyBufferFromFile(chunckIndex, chunkSize, CACHE_FILE);
+    }
+
+    private readKeyBufferFromFile(chunckIndex: number, chunkSize: number, file: string) {
+        const totalNibbles = chunkSize === chunkSize32 ? 90 : 14;
+        return readFromFile(
             this.folder,
-            prefix + PRV_KEY_FILE,
-            chunckIndex * (nibbleArray.length + checksumSize) * hashSize,
-            (nibbleArray.length + checksumSize) * hashSize);
+            this.getPrefix(chunkSize) + file,
+            chunckIndex * totalNibbles * hashSize,
+            totalNibbles * hashSize);
+    }
 
-        let checkSum = 0;
-        for (let i = 0; i < nibbleArray.length; i++) {
-            checkSum += nibbleArray[i];
-            let iPrvKey = prvKeyBuffer.subarray(i * hashSize, (i + 1) * hashSize);
-            for (let j = valuesPerUnit - 1; j > nibbleArray[i]; j--) {
-                iPrvKey = createHash('sha256').update(iPrvKey).digest();
-            }
-            iPrvKey.copy(result, i * hashSize, 0, hashSize);
+
+    private writeBufferToCachedFile(chunckIndex: number, chunkSize: number, encoded: Buffer) {
+        const totalNibbles = chunkSize === chunkSize32 ? 90 : 14;
+        writeToPosInFile(this.folder, this.getPrefix(chunkSize) + CACHE_FILE, encoded, chunckIndex * totalNibbles * hashSize);
+    }
+
+    private encodeNibble(keyBuffer: Buffer, i: number, times: number) {
+        let nibbleKey = keyBuffer.subarray(i * hashSize, (i + 1) * hashSize);
+        for (let e = 0; e < times; e++) {
+            nibbleKey = createHash('sha256').update(nibbleKey).digest();
         }
+        return nibbleKey;
+    }
 
+    private checksumToBuffer(checkSum: number) {
         const checksumBuffer = Buffer.alloc(2);
         checksumBuffer.writeUInt16LE(checkSum);
+        return checksumBuffer;
+    }
+
+    private checksumToNibbleArray(checkSum: number, checksumSize: number) {
+        const checksumBuffer = Buffer.alloc(2);
+        checksumBuffer.writeUInt16LE(checkSum);
+        return bufferTo3BitArray(checksumBuffer).slice(0, checksumSize);
+    }
+
+    private encodeBuffer(buffer: Buffer, chunkIndex: number) {
+        const nibbleArray = bufferTo3BitArray(buffer);
+        const prvKeyBuffer = this.readBufferFromPrvKeyFile(chunkIndex, buffer.length);
+        const result = Buffer.alloc(prvKeyBuffer.length);
+
+        const checkSum = nibbleArray.reduce((sum, nibble, i) => {
+            const nibbleKey = this.encodeNibble(prvKeyBuffer, i, 7 - nibble);
+            nibbleKey.copy(result, i * hashSize, 0, hashSize);
+            return sum + nibble;
+        }, 0);
+
+        const checksumBuffer = this.checksumToBuffer(checkSum);
         const checksumArray = bufferTo3BitArray(checksumBuffer);
-        for (let i = nibbleArray.length; i < nibbleArray.length + checksumSize; i++) {
-            const iChecksumValue = checksumArray[i - nibbleArray.length];
-            let icheckSum = prvKeyBuffer.subarray(i * hashSize, (i + 1) * hashSize);
-            for (let j = 0; j < iChecksumValue; j++) {
-                icheckSum = createHash('sha256').update(icheckSum).digest();
-            }
-            icheckSum.copy(result, i * hashSize, 0, hashSize);
-        }
+
+        checksumArray.forEach((iChecksumValue, index) => {
+            const i = nibbleArray.length + index;
+            const nibbleKey = this.encodeNibble(prvKeyBuffer, i, iChecksumValue);
+            nibbleKey.copy(result, i * hashSize, 0, hashSize);
+        });
 
         return result;
     }
@@ -210,6 +210,35 @@ export class Winternitz {
         return this.decodeBuffer(encoded, chunckIndex, chunkSize4);
     }
 
+    private decodeDataNibble(keyBuffer: Buffer, i: number, comperTo: Buffer) {
+        let nibbleKey = keyBuffer.subarray(i * hashSize, (i + 1) * hashSize);
+        for (let e = 0; e < 8; e++) {
+            nibbleKey = createHash('sha256').update(nibbleKey).digest();
+            if (nibbleKey.compare(comperTo) === 0) {
+                return e;
+            }
+        }
+        throw new Error(`Invalid key nibble ${i} key ${nibbleKey}`);
+    }
+
+    private isEmpty(buffer: Buffer) {
+        return buffer.compare(Buffer.alloc(buffer.length)) === 0;
+    }
+
+    private initCacheFile(prefix: string) {
+        if (!isFileExists(this.folder, prefix + CACHE_FILE)) {
+            const cache = Buffer.alloc(getFileSizeBytes(this.folder, prefix + PUB_KEY_FILE), 0);
+            writeToFile(this.folder, prefix + CACHE_FILE, cache, 'w');
+            return true;
+        }
+        return false;
+    }
+
+    private getcunckCacheBuffer(chunckIndex: number, chunkSize: number) {
+        this.initCacheFile(this.getPrefix(chunkSize));
+        return this.readBufferFromCachedFile(chunckIndex, chunkSize);
+    }
+
     private decodeBuffer(encoded: Buffer, chunckIndex: number, chunkSize: number) {
         const prefix = chunkSize === chunkSize32 ? FILE_PREFIX_32 : FILE_PREFIX_4;
         const checksumSize = chunkSize === chunkSize32 ? checksum32BytesSize : checksum4BytesSize;
@@ -218,62 +247,31 @@ export class Winternitz {
         if (!isFileExists(this.folder, prefix + PUB_KEY_FILE))
             throw Error(`No public key data file (${prefix + PUB_KEY_FILE}) was found in ${this.folder} directory.`);
 
-        const pubKeyBuffer = readFromFile(this.folder,
-            prefix + PUB_KEY_FILE,
-            chunckIndex * (dataNibbles + checksumSize) * hashSize,
-            (dataNibbles + checksumSize) * hashSize);
+        const pubKeyBuffer = this.readBufferFromPubKeyFile(chunckIndex, chunkSize);
 
+        const nibbleArray = Array.from({ length: dataNibbles }, (_, i) => {
+            const iPubKey = pubKeyBuffer.subarray(i * hashSize, (i + 1) * hashSize);
+            return this.decodeDataNibble(encoded, i, iPubKey);
+        });
 
-        let checkSum = 0;
-        const nibbleArray = [];
-        for (let i = 0; i < dataNibbles; i++) {
-            let isDecoded = false;
-            let iKey = encoded.subarray(i * hashSize, (i + 1) * hashSize);
-            let iPubKey = pubKeyBuffer.subarray(i * hashSize, (i + 1) * hashSize);
-            for (let j = 0; j < valuesPerUnit; j++) {
-                iKey = createHash('sha256').update(iKey).digest();
-                if (iPubKey.compare(iKey) === 0) {
-                    nibbleArray.push(j);
-                    checkSum += j;
-                    isDecoded = true;
-                    break;
-                }
-            }
-            if (!isDecoded) throw new Error(`Invalid key nibble ${i} key ${iKey}`);
-        }
-        const resultData = arrayToBuffer(nibbleArray, chunkSize);
+        const checkSum = nibbleArray.reduce((sum, current) => sum + current, 0);
+        const checksumArray = this.checksumToNibbleArray(checkSum, checksumSize);
 
-        const checksumBuffer = Buffer.alloc(2);
-        checksumBuffer.writeUInt16LE(checkSum);
-        const checksumArray = bufferTo3BitArray(checksumBuffer);
-        for (let i = dataNibbles; i < dataNibbles + checksumSize; i++) {
-            let iChecksumEncoded = encoded.subarray(i * hashSize, (i + 1) * hashSize);
+        checksumArray.forEach((checksumValue, index) => {
+            const i = dataNibbles + index;
+            const iChecksumEncoded = this.encodeNibble(encoded, i, 8 - checksumValue);
             const ichecksumKey = pubKeyBuffer.subarray(i * hashSize, (i + 1) * hashSize);
-            for (let j = valuesPerUnit; j > checksumArray[i - dataNibbles]; j--) {
-                iChecksumEncoded = createHash('sha256').update(iChecksumEncoded).digest();
-            }
             if (iChecksumEncoded.compare(ichecksumKey) !== 0) throw new Error(`Invalid checksum`);
-        }
+        });
 
-        if (!isFileExists(this.folder, prefix + CACHE_FILE)) {
-            const cache = Buffer.alloc(getFileSizeBytes(this.folder, prefix + PUB_KEY_FILE), 0);
-            writeToFile(this.folder, prefix + CACHE_FILE, cache, 'w');
-        }
+        const pubCacheBuffer = this.getcunckCacheBuffer(chunckIndex, chunkSize)
 
-        const pubCacheBuffer = readFromFile(this.folder,
-            prefix + CACHE_FILE,
-            chunckIndex * (dataNibbles + checksumSize) * hashSize,
-            (dataNibbles + checksumSize) * hashSize);
-
-        const isEmpty = (buffer: Buffer) => buffer.every(byte => byte === 0);
-
-        if (isEmpty(pubCacheBuffer)) {
-            writeToPosInFile(this.folder, prefix + CACHE_FILE, encoded, chunckIndex * (dataNibbles + checksumSize) * hashSize);
-        } else if
-            (pubCacheBuffer.compare(encoded.subarray(0, (dataNibbles + checksumSize) * hashSize)) !== 0) {
+        if (this.isEmpty(pubCacheBuffer)) {
+            this.writeBufferToCachedFile(chunckIndex, chunkSize, encoded);
+        } else if (pubCacheBuffer.compare(encoded) !== 0) {
             throw new Error(`Conflict detected in cache file`);
         }
 
-        return resultData;
+        return arrayToBuffer(nibbleArray, chunkSize);
     }
 }
