@@ -110,8 +110,10 @@ describe(`Test sequence for Lamport signature`, () => {
         const tmp = lamportHandler.encodeBuffer(getDataBufferToEncode(dataBuffer, 1, 2), 8);
         decoded = lamportHandler.decodeBuffer(tmp, 8, keyMerkleRoot);
         expect(decoded.success === 'conflict');
-        expect(decoded.conflict.prv1.length).toBe(hashSize);
-        expect(decoded.conflict.prv2.length).toBe(hashSize);
+        expect(decoded.prv1.length).toBe(hashSize);
+        expect(decoded.prv2.length).toBe(hashSize);
+        expect(decoded.prv1.compare(decoded.prv2) === 0).toBe(false);
+
     });
 
     it('Decode: if both CONFLICT & UNDECODED return equivocationMerkleRoot, prvkey1, prvkey2', () => {
@@ -120,8 +122,9 @@ describe(`Test sequence for Lamport signature`, () => {
         tmp[0] = tmp[0] + 1; // chenge encode v- create undeocable
         decoded = lamportHandler.decodeBuffer(tmp, 0, keyMerkleRoot);
         expect(decoded.success === 'conflict');
-        expect(decoded.conflict.prv1.length).toBe(hashSize);
-        expect(decoded.conflict.prv2.length).toBe(hashSize);
+        expect(decoded.prv1.length).toBe(hashSize);
+        expect(decoded.prv2.length).toBe(hashSize);
+        expect(decoded.prv1.compare(decoded.prv2) === 0).toBe(false);
     });
 
 

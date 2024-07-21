@@ -2,7 +2,6 @@ import { createHash, randomBytes } from "node:crypto";
 import { createFolder, readFromFile, isFileExists, getFileSizeBytes, writeToPosInFile, writeToFile, readTextFile, writeTextToFile } from "./files-utils";
 import { PRV_KEY_FILE, PUB_KEY_FILE, CACHE_FILE } from "./files-utils";
 
-
 export const FILE_PREFIX_32 = "winternitz-32-";
 export const FILE_PREFIX_4 = "winternitz-4-";
 export const CHECKSUM_PREFIX = "checksum-";
@@ -172,8 +171,7 @@ export class Winternitz {
     }
 
     private checksumToNibbleArray(checkSum: number, checksumSize: number) {
-        const checksumBuffer = Buffer.alloc(2);
-        checksumBuffer.writeUInt16LE(checkSum);
+        const checksumBuffer = this.checksumToBuffer(checkSum)
         return bufferTo3BitArray(checksumBuffer).slice(0, checksumSize);
     }
 

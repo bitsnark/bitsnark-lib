@@ -1,43 +1,12 @@
 import { createHash, randomBytes } from "node:crypto";
 import { createFolder, readFromFile, isFileExists, getFileSizeBytes, writeToPosInFile, writeToFile, deleteDir, readTextFile, writeTextToFile } from "./files-utils";
 import { PRV_KEY_FILE, PUB_KEY_FILE, CACHE_FILE } from "./files-utils";
-import { makeLamportEquivocationTaproot } from "../generator/taproot/lamport-equivocation";
-import internal from "node:stream";
-
-const internalPblicKey = 'd6889cb081036e0faefa3a35157ad71086b123b2b144b649798b494c300a961d';
-
-
 export const FILE_PREFIX = "lamport-";
 
 const hashSize: number = 32;
 const valuesPerUnit = 2;
 const unitsInOneByte = 8;
 const bitsInByte = 8;
-
-export interface iDecoded {
-    isDecoded: boolean;
-    unitIndex: number;
-    claim: Buffer;
-    claimDataBitValue: number;
-}
-
-export interface iData {
-    data: Buffer;
-    index: number; // in byte units
-}
-
-export interface iEncoded {
-    encoded: Buffer;
-    unitIndex: number;
-    index: number; // in byte units
-}
-
-export interface iDecodedResult extends iDecoded {
-    isConflict: boolean;
-    cache: Buffer;
-    //merkleProof: iMerkleProof | undefined;
-}
-
 
 export class Lamport {
     private folder: string;
@@ -85,11 +54,7 @@ export class Lamport {
     }
 
     public encodeBuffer(buffer: Buffer, indexInBits: number): Buffer {
-        const prvKeyBuffer = readFromFile(
-            this.folder,
-            PRV_KEY_FILE,
-            indexInBits * valuesPerUnit * hashSize,
-            buffer.length * unitsInOneByte * hashSize * valuesPerUnit);
+        const prvKeyBuffer = this.readBufferFromPrvKeyFileByBits(indexInBits, buffer.length)
 
         const result = Buffer.alloc(buffer.length * unitsInOneByte * hashSize);
         for (let i = 0; i < buffer.length; i++) {
@@ -107,62 +72,78 @@ export class Lamport {
     }
 
     public encodeBufferAddPublic(buffer: Buffer, indexInBits: number) {
-        const pubKeyBuffer = readFromFile(
-            this.folder,
-            PUB_KEY_FILE,
-            indexInBits * valuesPerUnit * hashSize,
-            buffer.length * unitsInOneByte * hashSize * valuesPerUnit);
+        const pubKeyBuffer = this.readBufferFromPubKeyFileByBits(indexInBits, buffer.length)
+
         return { pubk: pubKeyBuffer, encodedData: this.encodeBuffer(buffer, indexInBits) };
     }
 
     public decodeBuffer(encoded: Buffer, unitIndex: number, merkleRoot: Buffer) {
-        this.insureCachFile();
+        this.initCacheFile();
+        const pubKey = this.readBufferFromPubKeyFileByUnits(unitIndex, encoded.length);
+        const cache = this.readBufferFromCachedFile(unitIndex, encoded.length);
+        const resultData = Buffer.alloc(encoded.length / (hashSize * unitsInOneByte));
 
         let byteValue = 0;
         let decodeError = '';
-        const resultData = Buffer.alloc(encoded.length / (hashSize * unitsInOneByte));
-        const resultConflict = { prv1: Buffer.alloc(0), prv2: Buffer.alloc(0), script: {} };
+        const loopBound = encoded.length / hashSize;
 
-        const pubKey = this.readPublicKey(unitIndex, encoded.length);
-        const cache = this.readCache(unitIndex, encoded.length);
-
-        // const isEmpty = (buffer: Buffer) => buffer.every(byte => byte === 0);
-        for (let i = 0; i < encoded.length / hashSize; i++) {
+        for (let i = 0; i < loopBound; i++) {
             const { iEncoded, iCache, iPubKey } = this.getSubArrays(i, encoded, cache, pubKey);
 
             const iHash = createHash('sha256').update(iEncoded).digest();
             const iHashIndex = iPubKey.indexOf(iHash);
 
-            if (this.isValidHashIndex(iHashIndex)) {
-                if (!this.isEmpty(iCache) && iCache.compare(iEncoded) !== 0) {
-                    resultConflict.prv1 = Buffer.from(iCache);
-                    resultConflict.prv2 = Buffer.from(iEncoded);
-                    break;
-                }
-                else {
-                    byteValue |= iHashIndex / hashSize << i % bitsInByte;
-                    if ((i) % bitsInByte === 7) {
-                        resultData[Math.floor(i / bitsInByte)] = byteValue;
-                        byteValue = 0;
-                    }
-                    writeToPosInFile(this.folder, CACHE_FILE, iEncoded, (unitIndex + i) * hashSize);
-                }
-            } else {
-                decodeError += `Invalid encoded data ${iEncoded.toString('hex')} ==> \n hash: ${iHash.toString('hex')} is not a public key of ${unitIndex + i} data bit. \n`;
+            if (!this.isValidHashIndex(iHashIndex)) {
+                decodeError +=
+                    `Invalid encoded data ${iEncoded.toString('hex')} ==> \n hash: ${iHash.toString('hex')} is not a public key of \n${unitIndex + i} data bit. `;
+                byteValue = 0;
+                continue;
+            }
+
+            if (this.isConflict(iCache, iEncoded)) {
+                return this.returnDecodedConflict(iCache, iEncoded);
+            }
+
+            byteValue = this.accamulateByte(byteValue, iHashIndex, i);
+            if ((i) % bitsInByte === 7) {
+                resultData[Math.floor(i / bitsInByte)] = byteValue;
                 byteValue = 0;
             }
+
+            this.writeBufferToCachedFile(unitIndex + i, iEncoded);
         }
 
-        if (!this.isEmpty(resultConflict.prv1) || !this.isEmpty(resultConflict.prv2)) {
-            return { type: 'conflict', conflict: resultConflict };
-        }
-        if (decodeError) {
-            return { type: 'error', errorMessage: decodeError };
-        }
-        return { type: 'success', data: encoded.length === hashSize ? Buffer.from([byteValue]) : resultData };
+        if (decodeError) return this.returnDecodedError(decodeError)
+        return this.returnDecodedSuccess(encoded, byteValue, resultData)
     }
 
-    private insureCachFile() {
+    private readBufferFromPubKeyFileByUnits(unitIndex: number, length: number) {
+        return readFromFile(this.folder,
+            PUB_KEY_FILE,
+            unitIndex * valuesPerUnit * hashSize,
+            length * valuesPerUnit);
+    }
+
+    private readBufferFromPubKeyFileByBits(indexInBits: number, length: number) {
+        return this.readBufferFromKeyFileByBits(indexInBits, length, PUB_KEY_FILE);
+    }
+
+    private readBufferFromPrvKeyFileByBits(indexInBits: number, length: number) {
+        return this.readBufferFromKeyFileByBits(indexInBits, length, PRV_KEY_FILE);
+    }
+
+    private readBufferFromKeyFileByBits(index: number, length: number, file: string) {
+        return readFromFile(this.folder,
+            file,
+            index * valuesPerUnit * hashSize,
+            length * unitsInOneByte * hashSize * valuesPerUnit);
+    }
+
+    private writeBufferToCachedFile(hashIndex: number, encoded: Buffer) {
+        writeToPosInFile(this.folder, CACHE_FILE, encoded, hashIndex * hashSize);
+    }
+
+    private initCacheFile() {
         if (!isFileExists(this.folder, CACHE_FILE)) {
             const keySize = getFileSizeBytes(this.folder, PUB_KEY_FILE);
             const cacheSize = keySize / valuesPerUnit;
@@ -175,11 +156,7 @@ export class Lamport {
         return buffer.compare(Buffer.alloc(buffer.length)) === 0;
     }
 
-    private readPublicKey(unitIndex: number, length: number) {
-        return readFromFile(this.folder, PUB_KEY_FILE, unitIndex * valuesPerUnit * hashSize, length * valuesPerUnit);
-    }
-
-    private readCache(unitIndex: number, length: number) {
+    private readBufferFromCachedFile(unitIndex: number, length: number) {
         return readFromFile(this.folder, CACHE_FILE, unitIndex * hashSize, length);
     }
 
@@ -192,6 +169,37 @@ export class Lamport {
 
     private isValidHashIndex(index: number) {
         return index !== -1 && (index / hashSize === 0 || index / hashSize === 1);
+    }
+
+    private accamulateByte(byteValue: number, iHashIndex: number, i: number) {
+        return byteValue | ((iHashIndex / hashSize) << (i % bitsInByte));
+    }
+
+    private isConflict(iCache: Buffer, iEncoded: Buffer) {
+        return !this.isEmpty(iCache) && iCache.compare(iEncoded) !== 0;
+    }
+
+    private returnDecodedConflict(iCache: Buffer, iEncoded: Buffer) {
+        return {
+            type: 'conflict',
+            prv1: Buffer.from(iCache),
+            prv2: Buffer.from(iEncoded),
+            script: {}
+        };
+    }
+
+    private returnDecodedError(decodeError: string) {
+        return {
+            type: 'error',
+            errorMessage: decodeError
+        };
+    }
+
+    private returnDecodedSuccess(encoded: Buffer, byteValue: number, resultData: Buffer) {
+        return {
+            type: 'success',
+            data: encoded.length === hashSize ? Buffer.from([byteValue]) : resultData
+        };
     }
 
 } 
