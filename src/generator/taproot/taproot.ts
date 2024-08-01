@@ -1,4 +1,5 @@
 import { createHash } from "crypto";
+import { cp } from "fs";
 
 const taprootVersion = 0xc0;
 const p = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2Fn;
@@ -12,13 +13,13 @@ type Point = bigint[] | null;
 export abstract class TapNode {
 
     abstract isLeaf(): boolean;
-    abstract getScript(): Buffer;
+    abstract getScript(create?: boolean): Buffer;
     abstract getLeft(): TapNode;
     abstract getRight(): TapNode;
 
-    getHash(): Buffer {
+    getHash(create: boolean = false): Buffer {
         if (this.isLeaf()) {
-            const script = this.getScript();
+            const script = this.getScript(create);
             return getHash(script);
         } else {
             let left_h = this.getLeft()!.getHash();
@@ -38,7 +39,7 @@ export function combineHashes(left_h: Buffer, right_h: Buffer): Buffer {
     if (right_h.compare(left_h) == -1) {
         [left_h, right_h] = [right_h, left_h];
     }
-    return taggedHash('TapBranch', Buffer.concat([left_h, right_h]));    
+    return taggedHash('TapBranch', Buffer.concat([left_h, right_h]));
 }
 
 function compactSize(l: number): Buffer {
@@ -137,7 +138,7 @@ function taprootTweakSecretKey(_seckey0: Buffer, h: Buffer) {
 
 // Given an internal public key and a tree of scripts, compute the output script.
 export function taprootOutputScript(internalPubkey: Buffer, scriptTree: TapNode): Buffer {
-    const h = scriptTree.getHash();
+    const h = scriptTree.getHash(true);
     const [_, output_pubkey] = taprootTweakPubkey(internalPubkey, h);
     return Buffer.concat([Buffer.from([0x51, 0x20]), output_pubkey]);
 }
@@ -153,7 +154,7 @@ function getProof(node: TapNode, path: number[]): Buffer {
         buf = getProof(node.getRight(), path.slice(1));
         sibling = node.getLeft().getHash();
     }
-    return Buffer.concat([ buf, sibling ]);
+    return Buffer.concat([buf, sibling]);
 }
 
 export function taprootControlBlock(internalPubkey: Buffer, rootNode: TapNode, path: number[]): Buffer {
@@ -162,6 +163,7 @@ export function taprootControlBlock(internalPubkey: Buffer, rootNode: TapNode, p
     const keyBuf = Buffer.from(x(P).toString(16), 'hex');
     const proof = getProof(rootNode, path);
     return Buffer.concat([versionBuf, keyBuf, proof]);
+
 }
 
 export function simpleTaproot(internalPubkey: Buffer, script: Buffer): { root: Buffer, controlBlock: Buffer } {
