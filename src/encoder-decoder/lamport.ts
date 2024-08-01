@@ -1,45 +1,63 @@
-import { createHash, randomBytes } from "node:crypto";
-import { createFolder, readFromFile, isFileExists, getFileSizeBytes, writeToPosInFile, writeToFile, deleteDir, readTextFile, writeTextToFile } from "./files-utils";
+import { createHash } from "node:crypto";
+import { readFromFile, getFileSizeBytes, writeToPosInFile } from "./files-utils";
 import { PRV_KEY_FILE, PUB_KEY_FILE, CACHE_FILE } from "./files-utils";
-export const FILE_PREFIX = "lamport-";
+import { Bitcoin } from "../generator/step3/bitcoin";
+import { bufferToBigints256BE } from "../encoding/encoding";
+import { CodecProvider, eCodecType, iDecodeResult } from "./codec-provider";
 
 const hashSize: number = 32;
 const valuesPerUnit = 2;
 const unitsInOneByte = 8;
 const bitsInByte = 8;
-
-export class Lamport {
+export const FILE_PREFIX = "lamport-";
+export class Lamport extends CodecProvider {
+    public tmpInnerPubKey = Buffer.from('55adf4e8967fbd2e29f20ac896e60c3b0f1d5b0efa9d34941b5958c7b0a0312d', 'hex')
     private folder: string;
 
-    constructor(folder: string) {
+    public codecType: eCodecType;
+    public valuesPerUnit = valuesPerUnit;
+    public prvKeyFileName = PRV_KEY_FILE;
+    public pubKeyFileName = PUB_KEY_FILE;
+    public cacheFileName = CACHE_FILE;
+    public prvToPubHashCount = 1;
+    public hashsInUnit = 1
+
+
+    constructor(folder: string, codecType: eCodecType) {
+        super();
         this.folder = folder;
+        this.codecType = eCodecType.lamport
     }
 
-    public generateKeys(dataSizeInBits: number): Buffer | void {
-        createFolder(this.folder, true);
-
-        for (let i = 0; i < dataSizeInBits; i++) {
-            const secretKeyBuffer = Buffer.alloc(valuesPerUnit * hashSize);
-            const publicKeyBuffer = Buffer.alloc(valuesPerUnit * hashSize);
-
-            for (let j = 0; j < valuesPerUnit; j++) {
-                const prv = randomBytes(hashSize);
-                const pub = createHash('sha256').update(prv).digest();
-                prv.copy(secretKeyBuffer, j * hashSize);
-                pub.copy(publicKeyBuffer, j * hashSize);
-            }
-
-            writeToFile(this.folder, PRV_KEY_FILE, secretKeyBuffer, 'a');
-            writeToFile(this.folder, PUB_KEY_FILE, publicKeyBuffer, 'a');
-        }
-
-        //return makeLamportEquivocationTaproot(Buffer.from(internalPblicKey, 'hex'))
+    public computeKeyPartsCount(sizeInEncodeUnits: number): number {
+        return sizeInEncodeUnits * valuesPerUnit;
     }
 
-    // public validateMerkleRoot(equivocationTaproot: Buffer, folder: string): boolean {
-    //     const newMerkleRoot = makeLamportEquivocationTaproot(Buffer.from(internalPblicKey, 'hex'))
-    //     return newMerkleRoot.compare(merkleRoot) === 0;
-    // }
+    public getKeyPartSatrtPosByUnitIndex(unitIndex: number): number {
+        return unitIndex * valuesPerUnit * hashSize;
+    }
+
+    public getKeyPartsLengthByDataSize(dataSizeInBytes: number, isDataEncoded: boolean = false): number {
+        if (isDataEncoded) return dataSizeInBytes * valuesPerUnit;
+        return dataSizeInBytes * unitsInOneByte * hashSize * valuesPerUnit;
+    }
+
+    public getCacheSectionStart(unitIndex: number): number {
+        return unitIndex * hashSize;
+    }
+
+    public getCacheSectionLength(encodedSizeInBytes: number): number {
+        return encodedSizeInBytes;
+    }
+
+    public calculateCacheSize() {
+        const keySize = getFileSizeBytes(this.folder, PUB_KEY_FILE);
+        return keySize / valuesPerUnit;
+    }
+
+    public getUnitCount() {
+        return getFileSizeBytes(this.folder, this.pubKeyFileName) / (valuesPerUnit * hashSize);
+    }
 
     public encodeBit(b: number, indexInBits: number): Buffer {
         const prvKeyBuffer = readFromFile(
@@ -53,10 +71,9 @@ export class Lamport {
         return result;
     }
 
-    public encodeBuffer(buffer: Buffer, indexInBits: number): Buffer {
-        const prvKeyBuffer = this.readBufferFromPrvKeyFileByBits(indexInBits, buffer.length)
-
+    public encodeBuffer(buffer: Buffer, prvKeyBuffer: Buffer): Buffer {
         const result = Buffer.alloc(buffer.length * unitsInOneByte * hashSize);
+
         for (let i = 0; i < buffer.length; i++) {
 
             for (let j = 0; j < bitsInByte; j++) {
@@ -71,17 +88,8 @@ export class Lamport {
         return result;
     }
 
-    public encodeBufferAddPublic(buffer: Buffer, indexInBits: number) {
-        const pubKeyBuffer = this.readBufferFromPubKeyFileByBits(indexInBits, buffer.length)
-
-        return { pubk: pubKeyBuffer, encodedData: this.encodeBuffer(buffer, indexInBits) };
-    }
-
-    public decodeBuffer(encoded: Buffer, unitIndex: number, merkleRoot: Buffer) {
-        this.initCacheFile();
-        const pubKey = this.readBufferFromPubKeyFileByUnits(unitIndex, encoded.length);
-        const cache = this.readBufferFromCachedFile(unitIndex, encoded.length);
-        const resultData = Buffer.alloc(encoded.length / (hashSize * unitsInOneByte));
+    public decodeBuffer(encoded: Buffer, unitIndex: number, pubKey: Buffer, cache: Buffer): iDecodeResult {
+        let resultData = Buffer.alloc(encoded.length / (hashSize * unitsInOneByte));
 
         let byteValue = 0;
         let decodeError = '';
@@ -101,7 +109,7 @@ export class Lamport {
             }
 
             if (this.isConflict(iCache, iEncoded)) {
-                return this.returnDecodedConflict(iCache, iEncoded);
+                return this.returnDecodedConflict(iCache, iEncoded, unitIndex + i);
             }
 
             byteValue = this.accamulateByte(byteValue, iHashIndex, i);
@@ -114,50 +122,8 @@ export class Lamport {
         }
 
         if (decodeError) return this.returnDecodedError(decodeError)
-        return this.returnDecodedSuccess(encoded, byteValue, resultData)
-    }
-
-    private readBufferFromPubKeyFileByUnits(unitIndex: number, length: number) {
-        return readFromFile(this.folder,
-            PUB_KEY_FILE,
-            unitIndex * valuesPerUnit * hashSize,
-            length * valuesPerUnit);
-    }
-
-    private readBufferFromPubKeyFileByBits(indexInBits: number, length: number) {
-        return this.readBufferFromKeyFileByBits(indexInBits, length, PUB_KEY_FILE);
-    }
-
-    private readBufferFromPrvKeyFileByBits(indexInBits: number, length: number) {
-        return this.readBufferFromKeyFileByBits(indexInBits, length, PRV_KEY_FILE);
-    }
-
-    private readBufferFromKeyFileByBits(index: number, length: number, file: string) {
-        return readFromFile(this.folder,
-            file,
-            index * valuesPerUnit * hashSize,
-            length * unitsInOneByte * hashSize * valuesPerUnit);
-    }
-
-    private writeBufferToCachedFile(hashIndex: number, encoded: Buffer) {
-        writeToPosInFile(this.folder, CACHE_FILE, encoded, hashIndex * hashSize);
-    }
-
-    private initCacheFile() {
-        if (!isFileExists(this.folder, CACHE_FILE)) {
-            const keySize = getFileSizeBytes(this.folder, PUB_KEY_FILE);
-            const cacheSize = keySize / valuesPerUnit;
-            const cacheBuffer = Buffer.alloc(cacheSize, 0);
-            writeToFile(this.folder, CACHE_FILE, cacheBuffer, 'wx');
-        }
-    }
-
-    private isEmpty(buffer: Buffer) {
-        return buffer.compare(Buffer.alloc(buffer.length)) === 0;
-    }
-
-    private readBufferFromCachedFile(unitIndex: number, length: number) {
-        return readFromFile(this.folder, CACHE_FILE, unitIndex * hashSize, length);
+        if (encoded.length === hashSize) resultData = Buffer.from([byteValue]);
+        return this.returnDecodedSuccess(resultData)
     }
 
     private getSubArrays(i: number, encoded: Buffer, cache: Buffer, pubKey: Buffer) {
@@ -175,31 +141,20 @@ export class Lamport {
         return byteValue | ((iHashIndex / hashSize) << (i % bitsInByte));
     }
 
-    private isConflict(iCache: Buffer, iEncoded: Buffer) {
-        return !this.isEmpty(iCache) && iCache.compare(iEncoded) !== 0;
+    private writeBufferToCachedFile(hashIndex: number, encoded: Buffer) {
+        writeToPosInFile(this.folder, CACHE_FILE, encoded, hashIndex * hashSize);
     }
 
-    private returnDecodedConflict(iCache: Buffer, iEncoded: Buffer) {
-        return {
-            type: 'conflict',
-            prv1: Buffer.from(iCache),
-            prv2: Buffer.from(iEncoded),
-            script: {}
-        };
-    }
+    public generateEquivocationScript(bitcoin: Bitcoin, unitIndex: number) {
+        const pubKey = readFromFile(this.folder,
+            this.pubKeyFileName,
+            this.getKeyPartSatrtPosByUnitIndex(unitIndex),
+            valuesPerUnit * hashSize);
 
-    private returnDecodedError(decodeError: string) {
-        return {
-            type: 'error',
-            errorMessage: decodeError
-        };
+        const k0 = bufferToBigints256BE(Buffer.from(pubKey.subarray(0, hashSize)))[0];
+        const k1 = bufferToBigints256BE(Buffer.from(pubKey.subarray(hashSize)))[0];
+        const w0 = bitcoin.addWitness(0n);
+        const w1 = bitcoin.addWitness(0n);
+        bitcoin.lamportEquivocation([w0, w1], [k0, k1]);
     }
-
-    private returnDecodedSuccess(encoded: Buffer, byteValue: number, resultData: Buffer) {
-        return {
-            type: 'success',
-            data: encoded.length === hashSize ? Buffer.from([byteValue]) : resultData
-        };
-    }
-
 } 

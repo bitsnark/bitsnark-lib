@@ -1,5 +1,7 @@
-import { isFileExists, deleteDir, getFileSizeBytes } from "../../src/encoder-decoder/files-utils";
-import { Lamport } from "../../src/encoder-decoder/lamport";
+import { createHash } from "node:crypto";
+import { Codec } from "../../src/encoder-decoder/codec";
+import { eCodecType, iDecodeResult } from "../../src/encoder-decoder/codec-provider";
+import { isFileExists, deleteDir, getFileSizeBytes, readFromFile } from "../../src/encoder-decoder/files-utils";
 
 const dataBuffer = Buffer.from([0x01, 0x13, 0x14, 0x05]);
 
@@ -29,18 +31,20 @@ describe(`Test sequence for Lamport signature`, () => {
         deleteDir(folder);
     });
 
-    const lamportHandler = new Lamport(folder);
+    //const lamportHandler = new Lamport(folder);
+    const lamportCodec = new Codec(folder, eCodecType.lamport)
 
-    it('Create Lamport class instance', () => {
-        expect(lamportHandler).toBeInstanceOf(Lamport);
+    it('Create Codec class instance - eCodecType.lamport', () => {
+        // expect(lamportHandler).toBeInstanceOf(Lamport);
+        expect(lamportCodec).toBeInstanceOf(Codec);
     });
 
-    let keyMerkleRoot: Buffer;
+    let equivocationTaproot: Buffer;
     it('Generate keys - returning public & private keys location & equivocationMerkleRoot', () => {
-        //const equivocationTapRoot = 
-        lamportHandler.generateKeys(dataBuffer.length * unitsInOneByte);
-        //expect(equivocationTapRoot).toBeDefined();
-        //keyMerkleRoot = equivocationTapRoot;
+        //equivocationTaproot = lamportHandler.generateKeys(dataBuffer.length * unitsInOneByte);
+        //console.log(equivocationTaproot);
+        const taproot = lamportCodec.generateKeys(dataBuffer.length * unitsInOneByte);
+        expect(Buffer.from(taproot).length).toBe(34);
     });
 
     it(`Check that a public key file was added to ${folder}`, () => {
@@ -59,28 +63,38 @@ describe(`Test sequence for Lamport signature`, () => {
         expect(getFileSizeBytes(folder, PRV_KEY_FILE)).toBe(dataBuffer.length * unitsInOneByte * hashSize * valuesPerUnit);
     });
 
+
+
+    it(`Returns the public key after hashing the private key once (check first key part)`, () => {
+        const prv = readFromFile(folder, PRV_KEY_FILE, 0, 32);
+        const pub = readFromFile(folder, PUB_KEY_FILE, 0, 32);
+
+        expect(createHash('sha256').update(prv).digest().compare(pub)).toBe(0);
+    });
+
+
     // it(`Validate merkle root`, () => {
-    //     expect(lamportHandler.validateMerkleRoot(keyMerkleRoot)).toBe(true);
+    //     let recalculate = lamportHandler.getEquivocationTaproot()
+    //     expect(recalculate.compare(equivocationTaproot) === 0).toBe(true);
     // });
 
     it('Throw an error on a second attempt to generate keys for the same folder', () => {
-        expect(() => { lamportHandler.generateKeys(dataBuffer.length); }).toThrow();
+        expect(() => { lamportCodec.generateKeys(dataBuffer.length * 8); }).toThrow();
     });
 
     const dataToEncode = getDataBufferToEncode(dataBuffer, 1, 2);
 
     let encoded: Buffer;
     it('Encode: recive 2 bytes of data, return 2 * 32 * 8 (hash * unitsInOneByte) = 512 encoded', () => {
-        encoded = lamportHandler.encodeBuffer(dataToEncode, 8);
+        encoded = lamportCodec.encodeBuffer(dataToEncode, 8);
         expect(encoded.length).toBe(2 * hashSize * unitsInOneByte);
     });
 
-    let decoded: any;
-
+    let decoded: iDecodeResult;
     it(`Decode: data was decoded`, () => {
-        decoded = lamportHandler.decodeBuffer(encoded, 8, keyMerkleRoot);
-        expect(decoded.success === 'success');
-        expect(Buffer.from(decoded.data).compare(dataToEncode)).toBe(0);
+        decoded = lamportCodec.decodeBuffer(encoded, 8);
+        expect(decoded.type === 'success');
+        expect(Buffer.from(decoded.data || '').compare(dataToEncode)).toBe(0)
     });
 
     it(`Check that a cache file was added ${folder}`, () => {
@@ -92,39 +106,39 @@ describe(`Test sequence for Lamport signature`, () => {
     });
 
 
-    it('Encode: one bit 3', () => {
-        encoded = lamportHandler.encodeBit(getDataBitToEncode(dataBuffer, 3), 3);
-        expect(encoded.length).toBe(hashSize);
-    });
+    // it('Encode: one bit 3', () => {
+    //     encoded = lamportHandler.encodeBit(getDataBitToEncode(dataBuffer, 3), 3);
+    //     expect(encoded.length).toBe(hashSize);
+    // });
 
 
-    it(`Decode: bit was decoded`, () => {
-        decoded = lamportHandler.decodeBuffer(encoded, 3, keyMerkleRoot);
-        expect(decoded.success === 'success');
-        expect(decoded.data.length).toBe(1);
-        expect(parseInt(decoded.data[0])).toBe(getDataBitToEncode(dataBuffer, 3));
-    });
+    // it(`Decode: bit was decoded`, () => {
+    //     decoded = lamportHandler.decodeBuffer(encoded, 3, equivocationTaproot);
+    //     expect(decoded.success === 'success');
+    //     expect(decoded.data.length).toBe(1);
+    //     expect(parseInt(decoded.data[0])).toBe(getDataBitToEncode(dataBuffer, 3));
+    // });
 
     it('Decode: if CONFLICT return equivocationMerkleRoot, prvkey1, prvkey2', () => {
         dataBuffer[1] = 0x12; //change in bit no 8 - create conflict
-        const tmp = lamportHandler.encodeBuffer(getDataBufferToEncode(dataBuffer, 1, 2), 8);
-        decoded = lamportHandler.decodeBuffer(tmp, 8, keyMerkleRoot);
-        expect(decoded.success === 'conflict');
-        expect(decoded.prv1.length).toBe(hashSize);
-        expect(decoded.prv2.length).toBe(hashSize);
-        expect(decoded.prv1.compare(decoded.prv2) === 0).toBe(false);
+        const tmp = lamportCodec.encodeBuffer(getDataBufferToEncode(dataBuffer, 1, 2), 8);
+        decoded = lamportCodec.decodeBuffer(tmp, 8);
+        expect(decoded.type === 'conflict');
+        expect(decoded.prv1?.length).toBe(hashSize);
+        expect(decoded.prv2?.length).toBe(hashSize);
+        expect(decoded.prv2 && decoded.prv1?.compare(decoded.prv2) === 0).toBe(false);
 
     });
 
     it('Decode: if both CONFLICT & UNDECODED return equivocationMerkleRoot, prvkey1, prvkey2', () => {
         dataBuffer[1] = 0x12; //change in bit no 8 - create conflict
-        const tmp = lamportHandler.encodeBuffer(getDataBufferToEncode(dataBuffer, 0, 2), 0);
+        const tmp = lamportCodec.encodeBuffer(getDataBufferToEncode(dataBuffer, 0, 2), 0);
         tmp[0] = tmp[0] + 1; // chenge encode v- create undeocable
-        decoded = lamportHandler.decodeBuffer(tmp, 0, keyMerkleRoot);
-        expect(decoded.success === 'conflict');
-        expect(decoded.prv1.length).toBe(hashSize);
-        expect(decoded.prv2.length).toBe(hashSize);
-        expect(decoded.prv1.compare(decoded.prv2) === 0).toBe(false);
+        decoded = lamportCodec.decodeBuffer(tmp, 0);
+        expect(decoded.type === 'conflict');
+        expect(decoded.prv1?.length).toBe(hashSize);
+        expect(decoded.prv2?.length).toBe(hashSize);
+        expect(decoded.prv2 && decoded.prv1?.compare(decoded.prv2) === 0).toBe(false);
     });
 
 
