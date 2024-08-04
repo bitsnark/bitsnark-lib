@@ -1,116 +1,61 @@
-import { createHash, randomBytes } from "node:crypto";
-import { createFolder, readFromFile, isFileExists, getFileSizeBytes, writeToPosInFile, writeToFile, deleteDir, readTextFile, writeTextToFile } from "./files-utils";
+import { createHash } from "node:crypto";
+import { readFromFile, getFileSizeBytes, writeToPosInFile } from "./files-utils";
 import { PRV_KEY_FILE, PUB_KEY_FILE, CACHE_FILE } from "./files-utils";
-import { iMerkleProof, PublickKeyMerkleTree } from "./public-key-merkle-tree";
-// import { hash } from "../merkle-proof/sha-256";
-
-
-export const FILE_PREFIX = "lamport-";
+import { Bitcoin } from "../generator/step3/bitcoin";
+import { bufferToBigints256BE } from "../encoding/encoding";
+import { CodecProvider, CodecType, DecodeData, DecodeError, Decodeconflict } from "./codec-provider";
 
 const hashSize: number = 32;
-const unitBitsSize = 1;
 const valuesPerUnit = 2;
 const unitsInOneByte = 8;
 const bitsInByte = 8;
-
-export interface iDecoded {
-    isDecoded: boolean;
-    unitIndex: number;
-    claim: Buffer;
-    //hash: Buffer;
-
-    claimDataBitValue: number;
-}
-
-export interface iData {
-    data: Buffer;
-    index: number; // in byte units
-}
-
-export interface iEncoded {
-    encoded: Buffer;
-    unitIndex: number;
-
-    index: number; // in byte units
-}
-
-export interface iDecodedResult extends iDecoded {
-    isConflict: boolean;
-    cache: Buffer;
-    merkleProof: iMerkleProof | undefined;
-}
+const prvToPubHashCount = 1;
+const hashsInUnit = 1
+export const FILE_PREFIX = "lamport-";
+export class Lamport extends CodecProvider {
 
 
-export class Lamport {
-    private folder: string;
-    private merkle: PublickKeyMerkleTree;
 
-    constructor(folder: string) {
-        this.folder = folder;
-        this.merkle = new PublickKeyMerkleTree(folder, hashSize, valuesPerUnit);
+    constructor(folder: string, codecType: CodecType) {
+        super(folder,
+            codecType,
+            valuesPerUnit,
+            prvToPubHashCount,
+            hashsInUnit,
+            Buffer.from('55adf4e8967fbd2e29f20ac896e60c3b0f1d5b0efa9d34941b5958c7b0a0312d', 'hex'),
+            PRV_KEY_FILE,
+            PUB_KEY_FILE,
+            CACHE_FILE);
     }
 
-
-    public createLamportEquivocationScriptFiles() {
-        createFolder(`${this.folder}/$lamport-equivocation`);
-
-        const publickKeySetSize = getFileSizeBytes(this.folder, PUB_KEY_FILE);
-        const demoTemplate = readTextFile('template.txt');
-
-        for (let i = 0; i < publickKeySetSize / (hashSize * valuesPerUnit); i++) {
-            // let publicKeySetString = this.getUnitHashSet(i, this.folder);
-            let publicKeySetString = '';
-            for (let s = 0; s < valuesPerUnit; s++) {
-                const readFrom = (i * hashSize * valuesPerUnit) + s * hashSize;
-                const publicKeyBuffer = readFromFile(this.folder, PUB_KEY_FILE, readFrom, hashSize);
-                publicKeySetString += publicKeyBuffer.toString('hex') + ',';
-            }
-
-            writeTextToFile(`${this.folder}/$lamport-equivocation`, `${FILE_PREFIX}${i}.txt`,
-                this.merkle.createLeafScript(
-                    demoTemplate,
-                    publicKeySetString,
-                    i
-                )
-            );
-        }
+    public computeKeySetsCount(sizeInEncodeUnits: number): number {
+        return sizeInEncodeUnits * valuesPerUnit;
     }
 
-    public generateKeys(dataSizeInBits: number): { publicKey: string, privateKey: string, equivocationMerkleRoot: Buffer } {
-        createFolder(this.folder);
-
-        if (isFileExists(this.folder, PUB_KEY_FILE)) {
-            throw new Error(`Public key file (${PUB_KEY_FILE}) already exists in ${this.folder} directory.\n`);
-        }
-
-        for (let i = 0; i < dataSizeInBits; i++) {
-
-            const secretKeyBuffer = Buffer.alloc(valuesPerUnit * hashSize);
-            const publicKeyBuffer = Buffer.alloc(valuesPerUnit * hashSize);
-
-            for (let j = 0; j < valuesPerUnit; j++) {
-                const prv = randomBytes(hashSize);
-                const pub = createHash('sha256').update(prv).digest();
-                prv.copy(secretKeyBuffer, j * hashSize);
-                pub.copy(publicKeyBuffer, j * hashSize);
-            }
-
-            writeToFile(this.folder, PRV_KEY_FILE, secretKeyBuffer, 'a');
-            writeToFile(this.folder, PUB_KEY_FILE, publicKeyBuffer, 'a');
-        }
-
-        const equivocationMerkleRoot = this.merkle.createMerkleRootFromPublicKey();
-        this.createLamportEquivocationScriptFiles();
-        return {
-            privateKey: `${this.folder}/${PRV_KEY_FILE}`,
-            publicKey: `${this.folder}/${PUB_KEY_FILE}`,
-            equivocationMerkleRoot
-        };
+    public getKeySetsStartPosByUnitIndex(unitIndex: number): number {
+        return unitIndex * valuesPerUnit * hashSize;
     }
 
-    public validateMerkleRoot(merkleRoot: Buffer) {
-        const newMerkleRoot = this.merkle.createMerkleRootFromPublicKey();
-        return newMerkleRoot.compare(merkleRoot) === 0;
+    public getKeySetsLengthByDataSize(dataSizeInBytes: number, isDataEncoded: boolean = false): number {
+        if (isDataEncoded) return dataSizeInBytes * valuesPerUnit;
+        return dataSizeInBytes * unitsInOneByte * hashSize * valuesPerUnit;
+    }
+
+    public getCacheSectionStart(unitIndex: number): number {
+        return unitIndex * hashSize;
+    }
+
+    public getCacheSectionLength(encodedSizeInBytes: number): number {
+        return encodedSizeInBytes;
+    }
+
+    public calculateCacheSize() {
+        const keySize = getFileSizeBytes(this.folder, PUB_KEY_FILE);
+        return keySize / valuesPerUnit;
+    }
+
+    public getUnitCount() {
+        return getFileSizeBytes(this.folder, this.pubKeyFileName) / (valuesPerUnit * hashSize);
     }
 
     public encodeBit(b: number, indexInBits: number): Buffer {
@@ -125,14 +70,9 @@ export class Lamport {
         return result;
     }
 
-    public encodeBuffer(buffer: Buffer, indexInBits: number): Buffer {
-        const prvKeyBuffer = readFromFile(
-            this.folder,
-            PRV_KEY_FILE,
-            indexInBits * valuesPerUnit * hashSize,
-            buffer.length * unitsInOneByte * hashSize * valuesPerUnit);
-
+    public encodeBuffer(buffer: Buffer, prvKeyBuffer: Buffer): Buffer {
         const result = Buffer.alloc(buffer.length * unitsInOneByte * hashSize);
+
         for (let i = 0; i < buffer.length; i++) {
 
             for (let j = 0; j < bitsInByte; j++) {
@@ -147,84 +87,73 @@ export class Lamport {
         return result;
     }
 
-    public encodeBufferAddPublic(buffer: Buffer, indexInBits: number) {
-        const pubKeyBuffer = readFromFile(
-            this.folder,
-            PUB_KEY_FILE,
-            indexInBits * valuesPerUnit * hashSize,
-            buffer.length * unitsInOneByte * hashSize * valuesPerUnit);
-        return { pubk: pubKeyBuffer, encodedData: this.encodeBuffer(buffer, indexInBits) };
-    }
-
-
-    private createCachFile() {
-        const keySize = getFileSizeBytes(this.folder, PUB_KEY_FILE);
-        const cacheSize = keySize / valuesPerUnit;
-        const cacheBuffer = Buffer.alloc(cacheSize, 0);
-        writeToFile(this.folder, CACHE_FILE, cacheBuffer, 'wx');
-    }
-
-    public decodeBuffer(encoded: Buffer, unitIndex: number, merkleRoot: Buffer) {
-        if (!isFileExists(this.folder, PUB_KEY_FILE))
-            throw Error(`No public key data file (${PUB_KEY_FILE}) was found in ${this.folder} directory.`);
-
-        if (!isFileExists(this.folder, CACHE_FILE)) this.createCachFile();
-
-        const pubKeyBuffer = readFromFile(this.folder,
-            PUB_KEY_FILE,
-            unitIndex * valuesPerUnit * hashSize,
-            encoded.length * valuesPerUnit);
-
-        const cachedBuffer = readFromFile(this.folder,
-            CACHE_FILE,
-            unitIndex * hashSize,
-            encoded.length);
-
+    public decodeBuffer(encoded: Buffer, unitIndex: number, pubKey: Buffer, cache: Buffer): DecodeData | DecodeError | Decodeconflict {
+        let resultData = Buffer.alloc(encoded.length / (hashSize * unitsInOneByte));
 
         let byteValue = 0;
         let decodeError = '';
+        const loopBound = encoded.length / hashSize;
 
-        const resultData = Buffer.alloc(encoded.length / (hashSize * unitsInOneByte));
-        const resultConflict = { prv1: Buffer.alloc(0), prv2: Buffer.alloc(0), script: {} };
-
-        const isEmpty = (buffer: Buffer) => buffer.every(byte => byte === 0);
-
-        for (let i = 0; i < encoded.length / hashSize; i++) {
-            const iEncoded = encoded.subarray(i * hashSize, (i + 1) * hashSize);
-            const iCache = cachedBuffer.subarray(i * hashSize, (i + 1) * hashSize);
-            const iPubKey = pubKeyBuffer.subarray(i * hashSize * valuesPerUnit, (i + 1) * hashSize * valuesPerUnit);
+        for (let i = 0; i < loopBound; i++) {
+            const { iEncoded, iCache, iPubKey } = this.getSubArrays(i, encoded, cache, pubKey);
 
             const iHash = createHash('sha256').update(iEncoded).digest();
             const iHashIndex = iPubKey.indexOf(iHash);
 
-            if (iHashIndex !== -1 && (iHashIndex / hashSize === 0 || iHashIndex / hashSize === 1)) {
-                if (!isEmpty(iCache) && iCache.compare(iEncoded) !== 0) {
-                    resultConflict.prv1 = Buffer.from(iCache);
-                    resultConflict.prv2 = Buffer.from(iEncoded);
-                    resultConflict.script = this.merkle.getMerkleProof(merkleRoot, unitIndex + i);
-                    break;
-                }
-                else {
-                    byteValue |= iHashIndex / hashSize << i % bitsInByte;
-                    if ((i) % bitsInByte === 7) {
-                        resultData[Math.floor(i / bitsInByte)] = byteValue;
-                        byteValue = 0;
-                    }
-                    writeToPosInFile(this.folder, CACHE_FILE, iEncoded, (unitIndex + i) * hashSize);
+            if (!this.isValidHashIndex(iHashIndex)) {
+                decodeError +=
+                    `Invalid encoded data ${iEncoded.toString('hex')} ==> \n hash: ${iHash.toString('hex')} is not a public key of \n${unitIndex + i} data bit. `;
+                byteValue = 0;
+                continue;
+            }
 
-                }
-            } else {
-                decodeError += `Invalid encoded data ${iEncoded.toString('hex')} ==> \n hash: ${iHash.toString('hex')} is not a public key of ${unitIndex + i} data bit. \n`;
+            if (this.isConflict(iCache, iEncoded)) {
+                return this.returnDecodedConflict(iCache, iEncoded, unitIndex + i);
+            }
+
+            byteValue = this.accamulateByte(byteValue, iHashIndex, i);
+            if ((i) % bitsInByte === 7) {
+                resultData[Math.floor(i / bitsInByte)] = byteValue;
                 byteValue = 0;
             }
+
+            this.writeBufferToCachedFile(unitIndex + i, iEncoded);
         }
 
-        if (!isEmpty(resultConflict.prv1) || !isEmpty(resultConflict.prv2)) return resultConflict;
-        if (decodeError) throw new Error(decodeError);
-        if (encoded.length === hashSize) return byteValue;
-        return resultData;
+        if (decodeError) return this.returnDecodedError(decodeError)
+        if (encoded.length === hashSize) resultData = Buffer.from([byteValue]);
+        return this.returnDecodedSuccess(resultData)
     }
 
+    private getSubArrays(i: number, encoded: Buffer, cache: Buffer, pubKey: Buffer) {
+        const iEncoded = encoded.subarray(i * hashSize, (i + 1) * hashSize);
+        const iCache = cache.subarray(i * hashSize, (i + 1) * hashSize);
+        const iPubKey = pubKey.subarray(i * hashSize * valuesPerUnit, (i + 1) * hashSize * valuesPerUnit);
+        return { iEncoded, iCache, iPubKey };
+    }
 
+    private isValidHashIndex(index: number) {
+        return index !== -1 && (index / hashSize === 0 || index / hashSize === 1);
+    }
 
+    private accamulateByte(byteValue: number, iHashIndex: number, i: number) {
+        return byteValue | ((iHashIndex / hashSize) << (i % bitsInByte));
+    }
+
+    private writeBufferToCachedFile(hashIndex: number, encoded: Buffer) {
+        writeToPosInFile(this.folder, CACHE_FILE, encoded, hashIndex * hashSize);
+    }
+
+    public generateEquivocationScript(bitcoin: Bitcoin, unitIndex: number) {
+        const pubKey = readFromFile(this.folder,
+            this.pubKeyFileName,
+            this.getKeySetsStartPosByUnitIndex(unitIndex),
+            valuesPerUnit * hashSize);
+
+        const k0 = bufferToBigints256BE(Buffer.from(pubKey.subarray(0, hashSize)))[0];
+        const k1 = bufferToBigints256BE(Buffer.from(pubKey.subarray(hashSize)))[0];
+        const w0 = bitcoin.addWitness(0n);
+        const w1 = bitcoin.addWitness(0n);
+        bitcoin.lamportEquivocation([w0, w1], [k0, k1]);
+    }
 } 

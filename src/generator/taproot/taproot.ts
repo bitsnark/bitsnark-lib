@@ -1,4 +1,5 @@
 import { createHash } from "crypto";
+import { cp } from "fs";
 
 const taprootVersion = 0xc0;
 const p = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2Fn;
@@ -12,7 +13,7 @@ type Point = bigint[] | null;
 export abstract class TapNode {
 
     abstract isLeaf(): boolean;
-    abstract getScript(): Buffer;
+    abstract getScript(create?: boolean): Buffer;
     abstract getLeft(): TapNode;
     abstract getRight(): TapNode;
 
@@ -38,7 +39,7 @@ export function combineHashes(left_h: Buffer, right_h: Buffer): Buffer {
     if (right_h.compare(left_h) == -1) {
         [left_h, right_h] = [right_h, left_h];
     }
-    return taggedHash('TapBranch', Buffer.concat([left_h, right_h]));    
+    return taggedHash('TapBranch', Buffer.concat([left_h, right_h]));
 }
 
 function compactSize(l: number): Buffer {
@@ -153,7 +154,7 @@ function getProof(node: TapNode, path: number[]): Buffer {
         buf = getProof(node.getRight(), path.slice(1));
         sibling = node.getLeft().getHash();
     }
-    return Buffer.concat([ buf, sibling ]);
+    return Buffer.concat([buf, sibling]);
 }
 
 export function taprootControlBlock(internalPubkey: Buffer, rootNode: TapNode, path: number[]): Buffer {
@@ -162,6 +163,7 @@ export function taprootControlBlock(internalPubkey: Buffer, rootNode: TapNode, p
     const keyBuf = Buffer.from(x(P).toString(16), 'hex');
     const proof = getProof(rootNode, path);
     return Buffer.concat([versionBuf, keyBuf, proof]);
+
 }
 
 export function simpleTaproot(internalPubkey: Buffer, script: Buffer): { root: Buffer, controlBlock: Buffer } {

@@ -11,12 +11,10 @@ export function isFileExists(folder: string, fileName: string): Boolean {
     return fs.existsSync(filePath);
 }
 
-export function createFolder(folder: string) {
-    try {
-        fs.mkdirSync(path.join(process.cwd(), `${generatedDataDir}/${folder}`), { recursive: true });
-    } catch (e) {
-        console.error(`Failed creating: ${generatedDataDir}/${folder}`);
-    }
+export function createFolder(folder: string, errorIfExists: boolean = false): void {
+    const folderPath = path.join(process.cwd(), `${generatedDataDir}/${folder}`);
+    if (!fs.existsSync(folderPath)) fs.mkdirSync(folderPath, { recursive: true });
+    else if (errorIfExists) throw new Error(`Folder ${folderPath} already exists.`);
 }
 
 export function writeToFile(folder: string, fileName: string, buffer: Buffer, flag: string = 'a', encoding: BufferEncoding = 'binary'): void {
@@ -39,13 +37,13 @@ export function fillFile(folder: string, fileName: string, buffer: Buffer, flag:
     fs.writeFileSync(writeTo, buffer, { encoding: encoding, flag: flag });
 }
 
-export function readFromFile(folder: string, fileName: string, chunkStart: number = 0, chunckSize: number): Buffer {
+export function readFromFile(folder: string, fileName: string, chunkStart: number = 0, chunkSize: number): Buffer {
     let fd: number | undefined;
     try {
         const readFrom = path.join(process.cwd(), `${generatedDataDir}/${folder}/${fileName}`);
         fd = fs.openSync(readFrom, 'r');
-        const buffer = Buffer.alloc(chunckSize);
-        fs.readSync(fd, buffer, 0, chunckSize, chunkStart);
+        const buffer = Buffer.alloc(chunkSize);
+        fs.readSync(fd, buffer, 0, chunkSize, chunkStart);
         return buffer;
     }
     catch (err: any) {
@@ -76,29 +74,25 @@ export function getFileSizeBytes(folder: string, fileName: string): number {
 
 export function findBufferInFile(folder: string, fileName: string, targetBuffer: Buffer) {
     const findIn = path.join(process.cwd(), `${generatedDataDir}/${folder}/${fileName}`);
-    try {
-        const fileBuffer = fs.readFileSync(findIn);
-        const index = fileBuffer.indexOf(targetBuffer);
-        return index;
-    } catch (err: any) {
-        console.error('Error reading the file:', err.message);
-        return -1;
-    }
+    // try {
+    const fileBuffer = fs.readFileSync(findIn);
+    const index = fileBuffer.indexOf(targetBuffer);
+    return index;
+    // } catch (err: any) {
+    //     console.error('Error reading the file:', err.message);
+    //     return -1;
+    // }
 }
 
 export function deleteDir(folder: string) {
-    try {
-        const dirPath = path.join(process.cwd(), `${generatedDataDir}/${folder}`);
-        fs.rmdirSync(dirPath, { recursive: true });
-    } catch (err: any) {
-        console.error('Error deleting the folder:', err.message);
-    }
+    const dirPath = path.join(process.cwd(), `${generatedDataDir}/${folder}`);
+    if (fs.existsSync(dirPath)) fs.rmdirSync(dirPath, { recursive: true });
 }
 
 export function writeTextToFile(folder: string, fileName: string, text: string) {
-    try {
-        const writeTo = path.join(process.cwd(), `${generatedDataDir}/${folder}/${fileName}`);
-        fs.writeFileSync(writeTo, text, { encoding: 'utf-8', flag: 'w' });
-    } catch (err: any) { }
+    // try {
+    const writeTo = path.join(process.cwd(), `${generatedDataDir}/${folder}/${fileName}`);
+    fs.writeFileSync(writeTo, text, { encoding: 'utf-8', flag: 'w' });
+    // } catch (err: any) { }
 }
 
