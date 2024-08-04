@@ -26,16 +26,40 @@ export interface Decodeconflict {
 
 
 export abstract class CodecProvider {
-    abstract codecType: CodecType;
-    abstract tmpInnerPubKey: Buffer
+    public folder: string;
+    public codecType: CodecType;
+    public valuesPerUnit: number;
+    public prvToPubHashCount: number;
+    public hashsInUnit: number;
+    public tmpInnerPubKey: Buffer
+    public prvKeyFileName: string;
+    public pubKeyFileName: string;
+    public cacheFileName: string;
 
-    abstract prvKeyFileName: string;
-    abstract pubKeyFileName: string;
-    abstract cacheFileName: string;
 
-    abstract hashsInUnit: number;
-    abstract valuesPerUnit: number;
-    abstract prvToPubHashCount: number;
+
+    constructor(folder: string,
+        codecType: CodecType,
+        valuesPerUnit: number,
+        prvToPubHashCount: number,
+        hashsInUnit: number,
+        tmpInnerPubKey: Buffer,
+        prvKeyFileName: string,
+        pubKeyFileName: string,
+        cacheFileName: string) {
+
+        this.folder = folder;
+        this.codecType = codecType;
+        this.valuesPerUnit = valuesPerUnit;
+        this.prvToPubHashCount = prvToPubHashCount;
+        this.hashsInUnit = hashsInUnit
+        this.tmpInnerPubKey = tmpInnerPubKey;
+        this.prvKeyFileName = prvKeyFileName;
+        this.pubKeyFileName = pubKeyFileName;
+        this.cacheFileName = cacheFileName;
+    }
+
+
 
     abstract computeKeySetsCount(sizeInEncodeUnits: number): number;
     abstract getKeySetsStartPosByUnitIndex(unitIndex: number): number;

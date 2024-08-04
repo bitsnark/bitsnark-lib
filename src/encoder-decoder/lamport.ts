@@ -9,24 +9,23 @@ const hashSize: number = 32;
 const valuesPerUnit = 2;
 const unitsInOneByte = 8;
 const bitsInByte = 8;
+const prvToPubHashCount = 1;
+const hashsInUnit = 1
 export const FILE_PREFIX = "lamport-";
 export class Lamport extends CodecProvider {
-    public tmpInnerPubKey = Buffer.from('55adf4e8967fbd2e29f20ac896e60c3b0f1d5b0efa9d34941b5958c7b0a0312d', 'hex')
-    private folder: string;
 
-    public codecType: CodecType;
-    public valuesPerUnit = valuesPerUnit;
-    public prvKeyFileName = PRV_KEY_FILE;
-    public pubKeyFileName = PUB_KEY_FILE;
-    public cacheFileName = CACHE_FILE;
-    public prvToPubHashCount = 1;
-    public hashsInUnit = 1
 
 
     constructor(folder: string, codecType: CodecType) {
-        super();
-        this.folder = folder;
-        this.codecType = CodecType.lamport
+        super(folder,
+            codecType,
+            valuesPerUnit,
+            prvToPubHashCount,
+            hashsInUnit,
+            Buffer.from('55adf4e8967fbd2e29f20ac896e60c3b0f1d5b0efa9d34941b5958c7b0a0312d', 'hex'),
+            PRV_KEY_FILE,
+            PUB_KEY_FILE,
+            CACHE_FILE);
     }
 
     public computeKeySetsCount(sizeInEncodeUnits: number): number {

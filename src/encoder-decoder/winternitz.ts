@@ -15,58 +15,60 @@ const FILE_256_PREFIX = "winternitz-256-";
 
 const nibbleSizeInBits = 3;
 const valuesPerUnit = 2 ** nibbleSizeInBits;
+const prvToPubHashCount = 2 ** nibbleSizeInBits;
 const hashSize: number = 32;
 const chunkSize32 = 32;
 const chunkSize4 = 4;
 const checksum4BytesSize = 3;
 const checksum32BytesSize = 4;
-
-
-
+const hashsInUnit256 = 90;
+const hashsInUnit32 = 14;
 export class Winternitz extends CodecProvider {
-    public tmpInnerPubKey = Buffer.from('55adf4e8967fbd2e29f20ac896e60c3b0f1d5b0efa9d34941b5958c7b0a0312d', 'hex')
-    private folder: string;
-
-    public valuesPerUnit = valuesPerUnit;
-    public prvToPubHashCount = valuesPerUnit;
-    public prvKeyFileName: string;
-    public pubKeyFileName: string;
-    public cacheFileName: string;
     private chunkSizeInBytes: number;
     private checksumSizeInUnits: number;
     private totalNibblesInChunk: number;
     private dataNibblesInChunk: number;
-    public hashsInUnit: number;
-    public codecType: CodecType;
-
 
     constructor(folder: string, codecType: CodecType) {
-        super();
-        this.folder = folder;
 
-        this.codecType = codecType;
+        //this.codecType = codecType;
         if (codecType === CodecType.winternitz32) {
-            this.prvKeyFileName = FILE_32_PREFIX.concat(PRV_KEY_FILE);
-            this.pubKeyFileName = FILE_32_PREFIX.concat(PUB_KEY_FILE);
-            this.cacheFileName = FILE_32_PREFIX.concat(CACHE_FILE);
+            super(folder,
+                codecType,
+                valuesPerUnit,
+                prvToPubHashCount,
+                hashsInUnit32,
+                Buffer.from('55adf4e8967fbd2e29f20ac896e60c3b0f1d5b0efa9d34941b5958c7b0a0312d', 'hex'),
+                FILE_32_PREFIX.concat(PRV_KEY_FILE),
+                FILE_32_PREFIX.concat(PUB_KEY_FILE),
+                FILE_32_PREFIX.concat(CACHE_FILE));
+
             this.checksumSizeInUnits = checksum4BytesSize;
             this.chunkSizeInBytes = chunkSize4;
             this.dataNibblesInChunk = 11;
-            this.totalNibblesInChunk = this.hashsInUnit = 14;
+            this.totalNibblesInChunk = 14;
 
         }
         else if (codecType === CodecType.winternitz256) {
-            this.prvKeyFileName = FILE_256_PREFIX.concat(PRV_KEY_FILE);
-            this.pubKeyFileName = FILE_256_PREFIX.concat(PUB_KEY_FILE);
-            this.cacheFileName = FILE_256_PREFIX.concat(CACHE_FILE);
+            super(folder,
+                codecType,
+                valuesPerUnit,
+                prvToPubHashCount,
+                hashsInUnit256,
+                Buffer.from('55adf4e8967fbd2e29f20ac896e60c3b0f1d5b0efa9d34941b5958c7b0a0312d', 'hex'),
+                FILE_256_PREFIX.concat(PRV_KEY_FILE),
+                FILE_256_PREFIX.concat(PUB_KEY_FILE),
+                FILE_256_PREFIX.concat(CACHE_FILE));
+
             this.checksumSizeInUnits = checksum32BytesSize;
             this.chunkSizeInBytes = chunkSize32;
             this.dataNibblesInChunk = 86;
-            this.totalNibblesInChunk = this.hashsInUnit = 90;
+            this.totalNibblesInChunk = 90;
         }
         else {
             throw Error(`Unknon codec ${codecType}`)
         }
+        this.folder = folder;
     }
 
 

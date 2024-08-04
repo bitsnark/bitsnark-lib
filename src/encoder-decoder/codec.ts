@@ -4,11 +4,7 @@ import { Winternitz } from "./winternitz";
 import { createFolder, isFileExists, readFromFile, writeToFile } from "./files-utils";
 import { createHash, randomBytes } from "node:crypto";
 import { CodecProvider, CodecType, DecodeData, DecodeError, Decodeconflict } from "./codec-provider";
-import { EquivocationTapNode, getcontrolBlock, makeEquivocationTaproot } from "./equivocation-tapnode";
-import { taprootOutputScript } from "../generator/taproot/taproot";
-
-const tmpInnerPubKey = Buffer.from('55adf4e8967fbd2e29f20ac896e60c3b0f1d5b0efa9d34941b5958c7b0a0312d', 'hex')
-
+import { makeEquivocationTaproot } from "./equivocation-tapnode";
 
 
 const hashSize = 32;
