@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { readFromFile, getFileSizeBytes, writeToPosInFile } from "./files-utils";
 import { PRV_KEY_FILE, PUB_KEY_FILE, CACHE_FILE } from "./files-utils";
-import { CodecProvider, eCodecType, iDecodeResult } from "./codec-provider";
+import { CodecProvider, CodecType, DecodeData, DecodeError, Decodeconflict } from "./codec-provider";
 import { bufferTo3BitArray, arrayToBuffer } from "./utils"
 import { Bitcoin } from "../generator/step3/bitcoin";
 import { bufferToBigints256BE } from "../encoding/encoding";
@@ -37,15 +37,15 @@ export class Winternitz extends CodecProvider {
     private totalNibblesInChunk: number;
     private dataNibblesInChunk: number;
     public hashsInUnit: number;
-    public codecType: eCodecType;
+    public codecType: CodecType;
 
 
-    constructor(folder: string, codecType: eCodecType) {
+    constructor(folder: string, codecType: CodecType) {
         super();
         this.folder = folder;
 
         this.codecType = codecType;
-        if (codecType === eCodecType.winternitz32) {
+        if (codecType === CodecType.winternitz32) {
             this.prvKeyFileName = FILE_32_PREFIX.concat(PRV_KEY_FILE);
             this.pubKeyFileName = FILE_32_PREFIX.concat(PUB_KEY_FILE);
             this.cacheFileName = FILE_32_PREFIX.concat(CACHE_FILE);
@@ -55,7 +55,7 @@ export class Winternitz extends CodecProvider {
             this.totalNibblesInChunk = this.hashsInUnit = 14;
 
         }
-        else if (codecType === eCodecType.winternitz256) {
+        else if (codecType === CodecType.winternitz256) {
             this.prvKeyFileName = FILE_256_PREFIX.concat(PRV_KEY_FILE);
             this.pubKeyFileName = FILE_256_PREFIX.concat(PUB_KEY_FILE);
             this.cacheFileName = FILE_256_PREFIX.concat(CACHE_FILE);
@@ -71,15 +71,15 @@ export class Winternitz extends CodecProvider {
 
 
 
-    public computeKeyPartsCount(sizeInEncodeUnits: number): number {
+    public computeKeySetsCount(sizeInEncodeUnits: number): number {
         return sizeInEncodeUnits * Math.ceil(this.chunkSizeInBytes * 8 / nibbleSizeInBits) + sizeInEncodeUnits * this.checksumSizeInUnits;
     }
 
-    public getKeyPartSatrtPosByUnitIndex(unitIndex: number): number {
+    public getKeySetsStartPosByUnitIndex(unitIndex: number): number {
         return unitIndex * this.totalNibblesInChunk * hashSize;
     }
 
-    public getKeyPartsLengthByDataSize(dataSizeInBytes: number, isDataEncoded?: boolean): number {
+    public getKeySetsLengthByDataSize(dataSizeInBytes: number, isDataEncoded?: boolean): number {
         return this.totalNibblesInChunk * hashSize;
     }
 
@@ -108,13 +108,13 @@ export class Winternitz extends CodecProvider {
         const nibbleArray = bufferTo3BitArray(buffer);
         const result = Buffer.alloc(prvKeyBuffer.length);
 
-        const checkSum = nibbleArray.reduce((sum, nibble, i) => {
+        const checksum = nibbleArray.reduce((sum, nibble, i) => {
             const nibbleKey = this.encodeNibble(prvKeyBuffer, i, 7 - nibble);
             nibbleKey.copy(result, i * hashSize, 0, hashSize);
             return sum + nibble;
         }, 0);
 
-        const checksumBuffer = this.checksumToBuffer(checkSum);
+        const checksumBuffer = this.checksumToBuffer(checksum);
         const checksumArray = bufferTo3BitArray(checksumBuffer);
 
         checksumArray.forEach((iChecksumValue, index) => {
@@ -135,30 +135,30 @@ export class Winternitz extends CodecProvider {
     }
 
 
-    private checksumToBuffer(checkSum: number) {
+    private checksumToBuffer(checksum: number) {
         const checksumBuffer = Buffer.alloc(2);
-        checksumBuffer.writeUInt16LE(checkSum);
+        checksumBuffer.writeUInt16LE(checksum);
         return checksumBuffer;
     }
 
-    private checksumToNibbleArray(checkSum: number, checksumSize: number) {
-        const checksumBuffer = this.checksumToBuffer(checkSum)
+    private checksumToNibbleArray(checksum: number, checksumSize: number) {
+        const checksumBuffer = this.checksumToBuffer(checksum)
         return bufferTo3BitArray(checksumBuffer).slice(0, checksumSize);
     }
 
-    public decodeBuffer(encoded: Buffer, indexInUnits: number, pubKeyParts: Buffer, cache: Buffer): iDecodeResult {
+    public decodeBuffer(encoded: Buffer, indexInUnits: number, pubKeySets: Buffer, cache: Buffer): DecodeData | DecodeError | Decodeconflict {
         const nibbleArray = Array.from({ length: (this.dataNibblesInChunk) }, (_, i) => {
-            const iPubKey = pubKeyParts.subarray(i * hashSize, (i + 1) * hashSize);
+            const iPubKey = pubKeySets.subarray(i * hashSize, (i + 1) * hashSize);
             return this.decodeDataNibble(encoded, i, iPubKey);
         });
 
-        const checkSum = nibbleArray.reduce((sum, current) => sum + current, 0);
-        const checksumArray = this.checksumToNibbleArray(checkSum, this.checksumSizeInUnits);
+        const checksum = nibbleArray.reduce((sum, current) => sum + current, 0);
+        const checksumArray = this.checksumToNibbleArray(checksum, this.checksumSizeInUnits);
 
         checksumArray.forEach((checksumValue, index) => {
             const i = this.dataNibblesInChunk + index;
             const iChecksumEncoded = this.encodeNibble(encoded, i, 8 - checksumValue);
-            const ichecksumKey = pubKeyParts.subarray(i * hashSize, (i + 1) * hashSize);
+            const ichecksumKey = pubKeySets.subarray(i * hashSize, (i + 1) * hashSize);
             if (iChecksumEncoded.compare(ichecksumKey) !== 0) throw new Error(`Invalid checksum`);
         });
 
@@ -194,8 +194,8 @@ export class Winternitz extends CodecProvider {
         const pubKey = readFromFile(
             this.folder,
             this.pubKeyFileName,
-            this.getKeyPartSatrtPosByUnitIndex(unitIndex),
-            this.getKeyPartsLengthByDataSize(0));
+            this.getKeySetsStartPosByUnitIndex(unitIndex),
+            this.getKeySetsLengthByDataSize(0));
 
         const kArr: bigint[] = [];
         for (let i = 0; i < this.hashsInUnit; i++) {
@@ -205,9 +205,9 @@ export class Winternitz extends CodecProvider {
 
         const wArr = Array.from({ length: this.hashsInUnit }, () => bitcoin.addWitness(0n));
         for (let i = 0; i < this.hashsInUnit; i++) decodedItems.push(bitcoin.newStackItem(0n));
-        if (this.codecType === eCodecType.winternitz32)
+        if (this.codecType === CodecType.winternitz32)
             bitcoin.winternitzEquivocation32(decodedItems, wArr, wArr, kArr);
-        else if (this.codecType === eCodecType.winternitz256)
+        else if (this.codecType === CodecType.winternitz256)
             bitcoin.winternitzEquivocation32(decodedItems, wArr, wArr, kArr);
 
     }

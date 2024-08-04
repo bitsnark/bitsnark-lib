@@ -2,7 +2,7 @@ import { createHash } from "crypto";
 import { isFileExists, deleteDir, getFileSizeBytes } from "../../src/encoder-decoder/files-utils";
 import { Winternitz } from "../../src/encoder-decoder/winternitz";
 import { Codec } from "../../src/encoder-decoder/codec";
-import { eCodecType } from "../../src/encoder-decoder/codec-provider";
+import { CodecType } from "../../src/encoder-decoder/codec-provider";
 
 const dataBuffer256 = Buffer.from([
     0xe2, 0x9d, 0xc3, 0x72, 0x89, 0x5d, 0x18, 0x5d,
@@ -26,13 +26,13 @@ const PRV_KEY_FILE = "prv.bin";
 const PUB_KEY_FILE = "pub.bin";
 export const FILE_PREFIX_256 = "winternitz-256-";
 export const FILE_PREFIX_32 = "winternitz-32-";
-const chunckSize256 = 32;
-const chunckSize32 = 4;
+const chunkSize256 = 32;
+const chunkSize32 = 4;
 const hashSize = 32;
 
 
-const totalChuncks256 = dataBuffer256.length / chunckSize256;
-const totalChuncks32 = dataBuffer32.length / chunckSize32;
+const totalChuncks256 = dataBuffer256.length / chunkSize256;
+const totalChuncks32 = dataBuffer32.length / chunkSize32;
 
 
 function getDataBufferToEncode(data: Buffer, byteIndex: number, length: number): Buffer {
@@ -56,8 +56,8 @@ describe(`Test sequence for winternitz signature`, () => {
         deleteDir(folder32);
     });
 
-    const winternitz256 = new Codec(folder256, eCodecType.winternitz256)
-    const winternitz32 = new Codec(folder32, eCodecType.winternitz32)
+    const winternitz256 = new Codec(folder256, CodecType.winternitz256)
+    const winternitz32 = new Codec(folder32, CodecType.winternitz32)
 
 
     it('Create Winternitz classes instance', () => {
@@ -101,7 +101,7 @@ describe(`Test sequence for winternitz signature`, () => {
 
     const dataToEncode32 = getDataBufferToEncode(dataBuffer32, 0, 4);
     let encoded32: Buffer;
-    it('Encode: recive 32 bits of data, return (3 + 11) * 32 (hash * ( nibbles in chunckSize4 + 2checksum)) = 448 encoded', () => {
+    it('Encode: receive 32 bits of data, return (3 + 11) * 32 (hash * ( nibbles in chunkSize4 + 2checksum)) = 448 encoded', () => {
         encoded32 = winternitz32.encodeBuffer(dataToEncode32, 0);
         expect(encoded32.length).toBe(hashSize * (3 + 11));
     });
@@ -109,8 +109,8 @@ describe(`Test sequence for winternitz signature`, () => {
     let decoded32;
     it(`Decode: buffer 32bit data was decoded`, () => {
         decoded32 = winternitz32.decodeBuffer(encoded32, 0);
-        expect(decoded32.type === 'success');
-        expect(Buffer.from(decoded32.data || '').compare(dataToEncode32.subarray(0, chunckSize32))).toBe(0);
+        expect(decoded32).toBeDefined();
+        expect('data' in decoded32 && Buffer.from(decoded32.data || '').compare(dataToEncode32.subarray(0, chunkSize32))).toBe(0);
     });
 
     it(`Decode: change hash - buffer 32bit data was not decoded and error was thrown`, () => {
@@ -127,28 +127,35 @@ describe(`Test sequence for winternitz signature`, () => {
 
     it(`Decode: same block data buffer 32bit if just like cache`, () => {
         decoded32 = winternitz32.decodeBuffer(encoded32, 0);
-        expect(Buffer.from(decoded32.data || '').compare(dataToEncode32.subarray(0, chunckSize32))).toBe(0);
+        expect(decoded32).toBeDefined();
+        expect('data' in decoded32 && Buffer.from(decoded32.data || '').compare(dataToEncode32.subarray(0, chunkSize32))).toBe(0);
     });
 
     it(`Decode: new block data buffer 32bit (2) is decoded ok`, () => {
         const tmpEncoded32 = winternitz32.encodeBuffer(getDataBufferToEncode(dataBuffer32, 8, 4), 2);
         const tmpDecoded32 = winternitz32.decodeBuffer(tmpEncoded32, 2);
-        expect(Buffer.from(tmpDecoded32.data || '').compare(getDataBufferToEncode(dataBuffer32, 8, 4))).toBe(0);
+        expect(tmpDecoded32).toBeDefined();
+        expect('data' in tmpDecoded32 && Buffer.from(tmpDecoded32.data || '').compare(getDataBufferToEncode(dataBuffer32, 8, 4))).toBe(0);
 
     });
 
     it(`Decode throws cache error if same block data buffer has different cache`, () => {
         const tmpEncoded32 = winternitz32.encodeBuffer(Buffer.from([0x3b, 0x61, 0x84, 0x71]), 2);
         const tmpDecoded32 = winternitz32.decodeBuffer(tmpEncoded32, 2);
-        expect(tmpDecoded32.type === 'conflict');
-        console.log('decoded conflict', tmpEncoded32)
-
+        expect(tmpDecoded32).toBeDefined();
+        expect('prv1' in tmpDecoded32).toBe(true);
+        expect('prv2' in tmpDecoded32).toBe(true);
+        expect('index' in tmpDecoded32).toBe(true);
+        expect('script' in tmpDecoded32).toBe(true);
+        if ('prv1' in tmpDecoded32 && 'prv2' in tmpDecoded32) {
+            expect(tmpDecoded32.prv2 && tmpDecoded32.prv1?.compare(tmpDecoded32.prv2) === 0).toBe(false);
+        }
     });
 
 
     const dataToEncode256 = getDataBufferToEncode(dataBuffer256, 0, 32);
     let encoded256: Buffer;
-    it('Encode: recive 32 bytes of data, return (4 + 86) * 32 (hash * (nibbles in chunckSize32 + 2checksum) = 2880 encoded', () => {
+    it('Encode: receive 32 bytes of data, return (4 + 86) * 32 (hash * (nibbles in chunkSize32 + 2checksum) = 2880 encoded', () => {
         encoded256 = winternitz256.encodeBuffer(dataToEncode256, 0);
         expect(encoded256.length).toBe(hashSize * (4 + 86));
     });
@@ -157,8 +164,8 @@ describe(`Test sequence for winternitz signature`, () => {
     let decoded256;
     it(`Decode: buffer 256 bit data was decoded`, () => {
         decoded256 = winternitz256.decodeBuffer(encoded256, 0);
-        expect(decoded256.type === 'success');
-        expect(Buffer.from(decoded256.data || '').compare(dataToEncode256.subarray(0, chunckSize256))).toBe(0);
+        expect(decoded256).toBeDefined();
+        expect('data' in decoded256 && Buffer.from(decoded256.data || '').compare(dataToEncode256.subarray(0, chunkSize256))).toBe(0);
     });
 
 
@@ -178,7 +185,8 @@ describe(`Test sequence for winternitz signature`, () => {
     it(`Decode: new block data buffer 256 bit (2) is decoded ok`, () => {
         const tmpEncoded256 = winternitz256.encodeBuffer(getDataBufferToEncode(dataBuffer256, 32, 32), 1);
         const tmpDecoded256 = winternitz256.decodeBuffer(tmpEncoded256, 1);
-        expect(Buffer.from(tmpDecoded256.data || '').compare(getDataBufferToEncode(dataBuffer256, 32, 32))).toBe(0);
+        expect(tmpDecoded256).toBeDefined();
+        expect('data' in tmpDecoded256 && Buffer.from(tmpDecoded256.data || '').compare(getDataBufferToEncode(dataBuffer256, 32, 32))).toBe(0);
 
     });
 
@@ -189,8 +197,14 @@ describe(`Test sequence for winternitz signature`, () => {
                 0xe1, 0xc5, 0x08, 0xe3, 0x3d, 0x93, 0x8a, 0x1b,
                 0x11, 0x0b, 0xf4, 0x73, 0x7a, 0x63, 0x6b, 0xb7]), 1);
         const tmpDecoded256 = winternitz256.decodeBuffer(tmpEncoded256, 1);
-        expect(tmpDecoded256.type === 'conflict');
-        console.log('decoded conflict', tmpDecoded256)
+        expect(tmpDecoded256).toBeDefined();
+        expect('prv1' in tmpDecoded256).toBe(true);
+        expect('prv2' in tmpDecoded256).toBe(true);
+        expect('index' in tmpDecoded256).toBe(true);
+        expect('script' in tmpDecoded256).toBe(true);
+        if ('prv1' in tmpDecoded256 && 'prv2' in tmpDecoded256) {
+            expect(tmpDecoded256.prv2 && tmpDecoded256.prv1?.compare(tmpDecoded256.prv2) === 0).toBe(false);
+        }
 
     });
 });

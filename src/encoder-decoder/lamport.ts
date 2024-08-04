@@ -3,7 +3,7 @@ import { readFromFile, getFileSizeBytes, writeToPosInFile } from "./files-utils"
 import { PRV_KEY_FILE, PUB_KEY_FILE, CACHE_FILE } from "./files-utils";
 import { Bitcoin } from "../generator/step3/bitcoin";
 import { bufferToBigints256BE } from "../encoding/encoding";
-import { CodecProvider, eCodecType, iDecodeResult } from "./codec-provider";
+import { CodecProvider, CodecType, DecodeData, DecodeError, Decodeconflict } from "./codec-provider";
 
 const hashSize: number = 32;
 const valuesPerUnit = 2;
@@ -14,7 +14,7 @@ export class Lamport extends CodecProvider {
     public tmpInnerPubKey = Buffer.from('55adf4e8967fbd2e29f20ac896e60c3b0f1d5b0efa9d34941b5958c7b0a0312d', 'hex')
     private folder: string;
 
-    public codecType: eCodecType;
+    public codecType: CodecType;
     public valuesPerUnit = valuesPerUnit;
     public prvKeyFileName = PRV_KEY_FILE;
     public pubKeyFileName = PUB_KEY_FILE;
@@ -23,21 +23,21 @@ export class Lamport extends CodecProvider {
     public hashsInUnit = 1
 
 
-    constructor(folder: string, codecType: eCodecType) {
+    constructor(folder: string, codecType: CodecType) {
         super();
         this.folder = folder;
-        this.codecType = eCodecType.lamport
+        this.codecType = CodecType.lamport
     }
 
-    public computeKeyPartsCount(sizeInEncodeUnits: number): number {
+    public computeKeySetsCount(sizeInEncodeUnits: number): number {
         return sizeInEncodeUnits * valuesPerUnit;
     }
 
-    public getKeyPartSatrtPosByUnitIndex(unitIndex: number): number {
+    public getKeySetsStartPosByUnitIndex(unitIndex: number): number {
         return unitIndex * valuesPerUnit * hashSize;
     }
 
-    public getKeyPartsLengthByDataSize(dataSizeInBytes: number, isDataEncoded: boolean = false): number {
+    public getKeySetsLengthByDataSize(dataSizeInBytes: number, isDataEncoded: boolean = false): number {
         if (isDataEncoded) return dataSizeInBytes * valuesPerUnit;
         return dataSizeInBytes * unitsInOneByte * hashSize * valuesPerUnit;
     }
@@ -88,7 +88,7 @@ export class Lamport extends CodecProvider {
         return result;
     }
 
-    public decodeBuffer(encoded: Buffer, unitIndex: number, pubKey: Buffer, cache: Buffer): iDecodeResult {
+    public decodeBuffer(encoded: Buffer, unitIndex: number, pubKey: Buffer, cache: Buffer): DecodeData | DecodeError | Decodeconflict {
         let resultData = Buffer.alloc(encoded.length / (hashSize * unitsInOneByte));
 
         let byteValue = 0;
@@ -148,7 +148,7 @@ export class Lamport extends CodecProvider {
     public generateEquivocationScript(bitcoin: Bitcoin, unitIndex: number) {
         const pubKey = readFromFile(this.folder,
             this.pubKeyFileName,
-            this.getKeyPartSatrtPosByUnitIndex(unitIndex),
+            this.getKeySetsStartPosByUnitIndex(unitIndex),
             valuesPerUnit * hashSize);
 
         const k0 = bufferToBigints256BE(Buffer.from(pubKey.subarray(0, hashSize)))[0];

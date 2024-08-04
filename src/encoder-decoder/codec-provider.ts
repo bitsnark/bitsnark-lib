@@ -1,24 +1,32 @@
 import { Bitcoin } from "../generator/step3/bitcoin";
 import { getcontrolBlock } from "./equivocation-tapnode";
 
-export enum eCodecType {
+export enum CodecType {
     lamport = 'lamport',
     winternitz32 = 'winternitz32',
     winternitz256 = 'winternitz256',
 }
 
-export interface iDecodeResult {
-    type: string;
-    data?: Buffer;
-    error?: string;
-    prv1?: Buffer;
-    prv2?: Buffer;
-    index?: number;
-    script?: Buffer
+
+
+
+export interface DecodeData {
+    data: Buffer;
+}
+export interface DecodeError {
+    error: string;
+}
+export interface Decodeconflict {
+    index: number;
+    prv1: Buffer;
+    prv2: Buffer;
+    script: Buffer
 }
 
+
+
 export abstract class CodecProvider {
-    abstract codecType: eCodecType;
+    abstract codecType: CodecType;
     abstract tmpInnerPubKey: Buffer
 
     abstract prvKeyFileName: string;
@@ -29,9 +37,9 @@ export abstract class CodecProvider {
     abstract valuesPerUnit: number;
     abstract prvToPubHashCount: number;
 
-    abstract computeKeyPartsCount(sizeInEncodeUnits: number): number;
-    abstract getKeyPartSatrtPosByUnitIndex(unitIndex: number): number;
-    abstract getKeyPartsLengthByDataSize(dataSizeInBytes: number, isDataEncoded?: boolean): number
+    abstract computeKeySetsCount(sizeInEncodeUnits: number): number;
+    abstract getKeySetsStartPosByUnitIndex(unitIndex: number): number;
+    abstract getKeySetsLengthByDataSize(dataSizeInBytes: number, isDataEncoded?: boolean): number
     abstract getCacheSectionStart(unitIndex: number): number;
     abstract getCacheSectionLength(encodedSizeInBytes: number): number;
     abstract calculateCacheSize(): number;
@@ -39,7 +47,7 @@ export abstract class CodecProvider {
 
     abstract encodeBit(b: number, indexInBits: number): Buffer | never
     abstract encodeBuffer(data: Buffer, prvKeyBuffer: Buffer): Buffer;
-    abstract decodeBuffer(encoded: Buffer, indexInUnits: number, pubKeyParts: Buffer, cache: Buffer): iDecodeResult;
+    abstract decodeBuffer(encoded: Buffer, indexInUnits: number, pubKeySets: Buffer, cache: Buffer): DecodeData | DecodeError | Decodeconflict;
 
     abstract generateEquivocationScript(bitcoin: Bitcoin, unitIndex: number): void;
 
@@ -52,9 +60,8 @@ export abstract class CodecProvider {
     }
 
 
-    protected returnDecodedConflict(iCache: Buffer, iEncoded: Buffer, despuitedIndex: number) {
-        const conflictData = {
-            type: 'conflict',
+    protected returnDecodedConflict(iCache: Buffer, iEncoded: Buffer, despuitedIndex: number): Decodeconflict {
+        return {
             prv1: Buffer.from(iCache),
             prv2: Buffer.from(iEncoded),
             index: despuitedIndex,
@@ -63,19 +70,16 @@ export abstract class CodecProvider {
                 this,
                 despuitedIndex)
         };
-        return conflictData;
     }
 
-    protected returnDecodedError(decodeError: string) {
+    protected returnDecodedError(decodeError: string): DecodeError {
         return {
-            type: 'error',
-            errorMessage: decodeError
+            error: decodeError
         };
     }
 
-    protected returnDecodedSuccess(resultData: Buffer) {
+    protected returnDecodedSuccess(resultData: Buffer): DecodeData {
         return {
-            type: 'success',
             data: resultData
         };
     }

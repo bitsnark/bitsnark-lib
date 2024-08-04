@@ -17,9 +17,9 @@ export abstract class TapNode {
     abstract getLeft(): TapNode;
     abstract getRight(): TapNode;
 
-    getHash(create: boolean = false): Buffer {
+    getHash(): Buffer {
         if (this.isLeaf()) {
-            const script = this.getScript(create);
+            const script = this.getScript();
             return getHash(script);
         } else {
             let left_h = this.getLeft()!.getHash();
@@ -138,7 +138,7 @@ function taprootTweakSecretKey(_seckey0: Buffer, h: Buffer) {
 
 // Given an internal public key and a tree of scripts, compute the output script.
 export function taprootOutputScript(internalPubkey: Buffer, scriptTree: TapNode): Buffer {
-    const h = scriptTree.getHash(true);
+    const h = scriptTree.getHash();
     const [_, output_pubkey] = taprootTweakPubkey(internalPubkey, h);
     return Buffer.concat([Buffer.from([0x51, 0x20]), output_pubkey]);
 }

@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { Codec } from "../../src/encoder-decoder/codec";
-import { eCodecType, iDecodeResult } from "../../src/encoder-decoder/codec-provider";
+import { CodecType, DecodeData, DecodeError, Decodeconflict } from "../../src/encoder-decoder/codec-provider";
 import { isFileExists, deleteDir, getFileSizeBytes, readFromFile } from "../../src/encoder-decoder/files-utils";
 
 const dataBuffer = Buffer.from([0x01, 0x13, 0x14, 0x05]);
@@ -16,11 +16,11 @@ const unitsInOneByte = 8;
 function getDataBufferToEncode(data: Buffer, byteIndex: number, length: number): Buffer {
     return Buffer.from(data.subarray(byteIndex, byteIndex + length));
 }
-function getDataBitToEncode(data: Buffer, index: number): number {
+function getDataBitToEncode(data: Buffer, index: number): 0 | 1 {
     // return the index bit value of the buffer. the first bit in a byte is the LSB.
     const byteIndex = Math.floor(index / 8);
     const bitIndex = index % 8;
-    return (data[byteIndex] >> bitIndex) & 1;
+    return ((data[byteIndex] >> bitIndex) & 1) as 0 | 1;
 }
 
 
@@ -31,18 +31,14 @@ describe(`Test sequence for Lamport signature`, () => {
         deleteDir(folder);
     });
 
-    //const lamportHandler = new Lamport(folder);
-    const lamportCodec = new Codec(folder, eCodecType.lamport)
+    const lamportCodec = new Codec(folder, CodecType.lamport)
 
-    it('Create Codec class instance - eCodecType.lamport', () => {
-        // expect(lamportHandler).toBeInstanceOf(Lamport);
+    it('Create Codec class instance - CodecType.lamport', () => {
         expect(lamportCodec).toBeInstanceOf(Codec);
     });
 
     let equivocationTaproot: Buffer;
     it('Generate keys - returning public & private keys location & equivocationMerkleRoot', () => {
-        //equivocationTaproot = lamportHandler.generateKeys(dataBuffer.length * unitsInOneByte);
-        //console.log(equivocationTaproot);
         const taproot = lamportCodec.generateKeys(dataBuffer.length * unitsInOneByte);
         expect(Buffer.from(taproot).length).toBe(34);
     });
@@ -73,11 +69,6 @@ describe(`Test sequence for Lamport signature`, () => {
     });
 
 
-    // it(`Validate merkle root`, () => {
-    //     let recalculate = lamportHandler.getEquivocationTaproot()
-    //     expect(recalculate.compare(equivocationTaproot) === 0).toBe(true);
-    // });
-
     it('Throw an error on a second attempt to generate keys for the same folder', () => {
         expect(() => { lamportCodec.generateKeys(dataBuffer.length * 8); }).toThrow();
     });
@@ -85,16 +76,17 @@ describe(`Test sequence for Lamport signature`, () => {
     const dataToEncode = getDataBufferToEncode(dataBuffer, 1, 2);
 
     let encoded: Buffer;
-    it('Encode: recive 2 bytes of data, return 2 * 32 * 8 (hash * unitsInOneByte) = 512 encoded', () => {
+    it('Encode: receive 2 bytes of data, return 2 * 32 * 8 (hash * unitsInOneByte) = 512 encoded', () => {
         encoded = lamportCodec.encodeBuffer(dataToEncode, 8);
         expect(encoded.length).toBe(2 * hashSize * unitsInOneByte);
     });
 
-    let decoded: iDecodeResult;
+    let decoded: DecodeData | DecodeError | Decodeconflict;
     it(`Decode: data was decoded`, () => {
         decoded = lamportCodec.decodeBuffer(encoded, 8);
-        expect(decoded.type === 'success');
-        expect(Buffer.from(decoded.data || '').compare(dataToEncode)).toBe(0)
+        expect(decoded).toBeDefined();
+        expect('data' in decoded).toBe(true);
+        expect('data' in decoded && Buffer.from(decoded.data || '').compare(dataToEncode)).toBe(0)
     });
 
     it(`Check that a cache file was added ${folder}`, () => {
@@ -106,27 +98,34 @@ describe(`Test sequence for Lamport signature`, () => {
     });
 
 
-    // it('Encode: one bit 3', () => {
-    //     encoded = lamportHandler.encodeBit(getDataBitToEncode(dataBuffer, 3), 3);
-    //     expect(encoded.length).toBe(hashSize);
-    // });
+    it('Encode: one bit 3', () => {
+        encoded = lamportCodec.encodeBit(getDataBitToEncode(dataBuffer, 3), 3);
+        expect(encoded.length).toBe(hashSize);
+    });
 
 
-    // it(`Decode: bit was decoded`, () => {
-    //     decoded = lamportHandler.decodeBuffer(encoded, 3, equivocationTaproot);
-    //     expect(decoded.success === 'success');
-    //     expect(decoded.data.length).toBe(1);
-    //     expect(parseInt(decoded.data[0])).toBe(getDataBitToEncode(dataBuffer, 3));
-    // });
+    it(`Decode: bit was decoded`, () => {
+        decoded = lamportCodec.decodeBuffer(encoded, 3);
+        expect(decoded).toBeDefined();
+        expect('data' in decoded).toBe(true);
+        if ('data' in decoded) {
+            expect(decoded.data.length).toBe(1);
+            expect((decoded.data[0])).toBe(getDataBitToEncode(dataBuffer, 3));
+        }
+    });
 
     it('Decode: if CONFLICT return equivocationMerkleRoot, prvkey1, prvkey2', () => {
         dataBuffer[1] = 0x12; //change in bit no 8 - create conflict
         const tmp = lamportCodec.encodeBuffer(getDataBufferToEncode(dataBuffer, 1, 2), 8);
         decoded = lamportCodec.decodeBuffer(tmp, 8);
-        expect(decoded.type === 'conflict');
-        expect(decoded.prv1?.length).toBe(hashSize);
-        expect(decoded.prv2?.length).toBe(hashSize);
-        expect(decoded.prv2 && decoded.prv1?.compare(decoded.prv2) === 0).toBe(false);
+        expect(decoded).toBeDefined();
+        expect('prv1' in decoded).toBe(true);
+        expect('prv2' in decoded).toBe(true);
+        expect('index' in decoded).toBe(true);
+        expect('script' in decoded).toBe(true);
+        if ('prv1' in decoded && 'prv2' in decoded) {
+            expect(decoded.prv2 && decoded.prv1?.compare(decoded.prv2) === 0).toBe(false);
+        }
 
     });
 
@@ -135,10 +134,14 @@ describe(`Test sequence for Lamport signature`, () => {
         const tmp = lamportCodec.encodeBuffer(getDataBufferToEncode(dataBuffer, 0, 2), 0);
         tmp[0] = tmp[0] + 1; // chenge encode v- create undeocable
         decoded = lamportCodec.decodeBuffer(tmp, 0);
-        expect(decoded.type === 'conflict');
-        expect(decoded.prv1?.length).toBe(hashSize);
-        expect(decoded.prv2?.length).toBe(hashSize);
-        expect(decoded.prv2 && decoded.prv1?.compare(decoded.prv2) === 0).toBe(false);
+        expect(decoded).toBeDefined();
+        expect('prv1' in decoded).toBe(true);
+        expect('prv2' in decoded).toBe(true);
+        expect('index' in decoded).toBe(true);
+        expect('script' in decoded).toBe(true);
+        if ('prv1' in decoded && 'prv2' in decoded) {
+            expect(decoded.prv2 && decoded.prv1?.compare(decoded.prv2) === 0).toBe(false);
+        }
     });
 
 

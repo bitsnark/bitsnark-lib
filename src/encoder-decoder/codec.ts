@@ -3,7 +3,7 @@ import { Lamport } from "./lamport";
 import { Winternitz } from "./winternitz";
 import { createFolder, isFileExists, readFromFile, writeToFile } from "./files-utils";
 import { createHash, randomBytes } from "node:crypto";
-import { CodecProvider, eCodecType, iDecodeResult } from "./codec-provider";
+import { CodecProvider, CodecType, DecodeData, DecodeError, Decodeconflict } from "./codec-provider";
 import { EquivocationTapNode, getcontrolBlock, makeEquivocationTaproot } from "./equivocation-tapnode";
 import { taprootOutputScript } from "../generator/taproot/taproot";
 
@@ -17,12 +17,12 @@ export class Codec {
     private folder: string;
     private provider: CodecProvider;
 
-    constructor(folder: string, codecType: eCodecType) {
+    constructor(folder: string, codecType: CodecType) {
         this.folder = folder;
-        if (codecType === eCodecType.lamport) {
-            this.provider = new Lamport(this.folder, eCodecType.lamport);
+        if (codecType === CodecType.lamport) {
+            this.provider = new Lamport(this.folder, CodecType.lamport);
         }
-        else if (codecType === eCodecType.winternitz32 || codecType === eCodecType.winternitz256) {
+        else if (codecType === CodecType.winternitz32 || codecType === CodecType.winternitz256) {
             this.provider = new Winternitz(this.folder, codecType);
         }
         else {
@@ -36,7 +36,7 @@ export class Codec {
 
         createFolder(folder, true);
 
-        const totalUnits = provider.computeKeyPartsCount(sizeInEncodeUnits)
+        const totalUnits = provider.computeKeySetsCount(sizeInEncodeUnits)
 
         for (let i = 0; i < totalUnits; i++) {
             const secretKeyBuffer = randomBytes(hashSize);
@@ -58,12 +58,12 @@ export class Codec {
     public encodeBuffer(data: Buffer, indexInUnits: number) {
         const provider = this.provider;
 
-        const prvKeyParts = readFromFile(this.folder,
+        const prvKeySets = readFromFile(this.folder,
             provider.prvKeyFileName,
-            provider.getKeyPartSatrtPosByUnitIndex(indexInUnits),
-            provider.getKeyPartsLengthByDataSize(data.length));
+            provider.getKeySetsStartPosByUnitIndex(indexInUnits),
+            provider.getKeySetsLengthByDataSize(data.length));
 
-        return provider.encodeBuffer(data, prvKeyParts);
+        return provider.encodeBuffer(data, prvKeySets);
     }
 
     private initCacheFile() {
@@ -79,7 +79,7 @@ export class Codec {
         }
     }
 
-    public decodeBuffer(encoded: Buffer, indexInUnits: number): iDecodeResult {
+    public decodeBuffer(encoded: Buffer, indexInUnits: number): DecodeData | DecodeError | Decodeconflict {
         const provider = this.provider;
         const folder = this.folder;
 
@@ -89,10 +89,10 @@ export class Codec {
 
         this.initCacheFile();
 
-        const pubKeyParts = readFromFile(folder,
+        const pubKeySets = readFromFile(folder,
             provider.pubKeyFileName,
-            provider.getKeyPartSatrtPosByUnitIndex(indexInUnits),
-            provider.getKeyPartsLengthByDataSize(encoded.length, true));
+            provider.getKeySetsStartPosByUnitIndex(indexInUnits),
+            provider.getKeySetsLengthByDataSize(encoded.length, true));
 
 
         const cache = readFromFile(folder,
@@ -100,6 +100,6 @@ export class Codec {
             provider.getCacheSectionStart(indexInUnits),
             provider.getCacheSectionLength(encoded.length));
 
-        return provider.decodeBuffer(encoded, indexInUnits, pubKeyParts, cache);
+        return provider.decodeBuffer(encoded, indexInUnits, pubKeySets, cache);
     }
 }

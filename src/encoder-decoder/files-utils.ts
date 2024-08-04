@@ -37,13 +37,13 @@ export function fillFile(folder: string, fileName: string, buffer: Buffer, flag:
     fs.writeFileSync(writeTo, buffer, { encoding: encoding, flag: flag });
 }
 
-export function readFromFile(folder: string, fileName: string, chunkStart: number = 0, chunckSize: number): Buffer {
+export function readFromFile(folder: string, fileName: string, chunkStart: number = 0, chunkSize: number): Buffer {
     let fd: number | undefined;
     try {
         const readFrom = path.join(process.cwd(), `${generatedDataDir}/${folder}/${fileName}`);
         fd = fs.openSync(readFrom, 'r');
-        const buffer = Buffer.alloc(chunckSize);
-        fs.readSync(fd, buffer, 0, chunckSize, chunkStart);
+        const buffer = Buffer.alloc(chunkSize);
+        fs.readSync(fd, buffer, 0, chunkSize, chunkStart);
         return buffer;
     }
     catch (err: any) {
