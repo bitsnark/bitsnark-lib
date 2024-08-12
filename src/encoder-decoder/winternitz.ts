@@ -202,7 +202,6 @@ export class Winternitz extends CodecProvider {
         const kArr: bigint[] = [];
         for (let i = 0; i < this.hashsInUnit; i++) {
             kArr.push(bufferToBigints256BE(pubKey.subarray(i * hashSize, i * hashSize + hashSize))[0]);
-            console.log('equivocation', i, kArr[kArr.length - 1]);
         }
 
         const wArr = Array.from({ length: this.hashsInUnit }, () => bitcoin.addWitness(0n));
@@ -210,8 +209,7 @@ export class Winternitz extends CodecProvider {
         if (this.codecType === CodecType.winternitz32)
             bitcoin.winternitzEquivocation32(decodedItems, wArr, wArr, kArr);
         else if (this.codecType === CodecType.winternitz256)
-            bitcoin.winternitzEquivocation32(decodedItems, wArr, wArr, kArr);
-
+            bitcoin.winternitzEquivocation256(decodedItems, wArr, wArr, kArr);
     }
 
 

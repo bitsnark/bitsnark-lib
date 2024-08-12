@@ -1,7 +1,5 @@
-import { Winternitz } from "../../src/encoder-decoder/winternitz";
-import { makeLamportEquivocationTaproot } from "../../src/generator/taproot/lamport-equivocation";
 import { TapNode, taprootControlBlock, taprootOutputScript } from "../../src/generator/taproot/taproot";
-import { makeWinternitzEquivocationTaproot } from "../../src/generator/taproot/winternitz-equivocation";
+
 
 const testVectors = require('./test-vectors.json');
 
