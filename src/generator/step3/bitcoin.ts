@@ -1119,6 +1119,10 @@ export class Bitcoin {
         }
     }
 
+    checkTimeout(publicKey: bigint, blocks: number) {
+        
+    }
+
     /***  META ***/
 
     programSizeInBitcoinBytes(): number {
