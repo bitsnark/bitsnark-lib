@@ -1,7 +1,8 @@
+import { bigintToString, stringToBigint } from "./common";
 
 
 type MessageType = 'start' | 'join' | 'txkeys' | 'txbody' | 'cosign' | 'error';
-type EncodingKeys = string[] | string[][];
+type EncodingKeys = bigint[] | bigint[][];
 
 function _assign(target: any, from: any) {
     if (!from) return;
@@ -17,8 +18,12 @@ export class StartMessage {
     schnorrPublicKey: string = '';
     signature?: string = '';
 
-    constructor(obj?: any) {
+    constructor(obj?: Partial<StartMessage>) {
         _assign(this, obj);
+    }
+
+    toJSON() {
+
     }
 }
 
@@ -29,7 +34,7 @@ export class JoinMessage {
     schnorrPublicKey: string = '';
     signature?: string;
 
-    constructor(obj?: any) {
+    constructor(obj?: Partial<JoinMessage>) {
         _assign(this, obj);
     }
 }
@@ -42,7 +47,7 @@ export class TxKeysMessage {
     publicKeys: EncodingKeys = [];
     taproot: string = '';
 
-    constructor(obj?: any) {
+    constructor(obj?: Partial<TxKeysMessage>) {
         _assign(this, obj);
     }
 }
@@ -54,6 +59,10 @@ export class TxBodyMessage {
     transactionDescriptor: string = '';
     transactionHash: string = '';
     signature: string = '';
+
+    constructor(obj?: Partial<TxBodyMessage>) {
+        _assign(this, obj);
+    }
 }
 
 export class CosignTxMessage {
@@ -62,6 +71,10 @@ export class CosignTxMessage {
     agentId: string = '';
     transactionDescriptor: string = '';
     signature: string = '';
+
+    constructor(obj?: Partial<CosignTxMessage>) {
+        _assign(this, obj);
+    }
 }
 
 export class ErrorMessage {
@@ -69,6 +82,10 @@ export class ErrorMessage {
     setupId: string = '';
     agentId: string = '';
     error: string = '';
+
+    constructor(obj?: Partial<ErrorMessage>) {
+        _assign(this, obj);
+    }
 }
 
 const typeToClass = {
@@ -88,7 +105,19 @@ export function fromJson(json: any): Message {
     const m = new t();
     Object.keys(m).forEach(k => {
         if (m[k] && !json[k]) throw new Error('Value expected');
-        m[k] = json[k];
+        if (json[k].startsWith && json[k].startsWith('BIGINT:')) {
+            const s = json[k] as string;
+            m[k] = BigInt(s.replace('BIGINT:', '0x'));
+        } else {
+            m[k] = json[k];
+        }
     });
     return m;
+}
+
+export function toJSON(message: Message): any {
+    const json = JSON.stringify(message, (key, value) =>
+        typeof value === "bigint" ? value.toString() + "n" : value
+    );
+    return json;
 }

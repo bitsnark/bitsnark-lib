@@ -1,5 +1,5 @@
-import { bufferToBigints256BE } from "../../encoding/encoding";
-import { decodeWinternitz256, encodeWinternitz256, getWinternitzPublicKeys256 } from "../../encoding/winternitz";
+import { bufferToBigints256BE, padHex } from "../encoding/encoding";
+import { decodeWinternitz256, encodeWinternitz256, getWinternitzPublicKeys256 } from "../encoding/winternitz";
 
 export enum ProtocolStep {
     INITIAL = 'INITIAL',
@@ -31,6 +31,27 @@ const numToStep = [
 export enum ProtocolRole {
     PAT = 'PAT',
     VIC = 'VIC'
+}
+
+
+export interface TransactionInfo {
+    taprootAddress: Buffer,
+    scripts: Buffer[],
+    controlBlocks: Buffer[],
+    publicKeys: bigint[] | bigint[][]
+}
+
+export interface ScriptAndKeys {
+    script: Buffer,
+    publicKeys: bigint[] | bigint[][]
+}
+
+export function bigintToString(n: bigint): string {
+    return n.toString(16);
+}
+
+export function stringToBigint(s: string): bigint {
+    return BigInt('0x' + s);
 }
 
 export function getEncodingIndexForPat(step: ProtocolStep, iteration: number, registerIndex: number): number {

@@ -1,11 +1,12 @@
-import { fromJson, JoinMessage, Message, StartMessage, TxKeysMessage } from "./messages";
+import { agentConf } from "../../agent.conf";
+import { stringToBigint } from "./common";
+import { fromJson, JoinMessage, StartMessage, TxKeysMessage } from "./messages";
 import { createInitialTx } from "./steps/initial";
-import { telegramConf } from '../../agent.conf';
 import { SimpleContext, TelegramBot } from "./telegram";
 
 interface AgentInfo {
     agentId: string;
-    schnorrPublicKey: string;
+    schnorrPublicKey: bigint;
 }
 
 class SetupInstance {
@@ -33,7 +34,7 @@ export class Agent {
     constructor(agentId: string, role: AgentRoles) {
         this.agentId = agentId;
         this.role = role;
-        this.schnorrPublicKey = (telegramConf.keyPairs as any)[this.agentId].public;
+        this.schnorrPublicKey = (agentConf.keyPairs as any)[this.agentId].public;
         this.bot = new TelegramBot(agentId, this);
     }
 
@@ -74,7 +75,7 @@ export class Agent {
         const i = this.getOrCreateInstance(setupId);
         i.agents.push({
             agentId: this.agentId,
-            schnorrPublicKey: this.schnorrPublicKey
+            schnorrPublicKey: stringToBigint(this.schnorrPublicKey)
         });
         const msg = new StartMessage({
             setupId,
@@ -88,7 +89,7 @@ export class Agent {
         const i = this.getOrCreateInstance(message.setupId);
         i.agents.push({
             agentId: message.agentId,
-            schnorrPublicKey: message.schnorrPublicKey
+            schnorrPublicKey: stringToBigint(message.schnorrPublicKey)
         });
         const reply = new JoinMessage({
             setupId: message.setupId,
@@ -103,16 +104,16 @@ export class Agent {
         if (i.agents.some(t => t.agentId == message.agentId)) throw new Error('Agent already registered');
         i.agents.push({
             agentId: message.agentId,
-            schnorrPublicKey: message.schnorrPublicKey
+            schnorrPublicKey: stringToBigint(message.schnorrPublicKey)
         });
         if (i.agents.length == 2) {
-            const initialTx = createInitialTx(i.agents.map(a => a.schnorrPublicKey));
+            const initialTx = createInitialTx(i.agents[0].schnorrPublicKey, i.agents[1].schnorrPublicKey);
             const reply = new TxKeysMessage({
                 setupId: message.setupId,
                 agentId: this.agentId,
-                transactionDescs: '01_PAT_INITIAL',
+                transactionDescriptor: '01_PAT_INITIAL',
                 publicKeys: initialTx.publicKeys,
-                taproot: initialTx.taproot
+                taproot: initialTx.taprootAddress.toString('hex')
             });
             ctx.send(reply);
         }

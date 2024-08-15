@@ -1,7 +1,7 @@
 
 import { Context, NarrowedContext, Telegraf } from 'telegraf';
 import { channelPost, message } from 'telegraf/filters';
-import { telegramConf } from '../../agent.conf';
+import { agentConf } from '../../agent.conf';
 import { fromJson } from './messages';
 import axios from 'axios';
 import { Message, Update } from 'telegraf/typings/core/types/typegram';
@@ -38,7 +38,7 @@ export class TelegramBot {
 
     constructor(agentId: string, client: ITelegramClient) {
         this.agentId = agentId;
-        this.token = (telegramConf.tokens as any)[agentId];
+        this.token = (agentConf.tokens as any)[agentId];
         this.bot = new Telegraf(this.token);
         this.client = client;
 
