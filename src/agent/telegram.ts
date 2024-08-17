@@ -2,10 +2,10 @@
 import { Context, NarrowedContext, Telegraf } from 'telegraf';
 import { channelPost, message } from 'telegraf/filters';
 import { agentConf } from '../../agent.conf';
-import { fromJson } from './messages';
 import axios from 'axios';
 import { Message, Update } from 'telegraf/typings/core/types/typegram';
 import { KeyedDistinct } from 'telegraf/typings/core/helpers/util';
+import { toJson } from './messages';
 
 type TelegrafContext = NarrowedContext<Context<Update>, Update.ChannelPostUpdate<KeyedDistinct<Message, never>>>;
 
@@ -17,11 +17,14 @@ export class SimpleContext {
     }
 
     send(data: any) {
-        const text = typeof(data) == 'string' ? data : JSON.stringify(data);
+        const text = toJson(data);
         if (text.length < 10 * 1024) {
             this.ctx.reply(text);
         } else {
-            this.ctx.sendDocument({ source: Buffer.from(text, 'ascii') });
+            this.ctx.sendDocument({ 
+                source: Buffer.from(text, 'ascii'),
+                filename: `${data.constructor.name}.txt`
+            });
         }
     }
 }

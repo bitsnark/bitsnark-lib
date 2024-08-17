@@ -63,11 +63,13 @@ export class Agent {
             ctx.send(`Wait...`);
 
         } else if (data.trim().startsWith('{') && data.trim().endsWith('}')) {
-            const message = fromJson(JSON.parse(data));
+
+            const message = fromJson(data);
             if (message.agentId == this.agentId) return;
             const f = (this as any)[`on_${message.messageType}`];
             if (!f) throw new Error('Invalid dispatch');
             f.apply(this, [ ctx, message ]);
+
         }
     }
 
@@ -122,7 +124,7 @@ export class Agent {
 
 console.log('Starting...');
 
-const agentId = process.argv[2];
+const agentId = process.argv[2] ?? 'bitsnark_prover_1';
 const role = agentId.indexOf('prover') >= 0 ? AgentRoles.PROVER : AgentRoles.VERIFIER;
 
 const agent = new Agent(agentId, role);

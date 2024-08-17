@@ -1,5 +1,3 @@
-import { bigintToString, stringToBigint } from "./common";
-
 
 type MessageType = 'start' | 'join' | 'txkeys' | 'txbody' | 'cosign' | 'error';
 type EncodingKeys = bigint[] | bigint[][];
@@ -20,10 +18,6 @@ export class StartMessage {
 
     constructor(obj?: Partial<StartMessage>) {
         _assign(this, obj);
-    }
-
-    toJSON() {
-
     }
 }
 
@@ -99,25 +93,23 @@ const typeToClass = {
 
 export type Message = StartMessage | TxKeysMessage | TxBodyMessage | CosignTxMessage | ErrorMessage;
 
-export function fromJson(json: any): Message {
-    const t = (typeToClass as any)[json.messageType];
+export function fromJson(json: string): Message {
+    const obj = JSON.parse(json, (key, value) =>
+        typeof value === 'string' && value.startsWith('0x') ?
+            BigInt(value) : value);
+    const t = (typeToClass as any)[obj.messageType];
     if (!t) throw new Error('Invalid message type');
     const m = new t();
     Object.keys(m).forEach(k => {
-        if (m[k] && !json[k]) throw new Error('Value expected');
-        if (json[k].startsWith && json[k].startsWith('BIGINT:')) {
-            const s = json[k] as string;
-            m[k] = BigInt(s.replace('BIGINT:', '0x'));
-        } else {
-            m[k] = json[k];
-        }
+        if (m[k] && !obj[k]) throw new Error('Value expected');
+        m[k] = obj[k];
     });
     return m;
 }
 
-export function toJSON(message: Message): any {
+export function toJson(message: Message): string {
     const json = JSON.stringify(message, (key, value) =>
-        typeof value === "bigint" ? value.toString() + "n" : value
+        typeof value === "bigint" ? `0x${value.toString(16)}` : value
     );
     return json;
 }
