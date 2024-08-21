@@ -51,6 +51,6 @@ export function createInitialTx(proverPublicKey: bigint, verifierPublicKey: bigi
         scripts,
         taprootAddress: stt.getAddress(),
         controlBlocks: [ stt.getControlBlock(0), stt.getControlBlock(1) ],
-        publicKeys: initialScriptAndKeys.publicKeys
+        wotsPublicKeys: initialScriptAndKeys.publicKeys
     };
 }

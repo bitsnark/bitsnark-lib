@@ -38,7 +38,7 @@ export interface TransactionInfo {
     taprootAddress: Buffer,
     scripts: Buffer[],
     controlBlocks: Buffer[],
-    publicKeys: bigint[] | bigint[][]
+    wotsPublicKeys: bigint[] | bigint[][]
 }
 
 export interface ScriptAndKeys {

@@ -38,23 +38,12 @@ export class TxKeysMessage {
     setupId: string = '';
     agentId: string = '';
     transactionDescriptor: string = '';
-    publicKeys: EncodingKeys = [];
+    wotsPublicKeys: EncodingKeys = [];
     taproot: string = '';
+    transactionHash: string = '';
+    transactionSignature: string = '';
 
     constructor(obj?: Partial<TxKeysMessage>) {
-        _assign(this, obj);
-    }
-}
-
-export class TxBodyMessage {
-    messageType: MessageType = 'txbody';
-    setupId: string = '';
-    agentId: string = '';
-    transactionDescriptor: string = '';
-    transactionHash: string = '';
-    signature: string = '';
-
-    constructor(obj?: Partial<TxBodyMessage>) {
         _assign(this, obj);
     }
 }
@@ -63,8 +52,9 @@ export class CosignTxMessage {
     messageType: MessageType = 'cosign';
     setupId: string = '';
     agentId: string = '';
+    transactionHash: string = '';
     transactionDescriptor: string = '';
-    signature: string = '';
+    transactionSignature: string = '';
 
     constructor(obj?: Partial<CosignTxMessage>) {
         _assign(this, obj);
@@ -86,12 +76,11 @@ const typeToClass = {
     'start': StartMessage,
     'join': JoinMessage,
     'txkeys': TxKeysMessage,
-    'txbody': TxBodyMessage,
     'cosign': CosignTxMessage,
     'error': ErrorMessage
 }
 
-export type Message = StartMessage | TxKeysMessage | TxBodyMessage | CosignTxMessage | ErrorMessage;
+export type Message = StartMessage | TxKeysMessage | CosignTxMessage | ErrorMessage;
 
 export function fromJson(json: string): Message {
     const obj = JSON.parse(json, (key, value) =>
