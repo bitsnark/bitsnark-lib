@@ -46,12 +46,12 @@ export class Bitcoin {
 
     newStackItem(value?: bigint, dataSizeInBytes?: number): StackItem {
         value = value ?? 0n;
-        if (value < 0 || value > 16 && !dataSizeInBytes) 
+        if (value < 0 || value > 16 && !dataSizeInBytes)
             throw new Error('Invalid value');
         if (dataSizeInBytes && dataSizeInBytes != 1 && dataSizeInBytes != 4 && dataSizeInBytes != 32) throw new Error('Invalid value');
         const si = this.DATA(value, dataSizeInBytes);
         this.maxStack = Math.max(this.maxStack, this.stack.items.length);
-        if (this.stack.items.length + this.altStack.length > 1000) 
+        if (this.stack.items.length + this.altStack.length > 1000)
             throw new Error('Stack too big');
         return si;
     }
@@ -754,14 +754,14 @@ export class Bitcoin {
         for (let i = 0; i < a.stackItems.length; i++) {
             if (i == 0) this.assertOne(a.stackItems[i]);
             else this.assertZero(a.stackItems[i]);
-        }        
+        }
     }
 
     step2_assertOneNibbles(nibbles: StackItem[]) {
         for (let i = 0; i < nibbles.length; i++) {
             if (i == 0) this.assertOne(nibbles[i]);
             else this.assertZero(nibbles[i]);
-        }        
+        }
     }
 
     /***  Witness decoding ***/
@@ -953,8 +953,14 @@ export class Bitcoin {
         this.winternitzDecode32(target, witnessB, publicKeys);
     }
 
-    winternitzCheck256(witness: StackItem[], publicKeys: bigint[]) {
+    winternitzEquivocation256(target: StackItem[], witnessA: StackItem[], witnessB: StackItem[], publicKeys: bigint[]) {
+        //devide the witness in two 14 items arrays
+        this.assertNotEqualMany(witnessA, witnessB);
+        this.winternitzDecode256(target, witnessA, publicKeys);
+        this.winternitzDecode256(target, witnessB, publicKeys);
+    }
 
+    winternitzCheck256(witness: StackItem[], publicKeys: bigint[]) {
         const totalNibbles = 90;
         const temp = this.newStackItem(0n);
         const checksumNibbles: StackItem[] = [];

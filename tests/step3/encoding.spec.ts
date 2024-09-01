@@ -1,6 +1,6 @@
+import { Codec } from "../../src/encoder-decoder/codec";
+import { CodecType } from "../../src/encoder-decoder/codec-provider";
 import { deleteDir } from "../../src/encoder-decoder/files-utils";
-import { Lamport } from "../../src/encoder-decoder/lamport";
-import { Winternitz } from "../../src/encoder-decoder/winternitz";
 import { bigintToBufferBE, bitsToBigint, bufferToBigints256BE, bufferToBigintsBE, hash, Key, nibblesToBigint, strToBigint } from "../../src/encoding/encoding";
 import { Bitcoin } from "../../src/generator/step3/bitcoin";
 import { StackItem } from "../../src/generator/step3/stack";
@@ -11,22 +11,23 @@ const testData256Bits = strToBigint('TESTING1TESTING2TESTING3TESTING4');
 
 function generatLamport(folder: string, bits: number) {
     deleteDir(folder);
-    const lamport = new Lamport(folder);
+    const lamport = new Codec(folder, CodecType.lamport);
     lamport.generateKeys(bits);
     return lamport;
 }
 
-function generatWinternitz(folder: string) {
-    deleteDir(folder);
-    const winternitz = new Winternitz(folder);
-    winternitz.generateKeys(1, 1);
+function generatWinternitz(codecType: CodecType) {
+    deleteDir(codecType as string);
+    const winternitz = new Codec(codecType as string, codecType);
+    winternitz.generateKeys(1);
     return winternitz;
 }
 
 describe("encoding schemes", function () {
     let bitcoin: Bitcoin;
-    let lamport: Lamport;
-    let winternitz: Winternitz;
+    let lamport: Codec;
+    let winternitz32: Codec;
+    let winternitz256: Codec;
     let encoded;
     let witness: StackItem[];
     let decodedItems: StackItem[];
@@ -41,8 +42,8 @@ describe("encoding schemes", function () {
 
             lamport = generatLamport('lamport32', 32);
             const buffer = bigintToBufferBE(testData32Bits, 4);
-            const { pubk, encodedData } = lamport.encodeBufferAddPublic(buffer, 0);
-            encoded = encodedData;
+            encoded = lamport.encodeBuffer(buffer, 0);
+            const pubk = lamport.getPubKeyForEncoded(encoded, 0);
 
             witness = bufferToBigints256BE(encoded).map(n => bitcoin.addWitness(n));
             const allKeysBn = bufferToBigints256BE(pubk);
@@ -91,10 +92,14 @@ describe("encoding schemes", function () {
 
         beforeEach(() => {
             bitcoin = new Bitcoin();
-            winternitz = generatWinternitz('winternitz32');
+            winternitz32 = generatWinternitz(CodecType.winternitz32);
             const buffer = bigintToBufferBE(testData32Bits, 4);
-            const { encodedData, pubk } = winternitz.encodeBuffer4AddPublic(buffer, 0);
-            encoded = encodedData;
+            console.log('data to encode 32 length', buffer.length);
+
+            encoded = winternitz32.encodeBuffer(buffer, 0);
+            console.log('encoded 32 length', encoded.length);
+
+            const pubk = winternitz32.getPubKeyForEncoded(encoded, 0);
             witness = bufferToBigints256BE(encoded).map(n => bitcoin.addWitness(n));
 
             keyItems = [];
@@ -133,10 +138,13 @@ describe("encoding schemes", function () {
 
         beforeEach(() => {
             bitcoin = new Bitcoin();
-            winternitz = generatWinternitz('winternitz256');
+            winternitz256 = generatWinternitz(CodecType.winternitz256);
             const buffer = bigintToBufferBE(testData256Bits, 32);
-            const { encodedData, pubk } = winternitz.encodeBuffer32AddPublic(buffer, 0);
-            encoded = encodedData;
+            console.log('data to encode 256 length', buffer.length);
+            encoded = winternitz256.encodeBuffer(buffer, 0);
+            console.log('encoded 256 length', encoded.length);
+            const pubk = winternitz256.getPubKeyForEncoded(encoded, 0);
+
             witness = bufferToBigints256BE(encoded).map(n => bitcoin.addWitness(n));
 
             keyItems = [];
