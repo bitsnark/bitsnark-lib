@@ -49,12 +49,12 @@ export interface TransactionInfo {
     taprootAddress: Buffer,
     scripts: Buffer[],
     controlBlocks: Buffer[],
-    wotsPublicKeys: bigint[] | bigint[][]
+    wotsPublicKeys: bigint[]
 }
 
 export interface ScriptAndKeys {
     script: Buffer,
-    publicKeys: bigint[] | bigint[][]
+    wotsPublicKeys: bigint[]
 }
 
 export function bigintToString(n: bigint): string {
