@@ -1,6 +1,5 @@
 import { TapNode, taprootControlBlock, taprootOutputScript } from "../../src/generator/taproot/taproot";
 
-
 const testVectors = require('./test-vectors.json');
 
 class TestNode extends TapNode {
