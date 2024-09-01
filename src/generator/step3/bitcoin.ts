@@ -337,6 +337,16 @@ export class Bitcoin {
         this.stack.newItem(BigInt('0x' + h));
     }
 
+    OP_CHECKSIGVERIFY() {
+        this.opcodes.push({ op: OpcodeType.OP_CHECKSIGVERIFY });
+        this.stack.items.pop()!;
+        this.stack.items.pop()!;
+    }
+
+    OP_CHECKSEQUENCEVERIFY() {
+        this.opcodes.push({ op: OpcodeType.OP_CHECKSEQUENCEVERIFY });
+    }
+
     /// Complex operations ///
 
     roll(si: StackItem) {
@@ -1123,6 +1133,18 @@ export class Bitcoin {
             if (searchPath[i] == 1) this.assertOne(temp);
             else this.assertZero(temp);
         }
+    }
+
+    verifySignature(publicKey: bigint) {
+        this.addWitness(0n);
+        this.DATA(publicKey, 32);
+        this.OP_CHECKSIGVERIFY();
+    }
+
+    checkTimeout(blocks: number) {
+        this.DATA(BigInt(blocks), 3);
+        this.OP_CHECKSEQUENCEVERIFY();
+        this.OP_DROP();
     }
 
     /***  META ***/

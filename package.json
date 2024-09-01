@@ -50,6 +50,8 @@
     }
   },
   "dependencies": {
+    "@bitauth/libauth": "^3.0.0",
+    "axios": "^1.7.4",
     "bigint-isqrt": "^0.3.2",
     "bitcoin-core": "^4.2.0",
     "bitcoinjs-lib": "^6.1.6",
@@ -58,6 +60,7 @@
     "ecpair": "^2.1.0",
     "sitka": "^1.1.1",
     "snarkjs": "^0.7.4",
+    "telegraf": "^4.16.3",
     "tiny-secp256k1": "^2.2.3",
     "websnark": "git+https://github.com/tornadocash/websnark.git#4c0af6a8b65aabea3c09f377f63c44e7a58afa6d"
   }
