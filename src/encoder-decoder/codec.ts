@@ -62,6 +62,16 @@ export class Codec {
         return provider.encodeBuffer(data, prvKeySets);
     }
 
+    public getPubKeyForEncoded(encoded: Buffer, indexInUnits: number) {
+        const provider = this.provider;
+
+        return readFromFile(this.folder,
+            provider.pubKeyFileName,
+            provider.getKeySetsStartPosByUnitIndex(indexInUnits),
+            provider.getKeySetsLengthByDataSize(encoded.length, true));
+    }
+
+
     private initCacheFile() {
         const provider = this.provider
 
