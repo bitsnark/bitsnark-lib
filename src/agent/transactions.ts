@@ -1,124 +1,45 @@
-import { TransactionInfo } from "./common";
+import { AgentRoles, TransactionInfo } from "./common";
+import { createChallengeTx } from "./steps/challenge";
 import { createInitialTx } from "./steps/initial";
+import { createStep1PatPartTx, createStep1VicPartTx } from "./steps/step1";
+
+const step1Iterations = 19;
+
+function numToStr2Digits(i: number): string {
+    return i < 10 ? `${i}` : `0${i}`;
+}
 
 export type TransactionCreator = (proverPublicKey: bigint, verifierPublicKey: bigint) => TransactionInfo
 
-export const transactionDescs = [
-    '00_INITIAL_PAT',
+export const transactionDescs: string[] = [
+    '00_INITIAL_PAT', 
     '01_CHALLENGE_VIC',
-    '02_STEP1_PAT',
-    '03_STEP1_VIC',
-    '04_STEP1_PAT',
-    '05_STEP1_VIC',
-    '06_STEP1_PAT',
-    '07_STEP1_VIC',
-    '08_STEP1_PAT',
-    '09_STEP1_VIC',
-    '10_STEP1_PAT',
-    '11_STEP1_VIC',
-    '12_STEP1_PAT',
-    '13_STEP1_VIC',
-    '14_STEP1_PAT',
-    '15_STEP1_VIC',
-    '16_STEP1_PAT',
-    '17_STEP1_VIC',
-    '18_STEP1_PAT',
-    '19_STEP1_VIC',
-    '20_STEP1_PAT',
-    '21_STEP1_VIC',
-    '22_STEP1_PAT',
-    '23_STEP1_VIC',
-    '24_STEP1_PAT',
-    '25_STEP1_VIC',
-    '26_STEP1_PAT',
-    '27_STEP1_VIC',
-    '28_STEP1_PAT',
-    '29_STEP1_VIC',
-    '30_STEP1_PAT',
-    '31_STEP1_VIC',
-    '32_STEP1_PAT',
-    '33_STEP1_VIC',
-    '34_STEP1_PAT',
-    '35_STEP1_VIC',
-    '36_STEP1_PAT',
-    '37_STEP1_VIC',
-    '38_STEP1_PAT',
-    '39_STEP1_VIC',
-    '40_TRANSITION_PAT',
-    '41_TRANSITION_VIC',
-    '42_STEP2_PAT',
-    '43_STEP2_VIC',
-    '44_STEP2_PAT',
-    '45_STEP2_VIC',
-    '46_STEP2_PAT',
-    '47_STEP2_VIC',
-    '48_STEP2_PAT',
-    '49_STEP2_VIC',
-    '50_STEP2_PAT',
-    '51_STEP2_VIC'
 ];
 
-export function getNextTransactionDesc(transactionDesc: string): string {
-    const i = transactionDescs.findIndex(s => s = transactionDesc);
-    return transactionDescs[i + 1];
-}
-
-export function getPrevTransactionDesc(transactionDesc: string): string {
-    const i = transactionDescs.findIndex(s => s = transactionDesc);
-    return transactionDescs[i - 1];
-}
-
-export const transactionCreators = {
+export const transactionCreators: any = {
     '00_INITIAL_PAT': createInitialTx,
-    '01_CHALLENGE_VIC': undefined,
-    '02_STEP1_PAT': undefined,
-    '03_STEP1_VIC': undefined,
-    '04_STEP1_PAT': undefined,
-    '05_STEP1_VIC': undefined,
-    '06_STEP1_PAT': undefined,
-    '07_STEP1_VIC': undefined,
-    '08_STEP1_PAT': undefined,
-    '09_STEP1_VIC': undefined,
-    '10_STEP1_PAT': undefined,
-    '11_STEP1_VIC': undefined,
-    '12_STEP1_PAT': undefined,
-    '13_STEP1_VIC': undefined,
-    '14_STEP1_PAT': undefined,
-    '15_STEP1_VIC': undefined,
-    '16_STEP1_PAT': undefined,
-    '17_STEP1_VIC': undefined,
-    '18_STEP1_PAT': undefined,
-    '19_STEP1_VIC': undefined,
-    '20_STEP1_PAT': undefined,
-    '21_STEP1_VIC': undefined,
-    '22_STEP1_PAT': undefined,
-    '23_STEP1_VIC': undefined,
-    '24_STEP1_PAT': undefined,
-    '25_STEP1_VIC': undefined,
-    '26_STEP1_PAT': undefined,
-    '27_STEP1_VIC': undefined,
-    '28_STEP1_PAT': undefined,
-    '29_STEP1_VIC': undefined,
-    '30_STEP1_PAT': undefined,
-    '31_STEP1_VIC': undefined,
-    '32_STEP1_PAT': undefined,
-    '33_STEP1_VIC': undefined,
-    '34_STEP1_PAT': undefined,
-    '35_STEP1_VIC': undefined,
-    '36_STEP1_PAT': undefined,
-    '37_STEP1_VIC': undefined,
-    '38_STEP1_PAT': undefined,
-    '39_STEP1_VIC': undefined,
-    '40_TRANSITION_PAT': undefined,
-    '41_TRANSITION_VIC': undefined,
-    '42_STEP2_PAT': undefined,
-    '43_STEP2_VIC': undefined,
-    '44_STEP2_PAT': undefined,
-    '45_STEP2_VIC': undefined,
-    '46_STEP2_PAT': undefined,
-    '47_STEP2_VIC': undefined,
-    '48_STEP2_PAT': undefined,
-    '49_STEP2_VIC': undefined,
-    '50_STEP2_PAT': undefined,
-    '51_STEP2_VIC': undefined
+    '01_CHALLENGE_VIC': createChallengeTx,
+};
+
+for (let i = 0; i < step1Iterations; i++) {
+    let desc = `${numToStr2Digits(i * 2)}_STEP1_PAT`;
+    transactionDescs.push(desc);
+    transactionCreators[desc] = ((k1: bigint, k2: bigint) => createStep1PatPartTx(i, k1, k2));
+    desc = `${numToStr2Digits(i * 2 + 1)}_STEP1_VIC`;
+    transactionDescs.push(desc);
+    transactionCreators[desc] = ((k1: bigint, k2: bigint) => createStep1VicPartTx(i, k1, k2));
+}
+
+export function getNextTransactionDesc(s: string): string {
+    const t = transactionDescs.findIndex(ts => s == ts);
+    return transactionDescs[t + 1];
+}
+
+export function getPrevTransactionDesc(s: string): string {
+    const t = transactionDescs.findIndex(ts => s == ts);
+    return transactionDescs[t - 1];
+}
+
+export function getTransactionsDescsForRole(role: AgentRoles): string[] {
+    return transactionDescs.filter(s => s.includes(role == AgentRoles.PROVER ? 'PAT' : 'VIC'));
 }

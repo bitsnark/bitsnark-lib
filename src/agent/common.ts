@@ -1,5 +1,11 @@
 import { bufferToBigints256BE, padHex } from "../encoding/encoding";
 import { decodeWinternitz256, encodeWinternitz256, getWinternitzPublicKeys256 } from "../encoding/winternitz";
+import { SavedVm } from "../generator/common/saved-vm";
+import groth16Verify, { Key, Proof } from "../generator/step1/verifier";
+import { step1_vm } from "../generator/step1/vm/vm";
+import { proof, publicSignals } from "./proof";
+import { verificationKey } from "./verification-key";
+import { InstrCode as Step1_InstrCode } from '../../src/generator/step1/vm/types';
 
 export enum ProtocolStep {
     INITIAL = 'INITIAL',
@@ -9,6 +15,11 @@ export enum ProtocolStep {
     STEP2 = 'STEP2',
     FINAL = 'FINAL'
 };
+
+export enum AgentRoles {
+    PROVER,
+    VERIFIER
+}
 
 const stepToNum = {
     [ProtocolStep.INITIAL]: 0,
@@ -98,4 +109,11 @@ export function initialPatDecode(encodedProof: bigint[]): bigint[] {
         proof[i] = decodeWinternitz256(chunk, chunkIndex);
     }
     return proof;
+}
+
+export function getSavedStep1(): SavedVm<Step1_InstrCode> {
+    groth16Verify(Key.fromSnarkjs(verificationKey), Proof.fromSnarkjs(proof, publicSignals));
+    if (!step1_vm.success) throw new Error('Failed');
+    step1_vm.optimizeRegs();
+    return step1_vm.save();
 }

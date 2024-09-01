@@ -1,9 +1,10 @@
 import { agentConf } from "../../agent.conf";
-import { stringToBigint, TransactionInfo } from "./common";
+import { AgentRoles, stringToBigint, TransactionInfo } from "./common";
 import { CosignTxMessage, fromJson, JoinMessage, StartMessage, TxKeysMessage } from "./messages";
+import { pyMakeTransaction } from "./py-client";
 import { createInitialTx } from "./steps/initial";
 import { SimpleContext, TelegramBot } from "./telegram";
-import { getNextTransactionDesc, getPrevTransactionDesc, TransactionCreator, transactionCreators, transactionDescs } from "./transactions";
+import { getNextTransactionDesc, getPrevTransactionDesc, getTransactionsDescsForRole, TransactionCreator, transactionCreators, transactionDescs } from "./transactions";
 
 interface AgentInfo {
     agentId: string;
@@ -18,11 +19,6 @@ class SetupInstance {
     constructor(setupId: string) {
         this.setupId = setupId;
     }
-}
-
-export enum AgentRoles {
-    PROVER,
-    VERIFIER
 }
 
 export class Agent {
@@ -40,10 +36,10 @@ export class Agent {
         this.bot = new TelegramBot(agentId, this);
     }
 
-    generateTransactions(setupId: string) {
+    private generateTransactions(setupId: string) {
         const i = this.getInstance(setupId);
-        for (const txdesc of transactionDescs) {
-            const txinfo = transactionCreators[txdesc as keyof typeof transactionCreators]!
+        for (const txdesc of getTransactionsDescsForRole(this.role)) {
+            const txinfo = transactionCreators[txdesc]!
                 (i.agents[0].schnorrPublicKey, i.agents[1].schnorrPublicKey);
             i.allTransactions.set(txdesc, txinfo);
         }
@@ -90,6 +86,9 @@ export class Agent {
             agentId: this.agentId,
             schnorrPublicKey: stringToBigint(this.schnorrPublicKey)
         });
+
+        this.generateTransactions(setupId);
+
         const msg = new StartMessage({
             setupId,
             agentId: this.agentId,
@@ -104,6 +103,9 @@ export class Agent {
             agentId: message.agentId,
             schnorrPublicKey: stringToBigint(message.schnorrPublicKey)
         });
+
+        this.generateTransactions(message.setupId);
+
         const reply = new JoinMessage({
             setupId: message.setupId,
             agentId: this.agentId,
@@ -112,21 +114,21 @@ export class Agent {
         ctx.send(reply);
     }
 
-    sendTxKeysMessage(ctx: SimpleContext, setupId: string, transactionDesc: keyof typeof transactionCreators) {
+    async sendTxKeysMessage(ctx: SimpleContext, setupId: string, transactionDesc: string) {
         const i = this.getInstance(setupId);
         const currentTx = i.allTransactions.get(transactionDesc);
         const previousTx = i.allTransactions.get(getPrevTransactionDesc(transactionDesc));
         const nextTx = i.allTransactions.get(getNextTransactionDesc(transactionDesc));
         const schnorrPrivateKey = (agentConf.keyPairs as any)[this.agentId].private;
-        const { txHash, txSignature, txBody } = pyMakeTransaction(transactionDesc, schnorrPrivateKey, currentTx?.scripts, previousTx?.controlBlocks, nextTx?.taprootAddress);
+        const { hash, signature, body: _ } = await pyMakeTransaction(transactionDesc, schnorrPrivateKey, currentTx?.scripts!, previousTx?.controlBlocks!, nextTx?.taprootAddress!);
         const reply = new TxKeysMessage({
             setupId,
             agentId: this.agentId,
             transactionDescriptor: transactionDesc,
             wotsPublicKeys: currentTx?.wotsPublicKeys,
             taproot: currentTx?.taprootAddress.toString('hex'),
-            transactionSignature: txSignature,
-            transactionHash: txHash
+            transactionSignature: signature,
+            transactionHash: hash
         });
         ctx.send(reply);
     }
@@ -139,25 +141,24 @@ export class Agent {
             schnorrPublicKey: stringToBigint(message.schnorrPublicKey)
         });
         if (i.agents.length == 2) {
-            this.generateTransactions(message.setupId);
             const firstTxDesc = transactionDescs[0];
-            this.sendTxKeysMessage(ctx, message.setupId, firstTxDesc as keyof typeof transactionCreators)
+            this.sendTxKeysMessage(ctx, message.setupId, firstTxDesc);
         }
     }
 
-    sendTxCosignMessage(ctx: SimpleContext, setupId: string, transactionDesc: string, txInfo: TransactionInfo) {
+    async sendTxCosignMessage(ctx: SimpleContext, setupId: string, transactionDesc: string, txInfo: TransactionInfo) {
         const i = this.getInstance(setupId);
         const currentTx = i.allTransactions.get(transactionDesc);
         const previousTx = i.allTransactions.get(getPrevTransactionDesc(transactionDesc));
         const nextTx = i.allTransactions.get(getNextTransactionDesc(transactionDesc));
         const schnorrPrivateKey = (agentConf.keyPairs as any)[this.agentId].private;
-        const { txHash, txSignature } = getTxBody(transactionDesc, schnorrPrivateKey, currentTx?.scripts, previousTx?.controlBlocks, nextTx?.taprootAddress);
+        const { hash, signature, body: _ } = await pyMakeTransaction(transactionDesc, schnorrPrivateKey, currentTx?.scripts!, previousTx?.controlBlocks!, nextTx?.taprootAddress!);
         const reply = new CosignTxMessage({
             setupId,
             agentId: this.agentId,
             transactionDescriptor: transactionDesc,
-            transactionSignature: txSignature,
-            transactionHash: txHash
+            transactionSignature: signature,
+            transactionHash: hash
         });
         ctx.send(reply);
     }
