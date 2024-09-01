@@ -64,12 +64,12 @@ export function all() {
 
     if (selection != 2) throw new Error('Not implemented');
 
-    const step1runner = Step1Runner.load(step1SavedVm); 
+    const step1runner = Step1Runner.load(step1SavedVm);
     const instr = step1runner.getInstruction(step1_lineNumber);
     const [ a, b, c ] = transitionPatDecode(encodedRegisters);
 
     const step2Saved = getSavedStep2(a, b, c, instr.name, instr.bit);
-    const step2runner = Step2Runner.load(step2Saved); 
+    const step2runner = Step2Runner.load(step2Saved);
 
     const step2SearchPath = step2(step2Saved);
     const step2_lineNumber = searchPathToNumber(step2SearchPath);
@@ -81,7 +81,7 @@ export function all() {
     const step2Instr = step2runner.getInstruction(step2_lineNumber);
 
     finalStep(
-        step1_lineNumber, selection, step2_lineNumber, 
+        step1_lineNumber, selection, step2_lineNumber,
         step2Instr.param1 ?? 0, step2Instr.param2 ?? 0, step2Instr.target,
         regsBefore[step2Instr.param1 ?? 0], regsBefore[step2Instr.param2 ?? 0], regsAfter[step2Instr.target],
         step2Instr.name);
