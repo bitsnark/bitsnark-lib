@@ -49,7 +49,9 @@ export interface TransactionInfo {
     taprootAddress: Buffer,
     scripts: Buffer[],
     controlBlocks: Buffer[],
-    wotsPublicKeys: bigint[]
+    wotsPublicKeys: bigint[],
+    proverSignature?: Buffer,
+    verifierSignature?: Buffer
 }
 
 export interface ScriptAndKeys {

@@ -1,9 +1,9 @@
 import { agentConf } from "../../agent.conf";
 import { AgentRoles, stringToBigint, TransactionInfo } from "./common";
 import { CosignTxMessage, fromJson, JoinMessage, StartMessage, TxKeysMessage } from "./messages";
-import { pyMakeTransaction } from "./py-client";
+import { pyMakeTransaction, PyTransaction } from "./py-client";
 import { SimpleContext, TelegramBot } from "./telegram";
-import { allTransactions, getNextTransactionMeta, getPrevTransactionMeta, TransactionCreator, TransactionMeta } from "./transactions";
+import { allTransactions, getNextTransactionMeta, getPrevTransactionMeta, getTransactionMeta, TransactionCreator, TransactionMeta } from "./transactions";
 
 interface AgentInfo {
     agentId: string;
@@ -49,10 +49,10 @@ export class Agent {
     }
 
     private generateTransaction(
-        setupId: string, 
+        setupId: string,
         meta: TransactionMeta,
-        proverPublicKey: bigint, 
-        verifierPublicKey: bigint, 
+        proverPublicKey: bigint,
+        verifierPublicKey: bigint,
         wotsPublicKeys?: bigint[]): TransactionInfo {
 
         const txi = meta.creator(proverPublicKey, verifierPublicKey, wotsPublicKeys);
@@ -97,35 +97,63 @@ export class Agent {
         ctx.send(msg);
     }
 
+    private async generateTxAndSign(setupId: string, transactionMeta: TransactionMeta, wotsPublicKeys?: bigint[]): Promise<{
+        txInfo: TransactionInfo,
+        pyTx: PyTransaction
+    }> {
+        const i = this.getInstance(setupId);
+        if (!i) throw new Error('Setup instance not found');
+
+        const previousTx = i.transactions.get(getPrevTransactionMeta(transactionMeta.desc).desc);
+
+        const currentTx = this.generateTransaction(setupId, transactionMeta, i.prover!.schnorrPublicKey, i.verifier!.schnorrPublicKey, wotsPublicKeys);
+
+        const nextTxMeta = getNextTransactionMeta(transactionMeta.desc);
+        const nextTx = nextTxMeta && this.generateTransaction(setupId, nextTxMeta, i.prover!.schnorrPublicKey, i.verifier!.schnorrPublicKey);
+
+        const schnorrPrivateKey = (agentConf.keyPairs as any)[this.agentId].private;
+        return {
+            txInfo: currentTx,
+            pyTx: await pyMakeTransaction(
+                transactionMeta.desc,
+                schnorrPrivateKey,
+                currentTx?.scripts!,
+                previousTx?.controlBlocks!,
+                nextTx?.taprootAddress!),
+        }
+    }
+
     // senders
 
     private async sendTxKeysMessage(ctx: SimpleContext, setupId: string, transactionMeta: TransactionMeta) {
         const i = this.getInstance(setupId);
         if (!i) throw new Error('Setup instance not found');
 
-        const previousTx = i.transactions.get(getPrevTransactionMeta(transactionMeta.desc).desc);
-
-        const currentTx = this.generateTransaction(setupId, transactionMeta, i.prover!.schnorrPublicKey, i.verifier!.schnorrPublicKey);
-
-        const nextTxMeta = getNextTransactionMeta(transactionMeta.desc);
-        const nextTx = nextTxMeta && this.generateTransaction(setupId, nextTxMeta, i.prover!.schnorrPublicKey, i.verifier!.schnorrPublicKey);
-
-        const schnorrPrivateKey = (agentConf.keyPairs as any)[this.agentId].private;
-        const { hash, signature, body: _ } = await pyMakeTransaction(
-            transactionMeta.desc,
-            schnorrPrivateKey,
-            currentTx?.scripts!,
-            previousTx?.controlBlocks!,
-            nextTx?.taprootAddress!);
+        const txInfo = this.generateTransaction(setupId, transactionMeta, i.prover!.schnorrPublicKey, i.verifier!.schnorrPublicKey);
 
         const reply = new TxKeysMessage({
             setupId,
             agentId: this.agentId,
             transactionDescriptor: transactionMeta.desc,
-            wotsPublicKeys: currentTx?.wotsPublicKeys,
-            taproot: currentTx?.taprootAddress.toString('hex'),
-            transactionSignature: signature,
-            transactionHash: hash
+            wotsPublicKeys: txInfo.wotsPublicKeys,
+            taproot: txInfo.taprootAddress.toString('hex')
+        });
+        ctx.send(reply);
+    }
+
+    async sendTxCosignMessage(ctx: SimpleContext, setupId: string, transactionMeta: TransactionMeta, wotsPublicKeys: bigint[]) {
+        const i = this.getInstance(setupId);
+        if (!i) throw new Error('Setup instance not found');
+
+        const { txInfo, pyTx } = await this.generateTxAndSign(setupId, transactionMeta, wotsPublicKeys);
+        i.transactions.set(transactionMeta.desc, txInfo);
+
+        const reply = new CosignTxMessage({
+            setupId,
+            agentId: this.agentId,
+            transactionDescriptor: transactionMeta.desc,
+            transactionSignature: pyTx.signature,
+            transactionHash: pyTx.hash
         });
         ctx.send(reply);
     }
@@ -156,6 +184,7 @@ export class Agent {
     on_join(ctx: SimpleContext, message: StartMessage) {
         const i = this.getInstance(message.setupId);
         if (!i) throw new Error('Setup instance not found');
+
         if (i.verifier) throw new Error('Verifier agent already registered');
         i.verifier = {
             agentId: message.agentId,
@@ -165,36 +194,39 @@ export class Agent {
         this.sendTxKeysMessage(ctx, message.setupId, firstTxMeta);
     }
 
-
-
-
-
-
-
-
-
-    async sendTxCosignMessage(ctx: SimpleContext, setupId: string, transactionDesc: string, txInfo: TransactionInfo) {
-        const i = this.getInstance(setupId);
-        const currentTx = i.allTransactions.get(transactionDesc);
-        const previousTx = i.allTransactions.get(getPrevTransactionDesc(transactionDesc));
-        const nextTx = i.allTransactions.get(getNextTransactionDesc(transactionDesc));
-        const schnorrPrivateKey = (agentConf.keyPairs as any)[this.agentId].private;
-        const { hash, signature, body: _ } = await pyMakeTransaction(transactionDesc, schnorrPrivateKey, currentTx?.scripts!, previousTx?.controlBlocks!, nextTx?.taprootAddress!);
-        const reply = new CosignTxMessage({
-            setupId,
-            agentId: this.agentId,
-            transactionDescriptor: transactionDesc,
-            transactionSignature: signature,
-            transactionHash: hash
-        });
-        ctx.send(reply);
-    }
+    // prover or verifier receive tx keys, generate the tx and sign
+    // then send the next tx keys
 
     on_txKeys(ctx: SimpleContext, message: TxKeysMessage) {
         const i = this.getInstance(message.setupId);
-        const creator = transactionCreators[message.transactionDescriptor as keyof typeof transactionCreators] as TransactionCreator;
-        const initialTx = creator(i.agents[0].schnorrPublicKey, i.agents[1].schnorrPublicKey);
-        this.sendTxCosignMessage(ctx, message.setupId, message.transactionDescriptor, initialTx);
+        if (!i) throw new Error('Setup instance not found');
+
+        const txMeta = getTransactionMeta(message.transactionDescriptor);
+        if (!txMeta) throw new Error('Transaction descriptor not found');
+
+        this.sendTxCosignMessage(ctx, message.setupId, txMeta, message.wotsPublicKeys);
+    }
+
+    on_cosign(ctx: SimpleContext, message: CosignTxMessage) {
+        const i = this.getInstance(message.setupId);
+        if (!i) throw new Error('Setup instance not found');
+
+        const txMeta = getTransactionMeta(message.transactionDescriptor);
+        if (!txMeta) throw new Error('Transaction not found');
+
+        const txInfo = i.transactions.get(message.transactionDescriptor);
+        if (!txInfo) throw new Error('Transaction not found');
+
+        // TODO: verify sig
+
+        if (i.myRole == txMeta.role) {
+            this.sendTxCosignMessage(ctx, i.setupId, txMeta, txInfo.wotsPublicKeys);
+        } else {
+            const nextMeta = getNextTransactionMeta(txMeta.desc);
+            if (nextMeta) {
+                this.sendTxKeysMessage(ctx, i.setupId, nextMeta);
+            }
+        }
     }
 }
 
@@ -203,7 +235,7 @@ console.log('Starting...');
 const agentId = process.argv[2] ?? 'bitsnark_prover_1';
 const role = agentId.indexOf('prover') >= 0 ? AgentRoles.PROVER : AgentRoles.VERIFIER;
 
-const agent = new Agent(agentId, role);
+const agent = new Agent(agentId);
 agent.launch().then(() => {
     console.log('Quitting...');
 });

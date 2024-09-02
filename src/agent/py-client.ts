@@ -1,7 +1,7 @@
 import { padHex } from "../encoding/encoding";
 import { spawn } from 'child_process';
 
-interface PyTransaction {
+export interface PyTransaction {
     hash: string,
     body: Buffer,
     signature: string
