@@ -6,6 +6,7 @@ import { step1_vm } from "../generator/step1/vm/vm";
 import { proof, publicSignals } from "./proof";
 import { verificationKey } from "./verification-key";
 import { InstrCode as Step1_InstrCode } from '../../src/generator/step1/vm/types';
+import { TxInput } from "bitcoinjs-lib";
 
 export enum ProtocolStep {
     INITIAL = 'INITIAL',
@@ -46,6 +47,7 @@ export enum ProtocolRole {
 
 
 export interface TransactionInfo {
+    txId?: string,
     taprootAddress: Buffer,
     scripts: Buffer[],
     controlBlocks: Buffer[],

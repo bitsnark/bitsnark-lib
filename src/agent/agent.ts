@@ -1,7 +1,7 @@
 import { agentConf } from "../../agent.conf";
 import { AgentRoles, stringToBigint, TransactionInfo } from "./common";
 import { CosignTxMessage, fromJson, JoinMessage, StartMessage, TxKeysMessage } from "./messages";
-import { pyMakeTransaction, PyTransaction } from "./py-client";
+import { createPresignedTransaction, PresignedTransaction } from "./py-client";
 import { SimpleContext, TelegramBot } from "./telegram";
 import { allTransactions, getNextTransactionMeta, getPrevTransactionMeta, getTransactionMeta, TransactionCreator, TransactionMeta } from "./transactions";
 
@@ -99,7 +99,7 @@ export class Agent {
 
     private async generateTxAndSign(setupId: string, transactionMeta: TransactionMeta, wotsPublicKeys?: bigint[]): Promise<{
         txInfo: TransactionInfo,
-        pyTx: PyTransaction
+        pyTx: PresignedTransaction
     }> {
         const i = this.getInstance(setupId);
         if (!i) throw new Error('Setup instance not found');
@@ -112,15 +112,25 @@ export class Agent {
         const nextTx = nextTxMeta && this.generateTransaction(setupId, nextTxMeta, i.prover!.schnorrPublicKey, i.verifier!.schnorrPublicKey);
 
         const schnorrPrivateKey = (agentConf.keyPairs as any)[this.agentId].private;
+        const pyTx = await createPresignedTransaction({
+            inputs: [{
+                txid: previousTx?.txId!,
+                vout: 0,
+                spentOutput: {
+                    scriptPubKey: currentTx?.taprootAddress!,
+                    value: agentConf.forwardedValue
+                }
+            }],
+            schnorrPrivateKey,
+            outputValue: agentConf.forwardedValue - agentConf.forwardedFeeValue, // todo decreasing outputs
+            executionScript: currentTx?.scripts[0]!,
+            outputScriptPubKey: nextTx.taprootAddress
+        });
+        currentTx.txId = pyTx.txid;
         return {
             txInfo: currentTx,
-            pyTx: await pyMakeTransaction(
-                transactionMeta.desc,
-                schnorrPrivateKey,
-                currentTx?.scripts!,
-                previousTx?.controlBlocks!,
-                nextTx?.taprootAddress!),
-        }
+            pyTx
+        };
     }
 
     // senders
