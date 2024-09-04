@@ -1,4 +1,3 @@
-import contextlib
 import functools
 import json
 import logging
@@ -7,14 +6,11 @@ import pathlib
 import subprocess
 import time
 from types import SimpleNamespace
-from typing import (
-    Any,
-)
 
 logger = logging.getLogger(__name__)
 
 COMPOSE_VERBOSE = os.environ.get("COMPOSE_VERBOSE") != "0"
-BASE_DIR = pathlib.Path(__file__).parent  # just use this dir for now
+BASE_DIR = pathlib.Path(__file__).parent.parent  # just use the root python dir for now
 COMPOSE_COMMAND = ["docker", "compose"]
 COMPOSE_FILE = BASE_DIR / "docker-compose.yaml"
 ENV_FILE = BASE_DIR / "env.test"

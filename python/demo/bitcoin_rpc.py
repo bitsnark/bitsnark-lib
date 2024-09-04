@@ -1,3 +1,4 @@
+import logging
 import decimal
 import json
 import time
@@ -5,7 +6,29 @@ import typing
 import urllib.parse
 from decimal import Decimal
 
+from bitcointx.wallet import CCoinAddress
 import requests
+
+
+logger = logging.getLogger(__name__)
+
+
+class ScanTxOutSetUtxo(typing.TypedDict):
+    txid: str
+    vout: int
+    scriptPubKey: str
+    desc: str
+    amount: Decimal
+    height: int
+
+
+class ScanTxOutSetResponse(typing.TypedDict):
+    success: bool
+    txouts: int
+    height: int
+    bestblock: str
+    unspents: list[ScanTxOutSetUtxo]
+    total_amount: Decimal
 
 
 class JSONRPCError(requests.HTTPError):
@@ -124,6 +147,39 @@ class BitcoinRPC:
             # Sleep here by default, otherwise the tap nodes will not have time to process the block(s)
             time.sleep(sleep)
         return ret
+
+    def scantxoutset(
+        self,
+        *,
+        address: str | CCoinAddress,
+    ) -> ScanTxOutSetResponse:
+        desc = f"addr({address})"
+        response = self.call("scantxoutset", "start", [
+            desc,
+        ])
+        logger.info('scantxoutset: %s', response)
+        return response
+
+    def get_address_balance(
+        self,
+        address: str | CCoinAddress,
+    ) -> Decimal:
+        response = self.scantxoutset(
+            address=address,
+        )
+        return response["total_amount"]
+
+    def find_vout_index(self, txid: str, address: str | CCoinAddress) -> int:
+        candidates = []
+        tx = self.call("getrawtransaction", txid, True)
+        for out in tx["vout"]:
+            if out["scriptPubKey"]["address"] == str(address):
+                candidates.append(out["n"])
+        if not candidates:
+            raise LookupError(f"No outputs to {address} in tx {txid}")
+        if len(candidates) > 1:
+            raise LookupError(f"Multiple outputs to {address} in tx {txid}: {candidates}")
+        return candidates[0]
 
 
 class DecimalJSONEncoder(json.JSONEncoder):
