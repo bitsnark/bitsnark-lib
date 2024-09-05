@@ -42,11 +42,10 @@ function createScriptInitial(proverPublicKey: bigint, verifierPublicKey: bigint,
         encodedWitness.map(n => bitcoin.addWitness(n)),
         wotsPublicKeys);
 
-    if (!bitcoin.success) throw new Error('Failed');
     return { script: bitcoin.programToBinary(), wotsPublicKeys };
 }
 
-export function createInitialTx(proverPublicKey: bigint, verifierPublicKey: bigint, wotsPublicKeys?: bigint[]): TransactionInfo {
+export function createInitialTx(setupId: string, proverPublicKey: bigint, verifierPublicKey: bigint, wotsPublicKeys?: bigint[]): TransactionInfo {
 
     const blocks = agentConf.timeoutBlocks ?? 5;
     const initialScriptAndKeys = createScriptInitial(proverPublicKey, verifierPublicKey, wotsPublicKeys);
@@ -56,9 +55,12 @@ export function createInitialTx(proverPublicKey: bigint, verifierPublicKey: bigi
     ];
     const stt = new SimpleTapTree(internalPublicKey, scripts);
     return {
+        desc: 'INITIAL',
+        setupId,
         scripts,
         taprootAddress: stt.getAddress(),
         controlBlocks: [ stt.getControlBlock(0), stt.getControlBlock(1) ],
         wotsPublicKeys: initialScriptAndKeys.wotsPublicKeys,
+        value: agentConf.forwardedValue
     };
 }

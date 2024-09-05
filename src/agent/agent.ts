@@ -1,5 +1,5 @@
 import { agentConf } from "../../agent.conf";
-import { AgentRoles, stringToBigint, TransactionInfo } from "./common";
+import { AgentRoles, saveTxToFile, stringToBigint, TransactionInfo } from "./common";
 import { CosignTxMessage, fromJson, JoinMessage, StartMessage, TxKeysMessage } from "./messages";
 import { createPresignedTransaction, PresignedTransaction } from "./py-client";
 import { SimpleContext, TelegramBot } from "./telegram";
@@ -28,12 +28,14 @@ class SetupInstance {
 export class Agent {
 
     agentId: string;
+    role: AgentRoles;
     instances: Map<string, SetupInstance> = new Map<string, SetupInstance>();
     schnorrPublicKey: string;
     bot: TelegramBot;
 
-    constructor(agentId: string) {
+    constructor(agentId: string, role: AgentRoles) {
         this.agentId = agentId;
+        this.role = role;
         this.schnorrPublicKey = (agentConf.keyPairs as any)[this.agentId].public;
         this.bot = new TelegramBot(agentId, this);
     }
@@ -55,7 +57,7 @@ export class Agent {
         verifierPublicKey: bigint,
         wotsPublicKeys?: bigint[]): TransactionInfo {
 
-        const txi = meta.creator(proverPublicKey, verifierPublicKey, wotsPublicKeys);
+        const txi = meta.creator(setupId, proverPublicKey, verifierPublicKey, wotsPublicKeys);
         let i = this.getInstance(setupId);
         i.transactions.set(meta.desc, txi);
         return txi;
@@ -63,7 +65,7 @@ export class Agent {
 
     public messageReceived(data: string, ctx: SimpleContext): void {
         const tokens = data.split(' ');
-        if (tokens.length == 2 && tokens[0] == '/start') {
+        if (this.role == AgentRoles.PROVER && tokens.length == 2 && tokens[0] == '/start') {
 
             this.start(ctx, tokens[1]);
             ctx.send(`Wait...`);
@@ -71,6 +73,7 @@ export class Agent {
         } else if (data.trim().startsWith('{') && data.trim().endsWith('}')) {
 
             const message = fromJson(data);
+            console.log('Message received: ', message);
             if (message.agentId == this.agentId) return;
             const f = (this as any)[`on_${message.messageType}`];
             if (!f) throw new Error('Invalid dispatch');
@@ -80,9 +83,10 @@ export class Agent {
     }
 
     public start(ctx: SimpleContext, setupId: string) {
+
         const i = new SetupInstance(setupId, AgentRoles.PROVER, {
             agentId: this.agentId,
-            schnorrPublicKey: BigInt(this.schnorrPublicKey)
+            schnorrPublicKey: stringToBigint(this.schnorrPublicKey)
         });
         this.instances.set(setupId, i);
         i.prover = {
@@ -102,9 +106,8 @@ export class Agent {
         pyTx: PresignedTransaction
     }> {
         const i = this.getInstance(setupId);
-        if (!i) throw new Error('Setup instance not found');
 
-        const previousTx = i.transactions.get(getPrevTransactionMeta(transactionMeta.desc).desc);
+        const previousTx = i.transactions.get(getPrevTransactionMeta(transactionMeta.desc)?.desc);
 
         const currentTx = this.generateTransaction(setupId, transactionMeta, i.prover!.schnorrPublicKey, i.verifier!.schnorrPublicKey, wotsPublicKeys);
 
@@ -137,7 +140,6 @@ export class Agent {
 
     private async sendTxKeysMessage(ctx: SimpleContext, setupId: string, transactionMeta: TransactionMeta) {
         const i = this.getInstance(setupId);
-        if (!i) throw new Error('Setup instance not found');
 
         const txInfo = this.generateTransaction(setupId, transactionMeta, i.prover!.schnorrPublicKey, i.verifier!.schnorrPublicKey);
 
@@ -153,7 +155,6 @@ export class Agent {
 
     async sendTxCosignMessage(ctx: SimpleContext, setupId: string, transactionMeta: TransactionMeta, wotsPublicKeys: bigint[]) {
         const i = this.getInstance(setupId);
-        if (!i) throw new Error('Setup instance not found');
 
         const { txInfo, pyTx } = await this.generateTxAndSign(setupId, transactionMeta, wotsPublicKeys);
         i.transactions.set(transactionMeta.desc, txInfo);
@@ -161,9 +162,9 @@ export class Agent {
         const reply = new CosignTxMessage({
             setupId,
             agentId: this.agentId,
-            transactionDescriptor: transactionMeta.desc,
-            transactionSignature: pyTx.signature,
-            transactionHash: pyTx.hash
+            txDescriptor: transactionMeta.desc,
+            txSignature: pyTx.executionSignature,
+            txId: pyTx.txid
         });
         ctx.send(reply);
     }
@@ -173,12 +174,16 @@ export class Agent {
     // verifier receives start message, sends joins message
 
     public on_start(ctx: SimpleContext, message: StartMessage) {
-        let i = this.getInstance(message.setupId);
+        let i = this.instances.get(message.setupId);
         if (i) throw new Error('Setup instance already exists');
         i = new SetupInstance(message.setupId, AgentRoles.VERIFIER, {
             agentId: this.agentId,
             schnorrPublicKey: stringToBigint(this.schnorrPublicKey)
         });
+        i.prover = {
+            agentId: message.agentId,
+            schnorrPublicKey: stringToBigint(message.schnorrPublicKey)
+        };
         this.instances.set(message.setupId, i);
 
         const reply = new JoinMessage({
@@ -193,8 +198,7 @@ export class Agent {
 
     on_join(ctx: SimpleContext, message: StartMessage) {
         const i = this.getInstance(message.setupId);
-        if (!i) throw new Error('Setup instance not found');
-
+        
         if (i.verifier) throw new Error('Verifier agent already registered');
         i.verifier = {
             agentId: message.agentId,
@@ -207,9 +211,8 @@ export class Agent {
     // prover or verifier receive tx keys, generate the tx and sign
     // then send the next tx keys
 
-    on_txKeys(ctx: SimpleContext, message: TxKeysMessage) {
+    on_txkeys(ctx: SimpleContext, message: TxKeysMessage) {
         const i = this.getInstance(message.setupId);
-        if (!i) throw new Error('Setup instance not found');
 
         const txMeta = getTransactionMeta(message.transactionDescriptor);
         if (!txMeta) throw new Error('Transaction descriptor not found');
@@ -219,12 +222,11 @@ export class Agent {
 
     on_cosign(ctx: SimpleContext, message: CosignTxMessage) {
         const i = this.getInstance(message.setupId);
-        if (!i) throw new Error('Setup instance not found');
 
-        const txMeta = getTransactionMeta(message.transactionDescriptor);
+        const txMeta = getTransactionMeta(message.txDescriptor);
         if (!txMeta) throw new Error('Transaction not found');
 
-        const txInfo = i.transactions.get(message.transactionDescriptor);
+        const txInfo = i.transactions.get(message.txDescriptor);
         if (!txInfo) throw new Error('Transaction not found');
 
         // TODO: verify sig
@@ -232,6 +234,7 @@ export class Agent {
         if (i.myRole == txMeta.role) {
             this.sendTxCosignMessage(ctx, i.setupId, txMeta, txInfo.wotsPublicKeys);
         } else {
+            saveTxToFile(txInfo);
             const nextMeta = getNextTransactionMeta(txMeta.desc);
             if (nextMeta) {
                 this.sendTxKeysMessage(ctx, i.setupId, nextMeta);
@@ -245,7 +248,7 @@ console.log('Starting...');
 const agentId = process.argv[2] ?? 'bitsnark_prover_1';
 const role = agentId.indexOf('prover') >= 0 ? AgentRoles.PROVER : AgentRoles.VERIFIER;
 
-const agent = new Agent(agentId);
+const agent = new Agent(agentId, role);
 agent.launch().then(() => {
     console.log('Quitting...');
 });

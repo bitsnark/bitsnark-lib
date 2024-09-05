@@ -50,9 +50,9 @@ export class CosignTxMessage {
     messageType: MessageType = 'cosign';
     setupId: string = '';
     agentId: string = '';
-    transactionHash: string = '';
-    transactionDescriptor: string = '';
-    transactionSignature: string = '';
+    txId: string = '';
+    txDescriptor: string = '';
+    txSignature: string = '';
 
     constructor(obj?: Partial<CosignTxMessage>) {
         _assign(this, obj);

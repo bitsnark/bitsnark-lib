@@ -1,3 +1,4 @@
+import fs from 'fs';
 import { bufferToBigints256BE, padHex } from "../encoding/encoding";
 import { decodeWinternitz256, encodeWinternitz256, getWinternitzPublicKeys256 } from "../encoding/winternitz";
 import { SavedVm } from "../generator/common/saved-vm";
@@ -7,6 +8,7 @@ import { proof, publicSignals } from "./proof";
 import { verificationKey } from "./verification-key";
 import { InstrCode as Step1_InstrCode } from '../../src/generator/step1/vm/types';
 import { TxInput } from "bitcoinjs-lib";
+import { setuid } from 'process';
 
 export enum ProtocolStep {
     INITIAL = 'INITIAL',
@@ -45,15 +47,17 @@ export enum ProtocolRole {
     VIC = 'VIC'
 }
 
-
 export interface TransactionInfo {
+    setupId: string;
+    desc: string;
     txId?: string,
-    taprootAddress: Buffer,
-    scripts: Buffer[],
-    controlBlocks: Buffer[],
-    wotsPublicKeys: bigint[],
-    proverSignature?: Buffer,
-    verifierSignature?: Buffer
+    taprootAddress: Buffer;
+    scripts: Buffer[];
+    controlBlocks: Buffer[];
+    wotsPublicKeys: bigint[];
+    proverSignature?: Buffer;
+    verifierSignature?: Buffer;
+    value?: bigint;
 }
 
 export interface ScriptAndKeys {
@@ -81,6 +85,10 @@ export function reverseEncodingIndexForVic(n: number): { step: ProtocolStep, ite
     return { step: numToStep[Math.floor(n / 32)], iteration: n % 32 };
 }
 
+export function numToStr2Digits(i: number): string {
+    return i < 10 ? `${i}` : `0${i}`;
+}
+
 export function transitionPatEncode(param1: bigint, param2: bigint, target: bigint): { witness: bigint[], publicKeys: bigint[] } {
     const witness: bigint[] = [];
     const publicKeys: bigint[] = [];
@@ -94,7 +102,7 @@ export function transitionPatEncode(param1: bigint, param2: bigint, target: bigi
 }
 
 export function transitionPatDecode(witness: bigint[]): bigint[] {
-    function decodeParam(index: number): bigint{
+    function decodeParam(index: number): bigint {
         const twitness = witness.slice(index * 90, index * 90 + 90);
         const chunkIndex = getEncodingIndexForPat(ProtocolStep.TRANSITION, 0, index);
         return decodeWinternitz256(twitness, chunkIndex)
@@ -120,4 +128,14 @@ export function getSavedStep1(): SavedVm<Step1_InstrCode> {
     if (!step1_vm.success) throw new Error('Failed');
     step1_vm.optimizeRegs();
     return step1_vm.save();
+}
+
+export function saveTxToFile(txInfo: TransactionInfo) {
+    fs.writeFileSync(
+        `./generated/presigned-transactions/${setuid}/${txInfo.desc}.json`,
+        JSON.stringify(txInfo, (key: string, value: any) => {
+            if (value instanceof Buffer) return value.toString('hex');
+            if (typeof value == 'bigint') return '0x' + value.toString(16);
+            return value;
+        }, '\t'));
 }
