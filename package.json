@@ -1,6 +1,7 @@
 {
   "name": "bitsnark",
   "version": "0.1.0",
+  "private": true,
   "description": "",
   "keywords": [
     "typescript"
