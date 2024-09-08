@@ -98,7 +98,6 @@ export class Winternitz extends CodecProvider {
     }
 
     public getUnitCount() {
-        console.log(getFileSizeBytes(this.folder, this.pubKeyFileName) / (this.totalNibblesInChunk * hashSize));
         return getFileSizeBytes(this.folder, this.pubKeyFileName) / (this.totalNibblesInChunk * hashSize);
     }
 
