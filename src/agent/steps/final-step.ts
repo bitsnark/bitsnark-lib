@@ -1,13 +1,11 @@
-import { Bitcoin } from '../../src/generator/step3/bitcoin';
-import { InstrCode, instrParamOptions } from '../../src/generator/step2/vm/types';
+import { Bitcoin } from 'src/generator/step3/bitcoin';
+import { InstrCode, instrParamOptions } from 'src/generator/step2/vm/types';
 import { getEncodingIndexForPat, getEncodingIndexForVic, ProtocolRole, ProtocolStep } from './common';
-import { StackItem } from '../../src/generator/step3/stack';
-import { encodeLamportBit, getLamportPublicKey } from '../../src/encoding/lamport';
-import { encodeWinternitz32, getWinternitzPublicKeys32 } from '../../src/encoding/winternitz';
-import { bufferToBigints256BE } from '../../src/encoding/encoding';
-import { internalPblicKey } from './public-key';
-import { simpleTaproot } from '../../src/generator/taproot/taproot';
-import { writeToFile } from './utils';
+import { StackItem } from 'src/generator/step3/stack';
+import { encodeLamportBit, getLamportPublicKey } from 'src/encoding/lamport';
+import { encodeWinternitz32, getWinternitzPublicKeys32 } from 'src/encoding/winternitz';
+import { bufferToBigints256BE } from 'src/encoding/encoding';
+// import { writeToFile } from 'tests/demo/utils';
 
 const step1_iterations = 19;
 const step2_iterations = 5;
@@ -29,17 +27,15 @@ function toBinary(n: number, bits: number): string {
     return s;
 }
 
-function encodeLamportBitToWitness(bitcoin: Bitcoin, bit: number, step: ProtocolStep, iteration: number):
-    { witness: StackItem, publicKey: bigint[] } {
+function encodeLamportBitToWitness(bitcoin: Bitcoin, bit: number, step: ProtocolStep, iteration: number): { witness: StackItem, publicKey: bigint[] } {
 
     const index = getEncodingIndexForVic(step, iteration);
-    const publicKey = [ getLamportPublicKey(index, 0), getLamportPublicKey(index, 1) ];
+    const publicKey = [getLamportPublicKey(index, 0), getLamportPublicKey(index, 1)];
     const witness = bitcoin.addWitness(encodeLamportBit(index, bit));
     return { witness, publicKey };
 }
 
-function paramToWitness(bitcoin: Bitcoin, lineNumber: number, paramIndex: number, paramValue: bigint): 
-    { witness: StackItem[], publicKey: bigint[] } {
+function paramToWitness(bitcoin: Bitcoin, lineNumber: number, paramIndex: number, paramValue: bigint): { witness: StackItem[], publicKey: bigint[] } {
 
     const chunkIndex = getEncodingIndexForPat(ProtocolStep.STEP2, iterationFromLineNumber(step2_iterations, lineNumber), paramIndex);
     const publicKey = getWinternitzPublicKeys32(chunkIndex);
@@ -89,7 +85,7 @@ export function finalStep(step1_lineNumber: number, selection: number, step2_lin
 
     /*** program start ***/
     bitcoin.verifySearchPath(searchPathWitness, searchPathWitness.map(si => Number(si.value)), searchPathKeys);
-    
+
     if (instrParamOptions[opcode][0]) {
         param1Nibbles = bitcoin.newNibbles32();
         bitcoin.winternitzDecode32(param1Nibbles, param1Witness, param1PublicKey);
@@ -155,5 +151,5 @@ export function finalStep(step1_lineNumber: number, selection: number, step2_lin
 
     // if (!bitcoin.success) throw new Error('Failed');
 
-    writeToFile(bitcoin, ProtocolStep.FINAL, ProtocolRole.PAT);
+    //writeToFile(bitcoin, ProtocolStep.FINAL, ProtocolRole.PAT);
 }

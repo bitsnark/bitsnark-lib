@@ -1,4 +1,4 @@
-import { getEncodingIndexForPat, ProtocolStep } from "../../../tests/demo/common";
+import { getEncodingIndexForPat, ProtocolStep } from "./common";
 import { _256To32BE, bufferToBigints256BE } from "../../encoding/encoding";
 import { encodeWinternitz32 } from "../../encoding/winternitz";
 import { ProgramLine } from "../common/saved-vm";
@@ -15,13 +15,13 @@ export function verifyStep2Instr(bitcoin: Bitcoin, instr: ProgramLine<InstrCode>
 
     const paramOptions = instrParamOptions[instr.name];
     const witnesses: StackItem[][] = [];
-    [ a, b, c ].forEach((v, i) => {
+    [a, b, c].forEach((v, i) => {
         if (!paramOptions[i]) return;
         const chunkIndex = getEncodingIndexForPat(ProtocolStep.TRANSITION, 0, i);
         witnesses[i] = encodeParam(a, chunkIndex).map(n => bitcoin.addWitness(n));
     });
     const regs: SimulatedRegister[] = [];
-    [ a, b, c ].forEach((v, i) => {
+    [a, b, c].forEach((v, i) => {
         if (!paramOptions[i]) return;
         const sr = bitcoin.newSimulatedRegister(0n);
         bitcoin.nibblesToRegister32(sr, witnesses[i]);
@@ -69,7 +69,7 @@ export function verifyStep2Instr(bitcoin: Bitcoin, instr: ProgramLine<InstrCode>
             bitcoin.step2_or(regs[0], regs[1], regs[2]);
             break;
         case InstrCode.NOT:
-            bitcoin.step2_not(regs[0],regs[2]);
+            bitcoin.step2_not(regs[0], regs[2]);
             break;
         case InstrCode.ASSERTONE:
             bitcoin.step2_assertOne(regs[0])
