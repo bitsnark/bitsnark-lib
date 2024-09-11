@@ -1,9 +1,8 @@
 
 import { Lamport } from "./lamport";
 import { Winternitz } from "./winternitz";
-import { createHash, randomBytes } from "node:crypto";
 import { CodecProvider, CodecType, DecodeData, DecodeError, Decodeconflict } from "./codec-provider";
-import { makeEquivocationTaproot } from "./equivocation-tapnode";
+import { deleteDir } from "./files-utils";
 
 
 const hashSize = 32;
@@ -25,7 +24,6 @@ export class TxDecoder {
 
     public decodePrvByPub(encoded: Buffer, pubKeySets: Buffer): DecodeData | DecodeError {
         const provider = this.provider;
-
         return provider.decodePrvByPub(encoded, pubKeySets);
     }
 

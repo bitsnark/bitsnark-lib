@@ -98,7 +98,6 @@ export class Winternitz extends CodecProvider {
     }
 
     public getUnitCount() {
-        console.log(getFileSizeBytes(this.folder, this.pubKeyFileName) / (this.totalNibblesInChunk * hashSize));
         return getFileSizeBytes(this.folder, this.pubKeyFileName) / (this.totalNibblesInChunk * hashSize);
     }
 
@@ -149,7 +148,7 @@ export class Winternitz extends CodecProvider {
     }
 
     private validateDecoded(length: number, encoded: Buffer, pubKeySets: Buffer): number[] {
-        const nibbleArray = Array.from({ length: (length) }, (_, i) => {
+        const nibbleArray = Array.from({ length: (this.dataNibblesInChunk) }, (_, i) => {
             const iPubKey = pubKeySets.subarray(i * hashSize, (i + 1) * hashSize);
             return this.decodeDataNibble(encoded, i, iPubKey);
         });
@@ -169,11 +168,12 @@ export class Winternitz extends CodecProvider {
 
     public decodePrvByPub(encoded: Buffer, pubKeySets: Buffer): DecodeData | DecodeError {
         const chuncksEncoded = encoded.length / this.getKeySetsLengthByDataSize(1);
+
         const result = Buffer.alloc(this.chunkSizeInBytes * chuncksEncoded);
 
         for (let i = 0; i < chuncksEncoded; i++) {
-            const eChunk = pubKeySets.subarray(i * this.getKeySetsLengthByDataSize(1), (i + 1) * this.getKeySetsLengthByDataSize(1))
-            const nibbleArray = this.validateDecoded(this.totalNibblesInChunk, eChunk, pubKeySets);
+            const eChunk = encoded.subarray(i * this.getKeySetsLengthByDataSize(1), (i + 1) * this.getKeySetsLengthByDataSize(1))
+            const nibbleArray = this.validateDecoded(this.dataNibblesInChunk, eChunk, pubKeySets);
             result.set(arrayToBuffer(nibbleArray, this.chunkSizeInBytes), i * this.chunkSizeInBytes);
         }
 
@@ -181,7 +181,7 @@ export class Winternitz extends CodecProvider {
     }
 
     public decodeBuffer(encoded: Buffer, indexInUnits: number, pubKeySets: Buffer, cache: Buffer): DecodeData | DecodeError | Decodeconflict {
-        const nibbleArray = this.validateDecoded(this.totalNibblesInChunk, encoded, pubKeySets);
+        const nibbleArray = this.validateDecoded(this.dataNibblesInChunk, encoded, pubKeySets);
 
         if (this.isEmpty(cache)) {
             writeToPosInFile(this.folder,
@@ -199,6 +199,7 @@ export class Winternitz extends CodecProvider {
 
     private decodeDataNibble(keyBuffer: Buffer, i: number, comperTo: Buffer) {
         let nibbleKey = keyBuffer.subarray(i * hashSize, (i + 1) * hashSize);
+
         for (let e = 0; e < 8; e++) {
             nibbleKey = createHash('sha256').update(nibbleKey).digest();
             if (nibbleKey.compare(comperTo) === 0) {
