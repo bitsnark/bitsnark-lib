@@ -87,28 +87,34 @@ export class Lamport extends CodecProvider {
         return result;
     }
 
+    public decodePrvByPub(encoded: Buffer, pubKeySets: Buffer): DecodeData | DecodeError {
+        //@ts-ignore
+        return this.decodeBufferWithOptions(encoded, pubKeySets, false);
+    }
+
+
+
     public decodeBuffer(encoded: Buffer, unitIndex: number, pubKey: Buffer, cache: Buffer): DecodeData | DecodeError | Decodeconflict {
+        return this.decodeBufferWithOptions(encoded, pubKey, true, cache, unitIndex);
+    }
+
+    private decodeBufferWithOptions(encoded: Buffer, pubKey: Buffer, useCache: boolean, cache?: Buffer, unitIndex?: number): DecodeData | DecodeError | Decodeconflict {
         let resultData = Buffer.alloc(encoded.length / (hashSize * unitsInOneByte));
 
         let byteValue = 0;
         let decodeError = '';
-        const loopBound = encoded.length / hashSize;
 
-        for (let i = 0; i < loopBound; i++) {
-            const { iEncoded, iCache, iPubKey } = this.getSubArrays(i, encoded, cache, pubKey);
+        for (let i = 0; i < encoded.length / hashSize; i++) {
+            const { iEncoded, iPubKey } = this.getSubArrays(i, encoded, pubKey);
 
             const iHash = createHash('sha256').update(iEncoded).digest();
             const iHashIndex = iPubKey.indexOf(iHash);
 
             if (!this.isValidHashIndex(iHashIndex)) {
                 decodeError +=
-                    `Invalid encoded data ${iEncoded.toString('hex')} ==> \n hash: ${iHash.toString('hex')} is not a public key of \n${unitIndex + i} data bit. `;
+                    `Invalid encoded data ${iEncoded.toString('hex')} ==> \n hash: ${iHash.toString('hex')} is not a public key`;
                 byteValue = 0;
                 continue;
-            }
-
-            if (this.isConflict(iCache, iEncoded)) {
-                return this.returnDecodedConflict(iCache, iEncoded, unitIndex + i);
             }
 
             byteValue = this.accamulateByte(byteValue, iHashIndex, i);
@@ -117,19 +123,29 @@ export class Lamport extends CodecProvider {
                 byteValue = 0;
             }
 
-            this.writeBufferToCachedFile(unitIndex + i, iEncoded);
+            if (useCache) {
+                if (!cache) throw new Error('Cache is not provided');
+                if (!unitIndex) throw new Error('Unit index is not provided');
+
+                const iCache = cache.subarray(i * hashSize, (i + 1) * hashSize);
+
+                if (this.isConflict(iCache, iEncoded)) {
+                    return this.returnDecodedConflict(iCache, iEncoded, unitIndex + i);
+                }
+
+                this.writeBufferToCachedFile(unitIndex + i, iEncoded);
+            }
         }
 
         if (decodeError) return this.returnDecodedError(decodeError)
         if (encoded.length === hashSize) resultData = Buffer.from([byteValue]);
-        return this.returnDecodedSuccess(resultData)
+        return this.returnDecodedSuccess(resultData);
     }
 
-    private getSubArrays(i: number, encoded: Buffer, cache: Buffer, pubKey: Buffer) {
+    private getSubArrays(i: number, encoded: Buffer, pubKey: Buffer) {
         const iEncoded = encoded.subarray(i * hashSize, (i + 1) * hashSize);
-        const iCache = cache.subarray(i * hashSize, (i + 1) * hashSize);
         const iPubKey = pubKey.subarray(i * hashSize * valuesPerUnit, (i + 1) * hashSize * valuesPerUnit);
-        return { iEncoded, iCache, iPubKey };
+        return { iEncoded, iPubKey };
     }
 
     private isValidHashIndex(index: number) {

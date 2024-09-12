@@ -6,7 +6,7 @@ import { step2_vm } from './step2/vm/vm';
 import { ProgramLine, SavedVm } from './common/saved-vm';
 import { InstrCode as Step1_InstrCode } from './step1/vm/types';
 import { InstrCode as Step2_InstrCode } from './step2/vm/types';
-import { Proof as Step2_Proof, validateInstr } from './step2/final-step';
+import { validateInstr } from './step2/final-step';
 import { Runner as Step1_Runner } from './step1/vm/runner';
 import { Runner as Step2_Runner } from './step2/vm/runner';
 import { Register } from './common/register';
@@ -144,7 +144,7 @@ function step2(compressor: Compressor, step1Program: Step1Program) {
 
     const step1Runner = Step1_Runner.load(step1Program);
     console.log('step 1 program size: ', step1Runner.instructions.length);
-        
+
     step1Program.program.forEach((instr, step1_line) => {
 
         const regsBefore = step1Runner.getRegisterValues();
@@ -159,7 +159,7 @@ function step2(compressor: Compressor, step1Program: Step1Program) {
         validateInstr(a, b, c, instr.name, instr.bit);
         if (!step2_vm.success) {
             throw new Error(`Step2 generation failed at line ${step1_line}`);
-        }        
+        }
 
         const step2_program = step2_vm.save();
         const step2Runner = Step2_Runner.load(step2_program);
@@ -176,7 +176,7 @@ function step2(compressor: Compressor, step1Program: Step1Program) {
             const a = regsBefore[instr.param1!];
             const b = regsBefore[instr.param2!];
             const c = regsAfter[instr.target!];
-    
+
             const bitcoin = new Bitcoin();
             verifyStep2Instr(bitcoin, instr, a, b, c);
             compressor.addItem(bitcoin.programToBinary());

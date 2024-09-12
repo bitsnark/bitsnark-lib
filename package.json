@@ -1,6 +1,7 @@
 {
   "name": "bitsnark",
   "version": "0.1.0",
+  "private": true,
   "description": "",
   "keywords": [
     "typescript"
@@ -19,7 +20,10 @@
     "generate": "ts-node ./src/generator/step1/generate.ts",
     "lint": "eslint --ext .ts --fix src/**/*.ts",
     "upgrade": "npx npm-check -u",
-    "version": "npm run build && npm run changelog:update"
+    "version": "npm run build && npm run changelog:update",
+    "build": "tsc",
+    "build:local": "npm run build",
+    "build:pack:install": "npm run build && npm pack && cd ../bitsnark-explorer/backend && npm install ../../bitsnark-playground/*.tgz"
   },
   "devDependencies": {
     "@types/chai": "^4.3.5",

@@ -8,8 +8,6 @@ export enum CodecType {
 }
 
 
-
-
 export interface DecodeData {
     data: Buffer;
 }
@@ -72,6 +70,7 @@ export abstract class CodecProvider {
     abstract encodeBit(b: number, indexInBits: number): Buffer | never
     abstract encodeBuffer(data: Buffer, prvKeyBuffer: Buffer): Buffer;
     abstract decodeBuffer(encoded: Buffer, indexInUnits: number, pubKeySets: Buffer, cache: Buffer): DecodeData | DecodeError | Decodeconflict;
+    abstract decodePrvByPub(encoded: Buffer, pubKeySets: Buffer): DecodeData | DecodeError;
 
     abstract generateEquivocationScript(bitcoin: Bitcoin, unitIndex: number): void;
 
