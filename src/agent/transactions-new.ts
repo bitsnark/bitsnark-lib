@@ -33,7 +33,7 @@ interface Input {
     transactionId?: string;
     transactionName: string;
     outputIndex: number;
-    spendingConfitionIndex: number;
+    spendingConditionIndex: number;
     data?: bigint[];
     script?: Buffer;
 }
@@ -71,7 +71,8 @@ const protocolStart: Transaction[] = [
         outputs: [{
             amount: agentConf.proverStakeAmount,
             spendingConditions: [{
-                signatureType: SignatureType.PROVER
+                signatureType: SignatureType.PROVER,
+                wotsSpec: new Array(10).fill(WotsType._256)
             }]
         }]
     },
@@ -81,7 +82,7 @@ const protocolStart: Transaction[] = [
         inputs: [{
             transactionName: 'prover_stake',
             outputIndex: 0,
-            spendingConfitionIndex: 0
+            spendingConditionIndex: 0
         }],
         outputs: [{
             amount: agentConf.proverStakeAmount - agentConf.symbolicOutputAmount - agentConf.initialTransactionFee,
@@ -89,11 +90,11 @@ const protocolStart: Transaction[] = [
                 timeoutBlocks: agentConf.smallTimeoutBlocks,
                 signatureType: SignatureType.BOTH
             }, {
-                timeoutBlocks: agentConf.largeTimeoutBlocks,
-                signatureType: SignatureType.BOTH
-            }, {
                 signatureType: SignatureType.BOTH,
                 wotsSpec: new Array(66).fill(WotsType._256)
+            }, {
+                timeoutBlocks: agentConf.largeTimeoutBlocks,
+                signatureType: SignatureType.BOTH,
             }]
         }, {
             amount: agentConf.symbolicOutputAmount,
@@ -107,10 +108,10 @@ const protocolStart: Transaction[] = [
         inputs: [{
             transactionName: 'initial',
             outputIndex: 1,
-            spendingConfitionIndex: 0
+            spendingConditionIndex: 0
         }],
         outputs: [{
-            amount: agentConf.proverStakeAmount - agentConf.symbolicOutputAmount - agentConf.initialTransactionFee - agentConf.smallTransactionFee,
+            amount: agentConf.symbolicOutputAmount - agentConf.smallTransactionFee + agentConf.verifierStakeAmount,
             spendingConditions: [{
                 signatureType: SignatureType.PROVER
             }]
@@ -121,16 +122,16 @@ const protocolStart: Transaction[] = [
         inputs: [{
             transactionName: 'payload',
             outputIndex: 0,
-            spendingConfitionIndex: 0
+            spendingConditionIndex: 0
         },
         {
             transactionName: 'initial',
             outputIndex: 0,
-            spendingConfitionIndex: 0
+            spendingConditionIndex: 0
         }, {
             transactionName: 'initial',
             outputIndex: 1,
-            spendingConfitionIndex: 0
+            spendingConditionIndex: 0
         }],
         outputs: [{
             amount: agentConf.proverStakeAmount - agentConf.smallTransactionFee,
@@ -149,7 +150,7 @@ const protocolEnd: Transaction[] = [
             {
                 transactionName: `select_${twoDigits(iterations - 1)}`,
                 outputIndex: 0,
-                spendingConfitionIndex: 0
+                spendingConditionIndex: 0
             }
         ],
         outputs: [
@@ -170,7 +171,7 @@ const protocolEnd: Transaction[] = [
             {
                 transactionName: 'semi_final',
                 outputIndex: 0,
-                spendingConfitionIndex: 1
+                spendingConditionIndex: 1
             }
         ],
         outputs: [
@@ -186,11 +187,11 @@ const protocolEnd: Transaction[] = [
         inputs: [{
             transactionName: 'payload',
             outputIndex: 0,
-            spendingConfitionIndex: 0
+            spendingConditionIndex: 0
         }, {
             transactionName: 'semi_final',
             outputIndex: 0,
-            spendingConfitionIndex: 0
+            spendingConditionIndex: 0
         }],
         outputs: [{
             spendingConditions: [{ signatureType: SignatureType.PROVER }]
@@ -207,7 +208,7 @@ function makeProtocolSteps(): Transaction[] {
             inputs: [{
                 transactionName: i == 0 ? 'initial' : `select_${twoDigits(i - 1)}`,
                 outputIndex: 0,
-                spendingConfitionIndex: 0
+                spendingConditionIndex: i == 0 ? 1 : 0,
             }],
             outputs: [{
                 spendingConditions: [{
@@ -222,7 +223,7 @@ function makeProtocolSteps(): Transaction[] {
             inputs: [{
                 transactionName: i == 0 ? 'initial' : `select_${twoDigits(i - 1)}`,
                 outputIndex: 0,
-                spendingConfitionIndex: 1
+                spendingConditionIndex: 0
             }],
             outputs: [{
                 spendingConditions: [{
@@ -237,7 +238,7 @@ function makeProtocolSteps(): Transaction[] {
             inputs: [{
                 transactionName: `state_${twoDigits(i)}`,
                 outputIndex: 0,
-                spendingConfitionIndex: 1
+                spendingConditionIndex: 0
             }],
             outputs: [{
                 spendingConditions: [{
@@ -257,11 +258,11 @@ function makeProtocolSteps(): Transaction[] {
             inputs: [{
                 transactionName: `payload`,
                 outputIndex: 0,
-                spendingConfitionIndex: 0
+                spendingConditionIndex: 0
             }, {
                 transactionName: `state_${twoDigits(i)}`,
                 outputIndex: 0,
-                spendingConfitionIndex: 0
+                spendingConditionIndex: 0
             }],
             outputs: [{
                 spendingConditions: [{
@@ -325,6 +326,7 @@ export function initializeTransactions(
 
     const proverStake = getTransactionByName(transactions, 'prover_stake');
     proverStake.transactionId = proverUtxo.transactionId;
+    proverStake.outputs[0].amount = proverUtxo.amount;
 
     // generate wots keys
 
@@ -332,15 +334,34 @@ export function initializeTransactions(
         if (t.role == role) {
             t.inputs.forEach((input, inputIndex) => {
                 const output = findOutputByInput(transactions, input);
-                const spend = output.spendingConditions[input.spendingConfitionIndex];
+                const spend = output.spendingConditions[input.spendingConditionIndex];
                 if (!spend)
-                    throw new Error('Invalid spending condition: ' + input.spendingConfitionIndex);
+                    throw new Error('Invalid spending condition: ' + input.spendingConditionIndex);
                 if (!spend.wotsSpec) return;
                 spend.wotsPublicKeys = spend.wotsSpec
                     .map((wt, dataIndex) => getWinternitzPublicKeys(wt, [setupId, t.transactionName, inputIndex, dataIndex].toString()));
             });
         }
     });
+
+    // put schnorr keys where needed
+
+    transactions.forEach(t => {
+        t.inputs.forEach((input, inputIndex) => {
+            const output = findOutputByInput(transactions, input);
+            const spend = output.spendingConditions[input.spendingConditionIndex];
+            if (!spend)
+                throw new Error('Invalid spending condition: ' + input.spendingConditionIndex);
+            spend.signaturesPublicKeys = [];
+            if (spend.signatureType == SignatureType.PROVER || spend.signatureType == SignatureType.BOTH) {
+                spend.signaturesPublicKeys.push(proverPublicKey);
+            }
+            if (spend.signatureType == SignatureType.VERIFIER || spend.signatureType == SignatureType.BOTH) {
+                spend.signaturesPublicKeys.push(verifierPublicKey);
+            }
+        });
+    });
+
 
     transactions.forEach(t => writeTransactionToFile(setupId, t));
 }
