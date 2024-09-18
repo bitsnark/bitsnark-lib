@@ -135,6 +135,11 @@ export class Fp12t {
 	    return r;
     }
 
+    assertOne() {
+        this.x.assertZero();
+        this.y.assertOne();
+    }
+
     toString(): String {
         return `[${this.x.toString()}, ${this.y.toString()}]`;
     }

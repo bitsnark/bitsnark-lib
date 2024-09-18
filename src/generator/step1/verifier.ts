@@ -13,7 +13,6 @@ export class Proof {
     pi_a: G1Point;
     pi_b: G2Point;
     pi_c: G1Point;
-    publicSignals: Fp[] = [];
 
     constructor() {
         this.pi_a = g1.makePoint(Fp.zero(), Fp.zero());
@@ -29,22 +28,18 @@ export class Proof {
         t.pi_b = g2.makePoint(new Fp2(new Fp(witness[i++]), new Fp(witness[i++])), new Fp2(new Fp(witness[i++]), new Fp(witness[i++])));
         t.pi_c = g1.makePoint(new Fp(witness[i++]), new Fp(witness[i++]));
 
-        while (i < witness.length) {
-            t.publicSignals.push(new Fp(witness[i++]));
-        }
-
         return t;
     }
 
-    static fromSnarkjs(snarkjsProof: any, publicSignals: string[]): Proof {
+    static fromSnarkjs(snarkjsProof: any): Proof {
         let t = [
             snarkjsProof.pi_a[0], snarkjsProof.pi_a[1],
             snarkjsProof.pi_b[0][1], snarkjsProof.pi_b[0][0], snarkjsProof.pi_b[1][1], snarkjsProof.pi_b[1][0],
             snarkjsProof.pi_c[0], snarkjsProof.pi_c[1],
         ];
         t = t.map(s => BigInt(s));
-        
-        return Proof.fromWitness([...t, ...publicSignals.map(s => BigInt(s))]);
+
+        return Proof.fromWitness(t);
     }
 
     validate() {
@@ -60,15 +55,17 @@ export class Key {
     gamma: G2Point;
     delta: G2Point;
     ic: G1Point[] = [];
+    vk_x: G1Point;
 
-    private constructor(a: G1Point, b: G2Point, c: G2Point, d: G2Point, ic: G1Point[]) {
+    private constructor(a: G1Point, b: G2Point, c: G2Point, d: G2Point, ic: G1Point[], vk_x: G1Point) {
         this.alpha = a;
         this.beta = b;
         this.gamma = c;
         this.delta = d;
         this.ic = ic;
+        this.vk_x = vk_x;
     }
-    
+
     static fromSnarkjs(obj: any) {
         if (obj.protocol != 'groth16' || obj.curve != 'bn128') throw new Error('Invalid key file');
 
@@ -88,12 +85,16 @@ export class Key {
         for (let i = 0; i < obj.IC.length; i++) {
             ic[i] = g1.makePoint(toFp(obj.IC[i][0]), toFp(obj.IC[i][1]));
         }
+
+        const vk_x = g1.makePoint(toFp(obj.vk_x[0]), toFp(obj.vk_x[1]));
+
         return new Key(
             alpha,
             beta,
             gamma,
             delta,
-            ic
+            ic,
+            vk_x
         );
     }
 }
@@ -102,18 +103,10 @@ export default function groth16Verify(key: Key, proof: Proof) {
 
     step1_vm.startProgram();
 
-    let vk_x = g1.makePoint(key.ic[0].x, key.ic[0].y)
-
-    for (let i = 0; i < proof.publicSignals.length; i++) {
-        let t = key.ic[i + 1].mul(proof.publicSignals[i].getRegister());
-        vk_x = vk_x.add(t);
-    }
-
-    vk_x.assertPoint();
     proof.validate();
 
-    let vg1: G1Point[] = [proof.pi_a, key.alpha.neg(), vk_x.neg(), proof.pi_c.neg()]
-    let vg2: G2Point[] = [proof.pi_b, key.beta, key.gamma, key.delta]
+    let vg1: G1Point[] = [proof.pi_a, key.alpha.neg(), key.vk_x.neg(), proof.pi_c.neg()]
+    let vg2: G2Point[] = [proof.pi_b, key.beta,        key.gamma,      key.delta]
 
-    const result = g3.pairingCheck(vg1, vg2)
+    g3.pairingCheck(vg1, vg2)
 }
