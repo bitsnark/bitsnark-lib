@@ -279,53 +279,49 @@ export class G3 extends EC<Fp12t> {
     // http://cryptojedi.org/papers/dclxvi-20100714.pdf)
     finalExponentiation(_in: Fp12t): Fp12t {
 
-        let t1 = new Fp12t();
-
         // This is the p^6-Frobenius
-        t1.x = _in.x.neg();
-        t1.y = _in.y;
+        let t1 = new Fp12t(_in.x.neg(), _in.y);
 
-        let inv = _in.inv();
+        const inv = _in.inv();
         t1 = t1.mul(inv);
 
-        let t2 = t1.frobeniusP2();
+        const t2 = t1.frobeniusP2();
         t1 = t1.mul(t2);
 
-        let fp = t1.frobenius();
-        let fp2 = t1.frobeniusP2();
-        let fp3 = fp2.frobenius();
+        const t1t = t1;
 
-        let fu = t1.powHardcoded(u);
-        let fu2 = fu.powHardcoded(u);
-        let fu3 = fu2.powHardcoded(u);
+        const fu = t1.powHardcoded(u);
+        const fu2 = fu.powHardcoded(u);
+        const fu3 = fu2.powHardcoded(u);
 
-        let y3 = fu.frobenius();
-        let fu2p = fu2.frobenius();
-        let fu3p = fu3.frobenius();
-        let y2 = fu2.frobeniusP2();
-
-        let y0 = fp.mul(fp2);
-        y0 = y0.mul(fp3);
-
-        let y1 = t1.conj();
-        let y5 = fu2.conj();
-        y3 = y3.conj();
-        let y4 = fu.mul(fu2p);
-        y4 = y4.conj();
-
-        let y6 = fu3.mul(fu3p);
-        y6 = y6.conj();
+        const fu3p = fu3.frobenius();
+        const y6 = fu3.mul(fu3p).conj();
 
         let t0 = y6.mul(y6);
+
+        const fu2p = fu2.frobenius();
+        const y4 = fu.mul(fu2p).conj();
+
         t0 = t0.mul(y4);
-        t0 = t0.mul(y5);
+        const y5 = fu2.conj();
+        const y1 = t1.conj();
+        const y3 = fu.frobenius().conj();
+
         t1 = y3.mul(y5);
+        t0 = t0.mul(y5);
         t1 = t1.mul(t0);
+        const y2 = fu2.frobeniusP2();
         t0 = t0.mul(y2);
         t1 = t1.mul(t1);
         t1 = t1.mul(t0);
         t1 = t1.mul(t1);
         t0 = t1.mul(y1);
+
+        const fp2 = t1t.frobeniusP2();
+        const fp3 = fp2.frobenius();
+        const fp = t1t.frobenius();
+        const y0 = fp.mul(fp2).mul(fp3);
+
         t1 = t1.mul(y0);
         t0 = t0.mul(t0);
         t0 = t0.mul(t1);
@@ -340,12 +336,12 @@ export class G3 extends EC<Fp12t> {
     }
 
     pairingCheck(a: G1Point[], b: G2Point[]) {
-        let acc = new Fp12t(Fp6.zero(), Fp6.one());
-        for (let i = 0; i < a.length; i++) {
-            acc = acc.mul(this.miller(b[i], a[i]));
-        }
+        // let acc = new Fp12t();
+        let acc = this.miller(b[0], a[0]);
+        acc = acc.mul(this.miller(b[1], a[1]));
+        acc = acc.mul(this.miller(b[2], a[2]));
+        acc = acc.mul(this.miller(b[3], a[3]));
         const ret = this.finalExponentiation(acc);
-        const r = ret.eq(Fp12t.one());
-        vm.assertEqOne(r);
+        ret.assertOne();
     }
 }

@@ -37,7 +37,6 @@ describe('taproot', () => {
         const scriptTree = testcase.given.scriptTree;
         const root = new TestNode(scriptTree);
         const result = taprootOutputScript(Buffer.from(publicKey, 'hex'), root);
-        console.log(result.toString('hex'));
         const expected = testcase.expected.scriptPubKey;
         expect(result.toString('hex')).toBe(expected);
     });

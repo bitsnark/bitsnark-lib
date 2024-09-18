@@ -6,7 +6,7 @@ import { internalPublicKey } from "../public-key";
 import { SimpleTapTree } from "../simple-taptree";
 import { createScriptTimeout } from "./timeout";
 
-export function createChallengeTx(proverPublicKey: bigint, verifierPublicKey: bigint): TransactionInfo {
+export function createChallengeTx(setupId: string, proverPublicKey: bigint, verifierPublicKey: bigint): TransactionInfo {
 
     const blocks = agentConf.timeoutBlocks ?? 5;
     const bitcoin = new Bitcoin();
@@ -21,6 +21,8 @@ export function createChallengeTx(proverPublicKey: bigint, verifierPublicKey: bi
 
     const stt = new SimpleTapTree(internalPublicKey, scripts);
     return {
+        desc: 'CHALLENGE',
+        setupId,
         scripts,
         taprootAddress: stt.getAddress(),
         controlBlocks: [ stt.getControlBlock(0), stt.getControlBlock(1) ],

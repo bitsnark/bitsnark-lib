@@ -186,7 +186,20 @@ export class Fp6 {
         return r;
     }
 
+    assertZero() {
+        this.x.assertZero();
+        this.y.assertZero();
+        this.z.assertZero();
+    }
+
+    assertOne() {
+        this.x.assertZero();
+        this.y.assertZero();
+        this.z.assertOne();
+    }
+    
     toString(): string {
+
         return `[${this.x.toString()}, ${this.y.toString()}, ${this.z.toString()}]`;
     }
 }

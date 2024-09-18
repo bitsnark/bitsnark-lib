@@ -8,23 +8,31 @@ import { internalPublicKey } from '../public-key';
 import { SimpleTapTree } from '../simple-taptree';
 import { createScriptTimeout } from './timeout';
 
-function createScriptInitial(proverPublicKey: bigint, verifierPublicKey: bigint): ScriptAndKeys { 
+function createScriptInitial(proverPublicKey: bigint, verifierPublicKey: bigint, wotsPublicKeys?: bigint[]): ScriptAndKeys {
 
     const bitcoin = new Bitcoin();
-    const publicKeys: bigint[] = [];
-    const encodedWitness: bigint[] = [];
-    [
+
+    const data = [
         ...proof.pi_a,
         proof.pi_b[0][1], proof.pi_b[0][0], proof.pi_b[1][1], proof.pi_b[1][0],
         ...proof.pi_c,
         ...publicSignals
     ]
-        .map(s => BigInt(s))
-        .forEach((w, i) => {
+        .map(s => BigInt(s));
+
+    if (!wotsPublicKeys) {
+        wotsPublicKeys = [];
+        data.forEach((_, chunkIndex) => {
+            wotsPublicKeys!.push(...getWinternitzPublicKeys256(chunkIndex));
+        });
+    }
+
+    const encodedWitness: bigint[] = [];
+    
+        data.forEach((w, i) => {
             const chunkIndex = getEncodingIndexForPat(ProtocolStep.INITIAL, 0, i);
             const buffer = encodeWinternitz256(w, chunkIndex);
             encodedWitness.push(...bufferToBigints256BE(buffer));
-            publicKeys.push(...getWinternitzPublicKeys256(chunkIndex));
         });
 
     bitcoin.verifySignature(proverPublicKey);
@@ -32,25 +40,27 @@ function createScriptInitial(proverPublicKey: bigint, verifierPublicKey: bigint)
 
     bitcoin.checkInitialTransaction(
         encodedWitness.map(n => bitcoin.addWitness(n)),
-        publicKeys);
+        wotsPublicKeys);
 
-    if (!bitcoin.success) throw new Error('Failed');
-    return { script: bitcoin.programToBinary(), publicKeys };
+    return { script: bitcoin.programToBinary(), wotsPublicKeys };
 }
 
-export function createInitialTx(proverPublicKey: bigint, verifierPublicKey: bigint): TransactionInfo {
+export function createInitialTx(setupId: string, proverPublicKey: bigint, verifierPublicKey: bigint, wotsPublicKeys?: bigint[]): TransactionInfo {
 
     const blocks = agentConf.timeoutBlocks ?? 5;
-    const initialScriptAndKeys = createScriptInitial(proverPublicKey, verifierPublicKey);
+    const initialScriptAndKeys = createScriptInitial(proverPublicKey, verifierPublicKey, wotsPublicKeys);
     const scripts = [
         initialScriptAndKeys.script,
         createScriptTimeout(proverPublicKey, blocks)
     ];
     const stt = new SimpleTapTree(internalPublicKey, scripts);
     return {
+        desc: 'INITIAL',
+        setupId,
         scripts,
         taprootAddress: stt.getAddress(),
         controlBlocks: [ stt.getControlBlock(0), stt.getControlBlock(1) ],
-        wotsPublicKeys: initialScriptAndKeys.publicKeys
+        wotsPublicKeys: initialScriptAndKeys.wotsPublicKeys,
+        value: agentConf.forwardedValue
     };
 }

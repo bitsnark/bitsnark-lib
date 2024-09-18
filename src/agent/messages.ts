@@ -1,6 +1,6 @@
 
-type MessageType = 'start' | 'join' | 'txkeys' | 'txbody' | 'cosign' | 'error';
-type EncodingKeys = bigint[] | bigint[][];
+type MessageType = 'start' | 'join' | 'txkeys' | 'cosign' | 'error';
+type EncodingKeys = bigint[];
 
 function _assign(target: any, from: any) {
     if (!from) return;
@@ -40,8 +40,6 @@ export class TxKeysMessage {
     transactionDescriptor: string = '';
     wotsPublicKeys: EncodingKeys = [];
     taproot: string = '';
-    transactionHash: string = '';
-    transactionSignature: string = '';
 
     constructor(obj?: Partial<TxKeysMessage>) {
         _assign(this, obj);
@@ -52,9 +50,9 @@ export class CosignTxMessage {
     messageType: MessageType = 'cosign';
     setupId: string = '';
     agentId: string = '';
-    transactionHash: string = '';
-    transactionDescriptor: string = '';
-    transactionSignature: string = '';
+    txId: string = '';
+    txDescriptor: string = '';
+    txSignature: string = '';
 
     constructor(obj?: Partial<CosignTxMessage>) {
         _assign(this, obj);
