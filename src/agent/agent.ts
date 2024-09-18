@@ -1,9 +1,10 @@
 import { agentConf } from "../../agent.conf";
-import { AgentRoles, saveTxToFile, stringToBigint, TransactionInfo } from "./common";
+import { AgentRoles, FundingUtxo, saveTxToFile, stringToBigint, TransactionInfo } from "./common";
 import { CosignTxMessage, fromJson, JoinMessage, StartMessage, TxKeysMessage } from "./messages";
 import { createPresignedTransaction, PresignedTransaction } from "./py-client";
 import { SimpleContext, TelegramBot } from "./telegram";
 import { allTransactions, getNextTransactionMeta, getPrevTransactionMeta, getTransactionMeta, TransactionCreator, TransactionMeta } from "./transactions";
+import { initialize } from "./transactions-new";
 
 interface AgentInfo {
     agentId: string;
@@ -16,12 +17,16 @@ class SetupInstance {
     prover?: AgentInfo;
     verifier?: AgentInfo;
     transactions: Map<string, TransactionInfo> = new Map<string, TransactionInfo>();
+    proverFundingUtxo?: FundingUtxo;
+    payloadUtxo?: FundingUtxo;
 
-    constructor(setupId: string, myRole: AgentRoles, me: AgentInfo) {
+    constructor(setupId: string, myRole: AgentRoles, me: AgentInfo, proverUtxo?: FundingUtxo, payloadUtxo?: FundingUtxo) {
         this.setupId = setupId;
         this.myRole = myRole;
         this.prover = myRole == AgentRoles.PROVER ? me : undefined;
         this.verifier = myRole == AgentRoles.VERIFIER ? me : undefined;
+        this.proverFundingUtxo = proverUtxo;
+        this.payloadUtxo = payloadUtxo;
     }
 }
 
@@ -65,10 +70,15 @@ export class Agent {
 
     public messageReceived(data: string, ctx: SimpleContext): void {
         const tokens = data.split(' ');
-        if (this.role == AgentRoles.PROVER && tokens.length == 2 && tokens[0] == '/start') {
+        if (this.role == AgentRoles.PROVER && tokens.length == 5 && tokens[0] == '/start') {
 
-            this.start(ctx, tokens[1]);
-            ctx.send(`Wait...`);
+            this.start(ctx, tokens[1], {
+                txId: tokens[2],
+                outputIndex: Number(tokens[3])
+            }, {
+                txId: tokens[4],
+                outputIndex: Number(tokens[5])
+            });
 
         } else if (data.trim().startsWith('{') && data.trim().endsWith('}')) {
 
@@ -82,12 +92,12 @@ export class Agent {
         }
     }
 
-    public start(ctx: SimpleContext, setupId: string) {
+    public start(ctx: SimpleContext, setupId: string, payloadUtxo: FundingUtxo, proverUtxo: FundingUtxo) {
 
         const i = new SetupInstance(setupId, AgentRoles.PROVER, {
             agentId: this.agentId,
             schnorrPublicKey: stringToBigint(this.schnorrPublicKey)
-        });
+        }, payloadUtxo, proverUtxo);
         this.instances.set(setupId, i);
         i.prover = {
             agentId: this.agentId,
@@ -186,6 +196,8 @@ export class Agent {
         };
         this.instances.set(message.setupId, i);
 
+        initialize(message.setupId, i.prover?.schnorrPublicKey!, i.verifier!.schnorrPublicKey, i.payloadUtxo!, i.proverFundingUtxo!);
+
         const reply = new JoinMessage({
             setupId: message.setupId,
             agentId: this.agentId,
@@ -198,14 +210,13 @@ export class Agent {
 
     on_join(ctx: SimpleContext, message: StartMessage) {
         const i = this.getInstance(message.setupId);
-        
+
         if (i.verifier) throw new Error('Verifier agent already registered');
         i.verifier = {
             agentId: message.agentId,
             schnorrPublicKey: stringToBigint(message.schnorrPublicKey)
         };
-        const firstTxMeta = allTransactions[0];
-        this.sendTxKeysMessage(ctx, message.setupId, firstTxMeta);
+        initialize(message.setupId, i.prover?.schnorrPublicKey!, i.verifier.schnorrPublicKey, i.payloadUtxo!, i.proverFundingUtxo!);
     }
 
     // prover or verifier receive tx keys, generate the tx and sign
