@@ -120,4 +120,14 @@ export class Fp2 {
         let ty = this.y.mul(_2__3).add(this.y).sub(this.x);
         return new Fp2(tx, ty);
     }
+
+    assertZero() {
+        vm.assertEqZero(this.x.register);
+        vm.assertEqZero(this.y.register);
+    }
+
+    assertOne() {
+        vm.assertEqZero(this.x.register);
+        vm.assertEqOne(this.y.register);
+    }
 }

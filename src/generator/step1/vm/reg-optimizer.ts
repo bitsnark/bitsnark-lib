@@ -33,7 +33,7 @@ function check(regs: Register[], instructions: Instruction[]) {
         if (r.hardcoded || r.witness) ra[r.index] = true;
     });
     instructions.forEach(instr => {
-        if (!ra[instr.param1]) 
+        if (!ra[instr.param1])
             throw new Error('Check failed 1');
         switch (instr.name) {
             case InstrCode.ADDMOD:
@@ -45,7 +45,7 @@ function check(regs: Register[], instructions: Instruction[]) {
             case InstrCode.AND:
             case InstrCode.SUBMOD:
             case InstrCode.DIVMOD:
-                if (!ra[instr.param2 ?? -1]) 
+                if (!ra[instr.param2 ?? -1])
                     throw new Error('Check failed 2');
         }
         ra[instr.target] = true;
@@ -62,7 +62,7 @@ export function regOptimizer(vm: VM) {
 
     function mapReg(i: number, line: number) {
         const r = regArray[i];
-        r.first = r.witness ? 0 : r.first ?? line;
+        r.first = r.witness ? 0 : (r.first || 0 > 0 ? r.first : line);
         r.last = line;
         r.interval = r.last! - r.first!;
     }
@@ -73,26 +73,44 @@ export function regOptimizer(vm: VM) {
     vm.instructions.forEach((instr, line) => {
         mapReg(instr.target, line);
         mapReg(instr.param1, line);
-        mapReg(instr.param2 ?? 0, line);
+        if (instr.param2) mapReg(instr.param2, line);
     });
 
     console.log('Register optimization starting');
 
     const hardcoded = regArray.filter(r => r.hardcoded);
-    const witness = regArray.filter(r => r.witness);
-    const dynamic = regArray.filter(r => !r.hardcoded && !r.witness);
+    const dynamic = regArray.filter(r => !r.hardcoded);
 
-    console.log('total: ', regArray.length, ' hardcoded: ', hardcoded.length, ' withness: ', witness.length);;
+    console.log('total: ', regArray.length, ' hardcoded: ', hardcoded.length);
 
     console.log('Sort by interval');
 
-    // sort by size
-    let sorted = Object.values(dynamic)
-        .sort((a, b) => b.interval! - a.interval!);
-    sorted = [...witness, ...sorted];
+    // // sort by size
+    // let sorted = Object.values(dynamic)
+    //     .sort((a, b) => b.interval! - a.interval!);
 
+    const witnes = dynamic.filter(r => r.witness);
+    const others = dynamic.filter(r => !r.witness).sort((a, b) => Math.random() - 0.5);
+    let sorted = [...witnes, ...others];
     const roots = [];
-    let counter = 0;
+
+    console.log('Find deepest point');
+    const counter: number[] = [];
+    for (let i = 0; i < regArray.length; i++) {
+        const r = regArray[i];
+        if (r.hardcoded) continue;
+        for (let j = r.first!; j <= r.last!; j++) counter[j] = (counter[j] || 0) + 1;
+        //console.log(i);
+    }
+    let deepestCount = 0;
+    let deepestPoint = 0;
+    for (let i = 0; i < counter.length; i++) {
+        if (deepestCount < counter[i]) {
+            deepestCount = counter[i];
+            deepestPoint = i;
+        }
+    }
+    console.log('Deepest point: ', deepestPoint, 'deepest count: ', deepestCount);
 
     console.log('Find non-overlapping sets');
 
@@ -101,21 +119,17 @@ export function regOptimizer(vm: VM) {
         const group: Register[] = [];
         roots.push(group);
         const remaining = [];
+
         const sieve: boolean[] = new Array(vm.instructions.length);
 
         for (let i = 0; i < sorted.length; i++) {
             const ref = sorted[i];
             if (isNotInSieve(ref, sieve)) {
-                markSieve(ref, sieve);
                 group.push(ref);
+                markSieve(ref, sieve);
             } else {
                 remaining.push(ref);
             }
-
-            // counter++;
-            // if (counter % 10000000 == 0) {
-            //     console.log(`sorted: ${sorted.length}   roots: ${roots.length}   group: ${group.length}    remaining: ${remaining.length}`);
-            // }
         }
         sorted = remaining;
     }
