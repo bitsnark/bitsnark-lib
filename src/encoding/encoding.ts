@@ -32,7 +32,6 @@ export function bufferToBigintsBE(buffer: Buffer, size: number): bigint[] {
     return output;
 }
 
-
 export function padHex(s: string, bytes: number): string {
     while (s.length < bytes * 2) s = '0' + s;
     return s;

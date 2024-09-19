@@ -5,7 +5,7 @@ import { agentConf, ONE_BITCOIN } from '../../agent.conf';
 
 const twoDigits = (n: number) => n < 10 ? `0${n}` : `${n}`;
 
-const iterations = 19;
+export const iterations = 19;
 
 enum SignatureType {
     NONE = 'NONE',
@@ -20,16 +20,17 @@ interface FundingUtxo {
     amount: bigint;
 }
 
-interface SpendingCondition {
+export interface SpendingCondition {
     timeoutBlocks?: number,
     signatureType: SignatureType;
     signaturesPublicKeys?: bigint[];
     additionalScriptName?: string;
     wotsSpec?: WotsType[],
-    wotsPublicKeys?: Buffer[][]
+    wotsPublicKeys?: Buffer[][],
+    script?: Buffer
 }
 
-interface Input {
+export interface Input {
     transactionId?: string;
     transactionName: string;
     outputIndex: number;
@@ -38,13 +39,13 @@ interface Input {
     script?: Buffer;
 }
 
-interface Output {
+export interface Output {
     taprootKey?: bigint;
     amount?: bigint;
     spendingConditions: SpendingCondition[];
 }
 
-interface Transaction {
+export interface Transaction {
     role: AgentRoles;
     transactionName: string;
     transactionId?: string;
@@ -91,12 +92,18 @@ const protocolStart: Transaction[] = [
                 signatureType: SignatureType.BOTH
             }, {
                 signatureType: SignatureType.BOTH,
-                wotsSpec: new Array(66).fill(WotsType._256)
+                wotsSpec: new Array(11).fill(WotsType._256)
             }, {
                 timeoutBlocks: agentConf.largeTimeoutBlocks,
                 signatureType: SignatureType.BOTH,
             }]
-        }, {
+        }, ...new Array(5).fill({
+            amount: agentConf.symbolicOutputAmount,
+            spendingConditions: [{
+                signatureType: SignatureType.BOTH,
+                wotsSpec: new Array(11).fill(WotsType._256)
+            }]
+        }), {
             amount: agentConf.symbolicOutputAmount,
             spendingConditions: [{
                 signatureType: SignatureType.BOTH
@@ -130,7 +137,7 @@ const protocolStart: Transaction[] = [
             spendingConditionIndex: 0
         }, {
             transactionName: 'initial',
-            outputIndex: 1,
+            outputIndex: 6,
             spendingConditionIndex: 0
         }],
         outputs: [{
@@ -205,11 +212,11 @@ function makeProtocolSteps(): Transaction[] {
         const state: Transaction = {
             role: AgentRoles.PROVER,
             transactionName: `state_${twoDigits(i)}`,
-            inputs: [{
+            inputs: [0, 1, 2, 3, 4, 5].map(j => ({
                 transactionName: i == 0 ? 'initial' : `select_${twoDigits(i - 1)}`,
-                outputIndex: 0,
-                spendingConditionIndex: i == 0 ? 1 : 0,
-            }],
+                outputIndex: j,
+                spendingConditionIndex: i == 0 && j == 0 ? 1 : 0,
+            })),
             outputs: [{
                 spendingConditions: [{
                     signatureType: SignatureType.BOTH,
@@ -240,15 +247,18 @@ function makeProtocolSteps(): Transaction[] {
                 outputIndex: 0,
                 spendingConditionIndex: 0
             }],
-            outputs: [{
+            outputs: i + 1 < iterations ? [0, 1, 2, 3, 4, 5].map(j => ({
                 spendingConditions: [{
                     signatureType: SignatureType.BOTH,
-                    wotsSpec: i + 1 == iterations ? [
+                    wotsSpec: new Array(11).fill(WotsType._256)
+                }]
+            })) : [{
+                spendingConditions: [{
+                    signatureType: SignatureType.BOTH,
+                    wotsSpec: [
                         ...new Array(19).fill(WotsType._1),
                         ...[WotsType._256]
-                    ] : [{
-                        new: Array(66).fill(WotsType._256)
-                    }]
+                    ]
                 }]
             }]
         };
@@ -275,7 +285,7 @@ function makeProtocolSteps(): Transaction[] {
     return result;
 }
 
-function getTransactionByName(allTransactions: Transaction[], name: string): Transaction {
+export function getTransactionByName(allTransactions: Transaction[], name: string): Transaction {
     const tx = allTransactions.find(t => t.transactionName == name);
     if (!tx) throw new Error('Transaction not found: ' + name);
     return tx;
@@ -286,7 +296,7 @@ function assertOrder(transactions: Transaction[]) {
     transactions.forEach(t => {
         t.inputs.forEach(i => {
             if (!map[i.transactionName!]) throw new Error('Transaction not found: ' + i.transactionName);
-            if (!map[i.transactionName!].outputs[i.outputIndex]) throw new Error('Index not found: ' + i.outputIndex);
+            if (!map[i.transactionName!].outputs[i.outputIndex]) throw new Error(`Index not found: ${t.transactionName} ${i.outputIndex}`);
         });
         map[t.transactionName] = t;
     });
@@ -314,7 +324,7 @@ export function initializeTransactions(
     setupId: string,
     proverPublicKey: bigint, verifierPublicKey: bigint,
     payloadUtxo: FundingUtxo, proverUtxo: FundingUtxo
-) {
+): Transaction[] {
 
     fs.mkdirSync(`./generated/setups/${setupId}`, { recursive: true });
 
@@ -364,6 +374,7 @@ export function initializeTransactions(
 
 
     transactions.forEach(t => writeTransactionToFile(setupId, t));
+    return transactions;
 }
 
 function fromJson(json: string): Transaction {
@@ -398,12 +409,21 @@ export function loadTransactionFromFile(setupId: string, transactionName: string
     return fromJson(fs.readFileSync(`./generated/setups/${setupId}/${transactionName}.json`).toString('ascii'));
 }
 
-initializeTransactions(AgentRoles.PROVER, 'test_setup', 1n, 2n, {
-    transactionId: 'payload',
-    outputIndex: 0,
-    amount: ONE_BITCOIN
-}, {
-    transactionId: 'prover_stake',
-    outputIndex: 0,
-    amount: ONE_BITCOIN
-});
+export function loadAllTransactionsFromFiles(setupId: string): Transaction[] {
+    const names = getTransactionNames();
+    return names.map(name => loadTransactionFromFile(setupId, name));
+}
+
+
+var scriptName = __filename;
+if (process.argv[1] == scriptName) {
+    initializeTransactions(AgentRoles.PROVER, 'test_setup', 1n, 2n, {
+        transactionId: 'payload',
+        outputIndex: 0,
+        amount: ONE_BITCOIN
+    }, {
+        transactionId: 'prover_stake',
+        outputIndex: 0,
+        amount: ONE_BITCOIN
+    });
+}

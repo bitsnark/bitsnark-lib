@@ -7,7 +7,7 @@ export enum WotsType {
 }
 
 const WOTS_NIBBLES: any = {
-    [WotsType._256]: 67,
+    [WotsType._256]: 90,
     [WotsType._1]: 2
 };
 
