@@ -1,6 +1,4 @@
 import { padHex } from "../../encoding/encoding";
-import { decodeWinternitz32 } from "../../encoding/winternitz";
-import { Register } from "../common/register";
 import { hardcode, OpcodeType, opcodeValues } from "./bitcoin-opcodes";
 import { StackItem, Stack } from "./stack";
 import { createHash } from 'crypto';
@@ -766,6 +764,60 @@ export class Bitcoin {
 
     /***  Witness decoding ***/
 
+    winternitzDecodeNibble(target: StackItem, witness: StackItem, publicKey: bigint) {
+        const pk = this.hardcode(publicKey, 32);
+        this.pick(witness); // witness
+        for (let i = 0; i < 8; i++) {
+            this.OP_SHA256(); // hash
+            this.OP_DUP(); // hash hash 
+            this.pick(pk); // hash hash pk
+            this.OP_EQUAL(); // hash 0/1
+
+            // hack
+            const flag = this.stack.items[this.stack.items.length - 1].value;
+
+            this.OP_IF(); // hash
+            this.DATA(BigInt(i)); // hash i
+            this.OP_TOALTSTACK(); // hash
+            this.OP_ENDIF(); // hash
+
+            // hack
+            if (!flag) this.altStack.pop();
+        }
+        this.OP_DROP(); //
+        this.OP_FROMALTSTACK(); // i
+        this.replaceWithTop(target); //
+        this.drop(pk);
+    }
+
+    winternitzCheck1(witness: StackItem[], publicKeys: bigint[]) {
+        if (witness.length != 2 || publicKeys.length != 2) throw new Error('Invalid length');
+        const data = this.newStackItem();
+        const checksum = this.newStackItem();
+        this.winternitzDecodeNibble(data, witness[0], publicKeys[0]);
+        this.winternitzDecodeNibble(checksum, witness[1], publicKeys[1]);
+        this.pick(data);
+        this.pick(checksum);
+        this.OP_SUB();
+        this.OP_NOT();
+        this.OP_VERIFY();
+        this.drop(checksum);
+        this.drop(data);
+    }
+
+    winternitzDecode1(target: StackItem, witness: StackItem[], publicKeys: bigint[]) {
+        if (witness.length != 2 || publicKeys.length != 2) throw new Error('Invalid length');
+        const checksum = this.newStackItem();
+        this.winternitzDecodeNibble(target, witness[0], publicKeys[0]);
+        this.winternitzDecodeNibble(checksum, witness[1], publicKeys[1]);
+        this.pick(target);
+        this.pick(checksum);
+        this.OP_SUB();
+        this.OP_NOT();
+        this.OP_VERIFY();
+        this.drop(checksum);
+    }
+
     checkPrehash(target: StackItem, prehash: StackItem, hash: bigint) {
         this.pick(prehash);
         this.OP_SHA256();
@@ -808,32 +860,6 @@ export class Bitcoin {
         this.OP_VERIFY();
         this.drop(agg);
         this.drop(temp);
-    }
-
-    winternitzDecodeNibble(target: StackItem, witness: StackItem, publicKey: bigint) {
-        const pk = this.hardcode(publicKey, 32);
-        this.pick(witness); // witness
-        for (let i = 0; i < 8; i++) {
-            this.OP_SHA256(); // hash
-            this.OP_DUP(); // hash hash 
-            this.pick(pk); // hash hash pk
-            this.OP_EQUAL(); // hash 0/1
-
-            // hack
-            const flag = this.stack.items[this.stack.items.length - 1].value;
-
-            this.OP_IF(); // hash
-            this.DATA(BigInt(i)); // hash i
-            this.OP_TOALTSTACK(); // hash
-            this.OP_ENDIF(); // hash
-
-            // hack
-            if (!flag) this.altStack.pop();
-        }
-        this.OP_DROP(); //
-        this.OP_FROMALTSTACK(); // i
-        this.replaceWithTop(target); //
-        this.drop(pk);
     }
 
     winternitzCheck32(witness: StackItem[], publicKeys: bigint[]) {
@@ -1145,6 +1171,48 @@ export class Bitcoin {
         this.DATA(BigInt(blocks), 3);
         this.OP_CHECKSEQUENCEVERIFY();
         this.OP_DROP();
+    }
+
+    checkSemiFinal(pathNibbles: StackItem[], indexNibbles: StackItem[], iterations: number) {
+
+        // compare them one nibble at a time
+        const temp = this.newStackItem();
+        for (let i = 0; i < Math.ceil(iterations / 3); i++) {
+
+            // start with zero
+            this.OP_0_16(0n);
+            this.replaceWithTop(temp);
+
+            for (let j = 0; j < 3; i++) {
+
+                if (j > 0) {
+                    // temp = temp * 2;
+                    this.pick(temp);
+                    this.OP_DUP();
+                    this.OP_ADD();
+                    this.replaceWithTop(temp);
+                }
+
+                // pick bit
+                this.pick(pathNibbles[i * 3 + j]);
+                this.OP_IF();
+                this.OP_0_16(1n);
+                this.OP_ELSE();
+                this.OP_0_16(0n);
+                this.OP_ENDIF();
+
+                // hack
+                this.stack.items.pop();
+
+                // add bit to temp
+                this.pick(temp);
+                this.OP_ADD();
+                this.replaceWithTop(temp);
+            }
+
+            // check equality
+            this.assertEqual(temp, indexNibbles[i]);
+        }
     }
 
     /***  META ***/
