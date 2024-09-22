@@ -6,6 +6,8 @@ The protocol involves a prover and a verifier agreeing upon a program (i.e. a pr
 
 This repository is currently aimed at allowing anyone to run a prover-verifier demo locally, but we aim to expand it to be multi-verifier and over the network, and to use the protocol to implement 2-way pegging between Bitcoin and an ERC20 token.
 
+See [the whitepaper](./whitepaper.md) for a more detailed explanation of the protocol.
+
 ## High Level Overview
 
 We start with a prover, a verifier, and a deterministic program that verifies a pre-determined (but yet ungenerated) zk-SNARK.
@@ -22,6 +24,12 @@ We start with a prover, a verifier, and a deterministic program that verifies a 
 
 In many cases it is possible and desirable to bind some of the protocol transactions to outputs of other, non-protocol transactions, hinging those transactions on the outcome of the protocol transactions (i.e. letting the prover unlock some previously locked funds only by supplying a proof that the verifier can not refute).
 
+### Contention Bisection
+
+Since running the entire program in a Bitcoin transaction is not feasible (the Script will be too long and the transaction too large to be included in a block), the protocol implements a binary search for a contentious operation in the program's execution (since the program is deterministic, any discrepancy between the published result and the verified result must include at least one step of the execution for which the prover's and the verifier's views of the program's state differ). Once this operation is identified, it is may be executed as part of the script of a Bitcoin transaction and automatically checked by the Bitcoin miners.
+
+Note this important distinction: the protocol does not verify the proof over the blockchain, but it makes it highly profitable for the verifier to do so, and therefore highly unprofitable for the prover to lie.
+
 ### Incentives
 
 Note that the protocol creates a self-defeating prophecy, where provers never lie because they can be easily caught and punished, and the verifiers will never be able to claim prover stakes. This means that while the prover's stake incentivizes the prover to be honest, it only incentivizes the verifier if the prover lies, which can only happen if the prover believes the verifier is not doing their job. If anything, the prover stakes incentivize verifiers to turn a blind eye and motivate provers to lie, only occasionally catching and punishing them and thus managing to claim a few stakes before the entire ecosystem collapses. This means that verifiers *must* have a separate incentive to keep performing the (admittedly trivial) task of verifying the correctness of executions.
@@ -32,36 +40,11 @@ It's important to remember that neither the prover stake nor the verifier fee ar
 
 ## Transactions Flow
 
-The diagram below describes the flow of transactions in the protocol with an additional "Hinged Funds" output marked with a dashed oval. Transactions publishable by the prover are green, ones publishable by the verifier are blue. Dashed lines are timelocked to a pre-specified number of blocks, the green timelock being significantly shorter than the blue one. The cyan output has a symbolic amount (1 satoshi) that is used to make the "Challenge" and "No Challenge" transactions mutually exclusive. The box labeled "Contention Bisection" is a placeholder for the process of identifying the point of contention in the program's execution which is detailed and illustrated further below.
+The diagram below describes the flow of transactions in the protocol with an additional "Hinged Funds" output marked with a dashed oval. Transactions publishable by the prover are green, ones publishable by the verifier are blue. Dashed lines are timelocked to a pre-specified number of blocks, the green timelock being significantly shorter than the blue one. The cyan output has a symbolic amount (1 satoshi) that is used to make the "Challenge" and "No Challenge" transactions mutually exclusive.
 
-![Transactions Flow](https://g.gravizo.com/svg?
-digraph BitSnark {
-    node [shape=note]
-    {node [shape=point; arrowtail=none] s2 s3 s4 s4 s5}
-    {node [shape=oval] "Prover Stake" "Verifier Fee" "Hinged Funds" "Prover Wallet" "Verifier Wallet"}
-    {node [color=green] "Proof" "No Challenge" "Proof Accepted"}
-    {node [color=blue] "Challenge" "Prover Defaulted" "Proof Refuted"}
-    "Hinged Funds" [style=dashed]
-    "Contention Bisection" [shape=box3d; style=bold]
+The dotted line between "State 2" and "State n" indicates that the bisection process is repeated multiple times (it currently takes us 19 bisections to identify one out of half a million operations in our snark verification program).
 
-    "Hinged Funds" -> s2 [arrowhead=none]
-    s2 -> {"No Challenge"; "Proof Accepted"} -> "Prover Wallet"
-    "Prover Stake" -> "Proof"
-    "Proof" -> s3 [arrowhead=none]
-    "Proof" -> s4 [arrowhead=none; color=cyan]
-    s4 -> {"No Challenge"; "Challenge"} [color=cyan]
-    s3 -> "No Challenge" [style=dashed; color=green]
-    s3 -> s4 [arrowhead=none]
-    "Verifier Fee" -> "Challenge" -> "Prover Wallet"
-    s4 -> "Contention Bisection"
-    s4 -> "Prover Defaulted" [style=dashed; color=blue]
-    "Prover Defaulted" -> "Verifier Wallet"
-    "Contention Bisection" -> s5  [arrowhead=none]
-    s5 -> "Proof Refuted"
-    s5 -> "Proof Accepted" [style=dashed]
-    "Proof Refuted" -> "Verifier Wallet"
-})
-*Overview of the protocol transactions.*
+![BitSNARK Transactions Flow](./transactions-flow.svg)
 
 Once the prover signs and publishes the "Proof" transaction, it spends the prover's stake and locks it.
 
@@ -69,53 +52,13 @@ If the verifier finds the proof valid, they let the green timelock expire, at wh
 
 If, however, the verifier finds the proof invalid, they publish the "Challenge" transaction, which sends the verifier's fee (along with the symbolic satoshi from the "Proof" transaction) to the prover's wallet and prevents the "No Challenge" transaction from ever being valid.
 
-If the prover does not respond to the challenge before the blue timelock expires, the verifier can claim the prover's stake by publishing the "Prover Defaulted" transaction. To avoid this, the prover must publish the first step in the interactive "Contention Bisection" process described in the next diagram.
-
-Once the "Contention Bisection" process is complete, the two sides have committed to disagreeing on a specific instruction in the program, i.e. on the result of some operation on two variables. At that point, if and only if the prover's version is incorrect, the verifier can publish the "Proof Refuted" transaction, claim the prover's stake, and prevent the prover from releasing any hinged funds.
-
-If, however, the prover's version is correct, the "Proof Refuted" transaction will never be valid, the timelock will expire and the prover will be able to claim his stake back along with any hinged funds.
-
-### Contention Bisection
-
-Since running the entire program in a Bitcoin transaction is not feasible (the Script will be too long and the transaction too large to be included in a block by miners), the protocol implements a binary search for a contentious operation in the program's execution (since the program is deterministic, any discrepancy between the published result and the verified result must include at least one step of the execution for which the prover's and the verifier's views of the program's state differ). Once this operation is identified, it is may be executed as part of the script of a Bitcoin transaction and automatically checked by the Bitcoin miners.
-
-The diagram below illustrates the process of identifying the contentious operation. Transactions publishable by the prover are green, ones publishable by the verifier are blue. Dashed lines are timelocked to a pre-specified number of blocks. The dotted line between "State 2" and "State n" indicates that the bisection process is repeated multiple times (it currently takes us 19 bisections to identify one out of half a million operations in our snark verification program).
-
-![Bisection Flow](https://g.gravizo.com/svg?
-digraph Bisection {
-    node [shape=note]
-    {node [shape=point; arrowtail=none] s1 s2 s3 s4 s5}
-    {node [label="..."; shape=diamond] start end}
-    {node [color=blue] "Select 1" "Select n" "Prover Defaulted 1" "Prover Defaulted n"}
-    {node [color=green] "State 1" "State 2" "State n" "Verifier Defaulted 1" "Verifier Defaulted 2" "Verifier Defaulted n" "Argument"}
-    start -> "State 1"
-    "State 1" -> s1 [arrowhead=none]
-    s1 -> "Select 1" [weight=2]
-    s1 -> "Verifier Defaulted 1" [style=dashed]
-    "Select 1" -> s2 [arrowhead=none]
-    s2 -> "State 2" [weight=2]
-    s2 -> "Prover Defaulted 1" [style=dashed]
-    "State 2" -> s3 [arrowhead=none]
-    s3 -> "State n" [style=dotted; weight=2]
-    s3 -> "Verifier Defaulted 2" [style=dashed]
-    "State n" -> s4 [arrowhead=none]
-    s4 -> "Select n" [weight=2]
-    s4 -> "Verifier Defaulted n" [style=dashed]
-    "Select n" -> s5 [arrowhead=none]
-    s5 -> "Argument" [weight=2]
-    s5 -> "Prover Defaulted n" [style=dashed]
-    "Argument" -> end
-    end [label="..."; shape=diamond]
-})
-*The bisection process for identifying the point of contention in the program's execution.*
-
-To recap, we got here because the verifier published the "Challenge" transaction, which means that the prover must publish the "State 1" transaction and lock the output of the "Proof" transaction before the second timelock (blue dashed line in the previous diagram) expires and the verifier claims it with the "Prover Defaulted" transaction. The "State 1" transaction publishes and commits to the state of the program's execution up to the middle of the program.
+If the prover does not respond to the challenge before the blue timelock expires, the verifier can claim the prover's stake by publishing the "Prover Defaulted" transaction. To avoid this, the prover must publish the first step in the bisection process, described below, by signing and publishing the "State 1" transaction which includes the state of the program's execution up to the program's middle.
 
 In response, the verifier has to publish the "Select 1" transaction before the new timelock expires and the prover claims the stake with "Prover Defaulted 1". The "Select 1" transaction signals the verifier's approval or disapproval of the state published by the prover. If the verifier disagrees with the state, a point of contention must exist in the first half of the program. If the verifier agrees with the state, but not with the final result, a point of contention must exist in the second half of the program. The process is then repeated until the point of contention is identified when the verifier publishes "Select n".
 
-To end the bisection process, the prover publishes the "Argument" transaction, which commits to the the two variables that are the input to the contentious operation, the operation itself (as identified by the binary path that located it) and the result.
+In response to "Select n", the prover must publish the "Argument" transaction, in which they commit to the two variables that are the input to the contentious operation, the operation itself (as identified by the binary path that located it) and its result.
 
-The output of the "Argument" transaction can be spent by the verifier only if the result of the operation is different from the one published by the prover. And if the verifier can't do that before the timelock expires, the prover can claim the stake back.
+The verifier can now claim the prover's stake and prevent the release of any hinged funds by publishing the "Proof Refuted" transaction, which is only valid if the prover's argument is incorrect. If, however, the prover's argument is correct, the "Proof Refuted" transaction will never be valid, the timelock will expire and the prover will be able to claim his stake back along with any hinged funds using the "Proof Accepted" transaction.
 
 ## Running the Demo
 
