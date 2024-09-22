@@ -20,7 +20,7 @@ We start with a prover, a verifier, and a deterministic program that verifies a 
 6. In case of discrepancy, the verifier can publish a challenge transaction<sup>*</sup> and claim the prover's stake if and only if the result published by the prover is shown to be incorrect
 7. If this doesn't happen within an agreed-upon time window, the prover can claim his own stake back and the proof is considered valid
 
-\* <sub>Because of the high cost of a challenge in transaction fees - a cost that will be deducted from the prover's stake even if he is honest - the verifier is required to add a fee to the challenge transaction which is transferred to the prover immediately. It should be equal to the cost incurred by the challenge, but significantly lower than the prover's stake.</sub>
+\* <sub>Because of the high cost of a challenge in transaction fees - a cost that will be deducted from the prover's stake even if he is honest - the verifier is required to add a predefined payment to the challenge transaction which is transferred to the prover immediately. It should be equal to the cost incurred by the challenge, but significantly lower than the prover's stake.</sub>
 
 In many cases it is possible and desirable to bind some of the protocol transactions to outputs of other, non-protocol transactions, hinging those transactions on the outcome of the protocol transactions (i.e. letting the prover unlock some previously locked funds only by supplying a proof that the verifier can not refute).
 
@@ -36,13 +36,13 @@ Note that the protocol creates a self-defeating prophecy, where provers never li
 
 This has different solutions in different scenarios. For example, in the case of an atomic swap the incentive is simply the swapped tokens. In the case of a 2-way peg, the protocol can be expanded to include multiple provers who are also acting as verifiers, with the shared incentive of being able to move tokens between the two chains and keeping the system honest and healthy.
 
-It's important to remember that neither the prover stake nor the verifier fee are meant to be a source of income for the participants. They are simply a way to make dishonesty very unprofitable.
+It's important to remember that neither the prover stake nor the verifier payment are meant to be a source of income for the participants. They are simply a way to make dishonesty very unprofitable.
 
 ## Transactions Flow
 
 The diagram below describes the flow of transactions in the protocol with an additional "Hinged Funds" output marked with a dashed oval. Transactions publishable by the prover are green, ones publishable by the verifier are blue. Dashed lines are timelocked to a pre-specified number of blocks, the green timelock being significantly shorter than the blue one. The cyan output has a symbolic amount (1 satoshi) that is used to make the "Challenge" and "No Challenge" transactions mutually exclusive.
 
-The dotted line between "State 2" and "State n" indicates that the bisection process is repeated multiple times (it currently takes us 19 bisections to identify one out of half a million operations in our snark verification program).
+The dotted line between "State 1" and "State n" indicates that the bisection process is repeated multiple times (it currently takes us 19 bisections to identify one out of half a million operations in our snark verification program).
 
 ![BitSNARK Transactions Flow](./transactions-flow.svg)
 
@@ -50,21 +50,29 @@ Once the prover signs and publishes the "Proof" transaction, it spends the prove
 
 If the verifier finds the proof valid, they let the green timelock expire, at which point the prover can sign and publish the "No Challenge" transaction and claim the stake back (along with any optional hinged funds).
 
-If, however, the verifier finds the proof invalid, they publish the "Challenge" transaction, which sends the verifier's fee (along with the symbolic satoshi from the "Proof" transaction) to the prover's wallet and prevents the "No Challenge" transaction from ever being valid.
+If, however, the verifier finds the proof invalid, they publish the "Challenge" transaction, which sends the verifier's payment (along with the symbolic satoshi from the "Proof" transaction) to the prover's wallet and prevents the "No Challenge" transaction from ever being valid.
 
-If the prover does not respond to the challenge before the blue timelock expires, the verifier can claim the prover's stake by publishing the "Verifier Unchallenged" transaction. To avoid this, the prover must publish the first step in the bisection process, described below, by signing and publishing the "State 1" transaction which includes the state of the program's execution up to the program's middle.
+If the prover does not respond to the challenge before the blue timelock expires, the verifier can claim the prover's stake (and prevent the transfer of any hinged funds) by publishing the "Verifier Unchallenged" transaction.
 
-In response, the verifier has to publish the "Select 1" transaction before the new timelock expires and the prover claims the stake with "Prover Unchallenged 1". The "Select 1" transaction signals the verifier's approval or disapproval of the state published by the prover. If the verifier disagrees with the state, a point of contention must exist in the first half of the program. If the verifier agrees with the state, but not with the final result, a point of contention must exist in the second half of the program. The process is then repeated until the point of contention is identified when the verifier publishes "Select n".
+To avoid this, the prover must publish the first step in the bisection process by signing and publishing the "State 0" transaction which includes the state of the program's execution up to the program's middle.
 
-In response to "Select n", the prover must publish the "Argument" transaction, in which they commit to the two variables that are the input to the contentious operation, the operation itself (as identified by the binary path that located it) and its result.
+In response, the verifier has to publish the "Select 0" transaction before the new timelock expires and the prover claims the stake along with any hinged funds with "Prover Unchallenged 0". The "Select 0" transaction signals the verifier's approval or disapproval of the state published by the prover. If the verifier disagrees with the state, a point of contention must exist in the first half of the program. If the verifier agrees with the state, but not with the final result, a point of contention must exist in the second half of the program.
 
-The verifier can now claim the prover's stake and prevent the release of any hinged funds by publishing the "Proof Refuted" transaction, which is only valid if the prover's argument is incorrect. If, however, the prover's argument is correct, the "Proof Refuted" transaction will never be valid, the timelock will expire and the prover will be able to claim his stake back along with any hinged funds using the "Proof Accepted" transaction.
+This process is then repeated multiple times, with the prover having to publish "State x" before the verifier publishes "Verifier Unchallenged x-1" and then the verifier having to publich "Select x" before the prover publishes "Prover Unchallenged x", until a point of contention is identified in "Select n".
+
+The prover then must publish the "Argument" transaction, in which they commit to the two variables that are the input to the contentious operation, the operation itself (as identified by the binary path that located it) and its result.
+
+The verifier can now claim the prover's stake and prevent the release of any hinged funds by publishing the "Proof Refuted" transaction, which is only valid if the prover's argument is incorrect.
+
+If, however, the prover's argument is correct, the "Proof Refuted" transaction will never be valid, the timelock will expire and the prover will be able to claim his stake back along with any hinged funds using the "Proof Accepted" transaction.
 
 ## Protocol Transactions
 
 To generate the transactions, the prover and the verifier agree on a program and prepare keys and UTXOs to be used in this instance of the protocol. The two players then interactively prepare and sign the following graph of interdependant Bitcoin transactions. These transactions are prepared and at least partially signed in advance, likely before the event that the prover will want to prove has occurred, but published only after the prover has generated his proof and is ready to publish it.
 
-Since the transactions are linked to each other, most of the TXIDs have to be known in advance, which means that the participants can't just add inputs to pay the transaction fees (or outputs returning change from said fee). For simplicity, we assume that the prover stake includes an extra amount which pays for all the fees in case of a challenge, and that this added expense is covered by the verifier's challenge fee. In reality, it is entirely possible for the two parties to add inputs and outputs that handle fees on any transactions along the way, as long as they are declared in advance.
+Since the transactions are linked to each other, most of the TXIDs have to be known in advance, which means that the participants can't just add inputs to pay the transaction fees (or outputs returning change from said fee). For simplicity, we assume that the prover stake includes an extra amount which pays for all the fees in case of a challenge, and that this added expense is covered by the verifier's payment on the "Challenge" transaction.
+
+In reality, it is entirely possible for the two parties to add inputs and outputs that handle fees on any transactions along the way, as long as they are declared in advance. Moreover, we can probably use CPFP to allow the participants to add fees to fee-less transactions that are already in the mempool.
 
 ##### Proof Transaction
 
