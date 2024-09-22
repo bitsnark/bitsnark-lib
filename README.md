@@ -52,9 +52,9 @@ If the verifier finds the proof valid, they let the green timelock expire, at wh
 
 If, however, the verifier finds the proof invalid, they publish the "Challenge" transaction, which sends the verifier's fee (along with the symbolic satoshi from the "Proof" transaction) to the prover's wallet and prevents the "No Challenge" transaction from ever being valid.
 
-If the prover does not respond to the challenge before the blue timelock expires, the verifier can claim the prover's stake by publishing the "Prover Defaulted" transaction. To avoid this, the prover must publish the first step in the bisection process, described below, by signing and publishing the "State 1" transaction which includes the state of the program's execution up to the program's middle.
+If the prover does not respond to the challenge before the blue timelock expires, the verifier can claim the prover's stake by publishing the "Verifier Unchallenged" transaction. To avoid this, the prover must publish the first step in the bisection process, described below, by signing and publishing the "State 1" transaction which includes the state of the program's execution up to the program's middle.
 
-In response, the verifier has to publish the "Select 1" transaction before the new timelock expires and the prover claims the stake with "Prover Defaulted 1". The "Select 1" transaction signals the verifier's approval or disapproval of the state published by the prover. If the verifier disagrees with the state, a point of contention must exist in the first half of the program. If the verifier agrees with the state, but not with the final result, a point of contention must exist in the second half of the program. The process is then repeated until the point of contention is identified when the verifier publishes "Select n".
+In response, the verifier has to publish the "Select 1" transaction before the new timelock expires and the prover claims the stake with "Prover Unchallenged 1". The "Select 1" transaction signals the verifier's approval or disapproval of the state published by the prover. If the verifier disagrees with the state, a point of contention must exist in the first half of the program. If the verifier agrees with the state, but not with the final result, a point of contention must exist in the second half of the program. The process is then repeated until the point of contention is identified when the verifier publishes "Select n".
 
 In response to "Select n", the prover must publish the "Argument" transaction, in which they commit to the two variables that are the input to the contentious operation, the operation itself (as identified by the binary path that located it) and its result.
 
@@ -91,7 +91,7 @@ This transaction initiates the protocol. It locks the prover's stake for an agre
 - inputs
 - ouputs
 
-##### Prover Defaulted Transaction
+##### Verifier Unchallenged Transaction
 
 - inputs
 - ouputs
@@ -106,12 +106,12 @@ This transaction initiates the protocol. It locks the prover's stake for an agre
 - inputs
 - ouputs
 
-##### Verifier Defaulted x Transactions
+##### Prover Unchallenged x Transactions
 
 - inputs
 - ouputs
 
-##### Prover Defaulted x Transactions
+##### Verifier Unchallenged x Transactions
 
 - inputs
 - ouputs
