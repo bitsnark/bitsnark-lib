@@ -60,6 +60,77 @@ In response to "Select n", the prover must publish the "Argument" transaction, i
 
 The verifier can now claim the prover's stake and prevent the release of any hinged funds by publishing the "Proof Refuted" transaction, which is only valid if the prover's argument is incorrect. If, however, the prover's argument is correct, the "Proof Refuted" transaction will never be valid, the timelock will expire and the prover will be able to claim his stake back along with any hinged funds using the "Proof Accepted" transaction.
 
+## Protocol Transactions
+
+To generate the transactions, the prover and the verifier agree on a program and prepare keys and UTXOs to be used in this instance of the protocol. The two players then interactively prepare and sign the following graph of interdependant Bitcoin transactions. These transactions are prepared and at least partially signed in advance, likely before the event that the prover will want to prove has occurred, but published only after the prover has generated his proof and is ready to publish it.
+
+Since the transactions are linked to each other, most of the TXIDs have to be known in advance, which means that the participants can't just add inputs to pay the transaction fees (or outputs returning change from said fee). For simplicity, we assume that the prover stake includes an extra amount which pays for all the fees in case of a challenge, and that this added expense is covered by the verifier's challenge fee. In reality, it is entirely possible for the two parties to add inputs and outputs that handle fees on any transactions along the way, as long as they are declared in advance.
+
+##### Proof Transaction
+
+This transaction initiates the protocol. It locks the prover's stake for an agreed upon number of blocks and publishes the proof and the result of the program's execution. It is signed by the prover and the verifier.
+
+- inputs
+    1. UTXO belonging to the prover, consisting of the prover's stake. This input is declared during the setup but left unsigned, so that the prover has to sign it before publishing the transaction. This means that if the prover spends it beforehand, he will no longer be able to publish this transaction and will lose the stake and any hinged funds.
+- ouputs
+    1. The entire stake, minus transaction fees and a symbolic amount of one satoshi, is locked so that it can only be spent in one of the following ways:
+        - The `no challenge` transaction can spend it if an agreed upon number of blocks have passed
+        - The `verifier wins` transaction can spend it if a significantly larger number of blocks have passed
+        - the first `state` transaction can spend it at any time
+    2. A symbolic amount that can be spent in one of the following ways:
+        - The `no challenge` transaction can spend it if an agreed upon number of blocks have passed
+        - The `challenge` transaction can spend it at any time, provided it is accompanied by an agreed upon fee
+
+##### No Challenge Transaction
+
+- inputs
+- ouputs
+
+##### Challenge Transaction
+
+- inputs
+- ouputs
+
+##### Prover Defaulted Transaction
+
+- inputs
+- ouputs
+
+##### State x Transactions
+
+- inputs
+- ouputs
+
+##### Select x Transactions
+
+- inputs
+- ouputs
+
+##### Verifier Defaulted x Transactions
+
+- inputs
+- ouputs
+
+##### Prover Defaulted x Transactions
+
+- inputs
+- ouputs
+
+##### Argument Transaction
+
+- inputs
+- ouputs
+
+##### Proof Accepted Transaction
+
+- inputs
+- ouputs
+
+##### Proof Refuted Transaction
+
+- inputs
+- ouputs
+
 ## Running the Demo
 
 ### Initial Setup
