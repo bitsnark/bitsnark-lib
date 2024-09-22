@@ -15,6 +15,8 @@ export interface SimulatedRegister {
     hardcoded: boolean;
 }
 
+type HashOption = 'SHA256' | 'HASH160';
+
 export class Bitcoin {
 
     opcodes: Operation[] = [];
@@ -25,6 +27,8 @@ export class Bitcoin {
     hardcoded: bigint[] = [];
     success = true;
     maxStack = 0;
+
+    defaultHash: HashOption = 'SHA256';
 
     constructor() {
     }
@@ -97,6 +101,10 @@ export class Bitcoin {
 
     getTopStackItam(): StackItem {
         return this.stack.items[this.stack.items.length - 1];
+    }
+
+    setDefaultHash(defaultHash: HashOption) {
+        this.defaultHash = defaultHash;
     }
 
     /// NATIVE OPERATIONS ///
@@ -333,6 +341,21 @@ export class Bitcoin {
         while (hex.length < 64) hex = '0' + hex;
         const h = createHash('sha256').update(hex, 'hex').digest('hex');
         this.stack.newItem(BigInt('0x' + h));
+    }
+
+    OP_HASH160() {
+        this.opcodes.push({ op: OpcodeType.OP_HASH160 });
+        const t = this.stack.items.pop()!;
+        let hex = t.value.toString(16);
+        while (hex.length < 64) hex = '0' + hex;
+        const h1 = createHash('sha256').update(hex, 'hex').digest();
+        const h2 = createHash('ripemd160').update(h1).digest('hex');
+        this.stack.newItem(BigInt('0x' + h2));
+    }
+
+    OP_HASH_DEFAULT() {
+        if (this.defaultHash == 'SHA256') return this.OP_SHA256();
+        if (this.defaultHash == 'HASH160') return this.OP_HASH160();
     }
 
     OP_CHECKSIGVERIFY() {
@@ -768,7 +791,7 @@ export class Bitcoin {
         const pk = this.hardcode(publicKey, 32);
         this.pick(witness); // witness
         for (let i = 0; i < 8; i++) {
-            this.OP_SHA256(); // hash
+            this.OP_HASH_DEFAULT(); // hash
             this.OP_DUP(); // hash hash 
             this.pick(pk); // hash hash pk
             this.OP_EQUAL(); // hash 0/1
@@ -820,7 +843,7 @@ export class Bitcoin {
 
     checkPrehash(target: StackItem, prehash: StackItem, hash: bigint) {
         this.pick(prehash);
-        this.OP_SHA256();
+        this.OP_HASH_DEFAULT();
         this.DATA(hash, 32);
         this.OP_EQUAL();
         this.replaceWithTop(target);

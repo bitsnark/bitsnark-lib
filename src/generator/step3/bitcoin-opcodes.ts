@@ -48,6 +48,7 @@ export enum OpcodeType {
     OP_NIP = 'OP_NIP',
     OP_ROT = 'OP_ROT',
     OP_SHA256 = 'OP_SHA256',
+    OP_HASH160 = 'OP_HASH160',
     OP_VERIFY = 'OP_VERIFY',
     OP_CHECKSIGVERIFY = 'OP_CHECKSIGVERIFY',
     OP_CHECKSEQUENCEVERIFY = 'OP_CHECKSEQUENCEVERIFY'
@@ -125,6 +126,7 @@ export const opcodeValues = {
         [OpcodeType.OP_NIP]: 119,
         [OpcodeType.OP_ROT]: 123,
         [OpcodeType.OP_SHA256]: 168,
+        [OpcodeType.OP_HASH160]: 169,
         [OpcodeType.OP_VERIFY]: 105,
         [OpcodeType.OP_CHECKSIGVERIFY]: 173,
         [OpcodeType.OP_CHECKSEQUENCEVERIFY]: 178

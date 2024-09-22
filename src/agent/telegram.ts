@@ -3,11 +3,10 @@ import { Context, NarrowedContext, Telegraf } from 'telegraf';
 import { channelPost, message } from 'telegraf/filters';
 import { agentConf } from '../../agent.conf';
 import axios from 'axios';
-import { Message, Update } from 'telegraf/typings/core/types/typegram';
-import { KeyedDistinct } from 'telegraf/typings/core/helpers/util';
 import { toJson } from './messages';
+import { Message, Update } from 'telegraf/types';
 
-type TelegrafContext = NarrowedContext<Context<Update>, Update.ChannelPostUpdate<KeyedDistinct<Message, never>>>;
+type TelegrafContext = NarrowedContext<Context<Update>, Update.ChannelPostUpdate>;
 
 export class SimpleContext {
     ctx: TelegrafContext;

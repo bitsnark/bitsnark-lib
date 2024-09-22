@@ -3,9 +3,46 @@ import { Bitcoin } from '../generator/step3/bitcoin';
 import { WotsType } from './winternitz';
 import { bufferToBigint160 } from './common';
 import { StackItem } from '../generator/step3/stack';
+import { SimpleTapTree } from './simple-taptree';
+import { agentConf } from '../../agent.conf';
+import { Buffer } from 'node:buffer';
+
+function findInputsByOutput(
+    transactions: Transaction[],
+    transactionName: string,
+    outputIndex: number,
+    spendingConditionIndex: number): Input[] {
+    return transactions.map(t => t.inputs
+        .filter(i => i.transactionName == transactionName &&
+            i.outputIndex == outputIndex &&
+            i.spendingConditionIndex == spendingConditionIndex))
+        .flat();
+}
+
+function setTaprootKey(transactions: Transaction[]) {
+    transactions.forEach(t => {
+        t.outputs.forEach((output, outputIndex) => {
+            const scripts: Buffer[] = [];
+            output.spendingConditions.forEach((sc, scIndex) => {
+                const inputs = findInputsByOutput(transactions, t.transactionName, outputIndex, scIndex);
+                if (inputs.some(ti => ti.script!.compare(inputs[0].script! as any) != 0)) {
+                    console.error(inputs);
+                    throw new Error('Different scripts for one SC');
+                }
+                if (inputs.length == 0)
+                    throw new Error('No input for this SC?');
+
+                scripts.push(inputs[0].script!);
+            });
+            const stt = new SimpleTapTree(agentConf.internalPubkey, scripts);
+            output.taprootKey = stt.getAddress();
+        });
+    });
+}
 
 function generateBoilerplate(spendingCondition: SpendingCondition): Buffer {
     const bitcoin = new Bitcoin();
+    bitcoin.setDefaultHash('HASH160');
 
     if (spendingCondition.signaturesPublicKeys) {
         spendingCondition.signaturesPublicKeys.forEach(key => {
@@ -34,6 +71,7 @@ function generateBoilerplate(spendingCondition: SpendingCondition): Buffer {
 
 function generateSemiFinalScript(lastSelectOutput: Output, semiFinalInput: Input) {
     const bitcoin = new Bitcoin();
+    bitcoin.setDefaultHash('HASH160');
 
     const pubKeys = lastSelectOutput.spendingConditions[0].wotsPublicKeys!;
 
@@ -79,6 +117,12 @@ export function generateAllScripts(setupId: string, transactions: Transaction[])
             });
         }
 
+        writeTransactionToFile(setupId, t);
+    });
+
+    setTaprootKey(transactions);
+
+    transactions.forEach(t => {
         writeTransactionToFile(setupId, t);
     });
 }

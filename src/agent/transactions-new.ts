@@ -24,7 +24,6 @@ export interface SpendingCondition {
     timeoutBlocks?: number,
     signatureType: SignatureType;
     signaturesPublicKeys?: bigint[];
-    additionalScriptName?: string;
     wotsSpec?: WotsType[],
     wotsPublicKeys?: Buffer[][],
     script?: Buffer
@@ -40,7 +39,7 @@ export interface Input {
 }
 
 export interface Output {
-    taprootKey?: bigint;
+    taprootKey?: Buffer;
     amount?: bigint;
     spendingConditions: SpendingCondition[];
 }

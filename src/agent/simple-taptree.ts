@@ -1,5 +1,4 @@
 import { createHash } from "crypto";
-import { padHex } from "../encoding/encoding";
 
 const taprootVersion = 0xc0;
 const p = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2Fn;
@@ -10,20 +9,29 @@ const G = [
 
 type Point = bigint[] | null;
 
-function bigintToBuffer(n: bigint): Uint8Array {
+function padHex(s: string, bytes: number): string {
+    while (s.length < bytes * 2) s = '0' + s;
+    return s;
+}
+
+function bigintToBuffer(n: bigint): Buffer {
     return Buffer.from(padHex(n.toString(16), 32), 'hex');
+}
+
+function cat(buffers: Buffer[]): Buffer {
+    return Buffer.concat(buffers as any);
 }
 
 function getHash(script: Buffer): Buffer {
     return taggedHash('TapLeaf',
-        Buffer.concat([Buffer.from([taprootVersion]), compactSize(script.length), script]));
+        cat([Buffer.from([taprootVersion]), compactSize(script.length), script]));
 }
 
 function combineHashes(left_h: Buffer, right_h: Buffer): Buffer {
-    if (right_h.compare(left_h) == -1) {
+    if (right_h.compare(left_h as any) == -1) {
         [left_h, right_h] = [right_h, left_h];
     }
-    return taggedHash('TapBranch', Buffer.concat([left_h, right_h]));
+    return taggedHash('TapBranch', cat([left_h, right_h]));
 }
 
 function compactSize(l: number): Buffer {
@@ -35,7 +43,7 @@ function compactSize(l: number): Buffer {
 
 function taggedHash(tag: string, msg: Buffer): Buffer {
     const tagHash = createHash('sha256').update(tag, 'utf-8').digest();
-    return createHash('sha256').update(Buffer.concat([tagHash, tagHash, msg])).digest();
+    return createHash('sha256').update(cat([tagHash, tagHash, msg]) as any).digest();
 }
 
 function bigintFromBytes(buf: Buffer): bigint {
@@ -84,7 +92,7 @@ function pointAdd(P1: Point, P2: Point) {
     if (P1 == null) return P2;
     if (P2 == null) return P1;
     if (x(P1) == x(P2) && y(P1) != y(P2)) return null;
-    let lam;
+    let lam: bigint; x
     if (x(P1) == x(P2) && y(P1) == y(P2))
         lam = (3n * x(P1) * x(P1) * modPow(2n * y(P1), p - 2n, p)) % p;
     else
@@ -94,17 +102,17 @@ function pointAdd(P1: Point, P2: Point) {
 }
 
 function pointMul(P: Point, n: bigint): Point {
-    let R = null;
+    let R: Point = null;
     for (let i = 0; i < 256; i++) {
         if ((n >> BigInt(i)) & 1n)
             R = pointAdd(R, P);
         P = pointAdd(P, P);
     }
-    return R
+    return R;
 }
 
 function taprootTweakPubkey(pubkey: bigint, h: Buffer): any[] {
-    const t = bigintFromBytes(taggedHash('TapTweak', Buffer.concat([bigintToBuffer(pubkey), h])));
+    const t = bigintFromBytes(taggedHash('TapTweak', cat([bigintToBuffer(pubkey), h])));
     if (t >= SECP256K1_ORDER) throw new Error('t >= SECP256K1_ORDER');
     const P = lift_x(pubkey);
     const Q = pointAdd(P, pointMul(G, t));
@@ -126,7 +134,7 @@ export class SimpleTapTree {
     getRoot(): Buffer {
         let temp = this.scripts.map(b => getHash(b));
         while (temp.length > 1) {
-            const other = [];
+            const other: Buffer[] = [];
             while (temp.length > 0) {
                 other.push(combineHashes(temp.shift()!, temp.shift()!));
             }
@@ -139,7 +147,7 @@ export class SimpleTapTree {
         const buffers: Buffer[] = [];
         let temp = this.scripts.map(b => getHash(b));
         while (temp.length > 1) {
-            const other = [];
+            const other: Buffer[] = [];
             const siblingIndex = index ^ 1;
             const sibling = temp[siblingIndex];
             buffers.push(sibling);
@@ -149,7 +157,7 @@ export class SimpleTapTree {
             temp = other;
             index = index >> 1;
         }
-        return Buffer.concat(buffers);
+        return cat(buffers);
     }
 
     public getControlBlock(index: number): Buffer {
@@ -157,12 +165,44 @@ export class SimpleTapTree {
         const P = lift_x(this.internalPubkey);
         const keyBuf = Buffer.from(P![0].toString(16), 'hex');
         const proof = this.getProof(index);
-        return Buffer.concat([versionBuf, keyBuf, proof]);    
+        return cat([versionBuf, keyBuf, proof]);
     }
 
     public getAddress(): Buffer {
         const h = this.getRoot();
         const [_, output_pubkey] = taprootTweakPubkey(this.internalPubkey, h);
         return Buffer.concat([Buffer.from([0x51, 0x20]), output_pubkey]);
+    }
+}
+
+export class Compressor {
+
+    data: Buffer[][] = [];
+    counter: number = 0;
+
+    constructor(private depth: number) {
+        this.data = new Array(depth).fill([]);
+    }
+
+    addItem(script: Buffer) {
+        this.compress();
+        this.data[this.data.length - 1].push(getHash(script));
+        this.counter++;
+    }
+
+    compress() {
+        for (let i = this.data.length - 1; i > 0; i--) {
+            if (this.data[i].length == 2) {
+                const hash = combineHashes(this.data[i][0], this.data[i][1]);
+                this.data[i] = [];
+                this.data[i - 1].push(hash);
+            }
+        }
+    }
+
+    getRoot(): Buffer {
+        while (this.counter < 2 ** this.depth) this.addItem(Buffer.alloc(0));
+        this.compress();
+        return this.data[0][0];
     }
 }
