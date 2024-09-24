@@ -1,6 +1,5 @@
 import { createHash } from "crypto";
 import { isFileExists, deleteDir, getFileSizeBytes } from "../../src/encoder-decoder/files-utils";
-import { Winternitz } from "../../src/encoder-decoder/winternitz";
 import { Codec } from "../../src/encoder-decoder/codec";
 import { CodecType } from "../../src/encoder-decoder/codec-provider";
 

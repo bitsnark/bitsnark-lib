@@ -92,7 +92,7 @@ function pointAdd(P1: Point, P2: Point) {
     if (P1 == null) return P2;
     if (P2 == null) return P1;
     if (x(P1) == x(P2) && y(P1) != y(P2)) return null;
-    let lam: bigint; x
+    let lam: bigint, x
     if (x(P1) == x(P2) && y(P1) == y(P2))
         lam = (3n * x(P1) * x(P1) * modPow(2n * y(P1), p - 2n, p)) % p;
     else

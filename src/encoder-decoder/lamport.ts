@@ -88,6 +88,8 @@ export class Lamport extends CodecProvider {
     }
 
     public decodePrvByPub(encoded: Buffer, pubKeySets: Buffer): DecodeData | DecodeError {
+        // We actually want to ignore an possible error.
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         //@ts-ignore
         return this.decodeBufferWithOptions(encoded, pubKeySets, false);
     }

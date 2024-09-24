@@ -87,7 +87,7 @@ function subtract(a: NibbleSet, b: NibbleSet): NibbleSet {
 }
 
 function naiiveMult(a: NibbleSet, b: NibbleSet): NibbleSet {
-    let result: NibbleSet = [];
+    const result: NibbleSet = [];
     let carry: ExtNibble = 0;
     for (let i = 0; i < a.length; i++) {
         for (let j = 0; j < b.length; j++) {

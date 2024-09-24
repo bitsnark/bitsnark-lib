@@ -140,7 +140,7 @@ export class Fp12t {
         this.y.assertOne();
     }
 
-    toString(): String {
+    toString(): string {
         return `[${this.x.toString()}, ${this.y.toString()}]`;
     }
 }

@@ -2,7 +2,7 @@ import { expect } from 'chai';
 
 import { G1, G1Point } from "../../src/generator/step1/algebra/G1";
 import { G2, G2Point } from "../../src/generator/step1/algebra/G2";
-import { VM, step1_vm as vm } from '../../src/generator/step1/vm/vm';
+import { step1_vm as vm } from '../../src/generator/step1/vm/vm';
 import { curveOrder, G3 } from '../../src/generator/step1/algebra/G3';
 import { Fp12t } from '../../src/generator/step1/algebra/fp12t';
 
@@ -57,7 +57,6 @@ describe('Pairing', () => {
     });
 
     it('Pairing bilinearity in G1', () => {
-        const _2 = vm.hardcode(2n);
         const p1 = g3.optimalAte(gen1, gen2);
         const p2 = g3.optimalAte(gen1.double(), gen2);
         const t = p1.mul(p1);

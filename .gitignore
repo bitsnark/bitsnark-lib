@@ -1,10 +1,10 @@
-node_modules
-dist
-.nfs*
-/generated
 .DS_Store
+.nfs*
 .prettierrc
-
-venv/
-__pycache__/
 .pytest-cache/
+/expose/git-filter-repo
+/generated
+__pycache__/
+dist
+node_modules
+venv/

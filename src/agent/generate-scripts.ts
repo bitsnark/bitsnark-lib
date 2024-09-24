@@ -106,7 +106,7 @@ export function generateAllScripts(setupId: string, transactions: Transaction[])
             const prevOutput = findOutputByInput(transactions, t.inputs[0]);
             generateSemiFinalScript(prevOutput, t.inputs[0]);
         } else if (t.transactionName == 'final') {
-
+            // Shouldn't we do something here?
         } else {
             t.inputs.forEach(input => {
                 const prev = getTransactionByName(transactions, input.transactionName);
@@ -127,7 +127,7 @@ export function generateAllScripts(setupId: string, transactions: Transaction[])
     });
 }
 
-var scriptName = __filename;
+const scriptName = __filename;
 if (process.argv[1] == scriptName) {
     const transactions = loadAllTransactionsFromFiles('test_setup');
     generateAllScripts('test_setup', transactions);

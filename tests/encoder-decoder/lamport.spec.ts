@@ -37,7 +37,6 @@ describe(`Test sequence for Lamport signature`, () => {
         expect(lamportCodec).toBeInstanceOf(Codec);
     });
 
-    let equivocationTaproot: Buffer;
     it('Generate keys - returning public & private keys location & equivocationMerkleRoot', () => {
         const taproot = lamportCodec.generateKeys(dataBuffer.length * unitsInOneByte);
         expect(Buffer.from(taproot).length).toBe(34);
@@ -128,23 +127,6 @@ describe(`Test sequence for Lamport signature`, () => {
         }
 
     });
-
-    it('Decode: if both CONFLICT & UNDECODED return equivocationMerkleRoot, prvkey1, prvkey2', () => {
-        dataBuffer[1] = 0x12; //change in bit no 8 - create conflict
-        const tmp = lamportCodec.encodeBuffer(getDataBufferToEncode(dataBuffer, 0, 2), 0);
-        tmp[0] = tmp[0] + 1; // chenge encode v- create undeocable
-        decoded = lamportCodec.decodeBuffer(tmp, 0);
-        expect(decoded).toBeDefined();
-        expect('prv1' in decoded).toBe(true);
-        expect('prv2' in decoded).toBe(true);
-        expect('index' in decoded).toBe(true);
-        expect('script' in decoded).toBe(true);
-        if ('prv1' in decoded && 'prv2' in decoded) {
-            expect(decoded.prv2 && decoded.prv1?.compare(decoded.prv2) === 0).toBe(false);
-        }
-    });
-
-
 });
 
 

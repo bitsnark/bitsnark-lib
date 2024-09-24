@@ -56,7 +56,7 @@ export function modPow(base: bigint, expo: bigint, p: bigint): bigint {
     do {
         x = x ** 2n % p
         if (expo & 2n) res = res * x % p
-    } while (expo /= 2n)
+    } while (expo != 2n)
     return res
 }
 
@@ -104,7 +104,7 @@ export function polyInv(coeffs: bigint[], modulus_coeffs: bigint[], degree: numb
     while (polyDeg(low) > 0) {
         let r = polyRoundedDiv(high, low, prime);
         r = polyComplete(r, degree + 1);
-        let nm = hm.map(n => n);
+        const nm = hm.map(n => n);
         const _new = high.map(n => n);
         //assert len(lm) == len(hm) == len(low) == len(high) == len(nm) == len(new) == self.degree + 1
         for (let i = 0; i < degree + 1; i++) {

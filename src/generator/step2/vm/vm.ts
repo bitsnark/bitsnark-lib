@@ -139,25 +139,25 @@ export class VM {
 
     add(target: Register, a: Register, b: Register) {
         this.pushInstruction(InstrCode.ADD, target, a, b);
-        let v = (a.value + b.value) & 0xffffffffn;
+        const v = (a.value + b.value) & 0xffffffffn;
         this.setRegister(target, v);
     }
 
     addOF(target: Register, a: Register, b: Register) {
         this.pushInstruction(InstrCode.ADDOF, target, a, b);
-        let v = (a.value + b.value) >> 32n;
+        const v = (a.value + b.value) >> 32n;
         this.setRegister(target, v);
     }
 
     sub(target: Register, a: Register, b: Register) {
         this.pushInstruction(InstrCode.SUB, target, a, b);
-        let v = a.value >= b.value ? a.value - b.value : a.value + 0x0100000000n - b.value;
+        const v = a.value >= b.value ? a.value - b.value : a.value + 0x0100000000n - b.value;
         this.setRegister(target, v);
     }
 
     subOF(target: Register, a: Register, b: Register) {
         this.pushInstruction(InstrCode.SUBOF, target, a, b);
-        let v = a.value >= b.value ? 0n : 1n;
+        const v = a.value >= b.value ? 0n : 1n;
         this.setRegister(target, v);
     }
 
@@ -443,4 +443,4 @@ export class VM {
     }
 }
 
-export let step2_vm: VM = new VM();
+export const step2_vm: VM = new VM();

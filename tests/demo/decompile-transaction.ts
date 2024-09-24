@@ -18,9 +18,9 @@ const filePath = path.resolve(filename);
 const data = fs.readFileSync(filePath, 'utf8');
 const obj = JSON.parse(data);
 const scriptHex = obj.program;
-let scriptText = BScript.rawToAsm(scriptHex, 'hex');
+const scriptText = BScript.rawToAsm(scriptHex, 'hex');
 
-function pushdata(s: String): string[] {
+function pushdata(s: string): string[] {
     if (s.length % 2 != 0 || s.length > 512) throw new Error('Invalid length');
     const l = s.length / 2;
     return ['OP_PUSHDATA1', l.toString(16), '0x' + s];

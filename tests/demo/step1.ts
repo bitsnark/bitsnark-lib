@@ -36,7 +36,7 @@ function patPart(saved: SavedVm<InstrCode>, searchPath: number[], iteration: num
     const runner = Runner.load(saved);
     const line = getLineNumber(searchPath).middle;
     runner.execute(line);
-    let merkleRoot = runner.getStateRoot();
+    const merkleRoot = runner.getStateRoot();
 
     const bitcoin = new Bitcoin();
     const chunkIndex = getEncodingIndexForPat(ProtocolStep.STEP1, searchPath.length, 0);
@@ -57,7 +57,7 @@ function vicPart(saved: SavedVm<InstrCode>, searchPath: number[], encodedStateRo
     const runner = Runner.load(saved);
     const middle = getLineNumber(searchPath).middle;
     runner.execute(middle);
-    let midState = runner.getStateRoot();
+    const midState = runner.getStateRoot();
 
     const patChunkIndex = getEncodingIndexForPat(ProtocolStep.STEP1, searchPath.length, 0);
     const patState = decodeWinternitz256(encodedStateRoot, patChunkIndex);
