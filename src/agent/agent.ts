@@ -127,16 +127,16 @@ export class Agent {
         const schnorrPrivateKey = (agentConf.keyPairs as any)[this.agentId].private;
         const pyTx = await createPresignedTransaction({
             inputs: [{
-                txid: previousTx?.txId!,
+                txid: previousTx?.txId,
                 vout: 0,
                 spentOutput: {
-                    scriptPubKey: currentTx?.taprootAddress!,
+                    scriptPubKey: currentTx?.taprootAddress,
                     value: agentConf.forwardedValue
                 }
             }],
             schnorrPrivateKey,
             outputValue: agentConf.forwardedValue - agentConf.forwardedFeeValue, // todo decreasing outputs
-            executionScript: currentTx?.scripts[0]!,
+            executionScript: currentTx?.scripts[0],
             outputScriptPubKey: nextTx.taprootAddress
         });
         currentTx.txId = pyTx.txid;
@@ -196,7 +196,7 @@ export class Agent {
         };
         this.instances.set(message.setupId, i);
 
-        initialize(message.setupId, i.prover?.schnorrPublicKey!, i.verifier!.schnorrPublicKey, i.payloadUtxo!, i.proverFundingUtxo!);
+        initialize(message.setupId, i.prover?.schnorrPublicKey, i.verifier!.schnorrPublicKey, i.payloadUtxo!, i.proverFundingUtxo!);
 
         const reply = new JoinMessage({
             setupId: message.setupId,
@@ -216,7 +216,7 @@ export class Agent {
             agentId: message.agentId,
             schnorrPublicKey: stringToBigint(message.schnorrPublicKey)
         };
-        initialize(message.setupId, i.prover?.schnorrPublicKey!, i.verifier.schnorrPublicKey, i.payloadUtxo!, i.proverFundingUtxo!);
+        initialize(message.setupId, i.prover?.schnorrPublicKey, i.verifier.schnorrPublicKey, i.payloadUtxo!, i.proverFundingUtxo!);
     }
 
     // prover or verifier receive tx keys, generate the tx and sign

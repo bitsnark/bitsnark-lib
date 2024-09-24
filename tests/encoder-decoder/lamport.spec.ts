@@ -37,7 +37,6 @@ describe(`Test sequence for Lamport signature`, () => {
         expect(lamportCodec).toBeInstanceOf(Codec);
     });
 
-    let equivocationTaproot: Buffer;
     it('Generate keys - returning public & private keys location & equivocationMerkleRoot', () => {
         const taproot = lamportCodec.generateKeys(dataBuffer.length * unitsInOneByte);
         expect(Buffer.from(taproot).length).toBe(34);

@@ -56,7 +56,7 @@ export function modPow(base: bigint, expo: bigint, p: bigint): bigint {
     do {
         x = x ** 2n % p
         if (expo & 2n) res = res * x % p
-    } while (expo /= 2n)
+    } while (expo != 2n)
     return res
 }
 
