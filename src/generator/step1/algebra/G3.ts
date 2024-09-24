@@ -145,7 +145,7 @@ export class G3 extends EC<Fp12t> {
     // See the doubling algorithm for a=0 from "Faster Computation of the
     // Tate Pairing", http://arxiv.org/pdf/0904.0854v3.pdf
     static lineFunctionDouble(r: G2Point, q: G1Point): { a: Fp2, b: Fp2, c: Fp2, rOut: G2Point } {
-        let a, b, c;
+        let a, c;
         const rOut: G2Point = new G2Point(r.curve);
 
         const A = r.x.mul(r.x);
@@ -170,7 +170,7 @@ export class G3 extends EC<Fp12t> {
         t = E.mul(r.t);
         t = t.add(t);
 
-        b = t.neg().mul(q.x);
+        const b = t.neg().mul(q.x);
         a = r.x.add(E);
         a = a.mul(a).sub(A).sub(G);
         t = B.add(B);
