@@ -99,7 +99,7 @@ export class Runner {
                 break;
             case InstrCode.ANDBIT:
                 if (!param2) throw new Error(`Invalid param2 line: ${this.current}`);
-                target.value = !!(param1.value & (2n ** BigInt(instr.bit!))) ? param2.value : 0n;
+                target.value = param1.value & (2n ** BigInt(instr.bit!)) ? param2.value : 0n;
                 break;
             case InstrCode.ANDNOTBIT:
                 if (!param2) throw new Error(`Invalid param2 line: ${this.current}`);

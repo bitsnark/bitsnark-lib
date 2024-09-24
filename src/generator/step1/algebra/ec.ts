@@ -76,7 +76,7 @@ export class ECPoint<T extends Member<T>> {
 
         // case where this != a
 
-        let tempNotEqual =  new ECPoint<T>(this.curve);
+        const tempNotEqual =  new ECPoint<T>(this.curve);
         vm.ignoreFailure(() => {
             // m1 = y2 - y1
             const m1 = b.y.sub(this.y);
@@ -166,9 +166,9 @@ export class ECPoint<T extends Member<T>> {
     }
 
     toAffine(): ECPoint<T> {
-        let zInv = this.z.inv();
-        let t = this.y.mul(zInv);
-        let zInv2 = zInv.mul(zInv);
+        const zInv = this.z.inv();
+        const t = this.y.mul(zInv);
+        const zInv2 = zInv.mul(zInv);
         return new ECPoint<T>(this.curve, this.x.mul(zInv2), t.mul(zInv2), this.x.one(), this.x.one());
     }
 

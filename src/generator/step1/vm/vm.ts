@@ -58,7 +58,7 @@ export class VM {
     }
 
     public newRegister(): Register {
-        let r = { value: 0n, index: this.registers.length, hardcoded: false, witness: false };
+        const r = { value: 0n, index: this.registers.length, hardcoded: false, witness: false };
         r.index = this.registers.length;
         this.registers[r.index] = r;
         return r;
@@ -103,13 +103,13 @@ export class VM {
 
     addMod(target: Register, a: Register, b: Register) {
         this.pushInstruction(InstrCode.ADDMOD, target, a, b);
-        let v = (a.value % prime_bigint + b.value % prime_bigint) % prime_bigint;
+        const v = (a.value % prime_bigint + b.value % prime_bigint) % prime_bigint;
         this.setRegister(target, v);
     }
 
     subMod(target: Register, a: Register, b: Register) {
         this.pushInstruction(InstrCode.SUBMOD, target, a, b);
-        let v = (prime_bigint + a.value - b.value) % prime_bigint;
+        const v = (prime_bigint + a.value - b.value) % prime_bigint;
         this.setRegister(target, v);
     }
 
@@ -180,7 +180,7 @@ export class VM {
     /******* complex functions  *******/
 
     ignoreFailure(a: () => void) {
-        let f = this.success;
+        const f = this.success;
         a();
         this.success = f;
     }
@@ -188,7 +188,7 @@ export class VM {
     ignoreFailureInExactlyOne(a: () => void, b: () => void) {
         if (!this.success) throw new Error('Invalid state');
         let count = 0;
-        let f = this.success;
+        const f = this.success;
         a();
         count += this.success ? 0 : 1;
         this.success.value = 1n;
@@ -241,4 +241,4 @@ export class VM {
     }
 }
 
-export let step1_vm: VM = new VM();
+export const step1_vm: VM = new VM();
