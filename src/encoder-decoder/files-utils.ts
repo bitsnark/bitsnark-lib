@@ -6,7 +6,7 @@ export const PUB_KEY_FILE = "pub.bin";
 export const CACHE_FILE = "cache.bin";
 
 
-export function isFileExists(folder: string, fileName: string): Boolean {
+export function isFileExists(folder: string, fileName: string): boolean {
     const filePath = path.join(process.cwd(), `${generatedDataDir}/${folder}/${fileName}`);
     return fs.existsSync(filePath);
 }
@@ -67,8 +67,8 @@ export function readTextFile(partial: string): string {
 
 export function getFileSizeBytes(folder: string, fileName: string): number {
     const checkFrom = path.join(process.cwd(), `${generatedDataDir}/${folder}/${fileName}`);
-    var stats = fs.statSync(checkFrom);
-    var fileSizeInBytes = stats.size;
+    const stats = fs.statSync(checkFrom);
+    const fileSizeInBytes = stats.size;
     return fileSizeInBytes;
 }
 

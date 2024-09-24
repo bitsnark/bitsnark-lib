@@ -75,7 +75,7 @@ export class Fp2 {
     // ftp://136.206.11.249/pub/crypto/pairings.pdf
     inv(): Fp2 {
         let t = this.y.mul(this.y);
-        let t2 = this.x.mul(this.x);
+        const t2 = this.x.mul(this.x);
         t = t.add(t2);
         const inv = Fp.one().div(t);
         return new Fp2(this.x.neg().mul(inv), this.y.mul(inv));
@@ -116,8 +116,8 @@ export class Fp2 {
     // MulXi returns ξthis where ξ=i+9
     mulXi(): Fp2 {
         // (xi+y)(i+3) = (9x+y)i+(9y-x)
-        let tx = this.x.mul(_2__3).add(this.x).add(this.y);
-        let ty = this.y.mul(_2__3).add(this.y).sub(this.x);
+        const tx = this.x.mul(_2__3).add(this.x).add(this.y);
+        const ty = this.y.mul(_2__3).add(this.y).sub(this.x);
         return new Fp2(tx, ty);
     }
 

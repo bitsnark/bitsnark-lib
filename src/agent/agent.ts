@@ -63,7 +63,7 @@ export class Agent {
         wotsPublicKeys?: bigint[]): TransactionInfo {
 
         const txi = meta.creator(setupId, proverPublicKey, verifierPublicKey, wotsPublicKeys);
-        let i = this.getInstance(setupId);
+        const i = this.getInstance(setupId);
         i.transactions.set(meta.desc, txi);
         return txi;
     }

@@ -127,7 +127,7 @@ export function generateAllScripts(setupId: string, transactions: Transaction[])
     });
 }
 
-var scriptName = __filename;
+const scriptName = __filename;
 if (process.argv[1] == scriptName) {
     const transactions = loadAllTransactionsFromFiles('test_setup');
     generateAllScripts('test_setup', transactions);

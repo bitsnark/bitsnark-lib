@@ -1,7 +1,7 @@
 import { createHash } from "crypto";
 
-export let lamportKeyIndex = 0;
-export let winternitzKeyIndex = 0;
+export const lamportKeyIndex = 0;
+export const winternitzKeyIndex = 0;
 
 export interface Key { prvt: bigint, pblc: bigint }
 
@@ -36,8 +36,8 @@ export function padHex(s: string, bytes: number): string {
 export function hash(input: bigint, times: number = 1): bigint {
     let t = input;
     for (let i = 0; i < times; i++) {
-        let s1 = padHex(t.toString(16), 32);
-        let s2 = createHash('sha256').update(s1, 'hex').digest('hex');
+        const s1 = padHex(t.toString(16), 32);
+        const s2 = createHash('sha256').update(s1, 'hex').digest('hex');
         t = BigInt('0x' + s2);
     }
     return t;
@@ -88,7 +88,7 @@ function encodeLamportBit(target: Buffer, bitIndex: number, bit: number) {
 
 export function encodeLamportBits(input: bigint, bits: number): Buffer {
     const hashSizeBytes = 32;
-    let output = Buffer.alloc(bits * hashSizeBytes);
+    const output = Buffer.alloc(bits * hashSizeBytes);
     for (let i = 0; i < bits; i++) {
         encodeLamportBit(output, i, Number(input & 1n));
         input = input >> 1n;
@@ -123,7 +123,7 @@ export function encodeWinternitz(input: bigint, chunkIndex: number, dataBits: nu
     const totalNibbles = checksumNibbles + dataNibbles;
     const hashSizeBytes = 32;
     const outputSizeBytes = (dataNibbles + checksumNibbles) * hashSizeBytes;
-    let output = Buffer.alloc(outputSizeBytes);
+    const output = Buffer.alloc(outputSizeBytes);
     let checksum = 0;
     toNibbles(input, dataNibbles).forEach((nibble, i) => {
         checksum += nibble;

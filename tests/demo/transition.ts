@@ -11,8 +11,8 @@ const iterations = 19;
 
 function patPart(savedProgram: SavedVm<InstrCode>, line: number): bigint[] {
 
-    let runner = Runner.load(savedProgram);
-    let instr = runner.getInstruction(line);
+    const runner = Runner.load(savedProgram);
+    const instr = runner.getInstruction(line);
 
     runner.execute(line - 1);
     const regsBefore = runner.getRegisterValues();
@@ -38,7 +38,7 @@ function patPart(savedProgram: SavedVm<InstrCode>, line: number): bigint[] {
 
 function vicPart(savedProgram: SavedVm<InstrCode>, line: number, encodedData: bigint[]): bigint[] {
 
-    let runner = Runner.load(savedProgram);
+    const runner = Runner.load(savedProgram);
     const instr = runner.getInstruction(line);
     runner.execute(line - 1);
     const regsBefore = runner.getRegisterValues();
