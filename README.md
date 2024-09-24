@@ -4,7 +4,7 @@ The BitSNARK protocol is a method of verifying the execution of a zero knowledge
 
 The protocol involves a prover and a verifier agreeing upon a program (i.e. a program that verifies a zero-knowledge proof) and preparing a bunch of Bitcoin transactions that allow the prover to publish the result of running that program on a given input (i.e. the zero-knowledge proof to be verified) within a Bitcoin transaction that includes some BTC staked on its correctness; and allow the verifier to claim that stake if and only if the result is incorrect (i.e. the supplied proof is not valid).
 
-This repository is currently aimed at allowing anyone to run a prover-verifier demo locally, but we aim to expand it to be multi-verifier and over the network, and to use the protocol to implement 2-way pegging between Bitcoin and an ERC20 token.
+This repository is currently aimed at allowing anyone to run a prover-verifier demo locally, but we aim to expand it to be multi-verifier and over the network, and to use the protocol to implement 2-way pegging between Bitcoin and an ERC20 token, and it's almost there.
 
 See [the whitepaper](./whitepaper.md) for a more detailed explanation of the protocol.
 
@@ -73,71 +73,6 @@ To generate the transactions, the prover and the verifier agree on a program and
 Since the transactions are linked to each other, most of the TXIDs have to be known in advance, which means that the participants can't just add inputs to pay the transaction fees (or outputs returning change from said fee). For simplicity, we assume that the prover stake includes an extra amount which pays for all the fees in case of a challenge, and that this added expense is covered by the verifier's payment on the "Challenge" transaction.
 
 In reality, it is entirely possible for the two parties to add inputs and outputs that handle fees on any transactions along the way, as long as they are declared in advance. Moreover, we can probably use CPFP to allow the participants to add fees to fee-less transactions that are already in the mempool.
-
-##### Proof Transaction
-
-This transaction initiates the protocol. It locks the prover's stake for an agreed upon number of blocks and publishes the proof and the result of the program's execution. It is signed by the prover and the verifier.
-
-- inputs
-    1. UTXO belonging to the prover, consisting of the prover's stake. This input is declared during the setup but left unsigned, so that the prover has to sign it before publishing the transaction. This means that if the prover spends it beforehand, he will no longer be able to publish this transaction and will lose the stake and any hinged funds.
-- ouputs
-    1. The entire stake, minus transaction fees and a symbolic amount of one satoshi, is locked so that it can only be spent in one of the following ways:
-        - The `no challenge` transaction can spend it if an agreed upon number of blocks have passed
-        - The `verifier wins` transaction can spend it if a significantly larger number of blocks have passed
-        - the first `state` transaction can spend it at any time
-    2. A symbolic amount that can be spent in one of the following ways:
-        - The `no challenge` transaction can spend it if an agreed upon number of blocks have passed
-        - The `challenge` transaction can spend it at any time, provided it is accompanied by an agreed upon fee
-
-##### No Challenge Transaction
-
-- inputs
-- ouputs
-
-##### Challenge Transaction
-
-- inputs
-- ouputs
-
-##### Verifier Unchallenged Transaction
-
-- inputs
-- ouputs
-
-##### State x Transactions
-
-- inputs
-- ouputs
-
-##### Select x Transactions
-
-- inputs
-- ouputs
-
-##### Prover Unchallenged x Transactions
-
-- inputs
-- ouputs
-
-##### Verifier Unchallenged x Transactions
-
-- inputs
-- ouputs
-
-##### Argument Transaction
-
-- inputs
-- ouputs
-
-##### Proof Accepted Transaction
-
-- inputs
-- ouputs
-
-##### Proof Refuted Transaction
-
-- inputs
-- ouputs
 
 ## Running the Demo
 
