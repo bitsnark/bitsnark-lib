@@ -6,8 +6,8 @@ export default tseslint.config(
     ...tseslint.configs.recommended,
     {
         rules: {
-            '@typescript-eslint/no-explicit-any': ['warn', { ignoreRestArgs: true }],
-            '@typescript-eslint/no-require-imports': 'warn'
+            '@typescript-eslint/no-explicit-any': 'off',
+            '@typescript-eslint/no-require-imports': 'off'
         }
     }
 );

@@ -489,7 +489,7 @@ export class Bitcoin {
     }
 
     setIfElse(target: StackItem, v: StackItem, t: StackItem, f: StackItem) {
-        const temp = !!v.value ? t.value : f.value;
+        const temp = v.value ? t.value : f.value;
         this.pick(v);
         this.OP_IF();
         this.pick(t);

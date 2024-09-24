@@ -23,7 +23,7 @@ describe("SHA256 tests", function () {
         const sha256 = new SHA256();
         const h2regs = step2_vm.newTemp256();
         sha256.sha256(h2regs, regs);
-        let h2 = _32To256BE(h2regs.map(r => r.value));
+        const h2 = _32To256BE(h2regs.map(r => r.value));
         expect(h1).toEqual(h2);
         sha256.free();
         console.log('registers: ', step2_vm.registers.filter(r => !r.hardcoded).length);
@@ -40,7 +40,7 @@ describe("SHA256 tests", function () {
         step2_vm.startProgram();
         const sha256 = new SHA256();
         sha256.sha256pair(targetRegs, aRegs, bRegs);
-        let h2 = _32To256BE(targetRegs.map(r => r.value));
+        const h2 = _32To256BE(targetRegs.map(r => r.value));
         expect(h1).toEqual(h2);
         sha256.free();
         console.log('registers: ', step2_vm.registers.filter(r => !r.hardcoded).length);

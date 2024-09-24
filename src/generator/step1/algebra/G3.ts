@@ -88,24 +88,24 @@ export class G3 extends EC<Fp12t> {
     // Tate Pairing", http://arxiv.org/pdf/0904.0854v3.pdf
     static lineFunctionAdd(r: G2Point, p: G2Point, q: G1Point, r2: Fp2): { a: Fp2, b: Fp2, c: Fp2, rOut: G2Point } {
 
-        let B = p.x.mul(r.t);
+        const B = p.x.mul(r.t);
         let D = p.y.add(r.z);
         D = D.mul(D);
         D = D.sub(r2);
         D = D.sub(r.t);
         D = D.mul(r.t);
 
-        let H = B.sub(r.x);
-        let I = H.mul(H);
+        const H = B.sub(r.x);
+        const I = H.mul(H);
 
         let E = I.add(I);
         E = E.add(E);
 
-        let J = H.mul(E);
+        const J = H.mul(E);
         let L1 = D.sub(r.y);
         L1 = L1.sub(r.y);
 
-        let V = r.x.mul(E);
+        const V = r.x.mul(E);
 
         const rOut = r.curve.makePoint();
         rOut.x = L1.mul(L1);
@@ -130,7 +130,7 @@ export class G3 extends EC<Fp12t> {
 
         t2 = L1.mul(p.x);
         t2 = t2.add(t2);
-        let a = t2.sub(t);
+        const a = t2.sub(t);
 
         let c = rOut.z.mul(q.y);
         c = c.add(c);
@@ -146,7 +146,7 @@ export class G3 extends EC<Fp12t> {
     // Tate Pairing", http://arxiv.org/pdf/0904.0854v3.pdf
     static lineFunctionDouble(r: G2Point, q: G1Point): { a: Fp2, b: Fp2, c: Fp2, rOut: G2Point } {
         let a, b, c;
-        let rOut: G2Point = new G2Point(r.curve);
+        const rOut: G2Point = new G2Point(r.curve);
 
         const A = r.x.mul(r.x);
         const B = r.y.mul(r.y);
@@ -183,10 +183,10 @@ export class G3 extends EC<Fp12t> {
     }
 
     static mulLine(ret: Fp12t, a: Fp2, b: Fp2, c: Fp2): Fp12t {
-        let a2 = new Fp6(Fp2.zero(), a, b).mul(ret.x);
-        let t3 = ret.y.mul(c);
-        let t = b.add(c);
-        let t2 = new Fp6(Fp2.zero(), a, t);
+        const a2 = new Fp6(Fp2.zero(), a, b).mul(ret.x);
+        const t3 = ret.y.mul(c);
+        const t = b.add(c);
+        const t2 = new Fp6(Fp2.zero(), a, t);
         ret.x = ret.x.add(ret.y);
         ret.y = t3;
         ret.x = ret.x.mul(t2);
@@ -199,9 +199,9 @@ export class G3 extends EC<Fp12t> {
     miller(q: G2Point, p: G1Point): Fp12t {
 
         let ret = Fp12t.one();
-        let aAffine = q.toAffine();
-        let bAffine = p.toAffine();
-        let minusA = aAffine.neg();
+        const aAffine = q.toAffine();
+        const bAffine = p.toAffine();
+        const minusA = aAffine.neg();
         let r = aAffine;
         let r2 = aAffine.y.mul(aAffine.y);
 
@@ -241,7 +241,7 @@ export class G3 extends EC<Fp12t> {
         //
         // A similar argument can be made for the y value.
 
-        let q1 = new G2Point(q.curve);
+        const q1 = new G2Point(q.curve);
         q1.x = aAffine.x.conj();
         q1.x = q1.x.mul(xiToPMinus1Over3);
         q1.y = aAffine.y.conj();
@@ -255,7 +255,7 @@ export class G3 extends EC<Fp12t> {
         // xiToPSquaredMinus1Over3 is ∈ GF(p). With y we get a factor of -1. We
         // ignore this to end up with -Q2.
 
-        let minusQ2 = new G2Point(q.curve);
+        const minusQ2 = new G2Point(q.curve);
         minusQ2.x = aAffine.x.mul(xiToPSquaredMinus1Over3);
         minusQ2.y = aAffine.y;
         minusQ2.z = Fp2.one();

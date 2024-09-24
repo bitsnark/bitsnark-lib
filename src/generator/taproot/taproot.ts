@@ -22,8 +22,8 @@ export abstract class TapNode {
             const script = this.getScript();
             return getHash(script);
         } else {
-            let left_h = this.getLeft()!.getHash();
-            let right_h = this.getRight()!.getHash();
+            const left_h = this.getLeft()!.getHash();
+            const right_h = this.getRight()!.getHash();
             return combineHashes(left_h, right_h);
         }
     }
