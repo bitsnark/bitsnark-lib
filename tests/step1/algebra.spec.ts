@@ -1,13 +1,10 @@
 import { expect } from 'chai';
 import { Fp } from '../../src/generator/step1/algebra/fp';
 import { Fp2 } from '../../src/generator/step1/algebra/fp2';
-import { VM, step1_vm as vm } from '../../src/generator/step1/vm/vm';
+import { step1_vm as vm } from '../../src/generator/step1/vm/vm';
 import { G1, G1Point } from '../../src/generator/step1/algebra/G1';
 import { G2, G2Point } from '../../src/generator/step1/algebra/G2';
-import { G3, G3Point } from '../../src/generator/step1/algebra/G3';
 
-const _0 = Fp.hardcoded(0n);
-const _1 = Fp.hardcoded(1n);
 const _2 = Fp.hardcoded(2n);
 const _4 = Fp.hardcoded(4n);
 const _5 = Fp.hardcoded(5n);
@@ -22,7 +19,6 @@ const fpx = Fp2.hardcoded(2n, 2n);
 
 const g1 = new G1();
 const g2 = new G2();
-const g3 = new G3();
 
 describe('Algebra', () => {
 
@@ -54,8 +50,6 @@ describe('Algebra', () => {
 
 		it('x + f = fpx', () => checkFp2(x.add(f), fpx));
 		it('f/f = 1', () => {
-			const t1 = f.inv();
-			const t2 = f.mul(t1);
 			checkFp2(f.div(f), x.one());
 		});
 		it('1/f + x/f = (1 + x)/f', () => {

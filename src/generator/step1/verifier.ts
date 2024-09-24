@@ -105,8 +105,8 @@ export default function groth16Verify(key: Key, proof: Proof) {
 
     proof.validate();
 
-    let vg1: G1Point[] = [proof.pi_a, key.alpha.neg(), key.vk_x.neg(), proof.pi_c.neg()]
-    let vg2: G2Point[] = [proof.pi_b, key.beta,        key.gamma,      key.delta]
+    const vg1: G1Point[] = [proof.pi_a, key.alpha.neg(), key.vk_x.neg(), proof.pi_c.neg()]
+    const vg2: G2Point[] = [proof.pi_b, key.beta,        key.gamma,      key.delta]
 
     g3.pairingCheck(vg1, vg2)
 }

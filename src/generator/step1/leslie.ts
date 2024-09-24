@@ -17,7 +17,7 @@ function regsAt(runner: Runner, left: number, right: number, point: number): num
             regs.push(runner.instructions[i].param1);
             delete map[runner.instructions[i].param1];
         }
-        if (runner.instructions[i]?.param2 && map[runner.instructions[i]?.param2!]) {
+        if (runner.instructions[i]?.param2 && map[runner.instructions[i]?.param2]) {
             regs.push(runner.instructions[i].param2!);
             delete map[runner.instructions[i].param2!];
         }

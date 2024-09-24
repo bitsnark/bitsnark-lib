@@ -40,8 +40,8 @@ export function padHex(s: string, bytes: number): string {
 export function hash(input: bigint, times: number = 1): bigint {
     let t = input;
     for (let i = 0; i < times; i++) {
-        let s1 = padHex(t.toString(16), 32);
-        let s2 = createHash('sha256').update(s1, 'hex').digest('hex');
+        const s1 = padHex(t.toString(16), 32);
+        const s2 = createHash('sha256').update(s1, 'hex').digest('hex');
         t = BigInt('0x' + s2);
     }
     return t;
