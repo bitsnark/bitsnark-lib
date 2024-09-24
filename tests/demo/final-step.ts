@@ -16,7 +16,7 @@ function iterationFromLineNumber(maxIterations: number, ln: number): number {
     let right = 2 ** maxIterations - 1;
     let left = 0;
     for (let i = 0; ; i++) {
-        let middle = Math.round((right + left) / 2);
+        const middle = Math.round((right + left) / 2);
         if (middle == ln) return i;
         if (ln >= left && ln < middle) right = middle;
         else if (ln > middle && ln <= right) left = middle;

@@ -106,7 +106,7 @@ function naiiveMult(a: NibbleSet, b: NibbleSet): NibbleSet {
     if (a.length != b.length)
         teaPot();
 
-    let result: NibbleSet = [];
+    const result: NibbleSet = [];
     for (let i = 0; i < a.length; i++) {
         let carry: Nibble = 0;
         for (let j = 0; j < b.length; j++) {

@@ -1,12 +1,8 @@
 import { Register } from "../../src/generator/common/register";
-import { step2_vm, step2_vm as vm, VM } from "../../src/generator/step2/vm/vm";
-import { SHA256 } from "../../src/generator/step2/sha-256";
-import { _256 } from "../../src/generator/step2/vm/types"
+import { step2_vm, step2_vm as vm } from "../../src/generator/step2/vm/vm";
 import { verifyMerkleProof } from "../../src/generator/step2/merkle"
 import { makeMerkleProof, verifyMerkleProof as verifyMerkleProofReference } from '../../src/encoding/merkle';
 import { _256To32BE, _32To256BE } from '../../src/encoding/encoding';
-
-const leafIndex = 3;
 
 const testMerkleTreeLeaves: bigint[][] = [
     [0xca978112n, 0xca1bbdcan, 0xfac231b3n, 0x9a23dc4dn, 0xa786eff8n, 0x147c4e72n, 0xb9807785n, 0xafee48bbn],
@@ -21,7 +17,7 @@ const testProof: bigint[][] = [
     [0x2e7d2c03n, 0xa9507ae2n, 0x65ecf5b5n, 0x356885a5n, 0x3393a202n, 0x9d241394n, 0x997265a1n, 0xa25aefc6n],
     [0xe5a01feen, 0x14e0ed5cn, 0x48714f22n, 0x180f25adn, 0x8365b53fn, 0x9779f79dn, 0xc4a3d7e9n, 0x3963f94an],
     [0x6c0f2d23n, 0x8340cc5bn, 0xe1e7bd84n, 0x8d357224n, 0x87d30f27n, 0x559f6f07n, 0x362e6d5en, 0xac244c5dn],
-    [0xc5ffe10bn, 0x5d57d0cen, 0x796fb761n, 0x76839472n, 0x97823bfen, 0xa51aed82n, 0x2ebe617bn, 0xb530b396n]    
+    [0xc5ffe10bn, 0x5d57d0cen, 0x796fb761n, 0x76839472n, 0x97823bfen, 0xa51aed82n, 0x2ebe617bn, 0xb530b396n]
 ];
 
 describe("SHA256 tests", function () {
@@ -35,12 +31,6 @@ describe("SHA256 tests", function () {
             target.push(vm.newRegister());
         }
     });
-
-    function check(got: _256, exp: bigint[]) {
-        for (let i = 0; i < 8; i++) {
-            expect(got[i].value).toEqual(exp[i])
-        }
-    }
 
     it('Merkle proof positive', () => {
 

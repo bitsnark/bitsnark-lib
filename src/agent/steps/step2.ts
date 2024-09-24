@@ -38,7 +38,7 @@ function patPart(saved: SavedVm<InstrCode>, searchPath: number[], maxIterations:
     const runner = Runner.load(saved);
     const line = getLineNumber(searchPath, maxIterations).middle;
     runner.execute(line);
-    let state = runner.getRegisterValuesNoHardcoded();
+    const state = runner.getRegisterValuesNoHardcoded();
 
     const bitcoin = new Bitcoin();
     const witness: bigint[] = [];

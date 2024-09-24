@@ -1,4 +1,3 @@
-import { step2_vm as vm } from "../../src/generator/step2/vm/vm";
 import { Bitcoin, SimulatedRegister } from "../../src/generator/step3/bitcoin";
 
 describe("step 1 instructions in step 2 VM", function () {

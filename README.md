@@ -1,128 +1,95 @@
-# Node.js TypeScript Template
+# BitSNARK Playground
 
-[![Package Version][package-image]][package-url]
-[![Dependencies Status][dependencies-image]][dependencies-url]
-[![Build Status][build-image]][build-url]
-[![Coverage Status][coverage-image]][coverage-url]
-[![Open Issues][issues-image]][issues-url]
-[![Commitizen Friendly][commitizen-image]][commitizen-url]
+The BitSNARK protocol is a method of verifying the execution of a zero knowledge proof over a Bitcoin network, which allows hinging the transfer of BTC on provable external events such as the transfer or burn of funds on another blockchain. This can be used for atomic swaps, 2-way pegging, and other cross-chain applications.
 
-A complete Node.js project template using TypeScript and following general best practices.  It allows you to skip the tedious details for the following:
+The protocol involves a prover and a verifier agreeing upon a program (i.e. a program that verifies a zero-knowledge proof) and preparing a bunch of Bitcoin transactions that allow the prover to publish the result of running that program on a given input (i.e. the zero-knowledge proof to be verified) within a Bitcoin transaction that includes some BTC staked on its correctness; and allow the verifier to claim that stake if and only if the result is incorrect (i.e. the supplied proof is not valid).
 
-* Adding and configuring TypeScript support.
-* Enabling TypeScript linting.
-* Setting up unit tests and code coverage reports.
-* Creating an NPM package for your project.
-* Managing ignored files for Git and NPM.
+This repository is currently aimed at allowing anyone to run a prover-verifier demo locally, but we aim to expand it to be multi-verifier and over the network, and to use the protocol to implement 2-way pegging between Bitcoin and an ERC20 token, and it's almost there.
 
-Once you've enabled CI, test coverage, and dependency reports for your project, this README.md file shows how to add the badges shown above.  This project template even enables automated changelog generation as long as you follow [Conventional Commits](https://conventionalcommits.org), which is made simple through the included [Commitizen CLI](http://commitizen.github.io/cz-cli/).
+See [the whitepaper](./whitepaper.md) for a more detailed explanation of the protocol.
 
-## Contents
+## High Level Overview
 
-* [Project Creation](#project-creation)
-* [Rebranding](#rebranding)
-* [Managing Your Project](#managing-your-project)
-    * [Initial Publish](#initial-publish)
-    * [Recommended Development Workflow](#recommended-development-workflow)
-    * [Publishing to NPMJS](#publishing-to-npmjs)
-* [Contributing](#contributing)
+We start with a prover, a verifier, and a deterministic program that verifies a pre-determined (but yet ungenerated) zk-SNARK.
 
-## Project Creation
+1. The prover and the verifier prepare and sign a bunch of Bitcoin transactions as specified below
+2. The prover generates a proof regarding some agreed upon event
+3. The prover runs the program with the proof as input
+4. The prover publishes a Bitcoin transaction containing the proof and the result of the program and some BTC staked on the correctness of the result
+5. The verifier sees the proof and runs the program with the proof as input
+6. In case of discrepancy, the verifier can publish a challenge transaction<sup>*</sup> and claim the prover's stake if and only if the result published by the prover is shown to be incorrect
+7. If this doesn't happen within an agreed-upon time window, the prover can claim his own stake back and the proof is considered valid
 
-Clone this repo into the directory you want to use for your new project, delete the Git history, and then reinit as a fresh Git repo:
+\* <sub>Because of the high cost of a challenge in transaction fees - a cost that will be deducted from the prover's stake even if he is honest - the verifier is required to add a predefined payment to the challenge transaction which is transferred to the prover immediately. It should be equal to the cost incurred by the challenge, but significantly lower than the prover's stake.</sub>
 
-```bash
-$ git clone https://github.com/chriswells0/node-typescript-template.git <your project directory>
-$ cd <your project directory>
-$ rm -rf ./.git/
-$ git init
-$ npm install
+In many cases it is possible and desirable to bind some of the protocol transactions to outputs of other, non-protocol transactions, hinging those transactions on the outcome of the protocol transactions (i.e. letting the prover unlock some previously locked funds only by supplying a proof that the verifier can not refute).
+
+### Contention Bisection
+
+Since running the entire program in a Bitcoin transaction is not feasible (the Script will be too long and the transaction too large to be included in a block), the protocol implements a binary search for a contentious operation in the program's execution (since the program is deterministic, any discrepancy between the published result and the verified result must include at least one step of the execution for which the prover's and the verifier's views of the program's state differ). Once this operation is identified, it is may be executed as part of the script of a Bitcoin transaction and automatically checked by the Bitcoin miners.
+
+Note this important distinction: the protocol does not verify the proof over the blockchain, but it makes it highly profitable for the verifier to do so, and therefore highly unprofitable for the prover to lie.
+
+### Incentives
+
+Note that the protocol creates a self-defeating prophecy, where provers never lie because they can be easily caught and punished, and the verifiers will never be able to claim prover stakes. This means that while the prover's stake incentivizes the prover to be honest, it only incentivizes the verifier if the prover lies, which can only happen if the prover believes the verifier is not doing their job. If anything, the prover stakes incentivize verifiers to turn a blind eye and motivate provers to lie, only occasionally catching and punishing them and thus managing to claim a few stakes before the entire ecosystem collapses. This means that verifiers *must* have a separate incentive to keep performing the (admittedly trivial) task of verifying the correctness of executions.
+
+This has different solutions in different scenarios. For example, in the case of an atomic swap the incentive is simply the swapped tokens. In the case of a 2-way peg, the protocol can be expanded to include multiple provers who are also acting as verifiers, with the shared incentive of being able to move tokens between the two chains and keeping the system honest and healthy.
+
+It's important to remember that neither the prover stake nor the verifier payment are meant to be a source of income for the participants. They are simply a way to make dishonesty very unprofitable.
+
+## Transactions Flow
+
+The diagram below describes the flow of transactions in the protocol with an additional "Hinged Funds" output marked with a dashed oval. Transactions publishable by the prover are green, ones publishable by the verifier are blue. Dashed lines are timelocked to a pre-specified number of blocks, the green timelock being significantly shorter than the blue one. The cyan output has a symbolic amount (1 satoshi) that is used to make the "Challenge" and "No Challenge" transactions mutually exclusive.
+
+The dotted line between "State 1" and "State n" indicates that the bisection process is repeated multiple times (it currently takes us 19 bisections to identify one out of half a million operations in our snark verification program).
+
+![BitSNARK Transactions Flow](./transactions-flow.svg)
+
+Once the prover signs and publishes the "Proof" transaction, it spends the prover's stake and locks it.
+
+If the verifier finds the proof valid, they let the green timelock expire, at which point the prover can sign and publish the "No Challenge" transaction and claim the stake back (along with any optional hinged funds).
+
+If, however, the verifier finds the proof invalid, they publish the "Challenge" transaction, which sends the verifier's payment (along with the symbolic satoshi from the "Proof" transaction) to the prover's wallet and prevents the "No Challenge" transaction from ever being valid.
+
+If the prover does not respond to the challenge before the blue timelock expires, the verifier can claim the prover's stake (and prevent the transfer of any hinged funds) by publishing the "Verifier Unchallenged" transaction.
+
+To avoid this, the prover must publish the first step in the bisection process by signing and publishing the "State 0" transaction which includes the state of the program's execution up to the program's middle.
+
+In response, the verifier has to publish the "Select 0" transaction before the new timelock expires and the prover claims the stake along with any hinged funds with "Prover Unchallenged 0". The "Select 0" transaction signals the verifier's approval or disapproval of the state published by the prover. If the verifier disagrees with the state, a point of contention must exist in the first half of the program. If the verifier agrees with the state, but not with the final result, a point of contention must exist in the second half of the program.
+
+This process is then repeated multiple times, with the prover having to publish "State x" before the verifier publishes "Verifier Unchallenged x-1" and then the verifier having to publich "Select x" before the prover publishes "Prover Unchallenged x", until a point of contention is identified in "Select n".
+
+The prover then must publish the "Argument" transaction, in which they commit to the two variables that are the input to the contentious operation, the operation itself (as identified by the binary path that located it) and its result.
+
+The verifier can now claim the prover's stake and prevent the release of any hinged funds by publishing the "Proof Refuted" transaction, which is only valid if the prover's argument is incorrect.
+
+If, however, the prover's argument is correct, the "Proof Refuted" transaction will never be valid, the timelock will expire and the prover will be able to claim his stake back along with any hinged funds using the "Proof Accepted" transaction.
+
+## Protocol Transactions
+
+To generate the transactions, the prover and the verifier agree on a program and prepare keys and UTXOs to be used in this instance of the protocol. The two players then interactively prepare and sign the following graph of interdependant Bitcoin transactions. These transactions are prepared and at least partially signed in advance, likely before the event that the prover will want to prove has occurred, but published only after the prover has generated his proof and is ready to publish it.
+
+Since the transactions are linked to each other, most of the TXIDs have to be known in advance, which means that the participants can't just add inputs to pay the transaction fees (or outputs returning change from said fee). For simplicity, we assume that the prover stake includes an extra amount which pays for all the fees in case of a challenge, and that this added expense is covered by the verifier's payment on the "Challenge" transaction.
+
+In reality, it is entirely possible for the two parties to add inputs and outputs that handle fees on any transactions along the way, as long as they are declared in advance. Moreover, we can probably use CPFP to allow the participants to add fees to fee-less transactions that are already in the mempool.
+
+## Running the Demo
+
+### Initial Setup
+
+```sh
+npm install
 ```
 
-## Rebranding
+### Running the tests
 
-It's a common practice to prefix the source code project name with `node-` to make it clear on GitHub that it's a Node.js project while omitting that prefix in the NPM project since it's understood on npmjs.com.  Thus, the order of these replacements matter.
-
-Be sure to check both [GitHub](https://github.com) and [NPMJS](https://www.npmjs.com) to verify that your project name isn't taken before starting!
-
-Use exact searches to perform the following replacements throughout this project for the most efficient rebranding process:
-
-1. Replace my name with yours: `Chris Wells`
-2. Replace my website URL with yours: `https://chriswells.io`
-3. Replace my *GitHub* username and project name with yours: `chriswells0/node-typescript-template`
-4. Replace my *NPM* project name with yours: `typescript-template`
-5. Update [package.json](package.json):
-	* Change `description` to suit your project.
-	* Update the `keywords` list.
-	* In the `author` section, add `email` if you want to include yours.
-6. If you prefer something other than the [BSD 3-Clause License](https://opensource.org/licenses/BSD-3-Clause), replace the entire contents of [LICENSE](LICENSE) as appropriate.
-7. Update this README.md file to describe your project.
-
-## Managing Your Project
-
-Before committing to a project based on this template, it's recommended that you read about [Conventional Commits](https://conventionalcommits.org) and install [Commitizen CLI](http://commitizen.github.io/cz-cli/) globally.
-
-### Initial Publish
-
-Some additional steps need to be performed for a new project.  Specifically, you'll need to:
-
-1. Create your project on GitHub (do not add a README, .gitignore, or license).
-2. Add the initial files to the repo:
-```bash
-$ git add .
-$ git cz
-$ git remote add origin git@github.com:<your GitHub username>/<your project name>
-$ git push -u origin master
+```sh
+npm test
 ```
-3. Create accounts on the following sites and add your new GitHub project to them.  The project is preconfigured, so it should "just work" with these tools.
-	* GitHub Actions for continuous integration.
-	* [Coveralls](https://coveralls.io) for unit test coverage verification.
-4. Check the "Actions" tab on the GitHub repo and wait for the Node.js CI build to complete.
-5. Publish your package to NPMJS: `npm publish`
 
-### Development Workflow
+## Future Plans
 
-#### Hot reload
-Run `npm run serve` to start your development workflow with hot reload.
-
-#### Build, test, deploy
-
-These steps need to be performed whenever you make changes:
-
-0. Write awesome code in the `src` directory.
-1. Build (clean, lint, and transpile): `npm run build`
-2. Create unit tests in the `test` directory.  If your code is not awesome, you may have to fix some things here.
-3. Verify code coverage: `npm run cover:check`
-4. Commit your changes using `git add` and `git cz`
-5. Push to GitHub using `git push` and wait for the CI builds to complete.  Again, success depends upon the awesomeness of your code.
-
-### NPMJS Updates
-
-Follow these steps to update your NPM package:
-
-0. Perform all development workflow steps including pushing to GitHub in order to verify the CI builds.  You don't want to publish a broken package!
-1. Check to see if this qualifies as a major, minor, or patch release: `npm run changelog:unreleased`
-2. Bump the NPM version following [Semantic Versioning](https://semver.org) by using **one** of these approaches:
-	* Specify major, minor, or patch and let NPM bump it: `npm version [major | minor | patch] -m "chore(release): Bump version to %s."`
-	* Explicitly provide the version number such as 1.0.0: `npm version 1.0.0 -m "chore(release): Bump version to %s."`
-3. The push to GitHub is automated, so wait for the CI builds to finish.
-4. Publishing the new version to NPMJS is also automated, but you must create a secret named `NPM_TOKEN` on your project.
-5. Manually create a new release in GitHub based on the automatically created tag.
-
-## Contributing
-
-This section is here as a reminder for you to explain to your users how to contribute to the projects you create from this template.
-
-[build-image]: https://img.shields.io/github/actions/workflow/status/chriswells0/node-typescript-template/ci-build.yaml?branch=master
-[build-url]: https://github.com/chriswells0/node-typescript-template/actions/workflows/ci-build.yaml
-[commitizen-image]: https://img.shields.io/badge/commitizen-friendly-brightgreen.svg
-[commitizen-url]: http://commitizen.github.io/cz-cli
-[coverage-image]: https://coveralls.io/repos/github/chriswells0/node-typescript-template/badge.svg?branch=master
-[coverage-url]: https://coveralls.io/github/chriswells0/node-typescript-template?branch=master
-[dependencies-image]: https://img.shields.io/librariesio/release/npm/typescript-template
-[dependencies-url]: https://www.npmjs.com/package/typescript-template?activeTab=dependencies
-[issues-image]: https://img.shields.io/github/issues/chriswells0/node-typescript-template.svg?style=popout
-[issues-url]: https://github.com/chriswells0/node-typescript-template/issues
-[package-image]: https://img.shields.io/npm/v/typescript-template
-[package-url]: https://www.npmjs.com/package/typescript-template
-[project-url]: https://github.com/chriswells0/node-typescript-template
+- [ ] Get this repo to the point where it can be opened to the public and allow them to run a prover-verifier demo locally
+- [ ] Make that multi-verifier and over the network
+- [ ] Use the protocol to implement 2-way pegging between Bitcoin and an ERC20 token

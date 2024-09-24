@@ -414,7 +414,7 @@ export function loadAllTransactionsFromFiles(setupId: string): Transaction[] {
 }
 
 
-var scriptName = __filename;
+const scriptName = __filename;
 if (process.argv[1] == scriptName) {
     initializeTransactions(AgentRoles.PROVER, 'test_setup', 1n, 2n, {
         transactionId: 'payload',

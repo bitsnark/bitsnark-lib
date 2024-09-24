@@ -78,9 +78,9 @@ export class Fp6 {
             return new Fp6(this.x.mul(a), this.y.mul(a), this.z.mul(a));
         }
 
-        let v0 = this.z.mul(a.z);
-        let v1 = this.y.mul(a.y);
-        let v2 = this.x.mul(a.x);
+        const v0 = this.z.mul(a.z);
+        const v1 = this.y.mul(a.y);
+        const v2 = this.x.mul(a.x);
 
         let t0 = this.x.add(this.y);
         let t1 = a.x.add(a.y);
@@ -98,14 +98,14 @@ export class Fp6 {
 
         t0 = this.x.add(this.z);
         t1 = a.x.add(a.z);
-        let tx = t0.mul(t1).sub(v0).add(v1).sub(v2);
+        const tx = t0.mul(t1).sub(v0).add(v1).sub(v2);
 
         return new Fp6(tx, ty, tz);
     }
 
     // MulTau computes τ·(aτ²+bτ+c) = bτ²+cτ+aξ
     mulTau(): Fp6 {
-        let tz = this.x.mulXi();
+        const tz = this.x.mulXi();
         return new Fp6(this.y, this.z, tz);
     }
 
