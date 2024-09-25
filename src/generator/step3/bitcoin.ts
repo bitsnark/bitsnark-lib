@@ -1,3 +1,4 @@
+import { bitcoin } from "bitcoinjs-lib/src/networks";
 import { padHex } from "../../encoding/encoding";
 import { hardcode, OpcodeType, opcodeValues } from "./bitcoin-opcodes";
 import { StackItem, Stack } from "./stack";
@@ -26,7 +27,7 @@ export class Bitcoin {
     witness: bigint[] = [];
     hardcoded: bigint[] = [];
     success = true;
-    maxStack = 0;
+    public maxStack = 0;
 
     defaultHash: HashOption = 'SHA256';
 
@@ -50,11 +51,15 @@ export class Bitcoin {
         value = value ?? 0n;
         if (value < 0 || value > 16 && !dataSizeInBytes)
             throw new Error('Invalid value');
-        if (dataSizeInBytes && dataSizeInBytes != 1 && dataSizeInBytes != 4 && dataSizeInBytes != 32) throw new Error('Invalid value');
+        if (dataSizeInBytes && dataSizeInBytes != 1 && 
+            dataSizeInBytes != 2 && 
+            dataSizeInBytes != 4 && 
+            dataSizeInBytes != 32) throw new Error('Invalid value');
         const si = this.DATA(value, dataSizeInBytes);
         this.maxStack = Math.max(this.maxStack, this.stack.items.length);
-        if (this.stack.items.length + this.altStack.length > 1000)
-            throw new Error('Stack too big');
+        // console.log('Stack: ', this.stack.items.length);
+        // if (this.stack.items.length + this.altStack.length > 1000)
+        //     throw new Error('Stack too big');
         return si;
     }
 
@@ -64,6 +69,32 @@ export class Bitcoin {
 
     newNibbles(count: number): StackItem[] {
         return new Array(count).fill(0).map(() => this.newStackItem(0n));
+    }
+
+    newNibblesFast(count: number): StackItem[] {
+        if (count < 4) throw new Error('Use only for count > 4');
+
+        let n = count;
+
+        this.DATA(0n); // 1
+        this.DATA(0n); // 2
+        this.OP_2DUP(); // 4
+        n -= 4;
+
+        while (n >= 3) {
+            this.OP_3DUP();
+            n -= 3;
+        }
+        while (n > 2) {
+            this.OP_2DUP();
+            n-=2;
+        }
+        while (n > 0) {
+            this.OP_DUP();
+            n--;
+        }
+
+        return this.stack.items.slice(this.stack.items.length - count);
     }
 
     private getRelativeStackPosition(si: StackItem): number {
@@ -113,7 +144,7 @@ export class Bitcoin {
         if (data >= 0 && data <= 16) {
             this.opcodes.push({ op: hardcode(data) });
         } else {
-            if (!dataSizeInBytes) throw new Error('Invalid value');
+            dataSizeInBytes = data < 256n ? 1 : data < 512n ? 2 : 4;
             this.opcodes.push({ op: OpcodeType.DATA, data, dataSizeInBytes });
         }
         return this.stack.newItem(data);
@@ -134,6 +165,11 @@ export class Bitcoin {
     OP_DROP() {
         this.opcodes.push({ op: OpcodeType.OP_DROP });
         this.stack.pop();
+    }
+
+    OP_DEPTH() {
+        this.opcodes.push({ op: OpcodeType.OP_DEPTH });
+        const si = this.stack.newItem(BigInt(this.stack.items.length));
     }
 
     OP_NIP() {
@@ -196,11 +232,23 @@ export class Bitcoin {
         this.stack.newItem(si1.value + si2.value);
     }
 
+    OP_1ADD() {
+        this.opcodes.push({ op: OpcodeType.OP_1ADD });
+        const si1 = this.stack.pop();
+        this.stack.newItem(si1.value + 1n);
+    }
+
     OP_SUB() {
-        this.opcodes.push({ op: OpcodeType.OP_ADD });
+        this.opcodes.push({ op: OpcodeType.OP_SUB });
         const si2 = this.stack.pop();
         const si1 = this.stack.pop();
         this.stack.newItem(si1.value - si2.value);
+    }
+
+    OP_1SUB() {
+        this.opcodes.push({ op: OpcodeType.OP_1SUB });
+        const si1 = this.stack.pop();
+        this.stack.newItem(si1.value - 1n);
     }
 
     OP_GREATERTHAN() {
@@ -373,7 +421,9 @@ export class Bitcoin {
     roll(si: StackItem) {
         const rel = this.getRelativeStackPosition(si);
         if (rel == 0) return;
-        this.stack.newItem(BigInt(rel));
+        if (rel < 256) this.newStackItem(BigInt(rel), 1);
+        else if (rel < 512) this.newStackItem(BigInt(rel), 2);
+        else this.newStackItem(BigInt(rel), 4);
         this.OP_ROLL();
     }
 
@@ -409,6 +459,26 @@ export class Bitcoin {
         const tsi = this.stack.pop();
         si.value = tsi.value;
         this.stack.push(si);
+    }
+
+    public tableFetch(target: StackItem, firstItem: StackItem, index: StackItem) {
+        const rel = this.getRelativeStackPosition(firstItem);
+        this.DATA(BigInt(rel), 4);
+        this.pick(index);
+        this.OP_SUB();
+        this.OP_PICK();
+        this.replaceWithTop(target);
+    }
+
+    public tableFetchInStack(table: StackItem[]) {
+        if (this.stack.items[this.stack.items.length - 1].value > table.length)
+            throw new Error('Table overflow: ' + this.stack.items[this.stack.items.length - 1].value);
+        const rel = this.getRelativeStackPosition(table[0]) - 1;
+        const dataSize = rel < 256 ? 1 : rel < 512 ? 2 : 4;
+        this.DATA(BigInt(rel), dataSize);
+        this.OP_SWAP();
+        this.OP_SUB();
+        this.OP_PICK();
     }
 
     xor(target: StackItem, a: StackItem, b: StackItem) {
@@ -448,6 +518,22 @@ export class Bitcoin {
         this.replaceWithTop(si);
     }
 
+    equalNibbles(target: StackItem, a: StackItem[], b: StackItem[]) {
+        const l = Math.max(a.length, b.length);
+        this.OP_0_16(0n);
+        for (let i = 0; i < l; i++) {
+            if (a[i]) this.pick(a[i]);
+            else this.OP_0_16(0n);
+            if (b[i]) this.pick(b[i]);
+            else this.OP_0_16(0n);
+            this.OP_NUMEQUAL();
+            this.OP_ADD();
+        }
+        this.DATA(BigInt(l));
+        this.OP_NUMEQUAL()
+        this.replaceWithTop(target);
+    }
+
     setBit_1(target: StackItem) {
         this.OP_0_16(1n);
         this.replaceWithTop(target);
@@ -470,7 +556,14 @@ export class Bitcoin {
         this.replaceWithTop(target);
     }
 
+    addOne(target: StackItem, a: StackItem) {
+        this.pick(a);
+        this.OP_0_16(1n);
+        this.OP_ADD();
+        this.replaceWithTop(target);
+    }
     assertZero(a: StackItem) {
+
         this.pick(a);
         this.OP_0_16(0n);
         this.OP_NUMEQUALVERIFY()
