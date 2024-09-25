@@ -144,7 +144,7 @@ export class Bitcoin {
         if (data >= 0 && data <= 16) {
             this.opcodes.push({ op: hardcode(data) });
         } else {
-            if (!dataSizeInBytes) throw new Error('Invalid value');
+            dataSizeInBytes = data < 256n ? 1 : data < 512n ? 2 : 4;
             this.opcodes.push({ op: OpcodeType.DATA, data, dataSizeInBytes });
         }
         return this.stack.newItem(data);
@@ -516,6 +516,22 @@ export class Bitcoin {
         this.pick(si2);
         this.OP_NUMEQUAL();
         this.replaceWithTop(si);
+    }
+
+    equalNibbles(target: StackItem, a: StackItem[], b: StackItem[]) {
+        const l = Math.max(a.length, b.length);
+        this.OP_0_16(0n);
+        for (let i = 0; i < l; i++) {
+            if (a[i]) this.pick(a[i]);
+            else this.OP_0_16(0n);
+            if (b[i]) this.pick(b[i]);
+            else this.OP_0_16(0n);
+            this.OP_NUMEQUAL();
+            this.OP_ADD();
+        }
+        this.DATA(BigInt(l));
+        this.OP_NUMEQUAL()
+        this.replaceWithTop(target);
     }
 
     setBit_1(target: StackItem) {
