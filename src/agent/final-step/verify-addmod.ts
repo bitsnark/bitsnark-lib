@@ -17,7 +17,7 @@ export function verifyAddMod(a: bigint, b: bigint, c: bigint): BtcArithmetic {
     const w_c = btca.addWitness(bigintToNibblesLS(c, 86));
 
     btca.initializeAddTables();
-    
+
     const t = btca.add(w_a, w_b);
     btca.drop(w_a);
     btca.drop(w_b);
@@ -60,7 +60,7 @@ function test() {
         const a = bigRandom(256);
         const b = bigRandom(256);
         const c = (a + b) % prime_bigint;
-                
+
         const btca = verifyAddMod(a, b, c);
 
         console.log('verifyAddMod   script: ', btca.bitcoin.programSizeInBitcoinBytes(), '   stack: ', btca.bitcoin.maxStack);
@@ -68,7 +68,7 @@ function test() {
     }
 }
 
-var scriptName = __filename;
+const scriptName = __filename;
 if (process.argv[1] == scriptName) {
     test();
 }
