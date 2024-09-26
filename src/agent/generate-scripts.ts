@@ -1,4 +1,3 @@
-import { findOutputByInput, getTransactionByName, Input, iterations, loadAllTransactionsFromFiles, Output, SpendingCondition, Transaction, writeTransactionToFile } from './transactions-new';
 import { Bitcoin } from '../generator/step3/bitcoin';
 import { WotsType } from './winternitz';
 import { bufferToBigint160 } from './common';
@@ -6,6 +5,7 @@ import { StackItem } from '../generator/step3/stack';
 import { SimpleTapTree } from './simple-taptree';
 import { agentConf } from '../../agent.conf';
 import { Buffer } from 'node:buffer';
+import { findOutputByInput, getTransactionByName, getTransactionFileNames, Input, iterations, loadTransactionFromFile, Output, SpendingCondition, Transaction, writeTransactionToFile } from './transactions-new';
 
 function findInputsByOutput(
     transactions: Transaction[],
@@ -25,17 +25,12 @@ function setTaprootKey(transactions: Transaction[]) {
             const scripts: Buffer[] = [];
             output.spendingConditions.forEach((sc, scIndex) => {
                 const inputs = findInputsByOutput(transactions, t.transactionName, outputIndex, scIndex);
-                if (inputs.some(ti => ti.script!.compare(inputs[0].script! as any) != 0)) {
-                    console.error(inputs);
-                    throw new Error('Different scripts for one SC');
-                }
-                if (inputs.length == 0)
-                    throw new Error('No input for this SC?');
-
-                scripts.push(inputs[0].script!);
+                if (inputs.length && inputs[0].script) scripts.push(inputs[0].script!);
             });
-            const stt = new SimpleTapTree(agentConf.internalPubkey, scripts);
-            output.taprootKey = stt.getAddress();
+            if (scripts && scripts.length > 0) {
+                const stt = new SimpleTapTree(agentConf.internalPubkey, scripts);
+                output.taprootKey = stt.getAddress();
+            }
         });
     });
 }
@@ -129,6 +124,7 @@ export function generateAllScripts(setupId: string, transactions: Transaction[])
 
 const scriptName = __filename;
 if (process.argv[1] == scriptName) {
-    const transactions = loadAllTransactionsFromFiles('test_setup');
+    const filenames = getTransactionFileNames('test_setup');
+    const transactions = filenames.map(fn => loadTransactionFromFile('test_setup', fn));
     generateAllScripts('test_setup', transactions);
 }

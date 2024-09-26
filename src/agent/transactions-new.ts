@@ -1,23 +1,18 @@
 import fs from 'fs';
-import { AgentRoles } from './common';
+import { AgentRoles, FundingUtxo } from './common';
 import { getWinternitzPublicKeys, WotsType } from './winternitz';
 import { agentConf, ONE_BITCOIN } from '../../agent.conf';
 
 const twoDigits = (n: number) => n < 10 ? `0${n}` : `${n}`;
 
 export const iterations = 19;
+export const PROTOCOL_VERSION = 0.1;
 
 enum SignatureType {
     NONE = 'NONE',
     PROVER = 'PROVER',
     VERIFIER = 'VERIFIER',
     BOTH = 'BOTH'
-}
-
-interface FundingUtxo {
-    transactionId: string;
-    outputIndex: number;
-    amount: bigint;
 }
 
 export interface SpendingCondition {
@@ -45,9 +40,11 @@ export interface Output {
 }
 
 export interface Transaction {
+    setupId?: string,
+    protocolVersion?: number,
     role: AgentRoles;
     transactionName: string;
-    transactionId?: string;
+    txId?: string;
     inputs: Input[];
     outputs: Output[];
 }
@@ -71,7 +68,7 @@ const protocolStart: Transaction[] = [
         outputs: [{
             amount: agentConf.proverStakeAmount,
             spendingConditions: [{
-                signatureType: SignatureType.PROVER,
+                signatureType: SignatureType.BOTH,
                 wotsSpec: new Array(10).fill(WotsType._256)
             }]
         }]
@@ -87,12 +84,15 @@ const protocolStart: Transaction[] = [
         outputs: [{
             amount: agentConf.proverStakeAmount - agentConf.symbolicOutputAmount - agentConf.initialTransactionFee,
             spendingConditions: [{
+                // no challenge
                 timeoutBlocks: agentConf.smallTimeoutBlocks,
                 signatureType: SignatureType.BOTH
             }, {
+                // state
                 signatureType: SignatureType.BOTH,
                 wotsSpec: new Array(11).fill(WotsType._256)
             }, {
+                // challenge bot no state
                 timeoutBlocks: agentConf.largeTimeoutBlocks,
                 signatureType: SignatureType.BOTH,
             }]
@@ -105,6 +105,7 @@ const protocolStart: Transaction[] = [
         }), {
             amount: agentConf.symbolicOutputAmount,
             spendingConditions: [{
+                // challenge
                 signatureType: SignatureType.BOTH
             }]
         }]
@@ -113,7 +114,7 @@ const protocolStart: Transaction[] = [
         transactionName: 'challenge',
         inputs: [{
             transactionName: 'initial',
-            outputIndex: 1,
+            outputIndex: 6,
             spendingConditionIndex: 0
         }],
         outputs: [{
@@ -151,10 +152,14 @@ const protocolStart: Transaction[] = [
 const protocolEnd: Transaction[] = [
     {
         role: AgentRoles.PROVER,
-        transactionName: 'semi_final',
+        transactionName: 'final',
         inputs: [
             {
                 transactionName: `select_${twoDigits(iterations - 1)}`,
+                outputIndex: 0,
+                spendingConditionIndex: 0
+            }, {
+                transactionName: 'payload',
                 outputIndex: 0,
                 spendingConditionIndex: 0
             }
@@ -162,46 +167,10 @@ const protocolEnd: Transaction[] = [
         outputs: [
             {
                 spendingConditions: [{
-                    timeoutBlocks: agentConf.smallTimeoutBlocks,
-                    signatureType: SignatureType.BOTH
-                }, {
-                    signatureType: SignatureType.BOTH,
-                    wotsSpec: [WotsType._256, WotsType._256, WotsType._256, WotsType._256]
+                    signatureType: SignatureType.PROVER
                 }]
             }
         ]
-    }, {
-        role: AgentRoles.VERIFIER,
-        transactionName: 'final',
-        inputs: [
-            {
-                transactionName: 'semi_final',
-                outputIndex: 0,
-                spendingConditionIndex: 1
-            }
-        ],
-        outputs: [
-            {
-                spendingConditions: [{
-                    signatureType: SignatureType.VERIFIER
-                }]
-            }
-        ]
-    }, {
-        role: AgentRoles.PROVER,
-        transactionName: 'prover_wins',
-        inputs: [{
-            transactionName: 'payload',
-            outputIndex: 0,
-            spendingConditionIndex: 0
-        }, {
-            transactionName: 'semi_final',
-            outputIndex: 0,
-            spendingConditionIndex: 0
-        }],
-        outputs: [{
-            spendingConditions: [{ signatureType: SignatureType.PROVER }]
-        }]
     }
 ];
 
@@ -220,6 +189,9 @@ function makeProtocolSteps(): Transaction[] {
                 spendingConditions: [{
                     signatureType: SignatureType.BOTH,
                     wotsSpec: [WotsType._1]
+                }, {
+                    timeoutBlocks: agentConf.smallTimeoutBlocks,
+                    signatureType: SignatureType.BOTH,
                 }]
             }]
         };
@@ -255,8 +227,7 @@ function makeProtocolSteps(): Transaction[] {
                 spendingConditions: [{
                     signatureType: SignatureType.BOTH,
                     wotsSpec: [
-                        ...new Array(19).fill(WotsType._1),
-                        ...[WotsType._256]
+                        ...new Array(4).fill(WotsType._256)
                     ]
                 }]
             }]
@@ -284,8 +255,8 @@ function makeProtocolSteps(): Transaction[] {
     return result;
 }
 
-export function getTransactionByName(allTransactions: Transaction[], name: string): Transaction {
-    const tx = allTransactions.find(t => t.transactionName == name);
+export function getTransactionByName(transactions: Transaction[], name: string): Transaction {
+    const tx = transactions.find(t => t.transactionName == name);
     if (!tx) throw new Error('Transaction not found: ' + name);
     return tx;
 }
@@ -305,17 +276,27 @@ const allTransactions = [...protocolStart, ...makeProtocolSteps(), ...protocolEn
 
 assertOrder(allTransactions);
 
-export function getTransactionNames(role?: AgentRoles): string[] {
-    return allTransactions
-        .filter(t => !role || t.role == role)
-        .map(t => t.transactionName);
-}
-
 export function findOutputByInput(transactions: Transaction[], input: Input): Output {
     const tx = getTransactionByName(transactions, input.transactionName);
     const output = tx.outputs[input.outputIndex];
     if (!output) throw new Error('Output not found: ' + input.outputIndex);
     return output;
+}
+
+function generateDotty() {
+    let stra: String[] = [ 'digraph BitSnark {' ];
+    stra.push(`{ node [shape=note; color=${'green'}]`);
+    stra.push(
+        ...allTransactions
+        .filter(t => t.role==AgentRoles.PROVER)
+        .map(t => `${t.transactionName} [label="${t.transactionName}"]`));
+    stra.push(`}`);
+    stra.push(`{ node [shape=note; color=${'red'}]`);
+    stra.push(
+        ...allTransactions
+        .filter(t => t.role==AgentRoles.VERIFIER)
+        .map(t => `${t.transactionName} [label="${t.transactionName}"]`));
+    stra.push(`}`);
 }
 
 export function initializeTransactions(
@@ -330,16 +311,23 @@ export function initializeTransactions(
     const transactions: Transaction[] = allTransactions.map(t => fromJson(toJson(t)));
 
     const payload = getTransactionByName(transactions, 'payload');
-    payload.transactionId = payloadUtxo.transactionId;
+    payload.txId = payloadUtxo.txId;
     payload.outputs[0].amount = payloadUtxo.amount;
 
     const proverStake = getTransactionByName(transactions, 'prover_stake');
-    proverStake.transactionId = proverUtxo.transactionId;
+    proverStake.txId = proverUtxo.txId;
     proverStake.outputs[0].amount = proverUtxo.amount;
+
+    // generate dotty
+
+    generateDotty();
 
     // generate wots keys
 
     transactions.forEach(t => {
+        t.protocolVersion = t.protocolVersion ?? PROTOCOL_VERSION;
+        t.setupId = setupId;
+
         if (t.role == role) {
             t.inputs.forEach((input, inputIndex) => {
                 const output = findOutputByInput(transactions, input);
@@ -371,7 +359,6 @@ export function initializeTransactions(
         });
     });
 
-
     transactions.forEach(t => writeTransactionToFile(setupId, t));
     return transactions;
 }
@@ -390,7 +377,7 @@ function fromJson(json: string): Transaction {
 function toJson(message: Transaction, spacer?: string): string {
     const json = JSON.stringify(message, (key, value) => {
         if (typeof value === "bigint") return `0x${value.toString(16)}n`;
-        if (value.type == "Buffer" && value.data) {
+        if (value?.type == "Buffer" && value.data) {
             return 'hex:' + Buffer.from(value.data).toString('hex');
         }
         return value;
@@ -408,20 +395,20 @@ export function loadTransactionFromFile(setupId: string, transactionName: string
     return fromJson(fs.readFileSync(`./generated/setups/${setupId}/${transactionName}.json`).toString('ascii'));
 }
 
-export function loadAllTransactionsFromFiles(setupId: string): Transaction[] {
-    const names = getTransactionNames();
-    return names.map(name => loadTransactionFromFile(setupId, name));
+export function getTransactionFileNames(setupId: string): string[] {
+    return fs.readdirSync(`./generated/setups/${setupId}`)
+        .filter(fn => fn.endsWith('.json'))
+        .map(fn => fn.replace('.json', ''));
 }
-
 
 const scriptName = __filename;
 if (process.argv[1] == scriptName) {
     initializeTransactions(AgentRoles.PROVER, 'test_setup', 1n, 2n, {
-        transactionId: 'payload',
+        txId: 'payload',
         outputIndex: 0,
         amount: ONE_BITCOIN
     }, {
-        transactionId: 'prover_stake',
+        txId: 'prover_stake',
         outputIndex: 0,
         amount: ONE_BITCOIN
     });
