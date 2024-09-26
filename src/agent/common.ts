@@ -40,6 +40,7 @@ export interface ScriptAndKeys {
 export interface FundingUtxo {
     txId: string;
     outputIndex: number;
+    amount: bigint;
 }
 
 export function bigintToString(n: bigint): string {
