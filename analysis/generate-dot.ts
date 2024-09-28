@@ -12,12 +12,9 @@ const TIMEOUT_STYLE = 'dashed';
 const DEFAULT_WEIGHT = 6;
 const PAYLOAD_WEIGHT = 1;
 const TIMEOUT_WEIGHT = 2;
-const SELECT_AND_STATE_WEIGHT = 12;
-const FLOW_PLACEHOLDER = '/* Flow. */';
-const DOT_TEMPLATE = `
-digraph BitSnark {
-    ${FLOW_PLACEHOLDER}
-}`.trim();
+const SELECT_AND_STATE_WEIGHT = 27;
+const FLOW_PLACEHOLDER = '/* Flow Placeholder. */';
+const DOT_TEMPLATE = `digraph BitSnark {${FLOW_PLACEHOLDER}\n}`;
 
 function dot(transactions: Transaction[]): string {
 
@@ -44,9 +41,14 @@ function dot(transactions: Transaction[]): string {
         const condition = output.spendingConditions[input.spendingConditionIndex];
         const style = condition.timeoutBlocks ? TIMEOUT_STYLE : undefined;
         let weight = DEFAULT_WEIGHT;
+        let label;
         if (input.transactionName === TransactionNames.PAYLOAD) weight = PAYLOAD_WEIGHT;
-        else if (condition.timeoutBlocks) weight = TIMEOUT_WEIGHT;
-        else {
+        else if (input.transactionName.includes('_timeout_')) weight = TIMEOUT_WEIGHT;
+        else if (condition.timeoutBlocks) {
+            weight = TIMEOUT_WEIGHT;
+            label = `"timelocked for ${condition.timeoutBlocks} blocks"`;
+
+        } else {
             const stateOrSelectMatches = [transaction.transactionName, input.transactionName].map(
                 name => name?.match(/^(select|state)_(\d{2})$/)).filter(Boolean);
             if (
@@ -54,7 +56,7 @@ function dot(transactions: Transaction[]): string {
                 (stateOrSelectMatches[0]?.[1] === 'select' && stateOrSelectMatches[1]?.[1] === 'state')
             ) weight = SELECT_AND_STATE_WEIGHT;
         }
-        return properties({ style, weight });
+        return properties({ style, weight, label });
     }
 
     function edgeLine(input: Input, transaction: Transaction) {
