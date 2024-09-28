@@ -40,7 +40,7 @@ It's important to remember that neither the prover stake nor the verifier paymen
 
 ## Transactions Flow
 
-The diagram below describes the flow of transactions in the protocol with an additional "Hinged Funds" output marked with a dashed oval. Transactions publishable by the prover are green, ones publishable by the verifier are blue. Dashed lines are timelocked to a pre-specified number of blocks, the green timelock being significantly shorter than the blue one. The cyan output has a symbolic amount (1 satoshi) that is used to make the "Challenge" and "No Challenge" transactions mutually exclusive.
+The diagram below describes the flow of transactions in the protocol with an additional "Locked Funds" output marked with a dashed oval. Transactions publishable by the prover are green, ones publishable by the verifier are blue. Dashed lines are timelocked to a pre-specified number of blocks, the green timelock being significantly shorter than the blue one. The cyan output has a symbolic amount (1 satoshi) that is used to make the "Challenge" and "No Challenge" transactions mutually exclusive.
 
 The dotted line between "State 1" and "State n" indicates that the bisection process is repeated multiple times (it currently takes us 19 bisections to identify one out of half a million operations in our snark verification program).
 
@@ -48,23 +48,23 @@ The dotted line between "State 1" and "State n" indicates that the bisection pro
 
 Once the prover signs and publishes the "Proof" transaction, it spends the prover's stake and locks it.
 
-If the verifier finds the proof valid, they let the green timelock expire, at which point the prover can sign and publish the "Proof Uncontested" transaction and claim the stake back (along with any optional hinged funds).
+If the verifier finds the proof valid, they let the green timelock expire, at which point the prover can sign and publish the "Proof Uncontested" transaction and claim the stake back (along with any optional locked funds).
 
 If, however, the verifier finds the proof invalid, they publish the "Challenge" transaction, which sends the verifier's payment (along with the symbolic satoshi from the "Proof" transaction) to the prover's wallet and prevents the "Challenge Uncontested" transaction from ever being valid.
 
-If the prover does not respond to the challenge before the blue timelock expires, the verifier can claim the prover's stake (and prevent the transfer of any hinged funds) by publishing the "Challenge Uncontested" transaction.
+If the prover does not respond to the challenge before the blue timelock expires, the verifier can claim the prover's stake (and prevent the transfer of any locked funds) by publishing the "Challenge Uncontested" transaction.
 
 To avoid this, the prover must publish the first step in the bisection process by signing and publishing the "State 0" transaction which includes the state of the program's execution up to the program's middle.
 
-In response, the verifier has to publish the "Select 0" transaction before the new timelock expires and the prover claims the stake along with any hinged funds with "State Uncontested 0" (the two transactions are mutually exclusive). The "Select 0" transaction signals the verifier's approval or disapproval of the state published by the prover. If the verifier disagrees with the state, a point of contention must exist in the first half of the program. If the verifier agrees with the state, but not with the final result, a point of contention must exist in the second half of the program.
+In response, the verifier has to publish the "Select 0" transaction before the new timelock expires and the prover claims the stake along with any additional locked funds with "State Uncontested 0" (the two transactions are mutually exclusive). The "Select 0" transaction signals the verifier's approval or disapproval of the state published by the prover. If the verifier disagrees with the state, a point of contention must exist in the first half of the program. If the verifier agrees with the state, but not with the final result, a point of contention must exist in the second half of the program.
 
 This process is then repeated multiple times, with the prover having to publish "State x" before the verifier publishes "Select Uncontested x-1" and then the verifier having to publich "Select x" before the prover publishes "State Ucontested x", until a point of contention is identified in the verifier transactions "Select n".
 
 The prover then must publish the "Argument" transaction, in which they commit to the two variables that are the input to the contentious operation, the operation itself (as identified by the binary path that located it) and its result, before the timelock expires and the verifier can publish the "Select n Uncontested" transaction.
 
-The verifier can now claim the prover's stake and prevent the release of any hinged funds by publishing the "Proof Refuted" transaction, which is only valid if the prover's argument is incorrect.
+The verifier can now claim the prover's stake and prevent the release of any locked funds by publishing the "Proof Refuted" transaction, which is only valid if the prover's argument is incorrect.
 
-If, however, the prover's argument is correct, the "Proof Refuted" transaction will never be valid, the timelock will expire and the prover will be able to claim his stake back along with any hinged funds using the "Argument Uncontested" transaction.
+If, however, the prover's argument is correct, the "Proof Refuted" transaction will never be valid, the timelock will expire and the prover will be able to claim his stake back along with any locked funds using the "Argument Uncontested" transaction.
 
 Available is a [TLA+ specification of the protocol](/analysis/BitSnark.pdf), including the basic invariants.
 

@@ -5,7 +5,7 @@ digraph BitSnark {
         verifier_payment [label="Verifier Payment"]
         prover_wallet [label="Prover Wallet"]
         verifier_wallet [label="Verifier Wallet"]
-        hinged_funds [label="Hinged Funds";style=dashed]
+        locked_funds [label="locked Funds";style=dashed]
     }
     {node [shape=note; color=green]
         proof [label="Proof"]
@@ -54,8 +54,8 @@ digraph BitSnark {
     o5 -> select_uncontested_n [style=dashed]
 
     /* Contention Resolution. */
-    hinged_funds -> o0 [arrowhead=none]
-    hinged_funds -> {state_uncontested_0 state_uncontested_n} [weight=0]
+    locked_funds -> o0 [arrowhead=none]
+    locked_funds -> {state_uncontested_0 state_uncontested_n} [weight=0]
     argument -> o6  [arrowhead=none]
     o6 -> argument_uncontested [style=dashed]
     o6 -> proof_refuted-> verifier_wallet
