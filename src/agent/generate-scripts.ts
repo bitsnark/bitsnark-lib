@@ -165,9 +165,10 @@ function addAmounts(setupId: string, transactions: Transaction[]) {
                 (totalValue, output) => totalValue + (output.amount || 0n), 0n);
 
             amountlessOutputs[0].amount = incomingAmount - existingOutputsAmount - calculateTransactionFee(transaction);
-            console.debug(transaction.transactionName, incomingAmount, existingOutputsAmount, amountlessOutputs[0].amount);
             writeTransactionToFile(setupId, transaction);
     }
+
+    transactions.forEach(add);
 }
 
 // This should probably be in a unit test.
@@ -187,20 +188,22 @@ function validateTransactionFees(transactions: Transaction[]) {
                 (totalSize, condition) => totalSize + (condition.script?.length || 0), 0), 0);
         const requiredFee = calculateTransactionFee(t);
 
-        console.log(t.transactionName, inputsValue, outputsValue, fee, requiredFee, size);
-
         if (inputsValue - outputsValue < 0) throw new Error(
             `Transaction ${t.transactionName} has negative value: ${inputsValue - outputsValue}`);
         if (inputsValue - outputsValue < requiredFee) throw new Error(
             `Transaction ${t.transactionName} has low fee: ${inputsValue - outputsValue - fee}`);
         return {
             size: totals.size + size,
-            in: totals.in + inputsValue,
-            out: totals.out + outputsValue,
             fee: totals.fee + fee
         };
-    }, { size:0, in: 0n, out: 0n, fee: 0n });
-    console.log(`Total inputs: ${totals.in}, outputs: ${totals.out}, fees: ${totals.fee}`);
+    }, { size:0, fee: 0n });
+
+    if(totals.fee / BigInt(Math.ceil(totals.size / 8 / 100 * agentConf.feeFactorPercent)) != agentConf.feePerByte) {
+        throw new Error(
+            `Fee per byte is not correct: ` +
+            `${totals.fee / BigInt(Math.ceil(totals.size / 8 / 100 * agentConf.feeFactorPercent))} ` +
+            `!= ${agentConf.feePerByte}`);
+    }
 }
 
 const scriptName = __filename;
