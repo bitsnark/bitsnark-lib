@@ -24,10 +24,10 @@ export function getRegsAt(vm: Step1_vm, left: number, point: number, right: numb
     return regs;
 }
 
-function getStateSizes(vm: Step1_vm, left: number, right: number, iteration: number, result: number[]) {
+function getStateSizes(vm: Step1_vm, left: number, right: number, iteration: number, result: number[]): number {
 
     if (left + 1 >= right) {
-        return;
+        return iteration;
     }
 
     let middle = Math.round((left + right) / 2);
@@ -37,6 +37,7 @@ function getStateSizes(vm: Step1_vm, left: number, right: number, iteration: num
 
     getStateSizes(vm, left, middle, iteration + 1, result);
     getStateSizes(vm, middle, right, iteration + 1, result);
+    return iteration;
 }
 
 function getLines(vm: Step1_vm, left: number, right: number, iteration: number, result: number[][][]) {
@@ -53,15 +54,28 @@ function getLines(vm: Step1_vm, left: number, right: number, iteration: number, 
     getLines(vm, middle, right, iteration + 1, result);
 }
 
+export function calculateStateSizes(): number[] {
+    step1_vm.reset();
+    groth16Verify(Key.fromSnarkjs(vKey), Step1_Proof.fromSnarkjs(proof));
+    if (!step1_vm.success?.value) throw new Error('Failed.');
 
-step1_vm.reset();
-groth16Verify(Key.fromSnarkjs(vKey), Step1_Proof.fromSnarkjs(proof));
-if (!step1_vm.success?.value) throw new Error('Failed.');
+    const counts: number[] = [];
+    getStateSizes(step1_vm, 0, step1_vm.instructions.length - 1, 0, counts);
+    return counts;
+}
 
-const counts: number[] = [];
-getStateSizes(step1_vm, 0, step1_vm.instructions.length - 1, 0, counts);
-console.log(counts);
+const scriptName = __filename;
+if (process.argv[1] == scriptName) {
 
-const lines: number[][][] = [];
-getLines(step1_vm, 0, step1_vm.instructions.length - 1, 0, lines);
-console.log(lines.length, lines[lines.length - 1]);
+    step1_vm.reset();
+    groth16Verify(Key.fromSnarkjs(vKey), Step1_Proof.fromSnarkjs(proof));
+    if (!step1_vm.success?.value) throw new Error('Failed.');
+
+    const counts: number[] = [];
+    getStateSizes(step1_vm, 0, step1_vm.instructions.length - 1, 0, counts);
+    console.log(counts);
+
+    const lines: number[][][] = [];
+    getLines(step1_vm, 0, step1_vm.instructions.length - 1, 0, lines);
+    console.log(lines.length, lines[lines.length - 1]);
+}
