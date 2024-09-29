@@ -1,0 +1,11 @@
+#!/bin/sh
+PROTECTED_BRANCHES="main|development"
+
+git rev-parse --abbrev-ref HEAD | grep -E "$PROTECTED_BRANCHES" > /dev/null || exit 0
+
+set -e
+npm run lint
+npm run test
+set +e
+
+exit 0

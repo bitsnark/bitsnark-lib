@@ -8,6 +8,22 @@ const twoDigits = (n: number) => n < 10 ? `0${n}` : `${n}`;
 export const iterations = 19;
 export const PROTOCOL_VERSION = 0.1;
 
+export const enum TransactionNames {
+    PAYLOAD = 'payload',
+    PROVER_STAKE = 'prover_stake',
+    INITIAL = 'initial',
+    NO_CHALLENGE = 'no_challenge',
+    VERIFIER_PAYMENT = 'verifier_payment',
+    CHALLENGE = 'challenge',
+    VERIFIER_WINS = 'verifier_wins',
+    STATE = 'state',
+    STATE_TIMEOUT = 'state_timeout',
+    SELECT = 'select',
+    SELECT_TIMEOUT = 'select_timeout',
+    FINAL = 'final',
+    PROVER_WINS = 'prover_wins'
+}
+
 enum SignatureType {
     NONE = 'NONE',
     PROVER = 'PROVER',
@@ -52,10 +68,10 @@ export interface Transaction {
 const protocolStart: Transaction[] = [
     {
         role: AgentRoles.PROVER,
-        transactionName: 'payload',
+        transactionName: TransactionNames.PAYLOAD,
         inputs: [],
         outputs: [{
-            amount: 0n,
+            amount: agentConf.payloadAmount,
             spendingConditions: [{
                 signatureType: SignatureType.BOTH
             }]
@@ -63,7 +79,7 @@ const protocolStart: Transaction[] = [
     },
     {
         role: AgentRoles.PROVER,
-        transactionName: 'prover_stake',
+        transactionName: TransactionNames.PROVER_STAKE,
         inputs: [],
         outputs: [{
             amount: agentConf.proverStakeAmount,
@@ -75,14 +91,13 @@ const protocolStart: Transaction[] = [
     },
     {
         role: AgentRoles.PROVER,
-        transactionName: 'initial',
+        transactionName: TransactionNames.INITIAL,
         inputs: [{
-            transactionName: 'prover_stake',
+            transactionName: TransactionNames.PROVER_STAKE,
             outputIndex: 0,
             spendingConditionIndex: 0
         }],
         outputs: [{
-            amount: agentConf.proverStakeAmount - agentConf.symbolicOutputAmount - agentConf.initialTransactionFee,
             spendingConditions: [{
                 // no challenge
                 timeoutBlocks: agentConf.smallTimeoutBlocks,
@@ -97,13 +112,11 @@ const protocolStart: Transaction[] = [
                 signatureType: SignatureType.BOTH,
             }]
         }, ...new Array(5).fill({
-            amount: agentConf.symbolicOutputAmount,
             spendingConditions: [{
                 signatureType: SignatureType.BOTH,
                 wotsSpec: new Array(11).fill(WotsType._256)
             }]
         }), {
-            amount: agentConf.symbolicOutputAmount,
             spendingConditions: [{
                 // challenge
                 signatureType: SignatureType.BOTH
@@ -111,37 +124,36 @@ const protocolStart: Transaction[] = [
         }]
     }, {
         role: AgentRoles.VERIFIER,
-        transactionName: 'challenge',
+        transactionName: TransactionNames.CHALLENGE,
         inputs: [{
-            transactionName: 'initial',
-            outputIndex: 6,
+            transactionName: TransactionNames.INITIAL,
+            outputIndex: 1,
             spendingConditionIndex: 0
         }],
         outputs: [{
-            amount: agentConf.symbolicOutputAmount - agentConf.smallTransactionFee + agentConf.verifierStakeAmount,
+            amount: agentConf.verifierPaymentAmount,
             spendingConditions: [{
                 signatureType: SignatureType.PROVER
             }]
         }]
     }, {
         role: AgentRoles.PROVER,
-        transactionName: 'no_challenge',
+        transactionName: TransactionNames.NO_CHALLENGE,
         inputs: [{
-            transactionName: 'payload',
+            transactionName: TransactionNames.PAYLOAD,
             outputIndex: 0,
             spendingConditionIndex: 0
         },
         {
-            transactionName: 'initial',
+            transactionName: TransactionNames.INITIAL,
             outputIndex: 0,
             spendingConditionIndex: 0
         }, {
-            transactionName: 'initial',
+            transactionName: TransactionNames.INITIAL,
             outputIndex: 6,
             spendingConditionIndex: 0
         }],
         outputs: [{
-            amount: agentConf.proverStakeAmount - agentConf.smallTransactionFee,
             spendingConditions: [{
                 signatureType: SignatureType.PROVER
             }]
@@ -152,14 +164,14 @@ const protocolStart: Transaction[] = [
 const protocolEnd: Transaction[] = [
     {
         role: AgentRoles.PROVER,
-        transactionName: 'final',
+        transactionName: TransactionNames.FINAL,
         inputs: [
             {
-                transactionName: `select_${twoDigits(iterations - 1)}`,
+                transactionName: `${TransactionNames.SELECT}_${twoDigits(iterations - 1)}`,
                 outputIndex: 0,
                 spendingConditionIndex: 0
             }, {
-                transactionName: 'payload',
+                transactionName: TransactionNames.PAYLOAD,
                 outputIndex: 0,
                 spendingConditionIndex: 0
             }
@@ -179,9 +191,9 @@ function makeProtocolSteps(): Transaction[] {
     for (let i = 0; i < iterations; i++) {
         const state: Transaction = {
             role: AgentRoles.PROVER,
-            transactionName: `state_${twoDigits(i)}`,
+            transactionName: `${TransactionNames.STATE}_${twoDigits(i)}`,
             inputs: [0, 1, 2, 3, 4, 5].map(j => ({
-                transactionName: i == 0 ? 'initial' : `select_${twoDigits(i - 1)}`,
+                transactionName: i == 0 ? TransactionNames.INITIAL : `${TransactionNames.SELECT}_${twoDigits(i - 1)}`,
                 outputIndex: j,
                 spendingConditionIndex: i == 0 && j == 0 ? 1 : 0,
             })),
@@ -197,9 +209,9 @@ function makeProtocolSteps(): Transaction[] {
         };
         const stateTimeout: Transaction = {
             role: AgentRoles.VERIFIER,
-            transactionName: `state_timeout_${twoDigits(i)}`,
+            transactionName: `${TransactionNames.STATE_TIMEOUT}_${twoDigits(i)}`,
             inputs: [{
-                transactionName: i == 0 ? 'initial' : `select_${twoDigits(i - 1)}`,
+                transactionName: i == 0 ? TransactionNames.INITIAL: `${TransactionNames.SELECT}_${twoDigits(i - 1)}`,
                 outputIndex: 0,
                 spendingConditionIndex: 0
             }],
@@ -212,9 +224,9 @@ function makeProtocolSteps(): Transaction[] {
         };
         const select: Transaction = {
             role: AgentRoles.VERIFIER,
-            transactionName: `select_${twoDigits(i)}`,
+            transactionName: `${TransactionNames.SELECT}_${twoDigits(i)}`,
             inputs: [{
-                transactionName: `state_${twoDigits(i)}`,
+                transactionName: `${TransactionNames.STATE}_${twoDigits(i)}`,
                 outputIndex: 0,
                 spendingConditionIndex: 0
             }],
@@ -234,13 +246,13 @@ function makeProtocolSteps(): Transaction[] {
         };
         const selectTimeout: Transaction = {
             role: AgentRoles.PROVER,
-            transactionName: `select_timeout_${twoDigits(i)}`,
+            transactionName: `${TransactionNames.SELECT_TIMEOUT}_${twoDigits(i)}`,
             inputs: [{
-                transactionName: `payload`,
+                transactionName: TransactionNames.PAYLOAD,
                 outputIndex: 0,
                 spendingConditionIndex: 0
             }, {
-                transactionName: `state_${twoDigits(i)}`,
+                transactionName: `${TransactionNames.STATE}_${twoDigits(i)}`,
                 outputIndex: 0,
                 spendingConditionIndex: 0
             }],
@@ -283,22 +295,6 @@ export function findOutputByInput(transactions: Transaction[], input: Input): Ou
     return output;
 }
 
-function generateDotty() {
-    let stra: String[] = [ 'digraph BitSnark {' ];
-    stra.push(`{ node [shape=note; color=${'green'}]`);
-    stra.push(
-        ...allTransactions
-        .filter(t => t.role==AgentRoles.PROVER)
-        .map(t => `${t.transactionName} [label="${t.transactionName}"]`));
-    stra.push(`}`);
-    stra.push(`{ node [shape=note; color=${'red'}]`);
-    stra.push(
-        ...allTransactions
-        .filter(t => t.role==AgentRoles.VERIFIER)
-        .map(t => `${t.transactionName} [label="${t.transactionName}"]`));
-    stra.push(`}`);
-}
-
 export function initializeTransactions(
     role: AgentRoles,
     setupId: string,
@@ -310,20 +306,15 @@ export function initializeTransactions(
 
     const transactions: Transaction[] = allTransactions.map(t => fromJson(toJson(t)));
 
-    const payload = getTransactionByName(transactions, 'payload');
+    const payload = getTransactionByName(transactions,TransactionNames.PAYLOAD);
     payload.txId = payloadUtxo.txId;
     payload.outputs[0].amount = payloadUtxo.amount;
 
-    const proverStake = getTransactionByName(transactions, 'prover_stake');
+    const proverStake = getTransactionByName(transactions, TransactionNames.PROVER_STAKE);
     proverStake.txId = proverUtxo.txId;
     proverStake.outputs[0].amount = proverUtxo.amount;
 
-    // generate dotty
-
-    generateDotty();
-
     // generate wots keys
-
     transactions.forEach(t => {
         t.protocolVersion = t.protocolVersion ?? PROTOCOL_VERSION;
         t.setupId = setupId;
@@ -404,12 +395,12 @@ export function getTransactionFileNames(setupId: string): string[] {
 const scriptName = __filename;
 if (process.argv[1] == scriptName) {
     initializeTransactions(AgentRoles.PROVER, 'test_setup', 1n, 2n, {
-        txId: 'payload',
+        txId: TransactionNames.PAYLOAD,
         outputIndex: 0,
-        amount: ONE_BITCOIN
+        amount: agentConf.payloadAmount
     }, {
-        txId: 'prover_stake',
+        txId: TransactionNames.PROVER_STAKE,
         outputIndex: 0,
-        amount: ONE_BITCOIN
+        amount: agentConf.proverStakeAmount
     });
 }
