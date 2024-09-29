@@ -68,12 +68,6 @@
     "node_modules",
     "tests",
     "types",
-    "dist", 
-    "tests",
-    "src/agent/*",
-    "src/agent/*/**",
-    "jest.config.ts",
-    "agent.conf.d.ts",
-    "agent.conf.ts",
+    "dist"
   ]
 }
