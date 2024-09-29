@@ -1,7 +1,7 @@
 import { FundingUtxo } from "./common";
 import { Transaction } from "./transactions-new";
 
-type MessageType = 'start' | 'join' | 'transactions' | 'keys' | 'signatures' | 'done' | 'error';
+type MessageType = 'start' | 'join' | 'transactions' | 'signatures' | 'done' | 'error';
 
 function _assign(target: any, from: any) {
     if (!from) return;
@@ -43,22 +43,6 @@ export class TransactionsMessage {
     transactions: Transaction[] = [];
 
     constructor(obj?: Partial<TransactionsMessage>) {
-        _assign(this, obj);
-    }
-}
-
-export class TxKeys {
-    transactionName: string = '';
-    wotsKeys: Buffer[][][][] = [];
-}
-
-export class TxKeysMessage {
-    messageType: MessageType = 'keys';
-    setupId: string = '';
-    agentId: string = '';
-    txKeys: TxKeys[] = [];
-
-    constructor(obj?: Partial<TxKeysMessage>) {
         _assign(this, obj);
     }
 }
@@ -105,14 +89,13 @@ export class ErrorMessage {
 const typeToClass = {
     'start': StartMessage,
     'join': JoinMessage,
-    'transactions': TxKeysMessage,
-    'keys': TxKeysMessage,
+    'transactions': TransactionsMessage,
     'signatures': SignaturesMessage,
     'done': DoneMessage,
     'error': ErrorMessage
 }
 
-export type Message = StartMessage | TransactionsMessage | TxKeysMessage | SignaturesMessage | DoneMessage | ErrorMessage;
+export type Message = StartMessage | TransactionsMessage | SignaturesMessage | DoneMessage | ErrorMessage;
 
 export function fromJson(json: string): Message {
     const obj = JSON.parse(json, (key, value) =>{

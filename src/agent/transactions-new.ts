@@ -1,11 +1,8 @@
 import fs from 'fs';
-import { AgentRoles, FundingUtxo } from './common';
+import { AgentRoles, FundingUtxo, iterations, twoDigits } from './common';
 import { getWinternitzPublicKeys, WotsType } from './winternitz';
 import { agentConf, ONE_BITCOIN } from '../../agent.conf';
 
-const twoDigits = (n: number) => n < 10 ? `0${n}` : `${n}`;
-
-export const iterations = 19;
 export const PROTOCOL_VERSION = 0.1;
 
 enum SignatureType {
@@ -19,6 +16,7 @@ export interface SpendingCondition {
     timeoutBlocks?: number,
     signatureType: SignatureType;
     signaturesPublicKeys?: bigint[];
+    nextRole: AgentRoles;
     wotsSpec?: WotsType[],
     wotsPublicKeys?: Buffer[][],
     script?: Buffer
@@ -57,6 +55,7 @@ const protocolStart: Transaction[] = [
         outputs: [{
             amount: 0n,
             spendingConditions: [{
+                nextRole: AgentRoles.PROVER,
                 signatureType: SignatureType.BOTH
             }]
         }]
@@ -68,6 +67,7 @@ const protocolStart: Transaction[] = [
         outputs: [{
             amount: agentConf.proverStakeAmount,
             spendingConditions: [{
+                nextRole: AgentRoles.PROVER,
                 signatureType: SignatureType.BOTH,
                 wotsSpec: new Array(10).fill(WotsType._256)
             }]
@@ -85,20 +85,24 @@ const protocolStart: Transaction[] = [
             amount: agentConf.proverStakeAmount - agentConf.symbolicOutputAmount - agentConf.initialTransactionFee,
             spendingConditions: [{
                 // no challenge
+                nextRole: AgentRoles.PROVER,
                 timeoutBlocks: agentConf.smallTimeoutBlocks,
                 signatureType: SignatureType.BOTH
             }, {
                 // state
+                nextRole: AgentRoles.PROVER,
                 signatureType: SignatureType.BOTH,
                 wotsSpec: new Array(11).fill(WotsType._256)
             }, {
-                // challenge bot no state
+                // challenge but no state
+                nextRole: AgentRoles.VERIFIER,
                 timeoutBlocks: agentConf.largeTimeoutBlocks,
                 signatureType: SignatureType.BOTH,
             }]
         }, ...new Array(5).fill({
             amount: agentConf.symbolicOutputAmount,
             spendingConditions: [{
+                nextRole: AgentRoles.PROVER,
                 signatureType: SignatureType.BOTH,
                 wotsSpec: new Array(11).fill(WotsType._256)
             }]
@@ -106,6 +110,7 @@ const protocolStart: Transaction[] = [
             amount: agentConf.symbolicOutputAmount,
             spendingConditions: [{
                 // challenge
+                nextRole: AgentRoles.VERIFIER,
                 signatureType: SignatureType.BOTH
             }]
         }]
@@ -120,6 +125,7 @@ const protocolStart: Transaction[] = [
         outputs: [{
             amount: agentConf.symbolicOutputAmount - agentConf.smallTransactionFee + agentConf.verifierStakeAmount,
             spendingConditions: [{
+                nextRole: AgentRoles.PROVER,
                 signatureType: SignatureType.PROVER
             }]
         }]
@@ -143,6 +149,7 @@ const protocolStart: Transaction[] = [
         outputs: [{
             amount: agentConf.proverStakeAmount - agentConf.smallTransactionFee,
             spendingConditions: [{
+                nextRole: AgentRoles.PROVER,
                 signatureType: SignatureType.PROVER
             }]
         }]
@@ -152,14 +159,10 @@ const protocolStart: Transaction[] = [
 const protocolEnd: Transaction[] = [
     {
         role: AgentRoles.PROVER,
-        transactionName: 'final',
+        transactionName: 'semi_final',
         inputs: [
             {
                 transactionName: `select_${twoDigits(iterations - 1)}`,
-                outputIndex: 0,
-                spendingConditionIndex: 0
-            }, {
-                transactionName: 'payload',
                 outputIndex: 0,
                 spendingConditionIndex: 0
             }
@@ -167,10 +170,53 @@ const protocolEnd: Transaction[] = [
         outputs: [
             {
                 spendingConditions: [{
-                    signatureType: SignatureType.PROVER
+                    nextRole: AgentRoles.VERIFIER,
+                    signatureType: SignatureType.VERIFIER
                 }]
             }
         ]
+    },
+    {
+        role: AgentRoles.VERIFIER,
+        transactionName: 'final',
+        inputs: [
+            {
+                transactionName: 'semi_final',
+                outputIndex: 0,
+                spendingConditionIndex: 0
+            }
+        ],
+        outputs: [
+            {
+                spendingConditions: [{
+                    nextRole: AgentRoles.VERIFIER,
+                    signatureType: SignatureType.VERIFIER
+                }, {
+                    nextRole: AgentRoles.PROVER,
+                    signatureType: SignatureType.BOTH,
+                    timeoutBlocks: agentConf.smallTimeoutBlocks
+                }]
+            }
+        ]
+    },
+    {
+        role: AgentRoles.PROVER,
+        transactionName: 'prover_wins',
+        inputs: [{
+            transactionName: 'final',
+            outputIndex: 0,
+            spendingConditionIndex: 0
+        }, {
+            transactionName: 'payload',
+            outputIndex: 0,
+            spendingConditionIndex: 0
+        }],
+        outputs: [{
+            spendingConditions: [{
+                nextRole: AgentRoles.VERIFIER,
+                signatureType: SignatureType.VERIFIER
+            }]
+        }]
     }
 ];
 
@@ -187,9 +233,11 @@ function makeProtocolSteps(): Transaction[] {
             })),
             outputs: [{
                 spendingConditions: [{
+                    nextRole: AgentRoles.VERIFIER,
                     signatureType: SignatureType.BOTH,
                     wotsSpec: [WotsType._1]
                 }, {
+                    nextRole: AgentRoles.PROVER,
                     timeoutBlocks: agentConf.smallTimeoutBlocks,
                     signatureType: SignatureType.BOTH,
                 }]
@@ -205,6 +253,7 @@ function makeProtocolSteps(): Transaction[] {
             }],
             outputs: [{
                 spendingConditions: [{
+                    nextRole: AgentRoles.VERIFIER,
                     signatureType: SignatureType.VERIFIER,
                     timeoutBlocks: agentConf.smallTimeoutBlocks
                 }]
@@ -220,14 +269,17 @@ function makeProtocolSteps(): Transaction[] {
             }],
             outputs: i + 1 < iterations ? [0, 1, 2, 3, 4, 5].map(j => ({
                 spendingConditions: [{
+                    nextRole: AgentRoles.PROVER,
                     signatureType: SignatureType.BOTH,
                     wotsSpec: new Array(11).fill(WotsType._256)
                 }]
             })) : [{
                 spendingConditions: [{
+                    nextRole: AgentRoles.VERIFIER,
                     signatureType: SignatureType.BOTH,
                     wotsSpec: [
-                        ...new Array(4).fill(WotsType._256)
+                        WotsType._256,
+                        ...new Array(iterations).fill(WotsType._1)
                     ]
                 }]
             }]
@@ -246,7 +298,8 @@ function makeProtocolSteps(): Transaction[] {
             }],
             outputs: [{
                 spendingConditions: [{
-                    signatureType: SignatureType.BOTH
+                    nextRole: AgentRoles.PROVER,
+                    signatureType: SignatureType.PROVER
                 }]
             }]
         };
@@ -283,22 +336,6 @@ export function findOutputByInput(transactions: Transaction[], input: Input): Ou
     return output;
 }
 
-function generateDotty() {
-    let stra: String[] = [ 'digraph BitSnark {' ];
-    stra.push(`{ node [shape=note; color=${'green'}]`);
-    stra.push(
-        ...allTransactions
-        .filter(t => t.role==AgentRoles.PROVER)
-        .map(t => `${t.transactionName} [label="${t.transactionName}"]`));
-    stra.push(`}`);
-    stra.push(`{ node [shape=note; color=${'red'}]`);
-    stra.push(
-        ...allTransactions
-        .filter(t => t.role==AgentRoles.VERIFIER)
-        .map(t => `${t.transactionName} [label="${t.transactionName}"]`));
-    stra.push(`}`);
-}
-
 export function initializeTransactions(
     role: AgentRoles,
     setupId: string,
@@ -328,17 +365,14 @@ export function initializeTransactions(
         t.protocolVersion = t.protocolVersion ?? PROTOCOL_VERSION;
         t.setupId = setupId;
 
-        if (t.role == role) {
-            t.inputs.forEach((input, inputIndex) => {
-                const output = findOutputByInput(transactions, input);
-                const spend = output.spendingConditions[input.spendingConditionIndex];
-                if (!spend)
-                    throw new Error('Invalid spending condition: ' + input.spendingConditionIndex);
-                if (!spend.wotsSpec) return;
-                spend.wotsPublicKeys = spend.wotsSpec
-                    .map((wt, dataIndex) => getWinternitzPublicKeys(wt, [setupId, t.transactionName, inputIndex, dataIndex].toString()));
+        t.outputs.forEach((output, outputIndex) => {
+            output.spendingConditions.forEach((sc, scIndex) => {
+                if (sc.wotsSpec && sc.nextRole == role) {
+                    sc.wotsPublicKeys = sc.wotsSpec!
+                        .map((wt, dataIndex) => getWinternitzPublicKeys(wt, [setupId, t.transactionName, outputIndex, scIndex, dataIndex].toString()));
+                }
             });
-        }
+        });
     });
 
     // put schnorr keys where needed
@@ -391,7 +425,11 @@ export function writeTransactionToFile(setupId: string, transaction: Transaction
     );
 }
 
+export function writeTransactionsToFile(setupId: string, transactions: Transaction[]) {
+    transactions.forEach(t => writeTransactionToFile(setupId, t));
+}
 export function loadTransactionFromFile(setupId: string, transactionName: string): Transaction {
+
     return fromJson(fs.readFileSync(`./generated/setups/${setupId}/${transactionName}.json`).toString('ascii'));
 }
 
