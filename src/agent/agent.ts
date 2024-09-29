@@ -1,9 +1,10 @@
 import { agentConf, ONE_BITCOIN } from "../../agent.conf";
 import { AgentRoles, FundingUtxo, stringToBigint, TransactionInfo } from "./common";
 import { generateAllScripts } from "./generate-scripts";
-import { DoneMessage, fromJson, JoinMessage, SignaturesMessage, StartMessage, TransactionsMessage, TxKeys, TxKeysMessage } from "./messages";
+import { DoneMessage, fromJson, JoinMessage, SignaturesMessage, StartMessage, TransactionsMessage } from "./messages";
 import { SimpleContext, TelegramBot } from "./telegram";
-import { getTransactionByName, getTransactionFileNames, initializeTransactions, loadTransactionFromFile, Transaction, writeTransactionToFile } from "./transactions-new";
+import { getTransactionByName, getTransactionFileNames, initializeTransactions, loadTransactionFromFile, Transaction, writeTransactionsToFile, writeTransactionToFile } from "./transactions-new";
+import { WOTS_NIBBLES, WotsType } from "./winternitz";
 
 interface AgentInfo {
     agentId: string;
@@ -87,6 +88,9 @@ export class Agent {
     // prover sends start message
     public start(ctx: SimpleContext, setupId: string, payloadUtxo: FundingUtxo, proverUtxo: FundingUtxo) {
 
+        if (this.role != AgentRoles.PROVER)
+            throw new Error("I'm not a prover");
+
         const i = new SetupInstance(setupId, AgentRoles.PROVER, {
             agentId: this.agentId,
             schnorrPublicKey: stringToBigint(this.schnorrPublicKey)
@@ -96,6 +100,7 @@ export class Agent {
             agentId: this.agentId,
             schnorrPublicKey: stringToBigint(this.schnorrPublicKey)
         };
+
         const msg = new StartMessage({
             setupId,
             agentId: this.agentId,
@@ -122,9 +127,9 @@ export class Agent {
 
         i.transactions = initializeTransactions(
             AgentRoles.VERIFIER, 
-            message.setupId, 
-            i.prover?.schnorrPublicKey, 
-            i.verifier!.schnorrPublicKey, 
+            i.setupId, 
+            i.prover!.schnorrPublicKey!, 
+            i.verifier!.schnorrPublicKey!, 
             i.payloadUtxo!, 
             i.proverFundingUtxo!);
 
@@ -148,25 +153,68 @@ export class Agent {
 
         i.transactions = initializeTransactions(
             AgentRoles.PROVER, 
-            message.setupId, 
-            i.prover?.schnorrPublicKey!, 
-            i.verifier.schnorrPublicKey!, 
+            i.setupId, 
+            i.prover!.schnorrPublicKey!, 
+            i.verifier!.schnorrPublicKey!, 
             i.payloadUtxo!, 
             i.proverFundingUtxo!);
 
-        this.sendTransactions(ctx, i.setupId);
+            this.sendTransactions(ctx, i.setupId);
+    }
+
+    private myWotsCheck(transactions: Transaction[]) {
+        console.log('myWotsCheck');
+        transactions.forEach(t => {
+            t.outputs.forEach(o => {
+                o.spendingConditions.forEach(sc => {
+                    if (!sc.wotsSpec) return;
+                    if (sc.nextRole != this.role) return;
+                    if (!sc.wotsPublicKeys) {
+                        console.log(t.transactionName + ' MISSING');
+                    } else if(sc.wotsSpec) {
+                        let flag = true;
+                        for (let i = 0; i < sc.wotsSpec.length; i++) {
+                            let flag = true;
+                            flag = flag && sc.wotsSpec[i] == WotsType._1 && sc.wotsPublicKeys![i].length == 2;
+                            flag = flag && sc.wotsSpec[i] == WotsType._256 && sc.wotsPublicKeys![i].length == 90;
+                        }
+                        if (!flag) console.log(t.transactionName + ' BAD');
+                    }
+                });
+            });
+        });
+    }
+
+    private wotsCheck(transactions: Transaction[]) {
+        console.log('wotsCheck');
+        transactions.forEach(t => {
+            t.outputs.forEach(o => {
+                o.spendingConditions.forEach(sc => {
+                    if (sc.wotsSpec && !sc.wotsPublicKeys) {
+                        console.log(t.transactionName + ' MISSING');
+                    } else if(sc.wotsSpec) {
+                        let flag = true;
+                        for (let i = 0; i < sc.wotsSpec.length; i++) {
+                            let flag = true;
+                            flag = flag && sc.wotsSpec[i] == WotsType._1 && sc.wotsPublicKeys![i].length == 2;
+                            flag = flag && sc.wotsSpec[i] == WotsType._256 && sc.wotsPublicKeys![i].length == 90;
+                        }
+                        if (!flag) console.log(t.transactionName + ' BAD');
+                    }
+                });
+            });
+        });
     }
 
     // prover sends transaction structure
     private sendTransactions(ctx: SimpleContext, setupId: string) {
         const i = this.getInstance(setupId);
 
-        const filenames = getTransactionFileNames(setupId);
-        const transactions = filenames.map(filename => loadTransactionFromFile(setupId, filename))
-        .filter(t => t.role == this.role);
+        this.myWotsCheck(i.transactions!);
+
         const transactionsMessage = new TransactionsMessage({
             setupId,
-            transactions,
+            transactions: i.transactions,
             agentId: this.agentId,
         });
         ctx.send(transactionsMessage);
@@ -176,61 +224,23 @@ export class Agent {
     on_transactions(ctx: SimpleContext, message: TransactionsMessage) {
         const i = this.getInstance(message.setupId);
 
-        if (this.role == AgentRoles.PROVER) {
-            this.sendWotsKeys(ctx, i.setupId);
-        } else {
-            this.sendTransactions(ctx, i.setupId);
-        }
-    }
-
-    /// Exchange WOTS keys
-    private sendWotsKeys(ctx: SimpleContext, setupId: string) {
-        const i = this.getInstance(setupId);
-
-        const txKeys: TxKeys[] = [];
-        i.transactions?.forEach((transaction, tIndex) => {
-            const t: Buffer[][][][] = [];
-            transaction.outputs.forEach((output, outputIndex) => {
-                const tt: Buffer[][][] = [];
-                output.spendingConditions.forEach((sc, scIndex) => {
-                    if (sc.wotsPublicKeys) tt.push(sc.wotsPublicKeys);
-                });
-                if (tt.length) t.push(tt);
-            });
-            if (t.length) txKeys.push({
-                transactionName: transaction.transactionName,
-                wotsKeys: t
-            });
-        });
-
-        const txKeysMessage = new TxKeysMessage({
-            setupId,
-            txKeys,
-            agentId: this.agentId,
-        });
-        ctx.send(txKeysMessage);
-    }
-
-    // prover or verifier receive tx keys
-    on_keys(ctx: SimpleContext, message: TxKeysMessage) {
-        const i = this.getInstance(message.setupId);
-
-        message.txKeys.forEach(txKey => {
-            const transaction = getTransactionByName(i.transactions!, txKey.transactionName);
+        message.transactions.forEach(transaction => {
+            const myTransaction = getTransactionByName(i.transactions!, transaction.transactionName);
+            if (!myTransaction)
+                throw new Error('Invalid transaction');
             transaction.outputs.forEach((output, outputIndex) => {
                 output.spendingConditions.forEach((sc, scIndex) => {
-                    if (sc.wotsSpec && !sc.wotsPublicKeys) {
-                        sc.wotsPublicKeys = txKey.wotsKeys[outputIndex][scIndex];
-                    }
+                    if (!myTransaction.outputs[outputIndex].spendingConditions[scIndex].wotsSpec) return;
+                    if (myTransaction.outputs[outputIndex].spendingConditions[scIndex].nextRole == this.role) return;
+                    myTransaction.outputs[outputIndex].spendingConditions[scIndex].wotsPublicKeys = sc.wotsPublicKeys;
                 });
             });
-            writeTransactionToFile(i.setupId, transaction);
         });
 
         if (this.role == AgentRoles.PROVER) {
             this.sendSignatures(ctx, i.setupId);
         } else {
-            this.sendWotsKeys(ctx, i.setupId);
+            this.sendTransactions(ctx, i.setupId);
         }
     }
 
@@ -239,6 +249,10 @@ export class Agent {
     // prover sends all of the signatures
     private sendSignatures(ctx: SimpleContext, setupId: string) {
         const i = this.getInstance(setupId);
+
+        this.wotsCheck(i.transactions!);
+
+        writeTransactionsToFile(i.setupId, i.transactions!);
 
         generateAllScripts(i.setupId, i.transactions!);
 
@@ -285,7 +299,7 @@ export class Agent {
 
 console.log('Starting...');
 
-const agentId = process.argv[2] ?? 'bitsnark_verifier_1';
+const agentId = process.argv[2] ?? 'bitsnark_prover_1';
 const role = agentId.indexOf('prover') >= 0 ? AgentRoles.PROVER : AgentRoles.VERIFIER;
 
 const agent = new Agent(agentId, role);

@@ -5,6 +5,8 @@ import { proof } from "./proof";
 import { verificationKey } from "./verification-key";
 import { InstrCode as Step1_InstrCode } from '../../src/generator/step1/vm/types';
 
+export const iterations = 19;
+
 export enum ProtocolStep {
     INITIAL = 'INITIAL',
     CHALLENGE = 'CHALLENGE',
@@ -66,3 +68,5 @@ export function getSavedStep1(): SavedVm<Step1_InstrCode> {
     step1_vm.optimizeRegs();
     return step1_vm.save();
 }
+
+export const twoDigits = (n: number) => n < 10 ? `0${n}` : `${n}`;

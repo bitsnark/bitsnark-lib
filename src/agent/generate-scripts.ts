@@ -1,11 +1,11 @@
 import { Bitcoin } from '../generator/step3/bitcoin';
 import { WotsType } from './winternitz';
-import { bufferToBigint160 } from './common';
+import { bufferToBigint160, iterations } from './common';
 import { StackItem } from '../generator/step3/stack';
 import { SimpleTapTree } from './simple-taptree';
 import { agentConf } from '../../agent.conf';
 import { Buffer } from 'node:buffer';
-import { TransactionNames, findOutputByInput, getTransactionByName, getTransactionFileNames, Input, iterations, loadTransactionFromFile, Output, SpendingCondition, Transaction, writeTransactionToFile } from './transactions-new';
+import { TransactionNames, findOutputByInput, getTransactionByName, getTransactionFileNames, Input, loadTransactionFromFile, Output, SpendingCondition, Transaction, writeTransactionToFile } from './transactions-new';
 
 function findInputsByOutput(
     transactions: Transaction[],
@@ -102,7 +102,6 @@ export function generateAllScripts(setupId: string, transactions: Transaction[])
             const prevOutput = findOutputByInput(transactions, t.inputs[0]);
             generateSemiFinalScript(prevOutput, t.inputs[0]);
         } else if (t.transactionName == 'final') {
-            // Maybe what we did above actually belongs here?
         } else {
             t.inputs.forEach(input => {
                 const prev = getTransactionByName(transactions, input.transactionName);
@@ -112,9 +111,6 @@ export function generateAllScripts(setupId: string, transactions: Transaction[])
                 input.script = script;
             });
         }
-
-        // Do we need to write it both here and then again below?
-        writeTransactionToFile(setupId, t);
     });
 
     setTaprootKey(transactions);

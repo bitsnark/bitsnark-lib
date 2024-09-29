@@ -6,7 +6,7 @@ export enum WotsType {
     _1 = 'WOTS_1'
 }
 
-const WOTS_NIBBLES: any = {
+export const WOTS_NIBBLES: any = {
     [WotsType._256]: 90,
     [WotsType._1]: 2
 };
