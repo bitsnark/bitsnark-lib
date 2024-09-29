@@ -1,11 +1,17 @@
 #!/bin/sh
 PROTECTED_BRANCHES="main|development"
 
-git rev-parse --abbrev-ref HEAD | grep -E "$PROTECTED_BRANCHES" > /dev/null || exit 0
+branch_to_update="$(sed -n "s|.* refs/heads/\([^ ]*\) .*|\1|p")"
+
+echo "$branch_to_update" | grep -E "$PROTECTED_BRANCHES" > /dev/null || exit 0
+
+current_branch="$(git rev-parse --abbrev-ref HEAD)"
 
 set -e
+git switch "$branch_to_update"
 npm run lint
 npm run test
+git switch "$current_branch"
 set +e
 
 exit 0
