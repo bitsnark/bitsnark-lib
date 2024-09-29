@@ -65,7 +65,6 @@ describe(`Test sequence for winternitz signature`, () => {
     });
 
     it('Generate keys - returning taproot ', () => {
-        console.log('totalChuncks256', totalChuncks256, 'totalChuncks32', totalChuncks32);
         const taproot256 = winternitz256.generateKeys(totalChuncks256);
         const taproots32 = winternitz32.generateKeys(totalChuncks32);
         expect(taproot256.length).toBe(34);
