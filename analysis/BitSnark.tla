@@ -26,7 +26,6 @@ IsProofValid == CHOOSE v \in {TRUE, FALSE} : TRUE
 TypeOK ==
     /\ blockchain \subseteq Transactions
     /\ DOMAIN balances = {"prover", "verifier", "locked"}
-    
 
 Sum(bs) == bs["prover"] + bs["verifier"] + bs["locked"]
 ValueOK == Sum(balances) = Sum(StartingBalances)
@@ -35,42 +34,42 @@ IncentiveOK ==
     /\ "Proof Refuted" \in blockchain =>
        balances["verifier"] >= StartingBalances["verifier"]
     /\ "Uncontested Argument" \in blockchain =>
-       balances["prover"] >= StartingBalances["prover"]        
+       balances["prover"] >= StartingBalances["prover"]
 
 AllOK ==
     /\ TypeOK
     /\ ValueOK
     /\ IncentiveOK
-    
+
 (* Transaction Functions. *)
 
 Proof ==
     /\ blockchain = {}
     /\ blockchain' = blockchain \union {"Proof"}
     /\ balances' = [balances EXCEPT !["prover"] = @ - 2, !["locked"] = @ + 2]
-    
+
 UncontestedProof ==
     /\ "Proof" \in blockchain
     /\ {"Uncontested Proof", "Challenge", "State"} \intersect blockchain = {}
     /\ blockchain' = blockchain \union {"Uncontested Proof"}
     /\ balances' = [balances EXCEPT !["locked"] = @ - 2, !["prover"] = @ + 2]
-    
+
 Challenge ==
     /\ "Proof" \in blockchain
     /\ {"Uncontested Proof", "Challenge", "State"} \intersect blockchain = {}
     /\ blockchain' = blockchain \union {"Challenge"}
     /\ balances' = [balances EXCEPT !["verifier"] = @ - 1, !["locked"] = @ + 1]
-    
+
 UncontestedChallenge ==
     /\ "Challenge" \in blockchain
     /\ {"State", "Uncontested Challenge"} \intersect blockchain = {}
     /\ blockchain' = blockchain \union {"Uncontested Challenge"}
     /\ balances' = [balances EXCEPT !["locked"] = @ - 3, !["verifier"] = @ + 3]
-    
+
 State ==
     /\ "Proof" \in blockchain
     /\ {"Uncontested Proof", "Challenge", "State"} \intersect blockchain = {}
-    /\ blockchain' = blockchain \union {"State"}       
+    /\ blockchain' = blockchain \union {"State"}
     /\ UNCHANGED balances
 
 UncontestedState ==
@@ -78,7 +77,7 @@ UncontestedState ==
     /\ {"Select", "Uncontested State"} \intersect blockchain = {}
     /\ blockchain' = blockchain \union {"Uncontested State"}
     /\ balances' = [balances EXCEPT !["locked"] = @ - 3, !["prover"] = @ + 3]
-    
+
 Select ==
     /\ "State" \in blockchain
     /\ {"Uncontested State", "Select"} \intersect blockchain = {}
@@ -111,7 +110,7 @@ ProofRefuted ==
     /\ balances' = [balances EXCEPT !["locked"] = @ - 3, !["verifier"] = @ + 3]
 
 (* Flow. *)
-    
+
 Init ==
     /\ blockchain = {}
     /\ balances = StartingBalances
