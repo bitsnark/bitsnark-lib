@@ -2,6 +2,7 @@ import fs from 'fs';
 import { AgentRoles, FundingUtxo, iterations, twoDigits } from './common';
 import { getWinternitzPublicKeys, WotsType } from './winternitz';
 import { agentConf, ONE_BITCOIN } from '../../agent.conf';
+import { calculateStateSizes } from './regs-calc';
 
 export const PROTOCOL_VERSION = 0.1;
 
@@ -249,16 +250,16 @@ const protocolEnd: Transaction[] = [
 ];
 
 function makeProtocolSteps(): Transaction[] {
+
+    const regCounts = calculateStateSizes();
+
     const result: Transaction[] = [];
     for (let i = 0; i < iterations; i++) {
+
         const state: Transaction = {
             role: AgentRoles.PROVER,
             transactionName: `${TransactionNames.STATE}_${twoDigits(i)}`,
-            inputs: [0, 1, 2, 3, 4, 5].map(j => ({
-                transactionName: i == 0 ? TransactionNames.INITIAL : `${TransactionNames.SELECT}_${twoDigits(i - 1)}`,
-                outputIndex: j,
-                spendingConditionIndex: i == 0 && j == 0 ? 1 : 0,
-            })),
+            inputs: [],
             outputs: [{
                 spendingConditions: [{
                     nextRole: AgentRoles.VERIFIER,
@@ -271,6 +272,13 @@ function makeProtocolSteps(): Transaction[] {
                 }]
             }]
         };
+
+        state.inputs = new Array(Math.ceil(regCounts[i] / 10)).fill(0).map(j => ({
+            transactionName: i == 0 ? TransactionNames.INITIAL : `${TransactionNames.SELECT}_${twoDigits(i - 1)}`,
+            outputIndex: j,
+            spendingConditionIndex: i == 0 && j == 0 ? 1 : 0,
+        }));
+
         const stateTimeout: Transaction = {
             role: AgentRoles.VERIFIER,
             transactionName: `${TransactionNames.STATE_TIMEOUT}_${twoDigits(i)}`,
@@ -286,6 +294,7 @@ function makeProtocolSteps(): Transaction[] {
                 }]
             }]
         };
+
         const select: Transaction = {
             role: AgentRoles.VERIFIER,
             transactionName: `${TransactionNames.SELECT}_${twoDigits(i)}`,
@@ -294,13 +303,24 @@ function makeProtocolSteps(): Transaction[] {
                 outputIndex: 0,
                 spendingConditionIndex: 0
             }],
-            outputs: i + 1 < iterations ? [0, 1, 2, 3, 4, 5].map(j => ({
-                spendingConditions: [{
-                    nextRole: AgentRoles.PROVER,
-                    signatureType: SignatureType.BOTH,
-                    wotsSpec: new Array(11).fill(WotsType._256)
-                }]
-            })) : [{
+            outputs: []
+        };
+
+        if (i + 1 < iterations) {
+            let regs = regCounts[i + 1];
+            select.outputs = [];
+            for (let j = 0; j < Math.ceil(regCounts[i + 1] / 10); j++) {
+                select.outputs.push({
+                        spendingConditions: [{
+                            nextRole: AgentRoles.PROVER,
+                            signatureType: SignatureType.BOTH,
+                            wotsSpec: new Array(regs > 10 ? 10 : regs).fill(WotsType._256)
+                        }]
+                    });
+                regs -= 10;
+            }
+        } else {
+            select.outputs = [{
                 spendingConditions: [{
                     nextRole: AgentRoles.VERIFIER,
                     signatureType: SignatureType.BOTH,
@@ -309,8 +329,9 @@ function makeProtocolSteps(): Transaction[] {
                         ...new Array(iterations).fill(WotsType._1)
                     ]
                 }]
-            }]
-        };
+            }];
+        }
+
         const selectTimeout: Transaction = {
             role: AgentRoles.PROVER,
             transactionName: `${TransactionNames.SELECT_TIMEOUT}_${twoDigits(i)}`,
@@ -374,7 +395,7 @@ export function initializeTransactions(
 
     const transactions: Transaction[] = allTransactions.map(t => fromJson(toJson(t)));
 
-    const payload = getTransactionByName(transactions,TransactionNames.PAYLOAD);
+    const payload = getTransactionByName(transactions, TransactionNames.PAYLOAD);
     payload.txId = payloadUtxo.txId;
     payload.outputs[0].amount = payloadUtxo.amount;
 
