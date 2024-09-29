@@ -41,20 +41,6 @@ describe('taproot', () => {
         expect(result.toString('hex')).toBe(expected);
     });
 
-    // it('Lamport equivocation script', () => {
-    //     const testcase = testVectors.scriptPubKey[6];
-    //     const publicKey = testcase.given.internalPubkey;
-    //     const r = makeLamportEquivocationTaproot(Buffer.from(publicKey, 'hex'));
-    //     expect(r.toString('hex')).toEqual('5120ac817424521b1ef0c393b689c6d98985e8978fe309e9e06a031ebb925da9d88a');
-    // });
-
-    // it('Winternitz equivocation script', () => {
-    //     const testcase = testVectors.scriptPubKey[2];
-    //     const publicKey = testcase.given.internalPubkey;
-    //     const r = makeWinternitzEquivocationTaproot(Buffer.from(publicKey, 'hex'));
-    //     expect(r.toString('hex')).toEqual('5120d4314353952493527780c24fa4d63228bd92ae51d95ed53438f55d8818a51857');
-    // });
-
     it('control block 1', () => {
         const testcase = testVectors.scriptPubKey[6];
         const publicKey = testcase.given.internalPubkey;
@@ -62,7 +48,6 @@ describe('taproot', () => {
         const testNode = new TestNode(scriptTree);
         const path = [0]
         const result = taprootControlBlock(Buffer.from(publicKey, 'hex'), testNode, path);
-        console.log(result.toString('hex'));
         const expected = testcase.expected.scriptPathControlBlocks[0];
         expect(result.toString('hex')).toBe(expected);
     });
@@ -74,7 +59,6 @@ describe('taproot', () => {
         const testNode = new TestNode(scriptTree);
         const path = [1, 0]
         const result = taprootControlBlock(Buffer.from(publicKey, 'hex'), testNode, path);
-        console.log(result.toString('hex'));
         const expected = testcase.expected.scriptPathControlBlocks[1];
         expect(result.toString('hex')).toBe(expected);
     });
@@ -86,7 +70,6 @@ describe('taproot', () => {
         const testNode = new TestNode(scriptTree);
         const path = [1, 1]
         const result = taprootControlBlock(Buffer.from(publicKey, 'hex'), testNode, path);
-        console.log(result.toString('hex'));
         const expected = testcase.expected.scriptPathControlBlocks[2];
         expect(result.toString('hex')).toBe(expected);
     });
