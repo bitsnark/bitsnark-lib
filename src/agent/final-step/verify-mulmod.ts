@@ -63,7 +63,7 @@ function test() {
 
         btca.initializeAddTables();
         btca.initializeMulTables();
-    
+
         const result = btca.karatsubaMult(w_a, w_b, 3);
 
         const f = checkEqual(result, bigintToNibblesLS(c));
@@ -83,7 +83,7 @@ function test() {
 
         btca.initializeAddTables();
         btca.initializeMulTables();
-    
+
         const result = btca.naiiveMult(w_a, w_b);
 
         const f = checkEqual(result, bigintToNibblesLS(c));
@@ -97,7 +97,7 @@ function test() {
         const b = bigRandom(256);
         const c = a * b % prime_bigint;
         const d = a * b / prime_bigint;
-                
+
         const btca = verifyMulMod(a, b, c, d);
 
         console.log('verifyMulMod   script: ', btca.bitcoin.programSizeInBitcoinBytes(), '   stack: ', btca.bitcoin.maxStack);
@@ -105,7 +105,7 @@ function test() {
     }
 }
 
-var scriptName = __filename;
+const scriptName = __filename;
 if (process.argv[1] == scriptName) {
     test();
 }
