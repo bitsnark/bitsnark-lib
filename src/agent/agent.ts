@@ -88,6 +88,9 @@ export class Agent {
     // prover sends start message
     public start(ctx: SimpleContext, setupId: string, payloadUtxo: FundingUtxo, proverUtxo: FundingUtxo) {
 
+        if (this.role != AgentRoles.PROVER)
+            throw new Error("I'm not a prover");
+
         const i = new SetupInstance(setupId, AgentRoles.PROVER, {
             agentId: this.agentId,
             schnorrPublicKey: stringToBigint(this.schnorrPublicKey)

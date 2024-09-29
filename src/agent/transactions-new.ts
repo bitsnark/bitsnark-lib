@@ -17,6 +17,7 @@ export const enum TransactionNames {
     STATE_TIMEOUT = 'state_timeout',
     SELECT = 'select',
     SELECT_TIMEOUT = 'select_timeout',
+    SEMI_FINAL = 'semi_final',
     FINAL = 'final',
     PROVER_WINS = 'prover_wins'
 }
@@ -69,7 +70,6 @@ const protocolStart: Transaction[] = [
         transactionName: TransactionNames.PAYLOAD,
         inputs: [],
         outputs: [{
-            amount: agentConf.payloadAmount,
             spendingConditions: [{
                 nextRole: AgentRoles.PROVER,
                 signatureType: SignatureType.BOTH
@@ -81,7 +81,6 @@ const protocolStart: Transaction[] = [
         transactionName: TransactionNames.PROVER_STAKE,
         inputs: [],
         outputs: [{
-            amount: agentConf.proverStakeAmount,
             spendingConditions: [{
                 nextRole: AgentRoles.PROVER,
                 signatureType: SignatureType.BOTH,
@@ -136,7 +135,6 @@ const protocolStart: Transaction[] = [
             spendingConditionIndex: 0
         }],
         outputs: [{
-            amount: agentConf.verifierPaymentAmount,
             spendingConditions: [{
                 nextRole: AgentRoles.PROVER,
                 signatureType: SignatureType.PROVER
@@ -165,20 +163,30 @@ const protocolStart: Transaction[] = [
                 signatureType: SignatureType.PROVER
             }]
         }]
+    }, {
+        role: AgentRoles.VERIFIER,
+        transactionName: TransactionNames.VERIFIER_WINS,
+        inputs: [{
+            transactionName: TransactionNames.INITIAL,
+            outputIndex: 0,
+            spendingConditionIndex: 2
+        }],
+        outputs: [{
+            spendingConditions: [{
+                nextRole: AgentRoles.VERIFIER,
+                signatureType: SignatureType.VERIFIER
+            }]
+        }]
     }
 ];
 
 const protocolEnd: Transaction[] = [
     {
         role: AgentRoles.PROVER,
-        transactionName: TransactionNames.FINAL,
+        transactionName: TransactionNames.SEMI_FINAL,
         inputs: [
             {
                 transactionName: `${TransactionNames.SELECT}_${twoDigits(iterations - 1)}`,
-                outputIndex: 0,
-                spendingConditionIndex: 0
-            }, {
-                transactionName: TransactionNames.PAYLOAD,
                 outputIndex: 0,
                 spendingConditionIndex: 0
             }
@@ -188,16 +196,20 @@ const protocolEnd: Transaction[] = [
                 spendingConditions: [{
                     nextRole: AgentRoles.VERIFIER,
                     signatureType: SignatureType.VERIFIER
+                }, {
+                    nextRole: AgentRoles.PROVER,
+                    signatureType: SignatureType.BOTH,
+                    timeoutBlocks: agentConf.smallTimeoutBlocks
                 }]
             }
         ]
     },
     {
         role: AgentRoles.VERIFIER,
-        transactionName: 'final',
+        transactionName: TransactionNames.FINAL,
         inputs: [
             {
-                transactionName: 'semi_final',
+                transactionName: TransactionNames.SEMI_FINAL,
                 outputIndex: 0,
                 spendingConditionIndex: 0
             }
@@ -219,9 +231,9 @@ const protocolEnd: Transaction[] = [
         role: AgentRoles.PROVER,
         transactionName: 'prover_wins',
         inputs: [{
-            transactionName: 'final',
+            transactionName: TransactionNames.SEMI_FINAL,
             outputIndex: 0,
-            spendingConditionIndex: 0
+            spendingConditionIndex: 1
         }, {
             transactionName: 'payload',
             outputIndex: 0,
@@ -229,8 +241,8 @@ const protocolEnd: Transaction[] = [
         }],
         outputs: [{
             spendingConditions: [{
-                nextRole: AgentRoles.VERIFIER,
-                signatureType: SignatureType.VERIFIER
+                nextRole: AgentRoles.PROVER,
+                signatureType: SignatureType.PROVER
             }]
         }]
     }
@@ -263,15 +275,14 @@ function makeProtocolSteps(): Transaction[] {
             role: AgentRoles.VERIFIER,
             transactionName: `${TransactionNames.STATE_TIMEOUT}_${twoDigits(i)}`,
             inputs: [{
-                transactionName: i == 0 ? TransactionNames.INITIAL: `${TransactionNames.SELECT}_${twoDigits(i - 1)}`,
+                transactionName: `${TransactionNames.STATE}_${twoDigits(i)}`,
                 outputIndex: 0,
-                spendingConditionIndex: 0
+                spendingConditionIndex: 1
             }],
             outputs: [{
                 spendingConditions: [{
                     nextRole: AgentRoles.VERIFIER,
-                    signatureType: SignatureType.VERIFIER,
-                    timeoutBlocks: agentConf.smallTimeoutBlocks
+                    signatureType: SignatureType.VERIFIER
                 }]
             }]
         };
@@ -308,7 +319,7 @@ function makeProtocolSteps(): Transaction[] {
                 outputIndex: 0,
                 spendingConditionIndex: 0
             }, {
-                transactionName: `${TransactionNames.STATE}_${twoDigits(i)}`,
+                transactionName: `${TransactionNames.SELECT}_${twoDigits(i)}`,
                 outputIndex: 0,
                 spendingConditionIndex: 0
             }],
