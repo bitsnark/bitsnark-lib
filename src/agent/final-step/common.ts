@@ -1,5 +1,7 @@
 import { StackItem } from "../../generator/step3/stack";
 
+export const prime_bigint = 21888242871839275222246405745257275088696311157297823662689037894645226208583n;
+
 export function teaPot() {
     throw new Error("I'm a teapot");
 }

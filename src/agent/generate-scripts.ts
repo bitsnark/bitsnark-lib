@@ -6,6 +6,7 @@ import { SimpleTapTree } from './simple-taptree';
 import { agentConf } from '../../agent.conf';
 import { Buffer } from 'node:buffer';
 import { TransactionNames, findOutputByInput, getTransactionByName, getTransactionFileNames, Input, loadTransactionFromFile, Output, SpendingCondition, Transaction, writeTransactionToFile } from './transactions-new';
+import { generateFinalStepTaproot } from './final-step/generate';
 
 function findInputsByOutput(
     transactions: Transaction[],
@@ -102,6 +103,7 @@ export function generateAllScripts(setupId: string, transactions: Transaction[])
             const prevOutput = findOutputByInput(transactions, t.inputs[0]);
             generateSemiFinalScript(prevOutput, t.inputs[0]);
         } else if (t.transactionName == 'final') {
+            generateFinalStepTaproot(setupId, transactions);
         } else {
             t.inputs.forEach(input => {
                 const prev = getTransactionByName(transactions, input.transactionName);

@@ -1,15 +1,16 @@
 import { bigintToNibblesLS, nibblesToBigintLS } from "./common";
 import { BtcArithmetic } from "./btc-arithmetic";
+import { Bitcoin } from "@src/generator/step3/bitcoin";
 
 export const prime_bigint = 21888242871839275222246405745257275088696311157297823662689037894645226208583n;
 
-export function verifyAddMod(a: bigint, b: bigint, c: bigint): BtcArithmetic {
+export function verifyAddMod(bitcoin: Bitcoin, a: bigint, b: bigint, c: bigint): BtcArithmetic {
 
     console.log('a', a);
     console.log('b', b);
     console.log('c', c);
 
-    const btca = new BtcArithmetic();
+    const btca = new BtcArithmetic(bitcoin);
 
     const w_a = btca.addWitness(bigintToNibblesLS(a, 86));
     const w_b = btca.addWitness(bigintToNibblesLS(b, 86));
@@ -61,7 +62,7 @@ function test() {
         const b = bigRandom(256);
         const c = (a + b) % prime_bigint;
 
-        const btca = verifyAddMod(a, b, c);
+        const btca = verifyAddMod(new Bitcoin(), a, b, c);
 
         console.log('verifyAddMod   script: ', btca.bitcoin.programSizeInBitcoinBytes(), '   stack: ', btca.bitcoin.maxStack);
         console.log('success: ', btca.bitcoin.success);
