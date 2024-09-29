@@ -408,11 +408,13 @@ export function initializeTransactions(
         t.protocolVersion = t.protocolVersion ?? PROTOCOL_VERSION;
         t.setupId = setupId;
 
-        t.outputs.forEach((output, outputIndex) => {
-            output.spendingConditions.forEach((sc, scIndex) => {
+        let dataIndex = 0;
+
+        t.outputs.forEach(output => {
+            output.spendingConditions.forEach(sc => {
                 if (sc.wotsSpec && sc.nextRole == role) {
                     sc.wotsPublicKeys = sc.wotsSpec!
-                        .map((wt, dataIndex) => getWinternitzPublicKeys(wt, [setupId, t.transactionName, outputIndex, scIndex, dataIndex].toString()));
+                        .map(wt => getWinternitzPublicKeys(wt, [setupId, t.transactionName, dataIndex++].toString()));
                 }
             });
         });
@@ -472,7 +474,6 @@ export function writeTransactionsToFile(setupId: string, transactions: Transacti
     transactions.forEach(t => writeTransactionToFile(setupId, t));
 }
 export function loadTransactionFromFile(setupId: string, transactionName: string): Transaction {
-
     return fromJson(fs.readFileSync(`./generated/setups/${setupId}/${transactionName}.json`).toString('ascii'));
 }
 
