@@ -30,7 +30,7 @@ function getStateSizes(vm: Step1_vm, left: number, right: number, iteration: num
         return iteration;
     }
 
-    let middle = Math.round((left + right) / 2);
+    const middle = Math.round((left + right) / 2);
     result[iteration] = Math.max(
         result[iteration] ?? 0,
         getRegsAt(vm, left, middle, right).length);
@@ -46,7 +46,7 @@ function getLines(vm: Step1_vm, left: number, right: number, iteration: number, 
         return;
     }
 
-    let middle = Math.round((left + right) / 2);
+    const middle = Math.round((left + right) / 2);
     result[iteration] = result[iteration] ?? [];
     result[iteration].push([left, middle, right]);
 

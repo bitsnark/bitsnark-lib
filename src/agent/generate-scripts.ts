@@ -101,7 +101,6 @@ export function generateAllScripts(setupId: string, transactions: Transaction[])
         if (t.transactionName == 'semi-final') {
             const prevOutput = findOutputByInput(transactions, t.inputs[0]);
             generateSemiFinalScript(prevOutput, t.inputs[0]);
-        } else if (t.transactionName == 'final') {
         } else {
             t.inputs.forEach(input => {
                 const prev = getTransactionByName(transactions, input.transactionName);

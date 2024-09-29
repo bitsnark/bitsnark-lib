@@ -172,7 +172,7 @@ export class Agent {
                     if (!sc.wotsPublicKeys) {
                         console.log(t.transactionName + ' MISSING');
                     } else if(sc.wotsSpec) {
-                        let flag = true;
+                        const flag = true;
                         for (let i = 0; i < sc.wotsSpec.length; i++) {
                             let flag = true;
                             flag = flag && sc.wotsSpec[i] == WotsType._1 && sc.wotsPublicKeys![i].length == 2;
@@ -193,7 +193,7 @@ export class Agent {
                     if (sc.wotsSpec && !sc.wotsPublicKeys) {
                         console.log(t.transactionName + ' MISSING');
                     } else if(sc.wotsSpec) {
-                        let flag = true;
+                        const flag = true;
                         for (let i = 0; i < sc.wotsSpec.length; i++) {
                             let flag = true;
                             flag = flag && sc.wotsSpec[i] == WotsType._1 && sc.wotsPublicKeys![i].length == 2;
@@ -266,7 +266,7 @@ export class Agent {
 
         const signaturesMessage = new SignaturesMessage({
             setupId: i.setupId,
-            signed      
+            signed
         });
         ctx.send(signaturesMessage);
     }
@@ -288,11 +288,8 @@ export class Agent {
     on_done(ctx: SimpleContext, message: SignaturesMessage) {
         const i = this.getInstance(message.setupId);
 
-        if (this.role == AgentRoles.PROVER) {
-        } else {
-
+        if (this.role == AgentRoles.VERIFIER) {
             ctx.send(new DoneMessage({ setupId: i.setupId }));
-
         }
     }
 }
