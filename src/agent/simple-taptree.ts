@@ -1,4 +1,5 @@
 import { createHash } from "crypto";
+import * as bitcoin from 'bitcoinjs-lib';
 
 const taprootVersion = 0xc0;
 const p = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2Fn;
@@ -168,10 +169,13 @@ export class SimpleTapTree {
         return cat([versionBuf, keyBuf, proof]);
     }
 
-    public getAddress(): Buffer {
-        const h = this.getRoot();
-        const [_, output_pubkey] = taprootTweakPubkey(this.internalPubkey, h);
-        return Buffer.concat([Buffer.from([0x51, 0x20]), output_pubkey]);
+    public getAddress(): string {
+        const taproot = bitcoin.payments.p2tr({
+            internalPubkey: Buffer.from(this.internalPubkey.toString(16), 'hex'),
+            hash:  this.getRoot(),
+            network: bitcoin.networks.bitcoin
+        });
+        return taproot.address!;
     }
 }
 
