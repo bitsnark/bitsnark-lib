@@ -28,7 +28,7 @@ function setTaprootKey(transactions: Transaction[]) {
                 const inputs = findInputsByOutput(transactions, t.transactionName, outputIndex, scIndex);
                 if (inputs.length && inputs[0].script) scripts.push(inputs[0].script!);
             });
-            if (scripts && scripts.length > 0) {
+            if (!output.taprootKey && scripts && scripts.length > 0) {
                 const stt = new SimpleTapTree(agentConf.internalPubkey, scripts);
                 output.taprootKey = stt.getAddress();
             }
@@ -98,12 +98,14 @@ function generateSemiFinalScript(lastSelectOutput: Output, semiFinalInput: Input
 export function generateAllScripts(setupId: string, transactions: Transaction[]) {
 
     transactions.forEach(t => {
-        // I don't think we have a semi-final transaction anymore.
-        if (t.transactionName == 'semi-final') {
+
+        if (t.transactionName == 'final') {
+            const taproot = generateFinalStepTaproot(setupId, transactions);
+            const semi_final = getTransactionByName(transactions, TransactionNames.SEMI_FINAL);
+            semi_final.outputs[0].taprootKey = taproot;
+        } else if (t.transactionName == 'semi-final') {
             const prevOutput = findOutputByInput(transactions, t.inputs[0]);
             generateSemiFinalScript(prevOutput, t.inputs[0]);
-        } else if (t.transactionName == 'final') {
-            generateFinalStepTaproot(setupId, transactions);
         } else {
             t.inputs.forEach(input => {
                 const prev = getTransactionByName(transactions, input.transactionName);
@@ -115,9 +117,9 @@ export function generateAllScripts(setupId: string, transactions: Transaction[])
         }
     });
 
+    // generate the taproot key for all outputs except in the semi-final tx
     setTaprootKey(transactions);
 
-    // Actually, why do we have to write it at all before we're done?
     transactions.forEach(t => {
         writeTransactionToFile(setupId, t);
     });

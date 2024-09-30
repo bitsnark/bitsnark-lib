@@ -3,11 +3,13 @@ import { agentConf } from "../../agent.conf";
 
 export enum WotsType {
     _256 = 'WOTS_256',
+    _24 = 'WOTS_24',
     _1 = 'WOTS_1'
 }
 
 export const WOTS_NIBBLES: any = {
     [WotsType._256]: 90,
+    [WotsType._24]: 10,
     [WotsType._1]: 2
 };
 

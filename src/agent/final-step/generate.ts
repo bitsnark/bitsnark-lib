@@ -2,7 +2,7 @@ import fs from 'fs';
 import groth16Verify, { Key, Proof as Step1_Proof } from '../../generator/step1/verifier';
 import { InstrCode, Instruction, InstrCode as Step1_InstrCode } from '../../generator/step1/vm/types';
 import { proof, vKey } from '../../generator/step1/constants';
-import { Bitcoin } from '../../generator/step3/bitcoin';
+import { Bitcoin, Template } from '../../generator/step3/bitcoin';
 import { getTransactionByName, getTransactionFileNames, loadTransactionFromFile, Transaction } from '../transactions-new';
 import { bigintToNibblesLS } from './common';
 import { bufferToBigint160, iterations, twoDigits } from '../common';
@@ -34,13 +34,18 @@ function decodeParam(bitcoin: Bitcoin, semiFinal: Transaction, witness: StackIte
     return nibbles.slice(0, -4);
 }
 
-function getScriptForLine(bitcoin: Bitcoin, line: Instruction, a: StackItem[], b: StackItem[], c: StackItem[], d?: StackItem[]): Buffer {
+function renderTemplate(template: Template, index: number): Buffer {
+    const nibbles = bigintToNibblesLS(BigInt(index), 8);
+    const map: any = {};
+    for (let i = 0; i < nibbles.length; i++) map[`indexNibbles_${i}`] = nibbles[i];
+    template.items.forEach(item => {
+        const b = Buffer.from([ map[item.itemId] ]);
+        b.copy(template.buffer, item.index, 0, 1);
+    });
+    return template.buffer;
+}
 
-    // const cacheKey = `${line.name}/${line.bit ?? 0}`;
-
-    // if (cache[cacheKey]) {
-    //     return cache[`${line.name}/${line.bit ?? 0}`]
-    // }
+function checkLine(bitcoin: Bitcoin, line: Instruction, a: StackItem[], b: StackItem[], c: StackItem[], d?: StackItem[]) {
 
     switch (line.name) {
         case InstrCode.ADDMOD:
@@ -83,13 +88,9 @@ function getScriptForLine(bitcoin: Bitcoin, line: Instruction, a: StackItem[], b
             verifyAssertZero(bitcoin, a);
             break;
     }
-
-    const script = bitcoin.programToBinary();
-    //cache[cacheKey] = script;
-    return script;
 }
 
-export function generateFinalStepTaproot(setupId: string, transactions: Transaction[]) {
+export function generateFinalStepTaproot(setupId: string, transactions: Transaction[]): Buffer {
 
     fs.mkdirSync(`./generated/scripts/${setupId}`, { recursive: true });
 
@@ -108,62 +109,60 @@ export function generateFinalStepTaproot(setupId: string, transactions: Transact
 
     program.forEach((line, index) => {
 
-        
-        // if (line.name != InstrCode.MULMOD) return;
-
-        if (index % 100 == 0) {
+        if (index && index % 1000 == 0) {
             const todo = (program.length - index) * (Date.now() - started) / index;
-            const h = Math.floor(todo / 3600000);
-            const m = Math.floor((todo - h * 3600000) / 60000);
-            console.log('index: ', index, '   max: ', max, '   totel: ', total, '   left: ', `${h}:${m}`);
+            const m = Math.floor(todo / 60000);
+            const s = Math.floor((todo - m * 60000) / 1000);
+            console.log('index: ', index, '   max: ', max, '   totel: ', total, '   left: ', `${m}:${s}`);
         }
-
-        const bitcoin = new Bitcoin();
-        const stack = bitcoin.stack.items;
-        bitcoin.setDefaultHash('HASH160');
-
-        const indexWitness = bigintToNibblesLS(BigInt(index), WOTS_NIBBLES[WotsType._256])
-            .map(n => bitcoin.addWitness(BigInt(n)));
-
-        if (!lastSelect.outputs[0].spendingConditions[0].wotsPublicKeys) {
-            // no opponent public keys here, mock them
-            lastSelect.outputs[0].spendingConditions[0].wotsPublicKeys! = [getWinternitzPublicKeys(WotsType._256, '')];
-        }
-
-        if (!semiFinal.outputs[0].spendingConditions[0].wotsPublicKeys) {
-            // no opponent public keys here, mock them
-            semiFinal.outputs[0].spendingConditions[0].wotsPublicKeys = [
-                getWinternitzPublicKeys(WotsType._256, ''),
-                getWinternitzPublicKeys(WotsType._256, ''),
-                getWinternitzPublicKeys(WotsType._256, ''),
-                getWinternitzPublicKeys(WotsType._256, '')
-            ];
-        }
-
-        const w_a = paramWitness(bitcoin);
-        const w_b = paramWitness(bitcoin);
-        const w_c = paramWitness(bitcoin);
-        let w_d: StackItem[];
-        if (line.name == InstrCode.MULMOD || line.name == InstrCode.DIVMOD) {
-            w_d = paramWitness(bitcoin);
-        }
-
-        bitcoin.checkIndex(
-            lastSelect.outputs[0].spendingConditions[0].wotsPublicKeys![0].map(bufferToBigint160),
-            indexWitness
-        );
-        bitcoin.drop(indexWitness);
 
         // this is a hack to make this run (somewhat) faster
 
         const cacheKey = `${line.name}/${line.bit ?? 0}`;
         let final = null;
         if (cache[cacheKey]) {
-            const earlierScript: Buffer = cache[cacheKey];
-            const indexCheckOnly = bitcoin.programToBinary();
-            indexCheckOnly.copy(earlierScript, 0, 0, earlierScript.length);
-            final = earlierScript;
+
+            const template: Template = cache[cacheKey];
+            final = renderTemplate(template, index);
+
         } else {
+
+            const bitcoin = new Bitcoin();
+            const stack = bitcoin.stack.items;
+            bitcoin.setDefaultHash('HASH160');
+    
+            const indexWitness = bigintToNibblesLS(BigInt(index), WOTS_NIBBLES[WotsType._256])
+                .map(n => bitcoin.addWitness(BigInt(n)));
+    
+            if (!lastSelect.outputs[0].spendingConditions[0].wotsPublicKeys) {
+                // no opponent public keys here, mock them
+                lastSelect.outputs[0].spendingConditions[0].wotsPublicKeys! = [getWinternitzPublicKeys(WotsType._256, '')];
+            }
+    
+            if (!semiFinal.outputs[0].spendingConditions[0].wotsPublicKeys) {
+                // no opponent public keys here, mock them
+                semiFinal.outputs[0].spendingConditions[0].wotsPublicKeys = [
+                    getWinternitzPublicKeys(WotsType._256, ''),
+                    getWinternitzPublicKeys(WotsType._256, ''),
+                    getWinternitzPublicKeys(WotsType._256, ''),
+                    getWinternitzPublicKeys(WotsType._256, '')
+                ];
+            }
+    
+            const w_a = paramWitness(bitcoin);
+            const w_b = paramWitness(bitcoin);
+            const w_c = paramWitness(bitcoin);
+            let w_d: StackItem[];
+            if (line.name == InstrCode.MULMOD || line.name == InstrCode.DIVMOD) {
+                w_d = paramWitness(bitcoin);
+            }
+    
+            bitcoin.verifyIndex(
+                lastSelect.outputs[0].spendingConditions[0].wotsPublicKeys![0].map(bufferToBigint160),
+                indexWitness, bigintToNibblesLS(BigInt(index), 8)
+            );
+            bitcoin.drop(indexWitness);
+    
             const a = decodeParam(bitcoin, semiFinal, w_a, 0);
             bitcoin.drop(w_a);
     
@@ -179,8 +178,10 @@ export function generateFinalStepTaproot(setupId: string, transactions: Transact
                 bitcoin.drop(w_d!);
             }
     
-            final = getScriptForLine(bitcoin, line, a, b, c, d!);
-            cache[cacheKey] = final;
+            checkLine(bitcoin, line, a, b, c, d!);
+            const template = bitcoin.programToTemplate();
+            cache[cacheKey] = template;
+            final = template.buffer;
         }
 
         total += final.length;
@@ -193,7 +194,7 @@ export function generateFinalStepTaproot(setupId: string, transactions: Transact
         compressor.addItem(final);
     });
 
-    semiFinal.outputs[0].taprootKey = compressor.getRoot();
+    return compressor.getRoot();
 }
 
 var scriptName = __filename;
