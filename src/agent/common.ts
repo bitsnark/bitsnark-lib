@@ -5,6 +5,23 @@ import { proof } from "./proof";
 import { verificationKey } from "./verification-key";
 import { InstrCode as Step1_InstrCode } from '../../src/generator/step1/vm/types';
 
+export const enum TransactionNames {
+    LOCKED_FUNDS = 'locked_funds',
+    PROVER_STAKE = 'prover_stake',
+    PROOF = 'proof',
+    PROOF_UNCONTESTED = 'proof_uncontested',
+    VERIFIER_PAYMENT = 'verifier_payment',
+    CHALLENGE = 'challenge',
+    CHALLENGE_UNCONTESTED = 'challenge_uncontested',
+    STATE = 'state',
+    STATE_UNCONTESTED = 'state_uncontested',
+    SELECT = 'select',
+    SELECT_UNCONTESTED = 'select_uncontested',
+    ARGUMENT = 'argument',
+    ARGUMENT_UNCONTESTED = 'argument_uncontested',
+    PROOF_REFUTED = 'proof_refuted'
+}
+
 export const iterations = 19;
 
 export enum ProtocolStep {

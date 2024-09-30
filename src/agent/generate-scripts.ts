@@ -1,11 +1,12 @@
 import { Bitcoin } from '../generator/step3/bitcoin';
+import { WotsType } from './winternitz';
 import { encodeWinternitz1, encodeWinternitz24, encodeWinternitz256, WotsType } from './winternitz';
-import { bufferToBigint160, iterations, random } from './common';
+import { bufferToBigint160, iterations, random, TransactionNames } from './common';
 import { StackItem } from '../generator/step3/stack';
 import { SimpleTapTree } from './simple-taptree';
 import { agentConf } from '../../agent.conf';
 import { Buffer } from 'node:buffer';
-import { TransactionNames, findOutputByInput, getTransactionByName, getTransactionFileNames, Input, loadTransactionFromFile, Output, SpendingCondition, Transaction, writeTransactionToFile } from './transactions-new';
+import { findOutputByInput, getTransactionByName, getTransactionFileNames, Input, loadTransactionFromFile, Output, SpendingCondition, Transaction, writeTransactionToFile } from './transactions-new';
 import { generateFinalStepTaproot } from './final-step/generate';
 
 function findInputsByOutput(
@@ -144,7 +145,7 @@ export function generateAllScripts(setupId: string, transactions: Transaction[])
 }
 
 const externallyFundedTxs: string[] = [
-    TransactionNames.PAYLOAD,
+    TransactionNames.LOCKED_FUNDS,
     TransactionNames.PROVER_STAKE,
     TransactionNames.CHALLENGE
 ];
