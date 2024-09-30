@@ -26,7 +26,6 @@ describe("SHA256 tests", function () {
         const h2 = _32To256BE(h2regs.map(r => r.value));
         expect(h1).toEqual(h2);
         sha256.free();
-        console.log('registers: ', step2_vm.registers.filter(r => !r.hardcoded).length);
     });
 
     it('pair hash', () => {
@@ -43,7 +42,6 @@ describe("SHA256 tests", function () {
         const h2 = _32To256BE(targetRegs.map(r => r.value));
         expect(h1).toEqual(h2);
         sha256.free();
-        console.log('registers: ', step2_vm.registers.filter(r => !r.hardcoded).length);
     });
 
 });

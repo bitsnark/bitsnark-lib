@@ -1,0 +1,62 @@
+digraph BitSnark {
+    /* Styling. */
+    {node [shape=oval]
+        prover_stake [label="Prover Stake"]
+        verifier_payment [label="Verifier Payment"]
+        prover_wallet [label="Prover Wallet"]
+        verifier_wallet [label="Verifier Wallet"]
+        locked_funds [label="locked Funds";style=dashed]
+    }
+    {node [shape=note; color=green]
+        proof [label="Proof"]
+        proof_uncontested [label="Proof\nUncontested"]
+        argument_uncontested [label="Argument\nUncontested"]
+        state_0 [label="State\n0"]
+        state_n [label="State\nn"]
+        state_uncontested_0 [label="State\nUncontested\n0"]
+        state_uncontested_n [label="State\nUncontested\nn"]
+        argument [label="Argument"]
+    }
+    {node [shape=note;color=blue]
+        challenge [label="Challenge"]
+        challenge_uncontested [label="Challenge\nUncontested"]
+        select_0 [label="Select\n0"]
+        select_n [label="Select\nn"]
+        select_uncontested_0 [label="Select\nUncontested\n0"]
+        select_uncontested_n [label="Select\nUncontested\nn"]
+        proof_refuted [label="Proof\nRefuted"]
+    }
+    {node [shape=point] o0 o1 o2 o3 o4 o5 o6}
+
+    /* Main Flow. */
+    o0 -> {proof_uncontested; argument_uncontested} -> prover_wallet
+    prover_stake -> proof
+    proof -> o1 [arrowhead=none]
+    proof -> o2 [arrowhead=none; color=cyan]
+    o2 -> {proof_uncontested; challenge} [color=cyan]
+    o1 -> proof_uncontested [style=dashed; color=green]
+    verifier_payment -> challenge -> prover_wallet
+    o1 -> challenge_uncontested [style=dashed; color=blue; weight=2]
+    challenge_uncontested -> verifier_wallet
+
+    /* Contention Bisection. */
+    o1 -> state_0 [weight=5]
+    state_0 -> o3 [arrowhead=none; weight=2]
+    o3 -> select_0 [weight=5]
+    o3 -> state_uncontested_0 [style=dashed;weight=2]
+    select_0 -> select_uncontested_0 [style=dashed]
+    select_0 -> state_n [style=dotted; weight=3]
+    state_n -> o4 [arrowhead=none; weight=3]
+    o4 -> select_n [weight=5]
+    o4 -> state_uncontested_n [style=dashed]
+    select_n -> o5 [arrowhead=none; weight=3]
+    o5 -> argument [weight=5]
+    o5 -> select_uncontested_n [style=dashed]
+
+    /* Contention Resolution. */
+    locked_funds -> o0 [arrowhead=none]
+    locked_funds -> {state_uncontested_0 state_uncontested_n} [weight=0]
+    argument -> o6  [arrowhead=none]
+    o6 -> argument_uncontested [style=dashed]
+    o6 -> proof_refuted-> verifier_wallet
+}
