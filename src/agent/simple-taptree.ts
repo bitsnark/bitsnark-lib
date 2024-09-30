@@ -139,7 +139,7 @@ export class SimpleTapTree {
             const other: Buffer[] = [];
             while (temp.length > 0) {
                 const left = temp.shift()!;
-                const right = temp.shift() || left;
+                const right = temp.shift() ?? left;
                 other.push(combineHashes(left, right));
             }
             temp = other;
