@@ -197,7 +197,7 @@ export function generateFinalStepTaproot(setupId: string, transactions: Transact
     return compressor.getRoot();
 }
 
-var scriptName = __filename;
+const scriptName = __filename;
 if (process.argv[1] == scriptName) {
     const filenames = getTransactionFileNames('test_setup');
     const transactions = filenames.map(fn => loadTransactionFromFile('test_setup', fn));
