@@ -1014,6 +1014,51 @@ export class Bitcoin {
         this.winternitzDecode256(target, witnessB, publicKeys);
     }
 
+    winternitzCheck24(witness: StackItem[], publicKeys: bigint[]) {
+        const totalNibbles = 10;
+        const temp = this.newStackItem(0n);
+        const checksumNibbles: StackItem[] = [];
+        for (let i = 0; i < 2; i++) checksumNibbles.push(this.newStackItem(0n));
+        const checksum = this.newStackItem(0n);
+
+        for (let i = 0; i < totalNibbles - 2; i++) {
+            this.winternitzDecodeNibble(temp, witness[i], publicKeys[i]);
+            this.pick(checksum);
+            this.pick(temp);
+            this.OP_ADD();
+            this.replaceWithTop(checksum);
+        }
+
+        for (let i = 0; i < 2; i++) {
+            this.winternitzDecodeNibble(checksumNibbles[i], witness[totalNibbles - 2 + i], publicKeys[totalNibbles - 2 + i]);
+        }
+
+        this.DATA(7n);
+        this.pick(checksumNibbles[1]);
+        this.OP_SUB();
+
+        // * 8
+        this.OP_DUP();
+        this.OP_ADD();
+        this.OP_DUP();
+        this.OP_ADD();
+        this.OP_DUP();
+        this.OP_ADD();
+
+        this.DATA(7n);
+        this.pick(checksumNibbles[0]);
+        this.OP_SUB();
+        this.OP_ADD();
+
+        this.pick(checksum);
+        this.OP_EQUAL();
+        this.OP_VERIFY();
+
+        this.drop(checksum);
+        this.drop(temp);
+        this.drop(checksumNibbles);
+    }
+
     winternitzCheck256(witness: StackItem[], publicKeys: bigint[]) {
         const totalNibbles = 90;
         const temp = this.newStackItem(0n);

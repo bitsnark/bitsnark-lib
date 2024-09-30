@@ -21,6 +21,7 @@ export interface SpendingCondition {
     wotsSpec?: WotsType[],
     wotsPublicKeys?: Buffer[][],
     script?: Buffer
+    exampleWitness?: Buffer[][]
 }
 
 export interface Input {
@@ -310,7 +311,7 @@ function makeProtocolSteps(): Transaction[] {
                     nextRole: AgentRoles.VERIFIER,
                     signatureType: SignatureType.BOTH,
                     wotsSpec: [
-                        WotsType._24,
+                        WotsType._256,
                         ...new Array(iterations).fill(WotsType._1)
                     ]
                 }]
@@ -394,13 +395,14 @@ export function initializeTransactions(
         t.protocolVersion = t.protocolVersion ?? PROTOCOL_VERSION;
         t.setupId = setupId;
 
-        let dataIndex = 0;
+        t.outputs.forEach((output, outputIndex) => {
+            output.spendingConditions.forEach((sc, scIndex) => {
 
-        t.outputs.forEach(output => {
-            output.spendingConditions.forEach(sc => {
                 if (sc.wotsSpec && sc.nextRole == role) {
                     sc.wotsPublicKeys = sc.wotsSpec!
-                        .map(wt => getWinternitzPublicKeys(wt, [setupId, t.transactionName, dataIndex++].toString()));
+                        .map((wt, dataIndex) => getWinternitzPublicKeys(
+                            wt, 
+                            [setupId, t.transactionName, outputIndex, scIndex, dataIndex].toString()));
                 }
             });
         });
