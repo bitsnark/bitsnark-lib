@@ -44,12 +44,19 @@ export interface Transaction {
     protocolVersion?: number,
     role: AgentRoles;
     transactionName: string;
+    ordinal?: number;
     txId?: string;
     inputs: Input[];
     outputs: Output[];
 }
 
 const protocolStart: Transaction[] = [
+    {
+        role: AgentRoles.PROVER,
+        transactionName: TransactionNames.VERIFIER_PAYMENT,
+        inputs: [],
+        outputs: []
+    },
     {
         role: AgentRoles.PROVER,
         transactionName: TransactionNames.LOCKED_FUNDS,
@@ -390,6 +397,9 @@ export function initializeTransactions(
     proverStake.txId = proverUtxo.txId;
     proverStake.outputs[0].amount = proverUtxo.amount;
 
+    // set ordinal
+    transactions.forEach((t, i) => t.ordinal = i);
+
     // generate wots keys
     transactions.forEach(t => {
         t.protocolVersion = t.protocolVersion ?? PROTOCOL_VERSION;
@@ -461,6 +471,7 @@ export function writeTransactionToFile(setupId: string, transaction: Transaction
 export function writeTransactionsToFile(setupId: string, transactions: Transaction[]) {
     transactions.forEach(t => writeTransactionToFile(setupId, t));
 }
+
 export function loadTransactionFromFile(setupId: string, transactionName: string): Transaction {
     return fromJson(fs.readFileSync(`./generated/setups/${setupId}/${transactionName}.json`).toString('ascii'));
 }

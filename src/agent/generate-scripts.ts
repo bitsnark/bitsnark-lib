@@ -1,12 +1,13 @@
 import { Bitcoin } from '../generator/step3/bitcoin';
-import { encodeWinternitz1, encodeWinternitz24, encodeWinternitz256, WotsType } from './winternitz';
+import { encodeWinternitz1, encodeWinternitz24, encodeWinternitz256, getWinternitzPublicKeys, WotsType } from './winternitz';
 import { bufferToBigint160, iterations, random, TransactionNames } from './common';
 import { StackItem } from '../generator/step3/stack';
 import { SimpleTapTree } from './simple-taptree';
 import { agentConf } from '../../agent.conf';
 import { Buffer } from 'node:buffer';
-import { findOutputByInput, getTransactionByName, getTransactionFileNames, Input, loadTransactionFromFile, Output, SpendingCondition, Transaction, writeTransactionToFile } from './transactions-new';
+import { findOutputByInput, getTransactionByName, getTransactionFileNames, Input, loadTransactionFromFile, Output, PROTOCOL_VERSION, SpendingCondition, Transaction, writeTransactionToFile } from './transactions-new';
 import { generateFinalStepTaproot } from './final-step/generate';
+import { setuid } from 'node:process';
 
 function findInputsByOutput(
     transactions: Transaction[],
@@ -44,7 +45,7 @@ function generateBoilerplate(setupId: string, transactionName: string, outputInd
         spendingCondition.signaturesPublicKeys.forEach(key => {
             bitcoin.verifySignature(key);
         });
-    }
+    }    
 
     if (spendingCondition.wotsSpec) {
 
@@ -111,6 +112,20 @@ function generateSemiFinalScript(lastSelectOutput: Output, semiFinalInput: Input
 }
 
 export function generateAllScripts(setupId: string, transactions: Transaction[]) {
+
+    // generate wots keys where they are missing, in case we're not really in a setup process
+    transactions.forEach(t => {
+        t.outputs.forEach((output, outputIndex) => {
+            output.spendingConditions.forEach((sc, scIndex) => {
+                if (sc.wotsSpec && !sc.wotsPublicKeys) {
+                    sc.wotsPublicKeys = sc.wotsSpec!
+                        .map((wt, dataIndex) => getWinternitzPublicKeys(
+                            wt, 
+                            [setupId, t.transactionName, outputIndex, scIndex, dataIndex].toString()));
+                }
+            });
+        });
+    });
 
     transactions.forEach(t => {
 
@@ -228,8 +243,11 @@ function validateTransactionFees(transactions: Transaction[]) {
 
 const scriptName = __filename;
 if (process.argv[1] == scriptName) {
-    const filenames = getTransactionFileNames('test_setup');
-    const transactions = filenames.map(fn => loadTransactionFromFile('test_setup', fn));
+    const setupId = 'test_setup';
+    const fnames = getTransactionFileNames(setupId)
+    const transactions = fnames
+        .map(name => loadTransactionFromFile(setupId, name))
+        .sort((a, b) => a.ordinal! - b.ordinal!);
     generateAllScripts('test_setup', transactions);
     addAmounts('test_setup', transactions);
     validateTransactionFees(transactions);
