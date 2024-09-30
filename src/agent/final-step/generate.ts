@@ -105,7 +105,7 @@ export function generateFinalStepTaproot(setupId: string, transactions: Transact
     const started = Date.now();
     let total = 0;
     let max = 0;
-    const compressor = new Compressor(iterations);
+    const compressor = new Compressor(iterations, 1n);
 
     program.forEach((line, index) => {
 
@@ -130,15 +130,15 @@ export function generateFinalStepTaproot(setupId: string, transactions: Transact
             const bitcoin = new Bitcoin();
             const stack = bitcoin.stack.items;
             bitcoin.setDefaultHash('HASH160');
-    
+
             const indexWitness = bigintToNibblesLS(BigInt(index), WOTS_NIBBLES[WotsType._256])
                 .map(n => bitcoin.addWitness(BigInt(n)));
-    
+
             if (!lastSelect.outputs[0].spendingConditions[0].wotsPublicKeys) {
                 // no opponent public keys here, mock them
                 lastSelect.outputs[0].spendingConditions[0].wotsPublicKeys! = [getWinternitzPublicKeys(WotsType._256, '')];
             }
-    
+
             if (!semiFinal.outputs[0].spendingConditions[0].wotsPublicKeys) {
                 // no opponent public keys here, mock them
                 semiFinal.outputs[0].spendingConditions[0].wotsPublicKeys = [
@@ -148,7 +148,7 @@ export function generateFinalStepTaproot(setupId: string, transactions: Transact
                     getWinternitzPublicKeys(WotsType._256, '')
                 ];
             }
-    
+
             const w_a = paramWitness(bitcoin);
             const w_b = paramWitness(bitcoin);
             const w_c = paramWitness(bitcoin);
@@ -156,28 +156,28 @@ export function generateFinalStepTaproot(setupId: string, transactions: Transact
             if (line.name == InstrCode.MULMOD || line.name == InstrCode.DIVMOD) {
                 w_d = paramWitness(bitcoin);
             }
-    
+
             bitcoin.verifyIndex(
                 lastSelect.outputs[0].spendingConditions[0].wotsPublicKeys![0].map(bufferToBigint160),
                 indexWitness, bigintToNibblesLS(BigInt(index), 8)
             );
             bitcoin.drop(indexWitness);
-    
+
             const a = decodeParam(bitcoin, semiFinal, w_a, 0);
             bitcoin.drop(w_a);
-    
+
             const b = decodeParam(bitcoin, semiFinal, w_b, 1);
             bitcoin.drop(w_b);
-    
+
             const c = decodeParam(bitcoin, semiFinal, w_c, 2);
             bitcoin.drop(w_c);
-    
+
             let d: StackItem[];
             if (line.name == InstrCode.MULMOD || line.name == InstrCode.DIVMOD) {
                 d = decodeParam(bitcoin, semiFinal, w_d!, 3);
                 bitcoin.drop(w_d!);
             }
-    
+
             checkLine(bitcoin, line, a, b, c, d!);
             const template = bitcoin.programToTemplate();
             cache[cacheKey] = template;
@@ -187,12 +187,8 @@ export function generateFinalStepTaproot(setupId: string, transactions: Transact
         total += final.length;
         max = Math.max(max, final.length);
 
-        // fs.writeFileSync(`./generated/scripts/${setupId}/${indexToStr(index)}.bin`,
-        //     script
-        // );
-
         compressor.addItem(final);
     });
 
-    return compressor.getRoot();
+    return compressor.getAddress();
 }
