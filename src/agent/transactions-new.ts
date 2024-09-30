@@ -325,7 +325,7 @@ function makeProtocolSteps(): Transaction[] {
                     nextRole: AgentRoles.VERIFIER,
                     signatureType: SignatureType.BOTH,
                     wotsSpec: [
-                        WotsType._256,
+                        WotsType._24,
                         ...new Array(iterations).fill(WotsType._1)
                     ]
                 }]
