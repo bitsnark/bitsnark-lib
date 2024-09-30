@@ -53,12 +53,6 @@ export interface Transaction {
 const protocolStart: Transaction[] = [
     {
         role: AgentRoles.PROVER,
-        transactionName: TransactionNames.VERIFIER_PAYMENT,
-        inputs: [],
-        outputs: []
-    },
-    {
-        role: AgentRoles.PROVER,
         transactionName: TransactionNames.LOCKED_FUNDS,
         inputs: [],
         outputs: [{

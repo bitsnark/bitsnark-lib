@@ -45,7 +45,7 @@ function generateBoilerplate(setupId: string, transactionName: string, outputInd
         spendingCondition.signaturesPublicKeys.forEach(key => {
             bitcoin.verifySignature(key);
         });
-    }    
+    }
 
     if (spendingCondition.wotsSpec) {
 
@@ -120,7 +120,7 @@ export function generateAllScripts(setupId: string, transactions: Transaction[])
                 if (sc.wotsSpec && !sc.wotsPublicKeys) {
                     sc.wotsPublicKeys = sc.wotsSpec!
                         .map((wt, dataIndex) => getWinternitzPublicKeys(
-                            wt, 
+                            wt,
                             [setupId, t.transactionName, outputIndex, scIndex, dataIndex].toString()));
                 }
             });
@@ -148,7 +148,7 @@ export function generateAllScripts(setupId: string, transactions: Transaction[])
             });
         }
 
-        writeTransactionToFile(setupId, t);        
+        writeTransactionToFile(setupId, t);
     });
 
     // generate the taproot key for all outputs except in the semi-final tx
