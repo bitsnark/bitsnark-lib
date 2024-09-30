@@ -70,3 +70,12 @@ export function getSavedStep1(): SavedVm<Step1_InstrCode> {
 }
 
 export const twoDigits = (n: number) => n < 10 ? `0${n}` : `${n}`;
+
+export function random(bytes: number): bigint {
+    let n = 0n;
+    for (let i = 0; i < bytes; i++) {
+        n = n << 8n;
+        n += BigInt(Math.round(255 * Math.random()) & 0xff);
+    }
+    return n;
+}

@@ -1,6 +1,6 @@
 import { Bitcoin } from '../generator/step3/bitcoin';
-import { WotsType } from './winternitz';
-import { bufferToBigint160, iterations } from './common';
+import { encodeWinternitz1, encodeWinternitz24, encodeWinternitz256, WotsType } from './winternitz';
+import { bufferToBigint160, iterations, random } from './common';
 import { StackItem } from '../generator/step3/stack';
 import { SimpleTapTree } from './simple-taptree';
 import { agentConf } from '../../agent.conf';
@@ -36,7 +36,7 @@ function setTaprootKey(transactions: Transaction[]) {
     });
 }
 
-function generateBoilerplate(spendingCondition: SpendingCondition): Buffer {
+function generateBoilerplate(setupId: string, transactionName: string, outputIndex: number, scIndex: number, spendingCondition: SpendingCondition): Buffer {
     const bitcoin = new Bitcoin();
     bitcoin.setDefaultHash('HASH160');
 
@@ -47,17 +47,32 @@ function generateBoilerplate(spendingCondition: SpendingCondition): Buffer {
     }
 
     if (spendingCondition.wotsSpec) {
-        spendingCondition.wotsSpec.forEach((spec, index) => {
-            if (spec == WotsType._1) {
-                bitcoin.winternitzCheck1(
-                    spendingCondition.wotsPublicKeys![index].map(_ => bitcoin.addWitness(0n)),
-                    spendingCondition.wotsPublicKeys![index].map(b => bufferToBigint160(b))
-                );
-            } else if (spec == WotsType._256) {
+
+        spendingCondition.exampleWitness = [];
+
+        spendingCondition.wotsSpec.forEach((spec, dataIndex) => {
+
+            if (spec == WotsType._256) {
                 bitcoin.winternitzCheck256(
-                    spendingCondition.wotsPublicKeys![index].map(_ => bitcoin.addWitness(0n)),
-                    spendingCondition.wotsPublicKeys![index].map(b => bufferToBigint160(b))
+                    spendingCondition.wotsPublicKeys![dataIndex].map(_ => bitcoin.addWitness(0n)),
+                    spendingCondition.wotsPublicKeys![dataIndex].map(b => bufferToBigint160(b))
                 );
+                spendingCondition.exampleWitness!.push(
+                    encodeWinternitz256(random(32), [setupId, transactionName, outputIndex, scIndex, dataIndex].toString()));
+            } else if (spec == WotsType._24) {
+                bitcoin.winternitzCheck24(
+                    spendingCondition.wotsPublicKeys![dataIndex].map(_ => bitcoin.addWitness(0n)),
+                    spendingCondition.wotsPublicKeys![dataIndex].map(b => bufferToBigint160(b))
+                );
+                spendingCondition.exampleWitness!.push(
+                    encodeWinternitz24(random(3), [setupId, transactionName, outputIndex, scIndex, dataIndex].toString()));
+            } else {
+                bitcoin.winternitzCheck1(
+                    spendingCondition.wotsPublicKeys![dataIndex].map(_ => bitcoin.addWitness(0n)),
+                    spendingCondition.wotsPublicKeys![dataIndex].map(b => bufferToBigint160(b))
+                );
+                spendingCondition.exampleWitness!.push(
+                    encodeWinternitz1(random(1) % 7n, [setupId, transactionName, outputIndex, scIndex, dataIndex].toString()));
             }
         });
     }
@@ -99,27 +114,30 @@ export function generateAllScripts(setupId: string, transactions: Transaction[])
 
     transactions.forEach(t => {
 
-        if (t.transactionName == 'final') {
+        if (t.transactionName == TransactionNames.FINAL) {
             const taproot = generateFinalStepTaproot(setupId, transactions);
             const semi_final = getTransactionByName(transactions, TransactionNames.SEMI_FINAL);
             semi_final.outputs[0].taprootKey = taproot;
-        } else if (t.transactionName == 'semi-final') {
+        } else if (t.transactionName == TransactionNames.SEMI_FINAL) {
             const prevOutput = findOutputByInput(transactions, t.inputs[0]);
             generateSemiFinalScript(prevOutput, t.inputs[0]);
         } else {
             t.inputs.forEach(input => {
                 const prev = getTransactionByName(transactions, input.transactionName);
                 const sc = prev.outputs[input.outputIndex].spendingConditions[input.spendingConditionIndex];
-                const script = generateBoilerplate(sc);
+                const script = generateBoilerplate(setupId, t.transactionName, input.outputIndex, input.spendingConditionIndex, sc);
                 sc.script = script;
                 input.script = script;
             });
         }
+
+        writeTransactionToFile(setupId, t);        
     });
 
     // generate the taproot key for all outputs except in the semi-final tx
     setTaprootKey(transactions);
 
+    // we alreay wrote each tx inidividually, but now we want the taproot keys too
     transactions.forEach(t => {
         writeTransactionToFile(setupId, t);
     });
@@ -149,23 +167,23 @@ function calculateTransactionFee(transaction: Transaction): bigint {
 function addAmounts(setupId: string, transactions: Transaction[]) {
 
     function add(transaction: Transaction) {
-            if (externallyFundedTxs.includes(transaction.transactionName)) return;
-            const amountlessOutputs = transaction.outputs.filter(output => !output.amount);
-            if (amountlessOutputs.length == 0) return;
-            // If there are multiple undefined amounts, only the first carries the real value and the rest are symbolic.
-            amountlessOutputs.slice(1).forEach(output => output.amount = agentConf.symbolicOutputAmount);
+        if (externallyFundedTxs.includes(transaction.transactionName)) return;
+        const amountlessOutputs = transaction.outputs.filter(output => !output.amount);
+        if (amountlessOutputs.length == 0) return;
+        // If there are multiple undefined amounts, only the first carries the real value and the rest are symbolic.
+        amountlessOutputs.slice(1).forEach(output => output.amount = agentConf.symbolicOutputAmount);
 
-            const incomingAmount = transaction.inputs.reduce((totalValue, input) => {
-                const output = findOutputByInput(transactions, input);
-                if (!output.amount) add(getTransactionByName(transactions, input.transactionName));
-                return totalValue + output.amount!;
-            }, 0n);
+        const incomingAmount = transaction.inputs.reduce((totalValue, input) => {
+            const output = findOutputByInput(transactions, input);
+            if (!output.amount) add(getTransactionByName(transactions, input.transactionName));
+            return totalValue + output.amount!;
+        }, 0n);
 
-            const existingOutputsAmount = transaction.outputs.reduce(
-                (totalValue, output) => totalValue + (output.amount || 0n), 0n);
+        const existingOutputsAmount = transaction.outputs.reduce(
+            (totalValue, output) => totalValue + (output.amount || 0n), 0n);
 
-            amountlessOutputs[0].amount = incomingAmount - existingOutputsAmount - calculateTransactionFee(transaction);
-            writeTransactionToFile(setupId, transaction);
+        amountlessOutputs[0].amount = incomingAmount - existingOutputsAmount - calculateTransactionFee(transaction);
+        writeTransactionToFile(setupId, transaction);
     }
 
     transactions.forEach(add);
@@ -196,9 +214,9 @@ function validateTransactionFees(transactions: Transaction[]) {
             size: totals.size + size,
             fee: totals.fee + fee
         };
-    }, { size:0, fee: 0n });
+    }, { size: 0, fee: 0n });
 
-    if(totals.fee / BigInt(Math.ceil(totals.size / 8 / 100 * agentConf.feeFactorPercent)) != agentConf.feePerByte) {
+    if (totals.fee / BigInt(Math.ceil(totals.size / 8 / 100 * agentConf.feeFactorPercent)) != agentConf.feePerByte) {
         throw new Error(
             `Fee per byte is not correct: ` +
             `${totals.fee / BigInt(Math.ceil(totals.size / 8 / 100 * agentConf.feeFactorPercent))} ` +
