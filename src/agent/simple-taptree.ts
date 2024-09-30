@@ -128,8 +128,6 @@ export class SimpleTapTree {
     constructor(internalPubkey: bigint, scripts: Buffer[]) {
         this.internalPubkey = internalPubkey;
         this.scripts = scripts;
-        const n = 2 ** Math.ceil(Math.log2(this.scripts.length));
-        while (this.scripts.length < n) this.scripts.push(Buffer.from([]));
     }
 
     getRoot(): Buffer {
@@ -137,7 +135,9 @@ export class SimpleTapTree {
         while (temp.length > 1) {
             const other: Buffer[] = [];
             while (temp.length > 0) {
-                other.push(combineHashes(temp.shift()!, temp.shift()!));
+                const left = temp.shift()!;
+                const right = temp.shift() || left;
+                other.push(combineHashes(left, right));
             }
             temp = other;
         }
