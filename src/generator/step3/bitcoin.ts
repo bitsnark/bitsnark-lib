@@ -1,3 +1,4 @@
+import { bitcoin } from "bitcoinjs-lib/src/networks";
 import { padHex } from "../../encoding/encoding";
 import { hardcode, OpcodeType, opcodeValues } from "./bitcoin-opcodes";
 import { StackItem, Stack } from "./stack";
@@ -7,6 +8,12 @@ interface Operation {
     op?: OpcodeType;
     data?: bigint;
     dataSizeInBytes?: number;
+    templateItemId?: string;
+}
+
+export interface Template {
+    buffer: Buffer;
+    items: { itemId: string, index: number, sizeInBytes: number }[];
 }
 
 export interface SimulatedRegister {
@@ -26,7 +33,7 @@ export class Bitcoin {
     witness: bigint[] = [];
     hardcoded: bigint[] = [];
     success = true;
-    maxStack = 0;
+    public maxStack = 0;
 
     defaultHash: HashOption = 'SHA256';
 
@@ -50,9 +57,9 @@ export class Bitcoin {
         value = value ?? 0n;
         if (value < 0 || value > 16 && !dataSizeInBytes)
             throw new Error('Invalid value');
-        if (dataSizeInBytes && dataSizeInBytes != 1 && dataSizeInBytes != 4 && dataSizeInBytes != 32) throw new Error('Invalid value');
-        const si = this.DATA(value, dataSizeInBytes);
+        const si = this.DATA(value);
         this.maxStack = Math.max(this.maxStack, this.stack.items.length);
+        // console.log('Stack: ', this.stack.items.length);
         if (this.stack.items.length + this.altStack.length > 1000)
             throw new Error('Stack too big');
         return si;
@@ -64,6 +71,32 @@ export class Bitcoin {
 
     newNibbles(count: number): StackItem[] {
         return new Array(count).fill(0).map(() => this.newStackItem(0n));
+    }
+
+    newNibblesFast(count: number): StackItem[] {
+        if (count < 4) throw new Error('Use only for count > 4');
+
+        let n = count;
+
+        this.DATA(0n); // 1
+        this.DATA(0n); // 2
+        this.OP_2DUP(); // 4
+        n -= 4;
+
+        while (n >= 3) {
+            this.OP_3DUP();
+            n -= 3;
+        }
+        while (n > 2) {
+            this.OP_2DUP();
+            n-=2;
+        }
+        while (n > 0) {
+            this.OP_DUP();
+            n--;
+        }
+
+        return this.stack.items.slice(this.stack.items.length - count);
     }
 
     private getRelativeStackPosition(si: StackItem): number {
@@ -109,12 +142,12 @@ export class Bitcoin {
 
     /// NATIVE OPERATIONS ///
 
-    DATA(data: bigint, dataSizeInBytes?: number): StackItem {
+    DATA(data: bigint, templateItemId?: string): StackItem {
         if (data >= 0 && data <= 16) {
-            this.opcodes.push({ op: hardcode(data) });
+            this.opcodes.push({ op: hardcode(data), templateItemId });
         } else {
-            if (!dataSizeInBytes) throw new Error('Invalid value');
-            this.opcodes.push({ op: OpcodeType.DATA, data, dataSizeInBytes });
+            const dataSizeInBytes = data < 256n ? 1 : data < 512n ? 2 : 4;
+            this.opcodes.push({ op: OpcodeType.DATA, data, dataSizeInBytes, templateItemId });
         }
         return this.stack.newItem(data);
     }
@@ -134,6 +167,11 @@ export class Bitcoin {
     OP_DROP() {
         this.opcodes.push({ op: OpcodeType.OP_DROP });
         this.stack.pop();
+    }
+
+    OP_DEPTH() {
+        this.opcodes.push({ op: OpcodeType.OP_DEPTH });
+        const si = this.stack.newItem(BigInt(this.stack.items.length));
     }
 
     OP_NIP() {
@@ -196,11 +234,23 @@ export class Bitcoin {
         this.stack.newItem(si1.value + si2.value);
     }
 
+    OP_1ADD() {
+        this.opcodes.push({ op: OpcodeType.OP_1ADD });
+        const si1 = this.stack.pop();
+        this.stack.newItem(si1.value + 1n);
+    }
+
     OP_SUB() {
-        this.opcodes.push({ op: OpcodeType.OP_ADD });
+        this.opcodes.push({ op: OpcodeType.OP_SUB });
         const si2 = this.stack.pop();
         const si1 = this.stack.pop();
         this.stack.newItem(si1.value - si2.value);
+    }
+
+    OP_1SUB() {
+        this.opcodes.push({ op: OpcodeType.OP_1SUB });
+        const si1 = this.stack.pop();
+        this.stack.newItem(si1.value - 1n);
     }
 
     OP_GREATERTHAN() {
@@ -373,7 +423,9 @@ export class Bitcoin {
     roll(si: StackItem) {
         const rel = this.getRelativeStackPosition(si);
         if (rel == 0) return;
-        this.stack.newItem(BigInt(rel));
+        if (rel < 256) this.newStackItem(BigInt(rel), 1);
+        else if (rel < 512) this.newStackItem(BigInt(rel), 2);
+        else this.newStackItem(BigInt(rel), 4);
         this.OP_ROLL();
     }
 
@@ -382,7 +434,7 @@ export class Bitcoin {
         if (rel == 0) {
             this.OP_DUP();
         } else {
-            this.DATA(BigInt(rel), 2);
+            this.DATA(BigInt(rel));
             this.OP_PICK();
         }
     }
@@ -409,6 +461,26 @@ export class Bitcoin {
         const tsi = this.stack.pop();
         si.value = tsi.value;
         this.stack.push(si);
+    }
+
+    public tableFetch(target: StackItem, firstItem: StackItem, index: StackItem) {
+        const rel = this.getRelativeStackPosition(firstItem);
+        this.DATA(BigInt(rel));
+        this.pick(index);
+        this.OP_SUB();
+        this.OP_PICK();
+        this.replaceWithTop(target);
+    }
+
+    public tableFetchInStack(table: StackItem[]) {
+        if (this.stack.items[this.stack.items.length - 1].value > table.length)
+            throw new Error('Table overflow: ' + this.stack.items[this.stack.items.length - 1].value);
+        const rel = this.getRelativeStackPosition(table[0]) - 1;
+        const dataSize = rel < 256 ? 1 : rel < 512 ? 2 : 4;
+        this.DATA(BigInt(rel));
+        this.OP_SWAP();
+        this.OP_SUB();
+        this.OP_PICK();
     }
 
     xor(target: StackItem, a: StackItem, b: StackItem) {
@@ -448,6 +520,22 @@ export class Bitcoin {
         this.replaceWithTop(si);
     }
 
+    equalNibbles(target: StackItem, a: StackItem[], b: StackItem[]) {
+        const l = Math.max(a.length, b.length);
+        this.OP_0_16(0n);
+        for (let i = 0; i < l; i++) {
+            if (a[i]) this.pick(a[i]);
+            else this.OP_0_16(0n);
+            if (b[i]) this.pick(b[i]);
+            else this.OP_0_16(0n);
+            this.OP_NUMEQUAL();
+            this.OP_ADD();
+        }
+        this.DATA(BigInt(l));
+        this.OP_NUMEQUAL()
+        this.replaceWithTop(target);
+    }
+
     setBit_1(target: StackItem) {
         this.OP_0_16(1n);
         this.replaceWithTop(target);
@@ -463,9 +551,22 @@ export class Bitcoin {
         this.replaceWithTop(target);
     }
 
+    not(target: StackItem, a: StackItem) {
+        this.pick(a);
+        this.OP_NOT();
+        this.replaceWithTop(target);
+    }
+
     add(target: StackItem, a: StackItem, b: StackItem) {
         this.pick(a);
         this.pick(b);
+        this.OP_ADD();
+        this.replaceWithTop(target);
+    }
+
+    addOne(target: StackItem, a: StackItem) {
+        this.pick(a);
+        this.OP_0_16(1n);
         this.OP_ADD();
         this.replaceWithTop(target);
     }
@@ -527,38 +628,42 @@ export class Bitcoin {
         if (target.value < 0) target.value += 2n;
     }
 
-    assertEqual32(a: SimulatedRegister, b: SimulatedRegister) {
-        for (let i = 0; i < 32; i++) {
-            this.assertEqual(a.stackItems[i], b.stackItems[i]);
+    equalMany(target: StackItem, a: StackItem[], b: StackItem[]) {
+        this.OP_0_16(1n);
+        for (let i = 0; i < Math.max(a.length, b.length); i++) {
+            if (a[i]) this.pick(a[i]);
+            else this.OP_0_16(0n);
+            if (b[i]) this.pick(b[i]);
+            else this.OP_0_16(0n);
+            this.OP_NUMEQUAL();
+            this.OP_BOOLAND();
         }
+        this.replaceWithTop(target);
     }
 
-    assertNotEqualMany(a: StackItem[], b: StackItem[]) {
-        if (a.length != b.length) throw new Error('Wrong length');
-        for (let i = 0; i < a.length; i++) {
-            this.pick(a[i]);
-            this.pick(b[i]);
+    verifyEqualMany(a: StackItem[], b: StackItem[]) {
+        for (let i = 0; i < Math.max(a.length, b.length); i++) {
+            if (a[i]) this.pick(a[i]);
+            else this.OP_0_16(0n);
+            if (b[i]) this.pick(b[i]);
+            else this.OP_0_16(0n);
             this.OP_NUMEQUAL();
             this.OP_NOT();
             this.OP_VERIFY();
         }
     }
 
-    assertZero32(a: SimulatedRegister) {
-        for (let i = 0; i < 32; i++) {
-            this.assertZero(a.stackItems[i]);
-        }
-    }
+    verifyNotEqualMany(a: StackItem[], b: StackItem[]) {
 
-    equal32(target: StackItem, a: SimulatedRegister, b: SimulatedRegister) {
-        this.OP_0_16(1n);
-        for (let i = 0; i < 32; i++) {
-            this.pick(a.stackItems[i]);
-            this.pick(b.stackItems[i]);
+        if (a.length != b.length) throw new Error('Wrong length');
+        for (let i = 0; i < Math.max(a.length, b.length); i++) {
+            if (a[i]) this.pick(a[i]);
+            else this.OP_0_16(0n);
+            if (b[i]) this.pick(b[i]);
             this.OP_NUMEQUAL();
-            this.OP_BOOLAND();
+            this.OP_NOT();
+            this.OP_VERIFY();
         }
-        this.replaceWithTop(target);
     }
 
     checkUpperZero(a: SimulatedRegister) {
@@ -606,183 +711,83 @@ export class Bitcoin {
 
     /********* step 1 *********/
 
-    step1_assertOne(nibbles: StackItem[]) {
-        for (let i = 0; i < nibbles.length; i++) {
-            if (i == 0) this.assertOne(nibbles[i]);
-            else this.assertZero(nibbles[i]);
+    assertZeroMany(si: StackItem[]) {
+        for (let i = 0; i < si.length; i++) {
+            this.assertZero(si[i]);
         }
     }
 
-    /********* step 2 *********/
+    assertEqualMany(a: StackItem[], b: StackItem[], c: StackItem[]) {
 
-    step2_add(a: SimulatedRegister, b: SimulatedRegister, c: SimulatedRegister) {
-        const carry = this.newStackItem(0n);
-        const temp = this.newStackItem(0n);
-        for (let i = 0; i < 32; i++) {
-            this.addBit(temp, carry, a.stackItems[i], b.stackItems[i]);
-            this.assertEqual(temp, c.stackItems[i]);
-        }
-        this.drop(temp);
-        this.drop(carry);
-    }
+        this.assertZeroMany(c.slice(1));
 
-    step2_addOf(a: SimulatedRegister, b: SimulatedRegister, c: SimulatedRegister) {
-        const carry = this.newStackItem(0n);
-        const temp = this.newStackItem(0n);
-        for (let i = 0; i < 32; i++) {
-            this.addBit(temp, carry, a.stackItems[i], b.stackItems[i]);
-        }
-        this.checkUpperZero(c);
-        this.assertEqual(carry, c.stackItems[0]);
-        this.drop(temp);
-        this.drop(carry);
-    }
-
-    step2_sub(a: SimulatedRegister, b: SimulatedRegister, c: SimulatedRegister) {
-        const carry = this.newStackItem(0n);
-        const temp = this.newStackItem(0n);
-        for (let i = 0; i < 32; i++) {
-            this.addBit(temp, carry, b.stackItems[i], c.stackItems[i]);
-            this.assertEqual(temp, a.stackItems[i]);
-        }
-        this.drop(temp);
-        this.drop(carry);
-    }
-
-    step2_subOf(a: SimulatedRegister, b: SimulatedRegister, c: SimulatedRegister) {
-        this.checkUpperZero(c);
-        const temp = this.newStackItem(0n);
-        const done = this.newStackItem(0n);
-        const b_bigger = this.newStackItem(0n);
-        for (let i = 31; i >= 0; i--) {
-            this.pick(b.stackItems[i]);
-            this.pick(a.stackItems[i]);
-            this.OP_GREATERTHAN();
-            this.replaceWithTop(temp);
-            this.setIfElse(b_bigger, done, b_bigger, temp);
-            this.pick(a.stackItems[i]);
-            this.pick(b.stackItems[i]);
+        this.OP_0_16(1n);
+        for (let i = 0; i < Math.max(a.length, b.length); i++) {
+            if (a[i]) this.pick(a[i]);
+            else this.OP_0_16(0n);
+            if (b[i]) this.pick(b[i]);
+            else this.OP_0_16(0n);
             this.OP_NUMEQUAL();
-            this.OP_NOT();
-            this.pick(done);
-            this.OP_BOOLOR();
-            this.replaceWithTop(done);
-        }
-        this.assertEqual(b_bigger, c.stackItems[0]);
-        this.drop(temp);
-        this.drop(done);
-        this.drop(b_bigger);
-    }
-
-    step2_mov(a: SimulatedRegister, c: SimulatedRegister) {
-        this.assertEqual32(a, c);
-    }
-
-    step2_equal(a: SimulatedRegister, b: SimulatedRegister, c: SimulatedRegister) {
-        const temp = this.newStackItem(0n);
-        this.equal32(temp, a, b);
-        this.checkUpperZero(c);
-        this.assertEqual(temp, c.stackItems[0]);
-        this.drop(temp);
-    }
-
-    step2_andBit(a: SimulatedRegister, b: SimulatedRegister, bit: number, c: SimulatedRegister) {
-        this.pick(b.stackItems[bit]);
-        this.OP_IF();
-        this.assertEqual32(a, c);
-        this.OP_ELSE();
-        this.assertZero32(c);
-        this.OP_ENDIF();
-    }
-
-    step2_andNotBit(a: SimulatedRegister, b: SimulatedRegister, bit: number, c: SimulatedRegister) {
-        this.pick(b.stackItems[bit]);
-        this.OP_IF();
-        this.assertZero32(c);
-        this.OP_ELSE();
-        this.assertEqual32(a, c);
-        this.OP_ENDIF();
-    }
-
-    step2_shr(a: SimulatedRegister, b: number, c: SimulatedRegister) {
-        for (let i = 0; i < 32; i++) {
-            const t = (32 + i - b) % 32;
-            if (i >= b) {
-                this.assertEqual(a.stackItems[i], c.stackItems[t]);
-            } else {
-                this.assertZero(c.stackItems[t]);
-            }
-        }
-    }
-
-    step2_rotr(a: SimulatedRegister, b: number, c: SimulatedRegister) {
-        for (let i = 0; i < 32; i++) {
-            const t = (32 + i - b) % 32;
-            this.assertEqual(a.stackItems[i], c.stackItems[t]);
-        }
-    }
-
-    step2_and(a: SimulatedRegister, b: SimulatedRegister, c: SimulatedRegister) {
-        for (let i = 0; i < 32; i++) {
-            this.pick(a.stackItems[i]);
-            this.pick(b.stackItems[i]);
             this.OP_BOOLAND();
-            this.pick(c.stackItems[i]);
-            this.OP_NUMEQUALVERIFY();
         }
+        this.pick(c[0]);
+        this.OP_NUMEQUALVERIFY();
     }
 
-    step2_xor(a: SimulatedRegister, b: SimulatedRegister, c: SimulatedRegister) {
-        for (let i = 0; i < 32; i++) {
-            // !a & b
-            this.pick(a.stackItems[i]);
-            this.pick(b.stackItems[i]);
-            this.OP_NOT();
-            this.OP_BOOLAND();
-            // a & !b
-            this.pick(b.stackItems[i]);
-            this.pick(a.stackItems[i]);
-            this.OP_NOT();
-            this.OP_BOOLAND();
-            // (!a & b) | (a & !b)
+    assertOrMany(a: StackItem[], b: StackItem[], c: StackItem[]) {
+
+        this.assertZeroMany(c.slice(1));
+
+        this.OP_0_16(0n);
+        for (let i = 0; i < Math.max(a.length, b.length); i++) {
+            if (a[i]) this.pick(a[i]);
+            else this.OP_0_16(0n);
+            if (b[i]) this.pick(b[i]);
+            else this.OP_0_16(0n);
             this.OP_BOOLOR();
-
-            this.pick(c.stackItems[i]);
-            this.OP_NUMEQUALVERIFY();
-        }
-    }
-
-    step2_or(a: SimulatedRegister, b: SimulatedRegister, c: SimulatedRegister) {
-        for (let i = 0; i < 32; i++) {
-            this.pick(a.stackItems[i]);
-            this.pick(b.stackItems[i]);
             this.OP_BOOLOR();
-            this.pick(c.stackItems[i]);
-            this.OP_NUMEQUALVERIFY();
         }
+        this.pick(c[0]);
+        this.OP_NUMEQUALVERIFY();
     }
 
-    step2_not(a: SimulatedRegister, c: SimulatedRegister) {
-        for (let i = 0; i < 32; i++) {
-            this.pick(a.stackItems[i]);
-            this.OP_NOT();
-            this.pick(c.stackItems[i]);
-            this.OP_NUMEQUALVERIFY();
+    assertAndMany(a: StackItem[], b: StackItem[], c: StackItem[]) {
+
+        this.assertZeroMany(c.slice(1));
+
+        this.OP_0_16(1n);
+        for (let i = 0; i < Math.max(a.length, b.length); i++) {
+            if (a[i]) this.pick(a[i]);
+            else this.OP_0_16(0n);
+            if (b[i]) this.pick(b[i]);
+            else this.OP_0_16(0n);
+            this.OP_BOOLAND();
+            this.OP_BOOLAND();
         }
+        this.pick(c[0]);
+        this.OP_NUMEQUALVERIFY();
+    }
+    
+    assertNotMany(a: StackItem[], c: StackItem[]) {
+
+        this.assertZeroMany(c.slice(1));
+
+        this.OP_0_16(0n);
+        for (let i = 0; i < a.length; i++) {
+            this.pick(a[i]);
+            this.OP_BOOLOR();
+        }
+
+        this.pick(c[0]);
+        this.OP_NUMEQUALVERIFY();
     }
 
-    step2_assertOne(a: SimulatedRegister) {
-        for (let i = 0; i < a.stackItems.length; i++) {
-            if (i == 0) this.assertOne(a.stackItems[i]);
-            else this.assertZero(a.stackItems[i]);
-        }
-    }
+    assertOneMany(a: StackItem[]) {
 
-    step2_assertOneNibbles(nibbles: StackItem[]) {
-        for (let i = 0; i < nibbles.length; i++) {
-            if (i == 0) this.assertOne(nibbles[i]);
-            else this.assertZero(nibbles[i]);
-        }
+        this.assertZeroMany(a.slice(1));
+        this.pick(a[0]);
+        this.OP_0_16(1n);
+        this.OP_NUMEQUALVERIFY();
     }
 
     /***  Witness decoding ***/
@@ -844,7 +849,7 @@ export class Bitcoin {
     checkPrehash(target: StackItem, prehash: StackItem, hash: bigint) {
         this.pick(prehash);
         this.OP_HASH_DEFAULT();
-        this.DATA(hash, 32);
+        this.DATA(hash);
         this.OP_EQUAL();
         this.replaceWithTop(target);
     }
@@ -997,16 +1002,61 @@ export class Bitcoin {
 
     winternitzEquivocation32(target: StackItem[], witnessA: StackItem[], witnessB: StackItem[], publicKeys: bigint[]) {
         //devide the witness in two 14 items arrays
-        this.assertNotEqualMany(witnessA, witnessB);
+        this.verifyNotEqualMany(witnessA, witnessB);
         this.winternitzDecode32(target, witnessA, publicKeys);
         this.winternitzDecode32(target, witnessB, publicKeys);
     }
 
     winternitzEquivocation256(target: StackItem[], witnessA: StackItem[], witnessB: StackItem[], publicKeys: bigint[]) {
         //devide the witness in two 14 items arrays
-        this.assertNotEqualMany(witnessA, witnessB);
+        this.verifyNotEqualMany(witnessA, witnessB);
         this.winternitzDecode256(target, witnessA, publicKeys);
         this.winternitzDecode256(target, witnessB, publicKeys);
+    }
+
+    winternitzCheck24(witness: StackItem[], publicKeys: bigint[]) {
+        const totalNibbles = 10;
+        const temp = this.newStackItem(0n);
+        const checksumNibbles: StackItem[] = [];
+        for (let i = 0; i < 2; i++) checksumNibbles.push(this.newStackItem(0n));
+        const checksum = this.newStackItem(0n);
+
+        for (let i = 0; i < totalNibbles - 2; i++) {
+            this.winternitzDecodeNibble(temp, witness[i], publicKeys[i]);
+            this.pick(checksum);
+            this.pick(temp);
+            this.OP_ADD();
+            this.replaceWithTop(checksum);
+        }
+
+        for (let i = 0; i < 2; i++) {
+            this.winternitzDecodeNibble(checksumNibbles[i], witness[totalNibbles - 2 + i], publicKeys[totalNibbles - 2 + i]);
+        }
+
+        this.DATA(7n);
+        this.pick(checksumNibbles[1]);
+        this.OP_SUB();
+
+        // * 8
+        this.OP_DUP();
+        this.OP_ADD();
+        this.OP_DUP();
+        this.OP_ADD();
+        this.OP_DUP();
+        this.OP_ADD();
+
+        this.DATA(7n);
+        this.pick(checksumNibbles[0]);
+        this.OP_SUB();
+        this.OP_ADD();
+
+        this.pick(checksum);
+        this.OP_EQUAL();
+        this.OP_VERIFY();
+
+        this.drop(checksum);
+        this.drop(temp);
+        this.drop(checksumNibbles);
     }
 
     winternitzCheck256(witness: StackItem[], publicKeys: bigint[]) {
@@ -1186,12 +1236,12 @@ export class Bitcoin {
 
     verifySignature(publicKey: bigint) {
         this.addWitness(0n);
-        this.DATA(publicKey, 32);
+        this.DATA(publicKey);
         this.OP_CHECKSIGVERIFY();
     }
 
     checkTimeout(blocks: number) {
-        this.DATA(BigInt(blocks), 3);
+        this.DATA(BigInt(blocks));
         this.OP_CHECKSEQUENCEVERIFY();
         this.OP_DROP();
     }
@@ -1238,6 +1288,18 @@ export class Bitcoin {
         }
     }
 
+    verifyIndex(keys: bigint[], indexWitness: StackItem[], indexNibbles: number[]) {
+
+        const tempIndex = this.newNibbles(90);
+        this.winternitzDecode256(tempIndex, indexWitness, keys);
+        for (let i = 0; i < indexNibbles.length; i++) {
+            this.DATA(BigInt(indexNibbles[i]), `indexNibbles_${i}`);
+            this.pick(tempIndex[i]);
+            this.OP_NUMEQUALVERIFY();
+        }
+        this.drop(tempIndex);
+    }
+
     /***  META ***/
 
     programSizeInBitcoinBytes(): number {
@@ -1261,10 +1323,10 @@ export class Bitcoin {
         }
     }
 
-    programToString(): string {
+    programToString(trimStack?: boolean): string {
 
         // program has to end with 1 on the stack
-        this.verifyEndsWithOP_1();
+        if (trimStack ?? true) this.verifyEndsWithOP_1();
 
         let s = '';
         this.opcodes.forEach(op => {
@@ -1277,10 +1339,10 @@ export class Bitcoin {
         return s;
     }
 
-    programToBinary(): Buffer {
+    programToBinary(trimStack?: boolean): Buffer {
 
         // program has to end with 1 on the stack
-        this.verifyEndsWithOP_1();
+        if (trimStack ?? true) this.verifyEndsWithOP_1();
 
         const byteArray: number[] = [];
         this.opcodes.forEach(opcode => {
@@ -1292,5 +1354,28 @@ export class Bitcoin {
             }
         });
         return Buffer.from(byteArray);
+    }
+
+    programToTemplate(trimStack?: boolean): Template {
+
+        const items: { itemId: string, index: number, sizeInBytes: number }[] = [];
+
+        // program has to end with 1 on the stack
+        if (trimStack ?? true) this.verifyEndsWithOP_1();
+
+        const byteArray: number[] = [];
+        this.opcodes.forEach(opcode => {
+            if (opcode.op == OpcodeType.DATA) {
+                byteArray.push(opcode.dataSizeInBytes!);
+                if (opcode.templateItemId && opcode.dataSizeInBytes) {
+                    items.push({ itemId: opcode.templateItemId, sizeInBytes: opcode.dataSizeInBytes, index: byteArray.length });
+                }
+                byteArray.push(...Buffer.from(padHex(opcode.data!.toString(16), opcode.dataSizeInBytes!), 'hex'));
+            } else {
+                byteArray.push(opcodeValues[opcode.op!]);
+            }
+        });
+
+        return { buffer: Buffer.from(byteArray), items };
     }
 }

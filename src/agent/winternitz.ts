@@ -3,11 +3,13 @@ import { agentConf } from "../../agent.conf";
 
 export enum WotsType {
     _256 = 'WOTS_256',
+    _24 = 'WOTS_24',
     _1 = 'WOTS_1'
 }
 
-const WOTS_NIBBLES: any = {
+export const WOTS_NIBBLES: any = {
     [WotsType._256]: 90,
+    [WotsType._24]: 10,
     [WotsType._1]: 2
 };
 
@@ -20,7 +22,7 @@ function hash(input: Buffer, times: number = 1): Buffer {
 }
 
 function getWinternitzPrivateKey(unique: string): Buffer {
-    return createHash('sha256')
+    return createHash('ripemd160')
         .update(agentConf.winternitzSecret, 'ascii')
         .update(unique)
         .digest();
@@ -44,4 +46,67 @@ export function getWinternitzPublicKeys(wotsType: WotsType, unique: string): Buf
         t.push(getWinternitzPublicKey(unique + i, 3));
     }
     return t;
+}
+
+function toNibbles(input: bigint, count: number): number[] {
+    const W = 3;
+    const nibbles: number[] = [];
+    for (let i = 0; i < count; i++) {
+        let nibble = 0;
+        for (let j = 0; j < W; j++) {
+            nibble += Number(input & 1n) << j;
+            input = input >> 1n;
+        }
+        nibbles.push(nibble);
+    }
+    return nibbles;
+}
+
+export function encodeWinternitz1(input: bigint, unique: string): Buffer[] {
+    const checksumNibbles = 1;
+    const dataNibbles = 1;
+    let output: Buffer[] = [];
+    let checksum = 0;
+    toNibbles(input, dataNibbles).forEach((nibble, i) => {
+        checksum += nibble;
+        const t = 7 - nibble;
+        output.push(hash(getWinternitzPrivateKey(unique + i), t));
+    });
+    toNibbles(BigInt(checksum), checksumNibbles).forEach((nibble, i) => {
+        output.push(hash(getWinternitzPrivateKey(unique + (dataNibbles + i)), nibble));
+    });
+    return output;
+}
+
+export function encodeWinternitz24(input: bigint, unique: string): Buffer[] {
+    const checksumNibbles = 2;
+    const dataNibbles = 8;
+    let output: Buffer[] = [];
+    let checksum = 0;
+    toNibbles(input, dataNibbles).forEach((nibble, i) => {
+        checksum += nibble;
+        const t = 7 - nibble;
+        output.push(hash(getWinternitzPrivateKey(unique + i), t));
+    });
+    toNibbles(BigInt(checksum), checksumNibbles).forEach((nibble, i) => {
+        output.push(hash(getWinternitzPrivateKey(unique + (dataNibbles + i)), nibble));
+    });
+    return output;
+}
+
+
+export function encodeWinternitz256(input: bigint, unique: string): Buffer[] {
+    const checksumNibbles = 4;
+    const dataNibbles = 86;
+    let output: Buffer[] = [];
+    let checksum = 0;
+    toNibbles(input, dataNibbles).forEach((nibble, i) => {
+        checksum += nibble;
+        const t = 7 - nibble;
+        output.push(hash(getWinternitzPrivateKey(unique + i), t));
+    });
+    toNibbles(BigInt(checksum), checksumNibbles).forEach((nibble, i) => {
+        output.push(hash(getWinternitzPrivateKey(unique + (dataNibbles + i)), nibble));
+    });
+    return output;
 }

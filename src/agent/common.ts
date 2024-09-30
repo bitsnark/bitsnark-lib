@@ -5,6 +5,8 @@ import { proof } from "./proof";
 import { verificationKey } from "./verification-key";
 import { InstrCode as Step1_InstrCode } from '../../src/generator/step1/vm/types';
 
+export const iterations = 19;
+
 export enum ProtocolStep {
     INITIAL = 'INITIAL',
     CHALLENGE = 'CHALLENGE',
@@ -40,6 +42,7 @@ export interface ScriptAndKeys {
 export interface FundingUtxo {
     txId: string;
     outputIndex: number;
+    amount: bigint;
 }
 
 export function bigintToString(n: bigint): string {
@@ -64,4 +67,15 @@ export function getSavedStep1(): SavedVm<Step1_InstrCode> {
     if (!step1_vm.success) throw new Error('Failed');
     step1_vm.optimizeRegs();
     return step1_vm.save();
+}
+
+export const twoDigits = (n: number) => n < 10 ? `0${n}` : `${n}`;
+
+export function random(bytes: number): bigint {
+    let n = 0n;
+    for (let i = 0; i < bytes; i++) {
+        n = n << 8n;
+        n += BigInt(Math.round(255 * Math.random()) & 0xff);
+    }
+    return n;
 }

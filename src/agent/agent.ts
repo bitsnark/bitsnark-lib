@@ -1,10 +1,10 @@
-import { agentConf } from "../../agent.conf";
-import { AgentRoles, FundingUtxo, saveTxToFile, stringToBigint, TransactionInfo } from "./common";
-import { CosignTxMessage, fromJson, JoinMessage, StartMessage, TxKeysMessage } from "./messages";
-import { createPresignedTransaction, PresignedTransaction } from "./py-client";
+import { agentConf, ONE_BITCOIN } from "../../agent.conf";
+import { AgentRoles, FundingUtxo, stringToBigint, TransactionInfo } from "./common";
+import { generateAllScripts } from "./generate-scripts";
+import { DoneMessage, fromJson, JoinMessage, SignaturesMessage, StartMessage, TransactionsMessage } from "./messages";
 import { SimpleContext, TelegramBot } from "./telegram";
-import { allTransactions, getNextTransactionMeta, getPrevTransactionMeta, getTransactionMeta, TransactionCreator, TransactionMeta } from "./transactions";
-import { initialize } from "./transactions-new";
+import { getTransactionByName, getTransactionFileNames, initializeTransactions, loadTransactionFromFile, Transaction, writeTransactionsToFile, writeTransactionToFile } from "./transactions-new";
+import { WOTS_NIBBLES, WotsType } from "./winternitz";
 
 interface AgentInfo {
     agentId: string;
@@ -16,16 +16,16 @@ class SetupInstance {
     myRole: AgentRoles;
     prover?: AgentInfo;
     verifier?: AgentInfo;
-    transactions: Map<string, TransactionInfo> = new Map<string, TransactionInfo>();
     proverFundingUtxo?: FundingUtxo;
     payloadUtxo?: FundingUtxo;
+    transactions?: Transaction[];
 
-    constructor(setupId: string, myRole: AgentRoles, me: AgentInfo, proverUtxo?: FundingUtxo, payloadUtxo?: FundingUtxo) {
+    constructor(setupId: string, myRole: AgentRoles, me: AgentInfo, proverFundingUtxo?: FundingUtxo, payloadUtxo?: FundingUtxo) {
         this.setupId = setupId;
         this.myRole = myRole;
         this.prover = myRole == AgentRoles.PROVER ? me : undefined;
         this.verifier = myRole == AgentRoles.VERIFIER ? me : undefined;
-        this.proverFundingUtxo = proverUtxo;
+        this.proverFundingUtxo = proverFundingUtxo;
         this.payloadUtxo = payloadUtxo;
     }
 }
@@ -55,29 +55,20 @@ export class Agent {
         return i;
     }
 
-    private generateTransaction(
-        setupId: string,
-        meta: TransactionMeta,
-        proverPublicKey: bigint,
-        verifierPublicKey: bigint,
-        wotsPublicKeys?: bigint[]): TransactionInfo {
-
-        const txi = meta.creator(setupId, proverPublicKey, verifierPublicKey, wotsPublicKeys);
-        const i = this.getInstance(setupId);
-        i.transactions.set(meta.desc, txi);
-        return txi;
-    }
-
     public messageReceived(data: string, ctx: SimpleContext): void {
         const tokens = data.split(' ');
-        if (this.role == AgentRoles.PROVER && tokens.length == 5 && tokens[0] == '/start') {
+        if (this.role == AgentRoles.PROVER && tokens.length == 1 && tokens[0] == '/start') {
 
-            this.start(ctx, tokens[1], {
-                txId: tokens[2],
-                outputIndex: Number(tokens[3])
+            const randomSetupId = '' + Math.random();
+
+            this.start(ctx, randomSetupId, {
+                txId: '000',
+                outputIndex: 0,
+                amount: ONE_BITCOIN
             }, {
-                txId: tokens[4],
-                outputIndex: Number(tokens[5])
+                txId: '111',
+                outputIndex: 0,
+                amount: ONE_BITCOIN
             });
 
         } else if (data.trim().startsWith('{') && data.trim().endsWith('}')) {
@@ -92,7 +83,13 @@ export class Agent {
         }
     }
 
+    /// PROTOCOL BEGINS
+
+    // prover sends start message
     public start(ctx: SimpleContext, setupId: string, payloadUtxo: FundingUtxo, proverUtxo: FundingUtxo) {
+
+        if (this.role != AgentRoles.PROVER)
+            throw new Error("I'm not a prover");
 
         const i = new SetupInstance(setupId, AgentRoles.PROVER, {
             agentId: this.agentId,
@@ -103,100 +100,38 @@ export class Agent {
             agentId: this.agentId,
             schnorrPublicKey: stringToBigint(this.schnorrPublicKey)
         };
+
         const msg = new StartMessage({
             setupId,
             agentId: this.agentId,
-            schnorrPublicKey: this.schnorrPublicKey
+            schnorrPublicKey: this.schnorrPublicKey,
+            payloadUtxo,
+            proverUtxo
         });
         ctx.send(msg);
     }
 
-    private async generateTxAndSign(setupId: string, transactionMeta: TransactionMeta, wotsPublicKeys?: bigint[]): Promise<{
-        txInfo: TransactionInfo,
-        pyTx: PresignedTransaction
-    }> {
-        const i = this.getInstance(setupId);
-
-        const previousTx = i.transactions.get(getPrevTransactionMeta(transactionMeta.desc)?.desc);
-
-        const currentTx = this.generateTransaction(setupId, transactionMeta, i.prover!.schnorrPublicKey, i.verifier!.schnorrPublicKey, wotsPublicKeys);
-
-        const nextTxMeta = getNextTransactionMeta(transactionMeta.desc);
-        const nextTx = nextTxMeta && this.generateTransaction(setupId, nextTxMeta, i.prover!.schnorrPublicKey, i.verifier!.schnorrPublicKey);
-
-        const schnorrPrivateKey = (agentConf.keyPairs as any)[this.agentId].private;
-        const pyTx = await createPresignedTransaction({
-            inputs: [{
-                txid: previousTx?.txId,
-                vout: 0,
-                spentOutput: {
-                    scriptPubKey: currentTx?.taprootAddress,
-                    value: agentConf.forwardedValue
-                }
-            }],
-            schnorrPrivateKey,
-            outputValue: agentConf.forwardedValue - agentConf.forwardedFeeValue, // todo decreasing outputs
-            executionScript: currentTx?.scripts[0],
-            outputScriptPubKey: nextTx.taprootAddress
-        });
-        currentTx.txId = pyTx.txid;
-        return {
-            txInfo: currentTx,
-            pyTx
-        };
-    }
-
-    // senders
-
-    private async sendTxKeysMessage(ctx: SimpleContext, setupId: string, transactionMeta: TransactionMeta) {
-        const i = this.getInstance(setupId);
-
-        const txInfo = this.generateTransaction(setupId, transactionMeta, i.prover!.schnorrPublicKey, i.verifier!.schnorrPublicKey);
-
-        const reply = new TxKeysMessage({
-            setupId,
-            agentId: this.agentId,
-            transactionDescriptor: transactionMeta.desc,
-            wotsPublicKeys: txInfo.wotsPublicKeys,
-            taproot: txInfo.taprootAddress.toString('hex')
-        });
-        ctx.send(reply);
-    }
-
-    async sendTxCosignMessage(ctx: SimpleContext, setupId: string, transactionMeta: TransactionMeta, wotsPublicKeys: bigint[]) {
-        const i = this.getInstance(setupId);
-
-        const { txInfo, pyTx } = await this.generateTxAndSign(setupId, transactionMeta, wotsPublicKeys);
-        i.transactions.set(transactionMeta.desc, txInfo);
-
-        const reply = new CosignTxMessage({
-            setupId,
-            agentId: this.agentId,
-            txDescriptor: transactionMeta.desc,
-            txSignature: pyTx.executionSignature,
-            txId: pyTx.txid
-        });
-        ctx.send(reply);
-    }
-
-    // handlers
-
-    // verifier receives start message, sends joins message
-
-    public on_start(ctx: SimpleContext, message: StartMessage) {
+    // verifier receives start message, generates transactions, sends join message
+    on_start(ctx: SimpleContext, message: StartMessage) {
         let i = this.instances.get(message.setupId);
         if (i) throw new Error('Setup instance already exists');
         i = new SetupInstance(message.setupId, AgentRoles.VERIFIER, {
             agentId: this.agentId,
-            schnorrPublicKey: stringToBigint(this.schnorrPublicKey)
-        });
+            schnorrPublicKey: stringToBigint(this.schnorrPublicKey),
+        }, message.proverUtxo, message.payloadUtxo);
         i.prover = {
             agentId: message.agentId,
             schnorrPublicKey: stringToBigint(message.schnorrPublicKey)
         };
         this.instances.set(message.setupId, i);
 
-        initialize(message.setupId, i.prover?.schnorrPublicKey, i.verifier!.schnorrPublicKey, i.payloadUtxo!, i.proverFundingUtxo!);
+        i.transactions = initializeTransactions(
+            AgentRoles.VERIFIER, 
+            i.setupId, 
+            i.prover!.schnorrPublicKey!, 
+            i.verifier!.schnorrPublicKey!, 
+            i.payloadUtxo!, 
+            i.proverFundingUtxo!);
 
         const reply = new JoinMessage({
             setupId: message.setupId,
@@ -206,8 +141,7 @@ export class Agent {
         ctx.send(reply);
     }
 
-    // prover received join message, sends first tx keys message
-
+    // prover receives join message, generates transactions
     on_join(ctx: SimpleContext, message: StartMessage) {
         const i = this.getInstance(message.setupId);
 
@@ -216,40 +150,146 @@ export class Agent {
             agentId: message.agentId,
             schnorrPublicKey: stringToBigint(message.schnorrPublicKey)
         };
-        initialize(message.setupId, i.prover?.schnorrPublicKey, i.verifier.schnorrPublicKey, i.payloadUtxo!, i.proverFundingUtxo!);
+
+        i.transactions = initializeTransactions(
+            AgentRoles.PROVER, 
+            i.setupId, 
+            i.prover!.schnorrPublicKey!, 
+            i.verifier!.schnorrPublicKey!, 
+            i.payloadUtxo!, 
+            i.proverFundingUtxo!);
+
+            this.sendTransactions(ctx, i.setupId);
     }
 
-    // prover or verifier receive tx keys, generate the tx and sign
-    // then send the next tx keys
-
-    on_txkeys(ctx: SimpleContext, message: TxKeysMessage) {
-        const i = this.getInstance(message.setupId);
-
-        const txMeta = getTransactionMeta(message.transactionDescriptor);
-        if (!txMeta) throw new Error('Transaction descriptor not found');
-
-        this.sendTxCosignMessage(ctx, message.setupId, txMeta, message.wotsPublicKeys);
+    private myWotsCheck(transactions: Transaction[]) {
+        console.log('myWotsCheck');
+        transactions.forEach(t => {
+            t.outputs.forEach(o => {
+                o.spendingConditions.forEach(sc => {
+                    if (!sc.wotsSpec) return;
+                    if (sc.nextRole != this.role) return;
+                    if (!sc.wotsPublicKeys) {
+                        console.log(t.transactionName + ' MISSING');
+                    } else if(sc.wotsSpec) {
+                        const flag = true;
+                        for (let i = 0; i < sc.wotsSpec.length; i++) {
+                            let flag = true;
+                            flag = flag && sc.wotsSpec[i] == WotsType._1 && sc.wotsPublicKeys![i].length == 2;
+                            flag = flag && sc.wotsSpec[i] == WotsType._256 && sc.wotsPublicKeys![i].length == 90;
+                        }
+                        if (!flag) console.log(t.transactionName + ' BAD');
+                    }
+                });
+            });
+        });
     }
 
-    on_cosign(ctx: SimpleContext, message: CosignTxMessage) {
+    private wotsCheck(transactions: Transaction[]) {
+        console.log('wotsCheck');
+        transactions.forEach(t => {
+            t.outputs.forEach(o => {
+                o.spendingConditions.forEach(sc => {
+                    if (sc.wotsSpec && !sc.wotsPublicKeys) {
+                        console.log(t.transactionName + ' MISSING');
+                    } else if(sc.wotsSpec) {
+                        const flag = true;
+                        for (let i = 0; i < sc.wotsSpec.length; i++) {
+                            let flag = true;
+                            flag = flag && sc.wotsSpec[i] == WotsType._1 && sc.wotsPublicKeys![i].length == 2;
+                            flag = flag && sc.wotsSpec[i] == WotsType._256 && sc.wotsPublicKeys![i].length == 90;
+                        }
+                        if (!flag) console.log(t.transactionName + ' BAD');
+                    }
+                });
+            });
+        });
+    }
+
+    // prover sends transaction structure
+    private sendTransactions(ctx: SimpleContext, setupId: string) {
+        const i = this.getInstance(setupId);
+
+        this.myWotsCheck(i.transactions!);
+
+        const transactionsMessage = new TransactionsMessage({
+            setupId,
+            transactions: i.transactions,
+            agentId: this.agentId,
+        });
+        ctx.send(transactionsMessage);
+    }
+
+    // prover or verifier receives others's transactions
+    on_transactions(ctx: SimpleContext, message: TransactionsMessage) {
         const i = this.getInstance(message.setupId);
 
-        const txMeta = getTransactionMeta(message.txDescriptor);
-        if (!txMeta) throw new Error('Transaction not found');
+        message.transactions.forEach(transaction => {
+            const myTransaction = getTransactionByName(i.transactions!, transaction.transactionName);
+            if (!myTransaction)
+                throw new Error('Invalid transaction');
+            transaction.outputs.forEach((output, outputIndex) => {
+                output.spendingConditions.forEach((sc, scIndex) => {
+                    if (!myTransaction.outputs[outputIndex].spendingConditions[scIndex].wotsSpec) return;
+                    if (myTransaction.outputs[outputIndex].spendingConditions[scIndex].nextRole == this.role) return;
+                    myTransaction.outputs[outputIndex].spendingConditions[scIndex].wotsPublicKeys = sc.wotsPublicKeys;
+                });
+            });
+        });
 
-        const txInfo = i.transactions.get(message.txDescriptor);
-        if (!txInfo) throw new Error('Transaction not found');
-
-        // TODO: verify sig
-
-        if (i.myRole == txMeta.role) {
-            this.sendTxCosignMessage(ctx, i.setupId, txMeta, txInfo.wotsPublicKeys);
+        if (this.role == AgentRoles.PROVER) {
+            this.sendSignatures(ctx, i.setupId);
         } else {
-            saveTxToFile(txInfo);
-            const nextMeta = getNextTransactionMeta(txMeta.desc);
-            if (nextMeta) {
-                this.sendTxKeysMessage(ctx, i.setupId, nextMeta);
-            }
+            this.sendTransactions(ctx, i.setupId);
+        }
+    }
+
+    /// SIGNING PHASE
+
+    // prover sends all of the signatures
+    private sendSignatures(ctx: SimpleContext, setupId: string) {
+        const i = this.getInstance(setupId);
+
+        this.wotsCheck(i.transactions!);
+
+        writeTransactionsToFile(i.setupId, i.transactions!);
+
+        generateAllScripts(i.setupId, i.transactions!);
+
+        const signed: any[] = i.transactions!.map(t => {
+            return {
+                transactionName: t.transactionName,
+                txId: '' + Math.random,
+                signature:'' + Math.random,
+            };
+        });
+
+        const signaturesMessage = new SignaturesMessage({
+            setupId: i.setupId,
+            signed
+        });
+        ctx.send(signaturesMessage);
+    }
+
+    on_signatures(ctx: SimpleContext, message: SignaturesMessage) {
+        const i = this.getInstance(message.setupId);
+
+        if (this.role == AgentRoles.PROVER) {
+
+            ctx.send(new DoneMessage({ setupId: i.setupId }));
+
+        } else {
+
+            this.sendSignatures(ctx, i.setupId);
+
+        }
+    }
+
+    on_done(ctx: SimpleContext, message: SignaturesMessage) {
+        const i = this.getInstance(message.setupId);
+
+        if (this.role == AgentRoles.VERIFIER) {
+            ctx.send(new DoneMessage({ setupId: i.setupId }));
         }
     }
 }
