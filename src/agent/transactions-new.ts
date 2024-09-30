@@ -1,7 +1,7 @@
 import fs from 'fs';
 import { TransactionNames, AgentRoles, FundingUtxo, iterations, twoDigits } from './common';
 import { getWinternitzPublicKeys, WotsType } from './winternitz';
-import { agentConf, ONE_BITCOIN } from '../../agent.conf';
+import { agentConf } from '../../agent.conf';
 import { calculateStateSizes } from './regs-calc';
 
 export const PROTOCOL_VERSION = 0.1;
@@ -308,10 +308,10 @@ function makeProtocolSteps(): Transaction[] {
         } else {
             select.outputs = [{
                 spendingConditions: [{
-                    nextRole: AgentRoles.VERIFIER,
+                    nextRole: AgentRoles.PROVER,
                     signatureType: SignatureType.BOTH,
                     wotsSpec: [
-                        WotsType._256,
+                        WotsType._24,
                         ...new Array(iterations).fill(WotsType._1)
                     ]
                 }]

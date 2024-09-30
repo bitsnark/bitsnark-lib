@@ -1256,7 +1256,7 @@ export class Bitcoin {
             this.OP_0_16(0n);
             this.replaceWithTop(temp);
 
-            for (let j = 0; j < 3; i++) {
+            for (let j = 0; j < 3; j++) {
 
                 if (j > 0) {
                     // temp = temp * 2;
@@ -1267,7 +1267,8 @@ export class Bitcoin {
                 }
 
                 // pick bit
-                this.pick(pathNibbles[i * 3 + j]);
+                if (pathNibbles[i * 3 + j]) this.pick(pathNibbles[i * 3 + j]);
+                else this.OP_0_16(0n);
                 this.OP_IF();
                 this.OP_0_16(1n);
                 this.OP_ELSE();

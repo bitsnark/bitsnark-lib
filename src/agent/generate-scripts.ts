@@ -1,5 +1,4 @@
 import { Bitcoin } from '../generator/step3/bitcoin';
-import { WotsType } from './winternitz';
 import { encodeWinternitz1, encodeWinternitz24, encodeWinternitz256, WotsType } from './winternitz';
 import { bufferToBigint160, iterations, random, TransactionNames } from './common';
 import { StackItem } from '../generator/step3/stack';
@@ -87,12 +86,12 @@ function generateSemiFinalScript(lastSelectOutput: Output, semiFinalInput: Input
 
     const pubKeys = lastSelectOutput.spendingConditions[0].wotsPublicKeys!;
 
+    const indexNibbles: StackItem[] = pubKeys[0].map(_ => bitcoin.addWitness(0n));
+
     const pathWitness: StackItem[][] = [];
     for (let i = 0; i < iterations; i++) {
-        pathWitness[i] = pubKeys[i].map(_ => bitcoin.addWitness(0n));
+        pathWitness[i] = pubKeys[i + 1].map(_ => bitcoin.addWitness(0n));
     }
-
-    const indexNibbles: StackItem[] = pubKeys[pubKeys.length - 1].map(_ => bitcoin.addWitness(0n));
 
     const pathNibbles: StackItem[] = [];
     for (let i = 0; i < iterations; i++) {
@@ -101,7 +100,7 @@ function generateSemiFinalScript(lastSelectOutput: Output, semiFinalInput: Input
         bitcoin.winternitzDecode1(
             result,
             pathWitness[i],
-            pubKeys[i].map(b => bufferToBigint160(b))
+            pubKeys[i + 1].map(b => bufferToBigint160(b))
         );
     }
 
@@ -115,11 +114,13 @@ export function generateAllScripts(setupId: string, transactions: Transaction[])
 
     transactions.forEach(t => {
 
-        if (t.transactionName == TransactionNames.FINAL) {
+        console.log('transaction name: ', t.transactionName);
+
+        if (t.transactionName == TransactionNames.PROOF_REFUTED) {
             const taproot = generateFinalStepTaproot(setupId, transactions);
-            const semi_final = getTransactionByName(transactions, TransactionNames.SEMI_FINAL);
+            const semi_final = getTransactionByName(transactions, TransactionNames.ARGUMENT);
             semi_final.outputs[0].taprootKey = taproot;
-        } else if (t.transactionName == TransactionNames.SEMI_FINAL) {
+        } else if (t.transactionName == TransactionNames.ARGUMENT) {
             const prevOutput = findOutputByInput(transactions, t.inputs[0]);
             generateSemiFinalScript(prevOutput, t.inputs[0]);
         } else {
