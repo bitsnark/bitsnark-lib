@@ -5,7 +5,7 @@ import { proof, vKey } from '../../generator/step1/constants';
 import { Bitcoin, Template } from '../../generator/step3/bitcoin';
 import { getTransactionByName, getTransactionFileNames, loadTransactionFromFile, Transaction } from '../transactions-new';
 import { bigintToNibblesLS } from './common';
-import { bufferToBigint160, iterations, twoDigits } from '../common';
+import { bufferToBigint160, iterations, TransactionNames, twoDigits } from '../common';
 import { getWinternitzPublicKeys, WOTS_NIBBLES, WotsType } from '../winternitz';
 import { step1_vm, VM as Step1_vm } from '../../generator/step1/vm/vm';
 import { StackItem } from '@src/generator/step3/stack';
@@ -95,7 +95,7 @@ export function generateFinalStepTaproot(setupId: string, transactions: Transact
     fs.mkdirSync(`./generated/scripts/${setupId}`, { recursive: true });
 
     const lastSelect = getTransactionByName(transactions, `select_${twoDigits(iterations - 1)}`);
-    const semiFinal = getTransactionByName(transactions, 'semi_final');
+    const semiFinal = getTransactionByName(transactions, TransactionNames.ARGUMENT);
 
     step1_vm.reset();
     groth16Verify(Key.fromSnarkjs(vKey), Step1_Proof.fromSnarkjs(proof));
