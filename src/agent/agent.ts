@@ -1,10 +1,11 @@
 import { agentConf, ONE_BITCOIN } from "../../agent.conf";
 import { AgentRoles, FundingUtxo, stringToBigint, TransactionInfo } from "./common";
+import { writeTransaction } from "./db";
 import { generateAllScripts } from "./generate-scripts";
 import { DoneMessage, fromJson, JoinMessage, SignaturesMessage, StartMessage, TransactionsMessage } from "./messages";
 import { SimpleContext, TelegramBot } from "./telegram";
-import { getTransactionByName, getTransactionFileNames, initializeTransactions, loadTransactionFromFile, Transaction, writeTransactionsToFile, writeTransactionToFile } from "./transactions-new";
-import { WOTS_NIBBLES, WotsType } from "./winternitz";
+import { getTransactionByName, initializeTransactions, Transaction } from "./transactions-new";
+import { WotsType } from "./winternitz";
 
 interface AgentInfo {
     agentId: string;
@@ -55,7 +56,7 @@ export class Agent {
         return i;
     }
 
-    public messageReceived(data: string, ctx: SimpleContext): void {
+    public async messageReceived(data: string, ctx: SimpleContext) {
         const tokens = data.split(' ');
         if (this.role == AgentRoles.PROVER && tokens.length == 1 && tokens[0] == '/start') {
 
@@ -78,8 +79,7 @@ export class Agent {
             if (message.agentId == this.agentId) return;
             const f = (this as any)[`on_${message.messageType}`];
             if (!f) throw new Error('Invalid dispatch');
-            f.apply(this, [ctx, message]);
-
+            await f.apply(this, [ctx, message]);
         }
     }
 
@@ -112,7 +112,7 @@ export class Agent {
     }
 
     // verifier receives start message, generates transactions, sends join message
-    on_start(ctx: SimpleContext, message: StartMessage) {
+    async on_start(ctx: SimpleContext, message: StartMessage) {
         let i = this.instances.get(message.setupId);
         if (i) throw new Error('Setup instance already exists');
         i = new SetupInstance(message.setupId, AgentRoles.VERIFIER, {
@@ -125,7 +125,8 @@ export class Agent {
         };
         this.instances.set(message.setupId, i);
 
-        i.transactions = initializeTransactions(
+        i.transactions = await initializeTransactions(
+            this.agentId,
             AgentRoles.VERIFIER, 
             i.setupId, 
             i.prover!.schnorrPublicKey!, 
@@ -142,7 +143,7 @@ export class Agent {
     }
 
     // prover receives join message, generates transactions
-    on_join(ctx: SimpleContext, message: StartMessage) {
+    async on_join(ctx: SimpleContext, message: StartMessage) {
         const i = this.getInstance(message.setupId);
 
         if (i.verifier) throw new Error('Verifier agent already registered');
@@ -151,7 +152,8 @@ export class Agent {
             schnorrPublicKey: stringToBigint(message.schnorrPublicKey)
         };
 
-        i.transactions = initializeTransactions(
+        i.transactions = await initializeTransactions(
+            this.agentId,
             AgentRoles.PROVER, 
             i.setupId, 
             i.prover!.schnorrPublicKey!, 
@@ -207,7 +209,7 @@ export class Agent {
     }
 
     // prover sends transaction structure
-    private sendTransactions(ctx: SimpleContext, setupId: string) {
+    private async sendTransactions(ctx: SimpleContext, setupId: string) {
         const i = this.getInstance(setupId);
 
         this.myWotsCheck(i.transactions!);
@@ -221,7 +223,7 @@ export class Agent {
     }
 
     // prover or verifier receives others's transactions
-    on_transactions(ctx: SimpleContext, message: TransactionsMessage) {
+    async on_transactions(ctx: SimpleContext, message: TransactionsMessage) {
         const i = this.getInstance(message.setupId);
 
         message.transactions.forEach(transaction => {
@@ -238,23 +240,25 @@ export class Agent {
         });
 
         if (this.role == AgentRoles.PROVER) {
-            this.sendSignatures(ctx, i.setupId);
+            await this.sendSignatures(ctx, i.setupId);
         } else {
-            this.sendTransactions(ctx, i.setupId);
+            await this.sendTransactions(ctx, i.setupId);
         }
     }
 
     /// SIGNING PHASE
 
     // prover sends all of the signatures
-    private sendSignatures(ctx: SimpleContext, setupId: string) {
+    private async sendSignatures(ctx: SimpleContext, setupId: string) {
         const i = this.getInstance(setupId);
 
         this.wotsCheck(i.transactions!);
 
-        writeTransactionsToFile(i.setupId, i.transactions!);
-
-        generateAllScripts(i.setupId, i.transactions!);
+        for (const t of i.transactions!) {
+            await writeTransaction(agentId, setupId, t);
+        }
+    
+        generateAllScripts(this.agentId, i.setupId, i.transactions!);
 
         const signed: any[] = i.transactions!.map(t => {
             return {
@@ -271,7 +275,7 @@ export class Agent {
         ctx.send(signaturesMessage);
     }
 
-    on_signatures(ctx: SimpleContext, message: SignaturesMessage) {
+    async on_signatures(ctx: SimpleContext, message: SignaturesMessage) {
         const i = this.getInstance(message.setupId);
 
         if (this.role == AgentRoles.PROVER) {
@@ -280,12 +284,12 @@ export class Agent {
 
         } else {
 
-            this.sendSignatures(ctx, i.setupId);
+            await this.sendSignatures(ctx, i.setupId);
 
         }
     }
 
-    on_done(ctx: SimpleContext, message: SignaturesMessage) {
+    async on_done(ctx: SimpleContext, message: SignaturesMessage) {
         const i = this.getInstance(message.setupId);
 
         if (this.role == AgentRoles.VERIFIER) {

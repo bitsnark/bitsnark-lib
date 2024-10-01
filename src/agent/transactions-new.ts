@@ -3,6 +3,7 @@ import { TransactionNames, AgentRoles, FundingUtxo, iterations, twoDigits } from
 import { getWinternitzPublicKeys, WotsType } from './winternitz';
 import { agentConf } from '../../agent.conf';
 import { calculateStateSizes } from './regs-calc';
+import { writeTransaction } from './db';
 
 export const PROTOCOL_VERSION = 0.1;
 
@@ -361,10 +362,6 @@ function assertOrder(transactions: Transaction[]) {
     });
 }
 
-const allTransactions = [...protocolStart, ...makeProtocolSteps(), ...protocolEnd];
-
-assertOrder(allTransactions);
-
 export function findOutputByInput(transactions: Transaction[], input: Input): Output {
     const tx = getTransactionByName(transactions, input.transactionName);
     const output = tx.outputs[input.outputIndex];
@@ -372,17 +369,17 @@ export function findOutputByInput(transactions: Transaction[], input: Input): Ou
     return output;
 }
 
-export function initializeTransactions(
+export async function initializeTransactions(
+    agentId: string,
     role: AgentRoles,
     setupId: string,
     proverPublicKey: bigint, verifierPublicKey: bigint,
     payloadUtxo: FundingUtxo, proverUtxo: FundingUtxo
-): Transaction[] {
+): Promise<Transaction[]> {
 
-    fs.mkdirSync(`./generated/setups/${setupId}`, { recursive: true });
-
-    const transactions: Transaction[] = allTransactions.map(t => fromJson(toJson(t)));
-
+    const transactions = [...protocolStart, ...makeProtocolSteps(), ...protocolEnd];
+    assertOrder(transactions);
+    
     const payload = getTransactionByName(transactions, TransactionNames.LOCKED_FUNDS);
     payload.txId = payloadUtxo.txId;
     payload.outputs[0].amount = payloadUtxo.amount;
@@ -430,55 +427,16 @@ export function initializeTransactions(
         });
     });
 
-    transactions.forEach(t => writeTransactionToFile(setupId, t));
+    for (const t of transactions) {
+        await writeTransaction(agentId, setupId, t);
+    }
+
     return transactions;
 }
 
-function fromJson(json: string): Transaction {
-    const obj = JSON.parse(json, (key, value) => {
-        if (typeof value === 'string' && value.startsWith('0x') && value.endsWith('n'))
-            return BigInt(value.replace('n', ''));
-        if (typeof value === 'string' && value.startsWith('hex:'))
-            return Buffer.from(value.replace('hex:', ''), 'hex');
-        return value;
-    });
-    return obj;
-}
-
-function toJson(message: Transaction, spacer?: string): string {
-    const json = JSON.stringify(message, (key, value) => {
-        if (typeof value === "bigint") return `0x${value.toString(16)}n`;
-        if (value?.type == "Buffer" && value.data) {
-            return 'hex:' + Buffer.from(value.data).toString('hex');
-        }
-        return value;
-    }, spacer);
-    return json;
-}
-
-export function writeTransactionToFile(setupId: string, transaction: Transaction) {
-    fs.writeFileSync(`./generated/setups/${setupId}/${transaction.transactionName}.json`,
-        toJson(transaction, '\t')
-    );
-}
-
-export function writeTransactionsToFile(setupId: string, transactions: Transaction[]) {
-    transactions.forEach(t => writeTransactionToFile(setupId, t));
-}
-
-export function loadTransactionFromFile(setupId: string, transactionName: string): Transaction {
-    return fromJson(fs.readFileSync(`./generated/setups/${setupId}/${transactionName}.json`).toString('ascii'));
-}
-
-export function getTransactionFileNames(setupId: string): string[] {
-    return fs.readdirSync(`./generated/setups/${setupId}`)
-        .filter(fn => fn.endsWith('.json'))
-        .map(fn => fn.replace('.json', ''));
-}
-
-const scriptName = __filename;
-if (process.argv[1] == scriptName) {
-    initializeTransactions(AgentRoles.PROVER, 'test_setup', 1n, 2n, {
+async function main() {
+    const agentId = process.argv[2] ?? 'bitsnark_prover_1';
+    await initializeTransactions(agentId, AgentRoles.PROVER, 'test_setup', 1n, 2n, {
         txId: TransactionNames.LOCKED_FUNDS,
         outputIndex: 0,
         amount: agentConf.payloadAmount
@@ -487,4 +445,9 @@ if (process.argv[1] == scriptName) {
         outputIndex: 0,
         amount: agentConf.proverStakeAmount
     });
+}
+
+const scriptName = __filename;
+if (process.argv[1] == scriptName) {
+    main();
 }

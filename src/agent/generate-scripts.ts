@@ -5,9 +5,9 @@ import { StackItem } from '../generator/step3/stack';
 import { SimpleTapTree } from './simple-taptree';
 import { agentConf } from '../../agent.conf';
 import { Buffer } from 'node:buffer';
-import { findOutputByInput, getTransactionByName, getTransactionFileNames, Input, loadTransactionFromFile, Output, PROTOCOL_VERSION, SpendingCondition, Transaction, writeTransactionToFile } from './transactions-new';
+import { findOutputByInput, getTransactionByName, Input, Output, SpendingCondition, Transaction } from './transactions-new';
 import { generateFinalStepTaproot } from './final-step/generate';
-import { setuid } from 'node:process';
+import { readTransactions, writeTransaction } from './db';
 
 function findInputsByOutput(
     transactions: Transaction[],
@@ -111,7 +111,7 @@ function generateSemiFinalScript(lastSelectOutput: Output, semiFinalInput: Input
     semiFinalInput.script = bitcoin.programToBinary();
 }
 
-export function generateAllScripts(setupId: string, transactions: Transaction[]) {
+export async function generateAllScripts(agentId: string, setupId: string, transactions: Transaction[]) {
 
     // generate wots keys where they are missing, in case we're not really in a setup process
     transactions.forEach(t => {
@@ -147,17 +147,14 @@ export function generateAllScripts(setupId: string, transactions: Transaction[])
                 input.script = script;
             });
         }
-
-        writeTransactionToFile(setupId, t);
     });
 
     // generate the taproot key for all outputs except in the semi-final tx
     setTaprootKey(transactions);
 
-    // we alreay wrote each tx inidividually, but now we want the taproot keys too
-    transactions.forEach(t => {
-        writeTransactionToFile(setupId, t);
-    });
+    for (const t of transactions) {
+        await writeTransaction(agentId, setupId, t);
+    }
 }
 
 const externallyFundedTxs: string[] = [
@@ -181,7 +178,7 @@ function calculateTransactionFee(transaction: Transaction): bigint {
     return factoredFee + 1n;
 }
 
-function addAmounts(setupId: string, transactions: Transaction[]) {
+function addAmounts(agentId: string, setupId: string, transactions: Transaction[]) {
 
     function add(transaction: Transaction) {
         if (externallyFundedTxs.includes(transaction.transactionName)) return;
@@ -200,7 +197,7 @@ function addAmounts(setupId: string, transactions: Transaction[]) {
             (totalValue, output) => totalValue + (output.amount || 0n), 0n);
 
         amountlessOutputs[0].amount = incomingAmount - existingOutputsAmount - calculateTransactionFee(transaction);
-        writeTransactionToFile(setupId, transaction);
+        writeTransaction(agentId, setupId, transaction);
     }
 
     transactions.forEach(add);
@@ -241,14 +238,17 @@ function validateTransactionFees(transactions: Transaction[]) {
     }
 }
 
-const scriptName = __filename;
-if (process.argv[1] == scriptName) {
+async function main() {
+    const agentId = process.argv[2] ?? 'bitsnark_prover_1';
     const setupId = 'test_setup';
-    const fnames = getTransactionFileNames(setupId)
-    const transactions = fnames
-        .map(name => loadTransactionFromFile(setupId, name))
-        .sort((a, b) => a.ordinal! - b.ordinal!);
-    generateAllScripts('test_setup', transactions);
-    addAmounts('test_setup', transactions);
+    const transactions = await readTransactions(agentId, setupId);
+    await generateAllScripts(agentId, 'test_setup', transactions);
+    addAmounts(agentId, 'test_setup', transactions);
     validateTransactionFees(transactions);
 }
+
+const scriptName = __filename;
+if (process.argv[1] == scriptName) {
+    main();
+}
+
