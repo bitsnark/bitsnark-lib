@@ -249,6 +249,6 @@ async function main() {
 
 const scriptName = __filename;
 if (process.argv[1] == scriptName) {
-    main();
+    main().catch(console.error);
 }
 
