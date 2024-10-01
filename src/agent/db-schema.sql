@@ -1,8 +1,6 @@
 -- Database: bitsnark
 
-DROP DATABASE IF EXISTS bitsnark;
-
-CREATE DATABASE bitsnark
+CREATE DATABASE postgres
     WITH 
     OWNER = postgres
     ENCODING = 'UTF8'
@@ -12,8 +10,6 @@ CREATE DATABASE bitsnark
     CONNECTION LIMIT = -1;
 
 -- Table: public.transaction_templates
-
-DROP TABLE IF EXISTS public.transaction_templates;
 
 CREATE TABLE IF NOT EXISTS public.transaction_templates
 (

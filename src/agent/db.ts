@@ -38,8 +38,7 @@ function unjsonizeObject(obj: any): any {
 
 async function getConnection(): Promise<Client> {
     const client = await connect({
-        user: undefined,
-        database: 'bitsnark',
+        user: 'postgres',
         host: 'localhost',
         port: undefined,
         password: '1234',
@@ -100,12 +99,34 @@ export async function readTransactionByName(agentId: string, setupId: string, tr
     }
 }
 
-export async function readTransactions(agentId: string, setupId: string): Promise<Transaction[]> {
+export async function readTransactionByTxId(agentId: string, txId: string): Promise<Transaction> {
     const client = await getConnection();
     try {
         const result = await client.query(
             `select * from ${TABLES.transaction_templates} where 
-                "${FIELDS.agentId}" = $1 AND "${FIELDS.setupId}" = $2`,
+                "${FIELDS.agentId}" = $1 AND
+                "${FIELDS.txId}" = $3`,
+            [agentId, txId]
+        );
+        const results = [...result];
+        if (results.length == 0)
+            throw new Error('Transaction not found');
+        return unjsonizeObject(results[0].get(FIELDS.object));
+
+    } catch (e) {
+        console.error(e);
+        throw e;
+    } finally {
+        await client.end();
+    }
+}
+
+export async function readTransactions(agentId: string, setupId?: string): Promise<Transaction[]> {
+    const client = await getConnection();
+    try {
+        const result = await client.query(
+            `select * from ${TABLES.transaction_templates} where 
+                "${FIELDS.agentId}" = $1 ` + setupId ? ` AND "${FIELDS.setupId}" = $2` : '',
             [agentId, setupId]
         );
         const results = [...result];
