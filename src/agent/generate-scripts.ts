@@ -45,7 +45,7 @@ function generateBoilerplate(setupId: string, transactionName: string, outputInd
         spendingCondition.signaturesPublicKeys.forEach(key => {
             bitcoin.verifySignature(key);
         });
-    }    
+    }
 
     if (spendingCondition.wotsSpec) {
 
@@ -120,7 +120,7 @@ export async function generateAllScripts(agentId: string, setupId: string, trans
                 if (sc.wotsSpec && !sc.wotsPublicKeys) {
                     sc.wotsPublicKeys = sc.wotsSpec!
                         .map((wt, dataIndex) => getWinternitzPublicKeys(
-                            wt, 
+                            wt,
                             [setupId, t.transactionName, outputIndex, scIndex, dataIndex].toString()));
                 }
             });

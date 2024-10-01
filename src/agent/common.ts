@@ -10,7 +10,6 @@ export const enum TransactionNames {
     PROVER_STAKE = 'prover_stake',
     PROOF = 'proof',
     PROOF_UNCONTESTED = 'proof_uncontested',
-    VERIFIER_PAYMENT = 'verifier_payment',
     CHALLENGE = 'challenge',
     CHALLENGE_UNCONTESTED = 'challenge_uncontested',
     STATE = 'state',
