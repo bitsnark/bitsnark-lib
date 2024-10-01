@@ -25,6 +25,32 @@ function unjsonizeObject(obj: any): any {
     return jsonParseCustom(json);
 }
 
+let tablesExistFlag = false;
+
+// create tables if don't exist
+async function createDb(client: Client) {
+    if (tablesExistFlag) return;
+    try {
+        await client.query(
+            `CREATE TABLE IF NOT EXISTS public.transaction_templates
+            (
+                "agentId" character varying NOT NULL,
+                "setupId" character varying NOT NULL,
+                name character varying NOT NULL,
+                object json NOT NULL,
+                "txId" character varying,
+                ordinal integer,
+                CONSTRAINT transaction_template_pkey PRIMARY KEY ("agentId", "setupId", name)
+            );`,
+            []
+        );
+        tablesExistFlag = true;
+    } catch (e) {
+        console.error((e as any).message);
+        throw e;
+    }
+}
+
 async function getConnection(): Promise<Client> {
     const client = await connect({
         user: 'postgres',
@@ -34,6 +60,7 @@ async function getConnection(): Promise<Client> {
         bigints: true,
         keepAlive: true
     });
+    await createDb(client);    
     return client;
 }
 
@@ -58,7 +85,7 @@ export async function writeTransaction(agentId: string, setupId: string, transac
             [agentId, setupId, transaction.transactionName, transaction.ordinal, transaction.txId, jsonizedObject]
         );
     } catch (e) {
-        console.error(e);
+        console.error((e as any).message);
         throw e;
     } finally {
         await client.end();
@@ -81,7 +108,7 @@ export async function readTransactionByName(agentId: string, setupId: string, tr
         return unjsonizeObject(results[0].get(FIELDS.object));
 
     } catch (e) {
-        console.error(e);
+        console.error((e as any).message);
         throw e;
     } finally {
         await client.end();
@@ -103,7 +130,7 @@ export async function readTransactionByTxId(agentId: string, txId: string): Prom
         return unjsonizeObject(results[0].get(FIELDS.object));
 
     } catch (e) {
-        console.error(e);
+        console.error((e as any).message);
         throw e;
     } finally {
         await client.end();
@@ -122,9 +149,10 @@ export async function readTransactions(agentId: string, setupId?: string): Promi
         return results.map(r => unjsonizeObject(r[FIELDS.object]));
 
     } catch (e) {
-        console.error(e);
+        console.error((e as any).message);
         throw e;
     } finally {
         await client.end();
     }
 }
+
