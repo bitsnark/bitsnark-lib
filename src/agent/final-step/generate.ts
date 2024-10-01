@@ -190,5 +190,5 @@ export function generateFinalStepTaproot(setupId: string, transactions: Transact
         compressor.addItem(final);
     });
 
-    return compressor.getAddress();
+    return compressor.getScriptPubkey();
 }

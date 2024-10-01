@@ -172,7 +172,7 @@ export class SimpleTapTree {
         return cat([versionBuf, keyBuf, proof]);
     }
 
-    public getAddress(): Buffer {
+    public getScriptPubkey(): Buffer {
         const taproot = bitcoin.payments.p2tr({
             internalPubkey: bigintToBuffer(this.internalPubkey),
             hash:  this.getRoot(),
@@ -214,7 +214,7 @@ export class Compressor {
         return this.data[0][0];
     }
 
-    public getAddress(): Buffer {
+    public getScriptPubkey(): Buffer {
         const taproot = bitcoin.payments.p2tr({
             internalPubkey: bigintToBuffer(this.internalPubkey),
             hash:  this.getRoot(),

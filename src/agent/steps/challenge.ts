@@ -14,7 +14,7 @@ export function createChallengeTx(setupId: string, proverPublicKey: bigint, veri
     bitcoin.verifySignature(proverPublicKey);
     bitcoin.verifySignature(verifierPublicKey);
 
-    const scripts: Buffer[] = [ 
+    const scripts: Buffer[] = [
         bitcoin.programToBinary(),
         createScriptTimeout(verifierPublicKey, blocks)
     ];
@@ -24,7 +24,7 @@ export function createChallengeTx(setupId: string, proverPublicKey: bigint, veri
         desc: 'CHALLENGE',
         setupId,
         scripts,
-        taprootAddress: stt.getAddress(),
+        taprootAddress: stt.getScriptPubkey(),
         controlBlocks: [ stt.getControlBlock(0), stt.getControlBlock(1) ],
         wotsPublicKeys: []
     };
