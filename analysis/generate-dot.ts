@@ -1,7 +1,6 @@
 import { TransactionNames, AgentRoles } from '../src/agent/common';
-import {
-    Transaction, Input, getTransactionFileNames, loadTransactionFromFile, findOutputByInput
-} from '../src/agent/transactions-new';
+import { readTransactions } from '../src/agent/db';
+import { Transaction, Input, findOutputByInput } from '../src/agent/transactions-new';
 
 const TRANSACTION_SHAPE = 'note';
 const PROVER_COLOR = 'green';
@@ -93,12 +92,14 @@ function dot(transactions: Transaction[]): string {
             ` [style=invis; weight=${weight}]`;
     }
 
-    function verticalAlignmentLines(roots: Transaction[]): string[] {
+    function verticalAlignmentLines(root: Transaction): string[] {
         const collected: { [key: string]: Transaction[] } = {
             mainSteps: [], stateUncontested: [], selectUncontested: []};
         const visited: Set<string> = new Set();
-        function collect(transaction: Transaction) {
-            if (visited.has(transaction.transactionName)) return;
+        const queue: Transaction[] = [root];
+        while(queue.length > 0) {
+            const transaction = queue.shift()!;
+            if (visited.has(transaction.transactionName)) continue;
             visited.add(transaction.transactionName);
 
             if (transaction.transactionName.startsWith(TransactionNames.STATE_UNCONTESTED))
@@ -115,18 +116,19 @@ function dot(transactions: Transaction[]): string {
 
             for(const output of index[transaction.transactionName] ?? [])
                 for(const childTransaction of output)
-                    collect(childTransaction[0]);
+                    queue.push(childTransaction[0]);
         }
-        roots.forEach(collect);
+
         return Object.entries(collected).map(
             ([name, list]) => verticalAlignmentLine(list, VERTICAL_ALIGNMENT_WEIGHTS[name]));
     }
 
     function alignmentLines(): string[] {
-        const roots = transactions.filter(transaction => transaction.inputs.length === 0);
         return [
-            horizontalAlignmentLine(roots, 'min'),
-            ...verticalAlignmentLines(roots)
+            horizontalAlignmentLine(
+                transactions.filter(transaction => transaction.inputs.length === 0), 'min'),
+            ...verticalAlignmentLines(
+                transactions.find(transaction => transaction.transactionName === TransactionNames.PROOF)!),
         ];
     }
 
@@ -139,7 +141,7 @@ function dot(transactions: Transaction[]): string {
 
 const scriptName = __filename;
 if (process.argv[1] == scriptName) {
-    const filenames = getTransactionFileNames('test_setup');
-    const transactions = filenames.map(fn => loadTransactionFromFile('test_setup', fn));
-    console.log(dot(transactions));
+    const agentId = process.argv[2] ?? 'bitsnark_prover_1';
+    const setupId = 'test_setup';
+    const transactions = readTransactions(agentId, setupId).then(transactions => console.log(dot(transactions)));
 }
