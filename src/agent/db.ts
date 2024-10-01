@@ -1,3 +1,4 @@
+import { jsonParseCustom, jsonStringifyCustom } from './common';
 import { Transaction } from './transactions-new';
 import { Client, connect } from 'ts-postgres';
 
@@ -15,25 +16,13 @@ enum FIELDS {
 }
 
 function jsonizeObject(obj: any): any {
-    const json = JSON.stringify(obj, (key, value) => {
-        if (typeof value === "bigint") return `0x${value.toString(16)}n`;
-        if (value?.type == "Buffer" && value.data) {
-            return 'hex:' + Buffer.from(value.data).toString('hex');
-        }
-        return value;
-    });
+    const json = jsonStringifyCustom(obj);
     return JSON.parse(json);
 }
 
 function unjsonizeObject(obj: any): any {
     const json = JSON.stringify(obj);
-    return JSON.parse(json, (key, value) => {
-        if (typeof value === 'string' && value.startsWith('0x') && value.endsWith('n'))
-            return BigInt(value.replace('n', ''));
-        if (typeof value === 'string' && value.startsWith('hex:'))
-            return Buffer.from(value.replace('hex:', ''), 'hex');
-        return value;
-    });
+    return jsonParseCustom(json);
 }
 
 async function getConnection(): Promise<Client> {
