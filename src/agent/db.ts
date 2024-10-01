@@ -25,6 +25,32 @@ function unjsonizeObject(obj: any): any {
     return jsonParseCustom(json);
 }
 
+let tablesExistFlag = false;
+
+// create tables if don't exist
+async function createDb(client: Client) {
+    if (tablesExistFlag) return;
+    try {
+        await client.query(
+            `CREATE TABLE IF NOT EXISTS public.transaction_templates
+            (
+                "agentId" character varying NOT NULL,
+                "setupId" character varying NOT NULL,
+                name character varying NOT NULL,
+                object json NOT NULL,
+                "txId" character varying,
+                ordinal integer,
+                CONSTRAINT transaction_template_pkey PRIMARY KEY ("agentId", "setupId", name)
+            );`,
+            []
+        );
+        tablesExistFlag = true;
+    } catch (e) {
+        console.error((e as any).message);
+        throw e;
+    }
+}
+
 async function getConnection(): Promise<Client> {
     const client = await connect({
         user: 'postgres',
@@ -34,6 +60,7 @@ async function getConnection(): Promise<Client> {
         bigints: true,
         keepAlive: true
     });
+    await createDb(client);    
     return client;
 }
 
@@ -128,3 +155,4 @@ export async function readTransactions(agentId: string, setupId?: string): Promi
         await client.end();
     }
 }
+
