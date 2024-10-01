@@ -54,6 +54,7 @@ function dot(transactions: Transaction[]): string {
             color: condition.nextRole === AgentRoles.PROVER ? PROVER_COLOR : VERIFIER_COLOR,
             style: condition.timeoutBlocks ? TIMEOUT_STYLE : undefined,
             label: condition.timeoutBlocks ? `"${condition.timeoutBlocks} blocks"` : undefined,
+            weight: childTransaction.transactionName === `${TransactionNames.SELECT_UNCONTESTED}_00` ? 100 : undefined
         });
     }
 
@@ -83,16 +84,18 @@ function dot(transactions: Transaction[]): string {
         return transaction.outputs.flatMap((output, outputIndex) => outputLine(transaction, outputIndex));
     }
 
-    function horizontalAlignmentLine(group: Transaction[], rank: string): string {
-        return `{rank=${rank}; ${group.map(transaction => transaction.transactionName).join('; ')}}`;
+    function horizontalAlignmentLines(): string[] {
+        return transactions.reduce((groups, transaction) => {
+            if (transaction.inputs.length === 0) groups[0].push(transaction);
+            else if (transaction.transactionName.match(/(state|select)_uncontested_00/)) groups[1].push(transaction);
+            return groups;
+        }, [[], []] as Transaction[][]).map((transactions) =>
+            `{rank=same; ${transactions.map((transaction: Transaction) => transaction.transactionName).join('; ')}}`
+        );
     }
 
-    function verticalAlignmentLine(transactions: Transaction[], weight: number): string {
-        return transactions.map(transaction => transaction.transactionName).join(' -> ') +
-            ` [style=invis; weight=${weight}]`;
-    }
-
-    function verticalAlignmentLines(root: Transaction): string[] {
+    function verticalAlignmentLines(): string[] {
+        const root = transactions.find(transaction => transaction.transactionName === TransactionNames.PROOF)!;
         const collected: { [key: string]: Transaction[] } = {
             mainSteps: [], stateUncontested: [], selectUncontested: []};
         const visited: Set<string> = new Set();
@@ -120,21 +123,15 @@ function dot(transactions: Transaction[]): string {
         }
 
         return Object.entries(collected).map(
-            ([name, list]) => verticalAlignmentLine(list, VERTICAL_ALIGNMENT_WEIGHTS[name]));
-    }
-
-    function alignmentLines(): string[] {
-        return [
-            horizontalAlignmentLine(
-                transactions.filter(transaction => transaction.inputs.length === 0), 'min'),
-            ...verticalAlignmentLines(
-                transactions.find(transaction => transaction.transactionName === TransactionNames.PROOF)!),
-        ];
+            ([name, list]) => list.map(transaction => transaction.transactionName).join(' -> ') +
+                ` [style=invis; weight=${VERTICAL_ALIGNMENT_WEIGHTS[name]}]`
+        );
     }
 
     return `digraph BitSnark {${['',
         ...transactions.map(transactionLine),
-        ...alignmentLines(),
+        ...horizontalAlignmentLines(),
+        ...verticalAlignmentLines(),
         ...transactions.flatMap(outputLines)
     ].join('\n\t')}\n}`;
 }
