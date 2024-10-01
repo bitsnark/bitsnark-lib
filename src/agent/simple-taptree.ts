@@ -178,7 +178,7 @@ export class SimpleTapTree {
             hash:  this.getRoot(),
             network: bitcoin.networks.bitcoin
         });
-        return Buffer.from(taproot.address!, 'utf-8');
+        return taproot.output!;
     }
 }
 
@@ -220,6 +220,6 @@ export class Compressor {
             hash:  this.getRoot(),
             network: bitcoin.networks.bitcoin
         });
-        return Buffer.from(taproot.address!, 'utf-8');
+        return taproot.output!;
     }
 }
