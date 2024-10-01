@@ -20,7 +20,7 @@
     "generate-tx": "ts-node ./src/agent/transactions-new.ts",
     "generate-scripts": "ts-node ./src/agent/generate-scripts.ts",
     "lint": "eslint --fix",
-    "tx-chart": "npm run generate-tx && ts-node ./analysis/generate-dot.ts > ./transactions.dot && dot -Tsvg ./transactions.dot > transactions.svg"
+    "tx-chart": "npm run generate-tx && ./analysis/generate-dot.sh"
   },
   "config": {
     "commitizen": {
