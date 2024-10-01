@@ -115,7 +115,7 @@ export async function readTransactions(agentId: string, setupId?: string): Promi
     try {
         const result = await client.query(
             `select * from ${TABLES.transaction_templates} where 
-                "${FIELDS.agentId}" = $1 ` + setupId ? ` AND "${FIELDS.setupId}" = $2` : '',
+                "${FIELDS.agentId}" = $1 ` + (setupId ? ` AND "${FIELDS.setupId}" = $2` : ''),
             [agentId, setupId]
         );
         const results = [...result];
