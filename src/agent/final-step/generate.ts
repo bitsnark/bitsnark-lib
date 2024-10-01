@@ -3,7 +3,7 @@ import groth16Verify, { Key, Proof as Step1_Proof } from '../../generator/step1/
 import { InstrCode, Instruction, InstrCode as Step1_InstrCode } from '../../generator/step1/vm/types';
 import { proof, vKey } from '../../generator/step1/constants';
 import { Bitcoin, Template } from '../../generator/step3/bitcoin';
-import { getTransactionByName, getTransactionFileNames, loadTransactionFromFile, Transaction } from '../transactions-new';
+import { getTransactionByName, Transaction } from '../transactions-new';
 import { bigintToNibblesLS } from './common';
 import { bufferToBigint160, iterations, TransactionNames, twoDigits } from '../common';
 import { getWinternitzPublicKeys, WOTS_NIBBLES, WotsType } from '../winternitz';
@@ -195,11 +195,4 @@ export function generateFinalStepTaproot(setupId: string, transactions: Transact
     });
 
     return compressor.getRoot();
-}
-
-var scriptName = __filename;
-if (process.argv[1] == scriptName) {
-    const filenames = getTransactionFileNames('test_setup');
-    const transactions = filenames.map(fn => loadTransactionFromFile('test_setup', fn));
-    generateFinalStepTaproot('test_setup', transactions);
 }

@@ -60,6 +60,13 @@ export interface FundingUtxo {
     txId: string;
     outputIndex: number;
     amount: bigint;
+    serializedTransaction?: Buffer;
+}
+
+export interface OperatorState {
+    role: AgentRoles;
+    lastTransactionReceieved: TransactionNames;
+    lastTransactionSent: TransactionNames;
 }
 
 export function bigintToString(n: bigint): string {
@@ -96,3 +103,5 @@ export function random(bytes: number): bigint {
     }
     return n;
 }
+
+
