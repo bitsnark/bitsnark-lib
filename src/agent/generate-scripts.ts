@@ -47,6 +47,10 @@ function generateBoilerplate(setupId: string, transactionName: string, outputInd
         });
     }
 
+    if (spendingCondition.timeoutBlocks) {
+        bitcoin.checkTimeout(spendingCondition.timeoutBlocks);
+    }
+
     if (spendingCondition.wotsSpec) {
 
         spendingCondition.exampleWitness = [];

@@ -12,8 +12,16 @@ interface AgentInfo {
     schnorrPublicKey: bigint;
 }
 
+enum SetupState {
+    HELLO,
+    TRANSACTIONS,
+    SIGNATURES,
+    DONE
+}
+
 class SetupInstance {
     setupId: string;
+    state: SetupState = SetupState.HELLO;
     myRole: AgentRoles;
     prover?: AgentInfo;
     verifier?: AgentInfo;
@@ -79,14 +87,18 @@ export class Agent {
             if (message.agentId == this.agentId) return;
             const f = (this as any)[`on_${message.messageType}`];
             if (!f) throw new Error('Invalid dispatch');
-            await f.apply(this, [ctx, message]);
+            try {
+                await f.apply(this, [ctx, message]);
+            } catch (e) {
+                console.error(e);
+            }
         }
     }
 
     /// PROTOCOL BEGINS
 
     // prover sends start message
-    public start(ctx: SimpleContext, setupId: string, payloadUtxo: FundingUtxo, proverUtxo: FundingUtxo) {
+    public async start(ctx: SimpleContext, setupId: string, payloadUtxo: FundingUtxo, proverUtxo: FundingUtxo) {
 
         if (this.role != AgentRoles.PROVER)
             throw new Error("I'm not a prover");
@@ -101,6 +113,8 @@ export class Agent {
             schnorrPublicKey: stringToBigint(this.schnorrPublicKey)
         };
 
+        i.state = SetupState.HELLO;
+
         const msg = new StartMessage({
             setupId,
             agentId: this.agentId,
@@ -108,13 +122,15 @@ export class Agent {
             payloadUtxo,
             proverUtxo
         });
-        ctx.send(msg);
+        await ctx.send(msg);
     }
 
     // verifier receives start message, generates transactions, sends join message
     async on_start(ctx: SimpleContext, message: StartMessage) {
         let i = this.instances.get(message.setupId);
-        if (i) throw new Error('Setup instance already exists');
+        if (i) 
+            throw new Error('Setup instance already exists');
+
         i = new SetupInstance(message.setupId, AgentRoles.VERIFIER, {
             agentId: this.agentId,
             schnorrPublicKey: stringToBigint(this.schnorrPublicKey),
@@ -127,26 +143,32 @@ export class Agent {
 
         i.transactions = await initializeTransactions(
             this.agentId,
-            AgentRoles.VERIFIER, 
-            i.setupId, 
-            i.prover!.schnorrPublicKey!, 
-            i.verifier!.schnorrPublicKey!, 
-            i.payloadUtxo!, 
+            AgentRoles.VERIFIER,
+            i.setupId,
+            i.prover!.schnorrPublicKey!,
+            i.verifier!.schnorrPublicKey!,
+            i.payloadUtxo!,
             i.proverFundingUtxo!);
+
+        i.state = SetupState.TRANSACTIONS;
 
         const reply = new JoinMessage({
             setupId: message.setupId,
             agentId: this.agentId,
             schnorrPublicKey: this.schnorrPublicKey
         });
-        ctx.send(reply);
+        await ctx.send(reply);
     }
 
     // prover receives join message, generates transactions
     async on_join(ctx: SimpleContext, message: StartMessage) {
         const i = this.getInstance(message.setupId);
+        if (i.state != SetupState.HELLO)
+            throw new Error('Invalid state');
 
-        if (i.verifier) throw new Error('Verifier agent already registered');
+        if (i.verifier)
+            throw new Error('Verifier agent already registered');
+
         i.verifier = {
             agentId: message.agentId,
             schnorrPublicKey: stringToBigint(message.schnorrPublicKey)
@@ -154,14 +176,15 @@ export class Agent {
 
         i.transactions = await initializeTransactions(
             this.agentId,
-            AgentRoles.PROVER, 
-            i.setupId, 
-            i.prover!.schnorrPublicKey!, 
-            i.verifier!.schnorrPublicKey!, 
-            i.payloadUtxo!, 
+            AgentRoles.PROVER,
+            i.setupId,
+            i.prover!.schnorrPublicKey!,
+            i.verifier!.schnorrPublicKey!,
+            i.payloadUtxo!,
             i.proverFundingUtxo!);
 
-            this.sendTransactions(ctx, i.setupId);
+        i.state = SetupState.TRANSACTIONS;
+        this.sendTransactions(ctx, i.setupId);
     }
 
     private myWotsCheck(transactions: Transaction[]) {
@@ -173,7 +196,7 @@ export class Agent {
                     if (sc.nextRole != this.role) return;
                     if (!sc.wotsPublicKeys) {
                         console.log(t.transactionName + ' MISSING');
-                    } else if(sc.wotsSpec) {
+                    } else if (sc.wotsSpec) {
                         const flag = true;
                         for (let i = 0; i < sc.wotsSpec.length; i++) {
                             let flag = true;
@@ -194,7 +217,7 @@ export class Agent {
                 o.spendingConditions.forEach(sc => {
                     if (sc.wotsSpec && !sc.wotsPublicKeys) {
                         console.log(t.transactionName + ' MISSING');
-                    } else if(sc.wotsSpec) {
+                    } else if (sc.wotsSpec) {
                         const flag = true;
                         for (let i = 0; i < sc.wotsSpec.length; i++) {
                             let flag = true;
@@ -219,12 +242,14 @@ export class Agent {
             transactions: i.transactions,
             agentId: this.agentId,
         });
-        ctx.send(transactionsMessage);
+        await ctx.send(transactionsMessage);
     }
 
     // prover or verifier receives others's transactions
     async on_transactions(ctx: SimpleContext, message: TransactionsMessage) {
         const i = this.getInstance(message.setupId);
+        if (i.state != SetupState.TRANSACTIONS)
+            throw new Error('Invalid state');
 
         message.transactions.forEach(transaction => {
             const myTransaction = getTransactionByName(i.transactions!, transaction.transactionName);
@@ -237,12 +262,16 @@ export class Agent {
                     myTransaction.outputs[outputIndex].spendingConditions[scIndex].wotsPublicKeys = sc.wotsPublicKeys;
                 });
             });
-        });
+        });        
+
+        i.state = SetupState.SIGNATURES;
 
         if (this.role == AgentRoles.PROVER) {
-            await this.sendSignatures(ctx, i.setupId);
+            generateAllScripts(this.agentId, i.setupId, i.transactions!);            
+            this.sendSignatures(ctx, i.setupId);
         } else {
             await this.sendTransactions(ctx, i.setupId);
+            generateAllScripts(this.agentId, i.setupId, i.transactions!);            
         }
     }
 
@@ -257,14 +286,12 @@ export class Agent {
         for (const t of i.transactions!) {
             await writeTransaction(agentId, setupId, t);
         }
-    
-        generateAllScripts(this.agentId, i.setupId, i.transactions!);
 
         const signed: any[] = i.transactions!.map(t => {
             return {
                 transactionName: t.transactionName,
                 txId: '' + Math.random,
-                signature:'' + Math.random,
+                signature: '' + Math.random,
             };
         });
 
@@ -272,38 +299,40 @@ export class Agent {
             setupId: i.setupId,
             signed
         });
-        ctx.send(signaturesMessage);
+        await ctx.send(signaturesMessage);
     }
 
     async on_signatures(ctx: SimpleContext, message: SignaturesMessage) {
         const i = this.getInstance(message.setupId);
+        if (i.state != SetupState.SIGNATURES)
+            throw new Error('Invalid state');
 
-        if (this.role == AgentRoles.PROVER) {
-
-            ctx.send(new DoneMessage({ setupId: i.setupId }));
-
+        i.state = SetupState.DONE;
+        
+        if (this.role == AgentRoles.PROVER) {    
+            await ctx.send(new DoneMessage({ setupId: i.setupId }));
         } else {
-
             await this.sendSignatures(ctx, i.setupId);
-
         }
     }
 
     async on_done(ctx: SimpleContext, message: SignaturesMessage) {
         const i = this.getInstance(message.setupId);
+        if (i.state != SetupState.DONE)
+            throw new Error('Invalid state');
 
         if (this.role == AgentRoles.VERIFIER) {
-            ctx.send(new DoneMessage({ setupId: i.setupId }));
+            await ctx.send(new DoneMessage({ setupId: i.setupId }));
         }
     }
 }
 
-console.log('Starting...');
+console.log('Starting');
 
 const agentId = process.argv[2] ?? 'bitsnark_prover_1';
 const role = agentId.indexOf('prover') >= 0 ? AgentRoles.PROVER : AgentRoles.VERIFIER;
 
 const agent = new Agent(agentId, role);
 agent.launch().then(() => {
-    console.log('Quitting...');
+    console.log('Quitting');
 });
