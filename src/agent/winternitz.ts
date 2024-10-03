@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { agentConf } from "../../agent.conf";
+import { agentConf } from "./agent.conf";
 
 export enum WotsType {
     _256 = 'WOTS_256',

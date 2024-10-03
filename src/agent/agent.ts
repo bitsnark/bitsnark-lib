@@ -1,4 +1,4 @@
-import { agentConf, ONE_BITCOIN } from "../../agent.conf";
+import { agentConf, ONE_BITCOIN } from "./agent.conf";
 import { AgentRoles, FundingUtxo, stringToBigint, TransactionInfo } from "./common";
 import { writeTransaction } from "./db";
 import { generateAllScripts } from "./generate-scripts";

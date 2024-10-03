@@ -1,7 +1,7 @@
 import fs from 'fs';
 import { TransactionNames, AgentRoles, FundingUtxo, iterations, twoDigits } from './common';
 import { getWinternitzPublicKeys, WotsType } from './winternitz';
-import { agentConf } from '../../agent.conf';
+import { agentConf } from './agent.conf';
 import { calculateStateSizes } from './regs-calc';
 import { writeTransaction } from './db';
 

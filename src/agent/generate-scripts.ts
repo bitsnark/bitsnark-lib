@@ -3,7 +3,7 @@ import { encodeWinternitz1, encodeWinternitz24, encodeWinternitz256, getWinterni
 import { bufferToBigint160, iterations, random, TransactionNames } from './common';
 import { StackItem } from '../generator/step3/stack';
 import { SimpleTapTree } from './simple-taptree';
-import { agentConf } from '../../agent.conf';
+import { agentConf } from './agent.conf';
 import { Buffer } from 'node:buffer';
 import { findOutputByInput, getTransactionByName, Input, Output, SpendingCondition, Transaction } from './transactions-new';
 import { generateFinalStepTaproot } from './final-step/generate';
