@@ -15,12 +15,12 @@ export class SimpleContext {
         this.ctx = ctx;
     }
 
-    send(data: any) {
+    async send(data: any) {
         const text = toJson(data);
         if (text.length < 10 * 1024) {
-            this.ctx.reply(text);
+            await this.ctx.reply(text);
         } else {
-            this.ctx.sendDocument({ 
+            await this.ctx.sendDocument({ 
                 source: Buffer.from(text, 'ascii'),
                 filename: `${data.constructor.name}.txt`
             });
