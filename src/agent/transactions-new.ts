@@ -410,7 +410,7 @@ export async function initializeTransactions(
         });
     });
 
-    // copy timeots from input to output for indexer
+    // copy timeouts from input to output for indexer
     transactions.forEach(t => {
         t.inputs.forEach((input, inputIndex) => {
             const output = findOutputByInput(transactions, input);
