@@ -95,7 +95,9 @@ npm test
 ### Generating the Transactions
 
 ```sh
-npm run generate
+npm run start-db
+npm run generate-tx
+npm run generate-scripts
 ```
 
 ## Future Plans

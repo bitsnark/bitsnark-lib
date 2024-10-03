@@ -1,62 +1,37 @@
 import { TransactionNames, AgentRoles } from '../src/agent/common';
-import {
-    Transaction, Input, getTransactionFileNames, loadTransactionFromFile, findOutputByInput
-} from '../src/agent/transactions-new';
+import { readTransactions } from '../src/agent/db';
+import { Transaction, Input, findOutputByInput } from '../src/agent/transactions-new';
 
 const TRANSACTION_SHAPE = 'note';
 const PROVER_COLOR = 'green';
 const VERIFIER_COLOR = 'blue';
 const TIMEOUT_STYLE = 'dashed';
-const DEFAULT_WEIGHT = 1;
-const TIMEOUT_WEIGHT = 1;
-const LOCKED_WEIGHT = 1;
-const SELECT_AND_STATE_WEIGHT = 1;
 const OUTPUT_NODE_PROPERTIES = {shape: 'point'};
-const OUTPUT_EDGE_PROPERTIES = {weight: 1, arrowhead: 'none'};
+const OUTPUT_EDGE_PROPERTIES = {arrowhead: 'none'};
+const LOCKED_FUNDS_OUTPUT_WEIGHT = 20;
+const VERTICAL_ALIGNMENT_WEIGHTS: { [key: string]: number } = {
+    mainSteps: 20,
+    stateUncontested: 40,
+    selectUncontested: 0
+};
 
 function dot(transactions: Transaction[]): string {
 
+    const index: { [key: string]: [Transaction, Input][][] } = transactions.reduce(
+        (index: { [key: string]: [Transaction, Input][][] }, transaction) => {
+            transaction.inputs.forEach(input => {
+                index[input.transactionName] ??= [];
+                index[input.transactionName][input.outputIndex] ??= [];
+                index[input.transactionName][input.outputIndex].push([transaction, input]);
+            });
+            return index;
+        }, {});
 
     function properties(properties: { [key: string]: string | number | undefined }): string {
         return `[${Object.entries(properties)
             .filter(([_, value]) => value !== undefined)
             .map(([key, value]) => `${key}=${value}`)
             .join('; ')}]`;
-    }
-
-    function inputProperties(transaction: Transaction, input: Input): string {
-        const output = findOutputByInput(transactions, input);
-        const condition = output.spendingConditions[input.spendingConditionIndex];
-        const style = condition.timeoutBlocks ? TIMEOUT_STYLE : undefined;
-        let weight = DEFAULT_WEIGHT;
-        let label;
-        if (input.transactionName === TransactionNames.LOCKED_FUNDS) weight = LOCKED_WEIGHT;
-        else if (condition.timeoutBlocks) {
-            weight = TIMEOUT_WEIGHT;
-            label = `"timelocked for ${condition.timeoutBlocks} blocks"`;
-
-        } else {
-            const stateOrSelectMatches = [transaction.transactionName, input.transactionName].map(
-                name => name?.match(/^(select|state)_(\d{2})$/)).filter(Boolean);
-            if (
-                (stateOrSelectMatches[0]?.[1] === 'state' && stateOrSelectMatches[1]?.[1] === 'select') ||
-                (stateOrSelectMatches[0]?.[1] === 'select' && stateOrSelectMatches[1]?.[1] === 'state')
-            ) weight = SELECT_AND_STATE_WEIGHT;
-        }
-        return properties({ style, weight, label });
-    }
-
-    function inputLine(transaction: Transaction, input: Input): string {
-        return `${input.transactionName}_output_${input.outputIndex} -> ${transaction.transactionName} ` +
-            `${inputProperties(transaction, input)}`;
-    }
-
-    function outputLines(transaction: Transaction, outputIndex: number): string[] {
-        return [
-            `${transaction.transactionName}_output_${outputIndex} ${properties(OUTPUT_NODE_PROPERTIES)}`,
-            `${transaction.transactionName} -> ${transaction.transactionName}_output_${outputIndex} ` +
-                `${properties(OUTPUT_EDGE_PROPERTIES)}`
-        ];
     }
 
     function transactionProperties(transaction: Transaction): string {
@@ -67,21 +42,103 @@ function dot(transactions: Transaction[]): string {
         });
     }
 
-    function transactionLines(transaction: Transaction): string[] {
-        return [
-            `${transaction.transactionName} ${transactionProperties(transaction)}`,
-            ...transaction.inputs.map(input => inputLine(transaction, input)),
-            ...transaction.outputs.flatMap((_, outputIndex) => outputLines(transaction, outputIndex))
-        ];
+    function transactionLine(transaction: Transaction): string {
+        return `${transaction.transactionName} ${transactionProperties(transaction)}`;
     }
 
-    return `digraph BitSnark {${transactions.reduce((dot, transaction) => dot +
-        `\n\t${transactionLines(transaction).join('\n\t')}`, '')}\n}`;
+    function edgeProperties(
+        transaction: Transaction, outputIndex: number, childTransaction: Transaction, childInput: Input
+    ): string {
+        const condition = transaction.outputs[outputIndex].spendingConditions[childInput.spendingConditionIndex];
+        return properties({
+            color: condition.nextRole === AgentRoles.PROVER ? PROVER_COLOR : VERIFIER_COLOR,
+            style: condition.timeoutBlocks ? TIMEOUT_STYLE : undefined,
+            label: condition.timeoutBlocks ? `"${condition.timeoutBlocks} blocks"` : undefined,
+            weight: childTransaction.transactionName === `${TransactionNames.SELECT_UNCONTESTED}_00` ? 100 : undefined
+        });
+    }
+
+    function isMultiparousOutput(transaction: Transaction, outputIndex: number): boolean {
+        return (
+            index[transaction.transactionName] &&
+            index[transaction.transactionName][outputIndex] &&
+            index[transaction.transactionName][outputIndex].length > 1) || false;
+    }
+
+    function outputLine(transaction: Transaction, outputIndex: number): string[] {
+        const isMulti = isMultiparousOutput(transaction, outputIndex);
+        const connection = transaction.transactionName + (isMulti ? `_output_${outputIndex}` : '');
+        return [
+            ...(isMulti ? [
+                `${connection} ${properties(OUTPUT_NODE_PROPERTIES)}`,
+                `${transaction.transactionName} -> ${connection} ${properties({...OUTPUT_EDGE_PROPERTIES, weight: (
+                    transaction.transactionName === TransactionNames.LOCKED_FUNDS ?
+                        LOCKED_FUNDS_OUTPUT_WEIGHT : undefined
+                )})}`] : []),
+            ...((index[transaction.transactionName] && index[transaction.transactionName][outputIndex].map(
+                ([childTransaction, input]) => `${connection} -> ${childTransaction.transactionName} `
+                    + `${edgeProperties(transaction, outputIndex, childTransaction, input)}`)) ?? [])
+        ];}
+
+    function outputLines(transaction: Transaction): string[] {
+        return transaction.outputs.flatMap((output, outputIndex) => outputLine(transaction, outputIndex));
+    }
+
+    function horizontalAlignmentLines(): string[] {
+        return transactions.reduce((groups, transaction) => {
+            if (transaction.inputs.length === 0) groups[0].push(transaction);
+            else if (transaction.transactionName.match(/(state|select)_uncontested_00/)) groups[1].push(transaction);
+            return groups;
+        }, [[], []] as Transaction[][]).map((transactions) =>
+            `{rank=same; ${transactions.map((transaction: Transaction) => transaction.transactionName).join('; ')}}`
+        );
+    }
+
+    function verticalAlignmentLines(): string[] {
+        const root = transactions.find(transaction => transaction.transactionName === TransactionNames.PROOF)!;
+        const collected: { [key: string]: Transaction[] } = {
+            mainSteps: [], stateUncontested: [], selectUncontested: []};
+        const visited: Set<string> = new Set();
+        const queue: Transaction[] = [root];
+        while(queue.length > 0) {
+            const transaction = queue.shift()!;
+            if (visited.has(transaction.transactionName)) continue;
+            visited.add(transaction.transactionName);
+
+            if (transaction.transactionName.startsWith(TransactionNames.STATE_UNCONTESTED))
+                collected.stateUncontested.push(transaction);
+            else if (transaction.transactionName.startsWith(TransactionNames.SELECT_UNCONTESTED))
+                collected.selectUncontested.push(transaction);
+            else if (
+                transaction.transactionName === TransactionNames.PROOF ||
+                transaction.transactionName.startsWith(TransactionNames.STATE) ||
+                transaction.transactionName.startsWith(TransactionNames.SELECT) ||
+                transaction.transactionName === TransactionNames.ARGUMENT ||
+                transaction.transactionName === TransactionNames.PROOF_REFUTED
+            ) collected.mainSteps.push(transaction);
+
+            for(const output of index[transaction.transactionName] ?? [])
+                for(const childTransaction of output)
+                    queue.push(childTransaction[0]);
+        }
+
+        return Object.entries(collected).map(
+            ([name, list]) => list.map(transaction => transaction.transactionName).join(' -> ') +
+                ` [style=invis; weight=${VERTICAL_ALIGNMENT_WEIGHTS[name]}]`
+        );
+    }
+
+    return `digraph BitSnark {${['',
+        ...transactions.map(transactionLine),
+        ...horizontalAlignmentLines(),
+        ...verticalAlignmentLines(),
+        ...transactions.flatMap(outputLines)
+    ].join('\n\t')}\n}`;
 }
 
 const scriptName = __filename;
 if (process.argv[1] == scriptName) {
-    const filenames = getTransactionFileNames('test_setup');
-    const transactions = filenames.map(fn => loadTransactionFromFile('test_setup', fn));
-    console.log(dot(transactions));
+    const agentId = process.argv[2] ?? 'bitsnark_prover_1';
+    const setupId = 'test_setup';
+    const transactions = readTransactions(agentId, setupId).then(transactions => console.log(dot(transactions)));
 }
