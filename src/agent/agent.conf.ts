@@ -1,9 +1,26 @@
 export const ONE_SATOSHI = 1n;
 export const ONE_BITCOIN = ONE_SATOSHI * (10n ** 8n);
 
-export const agentConf = {
+interface AgentConf {
 
-    internalPubkey: process.env['INTERNAL_PUBKEY'] ?? 0x55adf4e8967fbd2e29f20ac896e60c3b0f1d5b0efa9d34941b5958c7b0a0312dn,
+    internalPubkey: bigint;
+    timeoutBlocks: number;
+    smallTimeoutBlocks: number;
+    largeTimeoutBlocks: number;
+    payloadAmount: bigint;
+    proverStakeAmount: bigint;
+    verifierPaymentAmount: bigint;
+    symbolicOutputAmount: bigint;
+    feePerByte: bigint;
+    feeFactorPercent: number;
+    winternitzSecret: string;
+    tokens: { [key: string]: string };
+    keyPairs: { [key: string]: { public: string, private: string } };
+};
+
+export const agentConf: AgentConf = {
+
+    internalPubkey: BigInt(process.env['INTERNAL_PUBKEY'] ?? '0x55adf4e8967fbd2e29f20ac896e60c3b0f1d5b0efa9d34941b5958c7b0a0312d'),
 
     timeoutBlocks: 5,
     smallTimeoutBlocks: 6,
