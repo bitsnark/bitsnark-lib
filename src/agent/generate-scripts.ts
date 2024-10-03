@@ -31,7 +31,7 @@ function setTaprootKey(transactions: Transaction[]) {
             });
             if (!output.taprootKey && scripts && scripts.length > 0) {
                 const stt = new SimpleTapTree(agentConf.internalPubkey, scripts);
-                output.taprootKey = stt.getAddress();
+                output.taprootKey = stt.getScriptPubkey();
             }
         });
     });

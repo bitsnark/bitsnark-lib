@@ -1,4 +1,6 @@
 import { createHash } from "crypto";
+import * as bitcoin from 'bitcoinjs-lib';
+import * as ecc from 'tiny-secp256k1';
 
 const taprootVersion = 0xc0;
 const p = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2Fn;
@@ -6,6 +8,8 @@ const SECP256K1_ORDER = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E
 const G = [
     0x79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798n,
     0x483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8n];
+
+bitcoin.initEccLib(ecc);
 
 type Point = bigint[] | null;
 
@@ -127,8 +131,6 @@ export class SimpleTapTree {
     constructor(internalPubkey: bigint, scripts: Buffer[]) {
         this.internalPubkey = internalPubkey;
         this.scripts = scripts;
-        const n = 2 ** Math.ceil(Math.log2(this.scripts.length));
-        while (this.scripts.length < n) this.scripts.push(Buffer.from([]));
     }
 
     getRoot(): Buffer {
@@ -136,7 +138,9 @@ export class SimpleTapTree {
         while (temp.length > 1) {
             const other: Buffer[] = [];
             while (temp.length > 0) {
-                other.push(combineHashes(temp.shift()!, temp.shift()!));
+                const left = temp.shift()!;
+                const right = temp.shift() ?? left;
+                other.push(combineHashes(left, right));
             }
             temp = other;
         }
@@ -168,10 +172,13 @@ export class SimpleTapTree {
         return cat([versionBuf, keyBuf, proof]);
     }
 
-    public getAddress(): Buffer {
-        const h = this.getRoot();
-        const [_, output_pubkey] = taprootTweakPubkey(this.internalPubkey, h);
-        return Buffer.concat([Buffer.from([0x51, 0x20]), output_pubkey]);
+    public getScriptPubkey(): Buffer {
+        const taproot = bitcoin.payments.p2tr({
+            internalPubkey: bigintToBuffer(this.internalPubkey),
+            hash:  this.getRoot(),
+            network: bitcoin.networks.bitcoin
+        });
+        return taproot.output!;
     }
 }
 
@@ -180,8 +187,9 @@ export class Compressor {
     data: Buffer[][] = [];
     counter: number = 0;
 
-    constructor(private depth: number) {
+    constructor(private depth: number, private internalPubkey: bigint) {
         this.data = new Array(depth).fill([]);
+        this.internalPubkey = internalPubkey;
     }
 
     addItem(script: Buffer) {
@@ -204,5 +212,14 @@ export class Compressor {
         while (this.counter < 2 ** this.depth) this.addItem(Buffer.alloc(0));
         this.compress();
         return this.data[0][0];
+    }
+
+    public getScriptPubkey(): Buffer {
+        const taproot = bitcoin.payments.p2tr({
+            internalPubkey: bigintToBuffer(this.internalPubkey),
+            hash:  this.getRoot(),
+            network: bitcoin.networks.bitcoin
+        });
+        return taproot.output!;
     }
 }

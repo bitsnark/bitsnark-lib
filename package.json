@@ -19,7 +19,8 @@
     "test": "jest",
     "generate-tx": "ts-node ./src/agent/transactions-new.ts",
     "generate-scripts": "ts-node ./src/agent/generate-scripts.ts",
-    "lint": "eslint --fix",
+    "lint": "eslint",
+    "lint-fix": "eslint --fix",
     "tx-chart": "npm run generate-tx && ./analysis/generate-dot.sh",
     "start-db": "docker run --name postgres -e POSTGRES_PASSWORD=1234 -d -p 5432:5432 postgres"
   },

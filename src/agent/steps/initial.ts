@@ -28,7 +28,6 @@ function createScriptInitial(proverPublicKey: bigint, verifierPublicKey: bigint,
     }
 
     const encodedWitness: bigint[] = [];
-    
         data.forEach((w, i) => {
             const chunkIndex = getEncodingIndexForPat(ProtocolStep.INITIAL, 0, i);
             const buffer = encodeWinternitz256(w, chunkIndex);
@@ -58,7 +57,7 @@ export function createInitialTx(setupId: string, proverPublicKey: bigint, verifi
         desc: 'INITIAL',
         setupId,
         scripts,
-        taprootAddress: stt.getAddress(),
+        taprootAddress: stt.getScriptPubkey(),
         controlBlocks: [ stt.getControlBlock(0), stt.getControlBlock(1) ],
         wotsPublicKeys: initialScriptAndKeys.wotsPublicKeys,
         value: agentConf.forwardedValue

@@ -31,7 +31,7 @@ export function createStep1PatPartTx(iteration: number, setupId: string, proverP
         desc: 'STEP1_' +  iteration,
         setupId,
         scripts,
-        taprootAddress: stt.getAddress(),
+        taprootAddress: stt.getScriptPubkey(),
         controlBlocks: [stt.getControlBlock(0), stt.getControlBlock(1)],
         wotsPublicKeys: []
     };
@@ -61,7 +61,7 @@ export function createStep1VicPartTx(iteration: number, setupId: string, proverP
         desc: `STEP1_V_${numToStr2Digits(iteration)}`,
         setupId,
         scripts,
-        taprootAddress: stt.getAddress(),
+        taprootAddress: stt.getScriptPubkey(),
         controlBlocks: [stt.getControlBlock(0), stt.getControlBlock(1)],
         wotsPublicKeys: []
     };
