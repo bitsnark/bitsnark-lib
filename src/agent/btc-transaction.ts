@@ -1,7 +1,21 @@
-import { readTransaction } from '@bitauth/libauth';
 import * as bitcoinlib from 'bitcoinjs-lib';
-import { readTransactionByTxId, readTransactions } from './db';
-import { Transaction } from './transactions-new';
+import { readTransactions } from './db';
+import { Input, Transaction } from './transactions-new';
+
+
+// TODO
+
+export function generateTransaction(template: Transaction) {
+    const btctx = new bitcoinlib.Transaction();
+    for (const input of template.inputs) {
+        btctx.addInput(input.transactionId!, input.outputIndex);
+    }
+    for (const output of template.outputs) {
+        btctx.addOutput(output.taprootKey!, Number(output.amount));
+    }
+    btctx.getId
+}
+
 
 // TODO
 

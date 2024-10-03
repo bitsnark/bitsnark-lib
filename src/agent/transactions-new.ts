@@ -38,6 +38,7 @@ export interface Output {
     taprootKey?: Buffer;
     amount?: bigint;
     spendingConditions: SpendingCondition[];
+    timeoutBlocks?: number;
 }
 
 export interface Transaction {
@@ -406,6 +407,15 @@ export async function initializeTransactions(
                             [setupId, t.transactionName, outputIndex, scIndex, dataIndex].toString()));
                 }
             });
+        });
+    });
+
+    // copy timeots from input to output for indexer
+    transactions.forEach(t => {
+        t.inputs.forEach((input, inputIndex) => {
+            const output = findOutputByInput(transactions, input);
+            const spend = output.spendingConditions[input.spendingConditionIndex];
+            output.timeoutBlocks = spend.timeoutBlocks;
         });
     });
 
