@@ -68,23 +68,6 @@ export interface OperatorState {
     lastTransactionSent: TransactionNames;
 }
 
-export function bigintToString(n: bigint): string {
-    return n.toString(16);
-}
-
-export function stringToBigint(s: string): bigint {
-    return BigInt('0x' + s);
-}
-
-export function numToStr2Digits(i: number): string {
-    return i < 10 ? `${i}` : `0${i}`;
-}
-
-export function bufferToBigint160(b: Buffer): bigint {
-    if (b.length != 20) throw new Error('Invalid size');
-    return BigInt('0x' + b.toString('hex'));
-}
-
 export function getSavedStep1(): SavedVm<Step1_InstrCode> {
     groth16Verify(Key.fromSnarkjs(verificationKey), Proof.fromSnarkjs(proof));
     if (!step1_vm.success) throw new Error('Failed');
