@@ -203,22 +203,20 @@ def _handle_tx(
 
     # Alter the template
     tx_template.txId = tx_id
-    tx_template.object['txId'] = serialize_hex(tx_id)
+    tx_template.object['txId'] = tx_id
     tx_template.object['serializedTx'] = serialize_hex(serialized)
-    input_signatures = [
-        _sign_input(
+    for i, inp in enumerate(tx_inputs):
+        signature = _sign_input(
             script=input_tapscripts[i],
             tx=tx,
             input_index=i,
             spent_outputs=spent_outputs,
             private_key=KEYPAIRS[tx_template.agentId]['private'],
         )
-        for i, inp in enumerate(tx_inputs)
-    ]
-    tx_template.object['inputSignatures'] = [
-        serialize_hex(sig)
-        for sig in input_signatures
-    ]
+        if len(tx_template.object['inputs']) <= i:
+            # HACK: the hardcoded initial transactions have an empty list of inputs
+            tx_template.object['inputs'].append({})
+        tx_template.object['inputs'][i]['signature'] = serialize_hex(signature)
 
     # Make sure SQLAlchemy knows that the JSON object has changed
     flag_modified(tx_template, 'object')
