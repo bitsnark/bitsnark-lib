@@ -1,3 +1,4 @@
+import argparse
 import os
 from dataclasses import dataclass
 
@@ -60,19 +61,45 @@ for keypairs in KEYPAIRS.values():
 
 
 def main():
-    engine = create_engine("postgresql://postgres:1234@localhost:5432/postgres")
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--db', default='postgresql://postgres:1234@localhost:5432/postgres')
+    parser.add_argument('--all', action='store_true', help='Process all transaction templates')
+    parser.add_argument('--setup-id', required=False,
+                        help='Process only transactions with this setup ID. Required if --all is not set')
+    parser.add_argument('--agent-id', required=False,
+                        help='Process only transactions with this agent ID. Required if --all is not set')
+
+    args = parser.parse_args()
+
+    if args.all:
+        if args.setup_id or args.agent_id:
+            parser.error("Cannot use --all together with --setup-id or --agent-id")
+    else:
+        if not args.setup_id:
+            parser.error("Must specify --setup-id if --all is not set")
+        if not args.agent_id:
+            parser.error("Must specify --agent-id if --all is not set")
+
+    engine = create_engine(args.db)
     dbsession = Session(engine, autobegin=False)
     successes = []
     failures = []
 
-    with dbsession.begin():
-        transactions = dbsession.execute(
-            select(TransactionTemplate).order_by(TransactionTemplate.ordinal)
-        ).scalars()
+    tx_template_query = select(TransactionTemplate).order_by(TransactionTemplate.ordinal)
+    if not args.all:
+        tx_template_query = tx_template_query.filter(
+            TransactionTemplate.setupId == args.setup_id,
+            TransactionTemplate.agentId == args.agent_id,
+        )
 
-        for tx in transactions:
+    with dbsession.begin():
+        tx_templates = dbsession.execute(tx_template_query).scalars().all()
+
+        print(f"Processing {len(tx_templates)} transaction templates...")
+
+        for tx in tx_templates:
             print(f"Processing transaction #{tx.ordinal}: {tx.name}...")
-            success = _handle_tx(
+            success = _handle_tx_template(
                 dbsession=dbsession,
                 tx_template=tx,
             )
@@ -94,7 +121,7 @@ def main():
     print(', '.join(failures))
 
 
-def _handle_tx(
+def _handle_tx_template(
     *,
     dbsession: Session,
     tx_template: TransactionTemplate
