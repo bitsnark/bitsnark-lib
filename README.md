@@ -44,7 +44,7 @@ The diagram below describes the flow of transactions in the protocol with an add
 
 The dotted line between "State 1" and "State n" indicates that the bisection process is repeated multiple times (it currently takes us 19 bisections to identify one out of half a million operations in our snark verification program).
 
-![BitSNARK Transactions Flow](/analysis/transactions-flow.svg)
+![BitSNARK Transactions Flow](/analysis/transactions.collapsed.svg)
 
 Once the prover signs and publishes the "Proof" transaction, it spends the prover's stake and locks it.
 
