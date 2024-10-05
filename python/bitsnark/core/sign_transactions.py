@@ -100,7 +100,7 @@ def _handle_tx(
     tx_template: TransactionTemplate
 ):
     if tx_template.name in HARDCODED_MOCK_INPUTS:
-        assert len(tx_template.inputs) == 0
+        # assert len(tx_template.inputs) == 0  # cannot do it, this script might have been already run
         tx_inputs: list[CTxIn]  = [
             CTxIn(
                 COutPoint(
