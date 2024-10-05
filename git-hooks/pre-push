@@ -11,7 +11,7 @@ set -e
 git switch "$branch_to_update"
 npm run lint
 npm run test
-npm run stard-db || true
+npm run start-db || true
 npm run generate-tx
 npm run generate-scripts
 git switch "$current_branch"
