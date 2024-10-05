@@ -47,7 +47,7 @@ The diagram below shows a condensed version of the transactions flow in the BitS
 Most transactions are simple boxes, but transactions that input funds into the protocol are marked with rounded corners and transactions that output funds are marked with a folded corner. Transactions publishable by the prover are green, ones publishable by the verifier are blue, and the `Locked Funds` transaction is magenta. Dashed lines are timelocked to a pre-specified number of blocks, and gray lines are outputs that only carry a symbolic amount of a single satoshi, either used to make transactions mutually exclusive or to accommodate the per-input size limitations of Bitcoin transactions. For simplicity's sake, the entire bisection process is collapsed into a single node marked with a triple octagon, but below you can find a full version of the diagram with all the steps expanded (beware, it currently takes us 19 bisections to identify one out of half a million operations in our zk-SNARK verification program).
 
 <details>
-<summary>See here for a full Diagram with all the steps</summary>
+<summary>Expand here for a full Diagram with all the steps</summary>
 
 ![BitSNARK Full Transactions Flow](/analysis/transactions.svg)
 </details>
@@ -104,6 +104,10 @@ npm test
 
 ### Generating the Transactions
 
+The following will only work on top of the private repository, but should be coming to the public repository soon.
+
+The following requires docker for running a local postgres database server.
+
 ```sh
 npm run start-db
 npm run generate-tx
@@ -111,6 +115,8 @@ npm run generate-scripts
 ```
 
 ### Running the Agents
+
+The following will only work on top of the private repository, might take it some time till we release it to the public.
 
 Assuming the DB is running and available, run the following commands in separate terminals:
 
