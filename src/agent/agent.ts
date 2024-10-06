@@ -3,6 +3,7 @@ import { AgentRoles, FundingUtxo, TransactionInfo } from "./common";
 import { stringToBigint } from "../encoding/encoding";
 import { writeTransaction } from "./db";
 import { generateAllScripts } from "./generate-scripts";
+import { addAmounts } from "./amounts";
 import { DoneMessage, fromJson, JoinMessage, SignaturesMessage, StartMessage, TransactionsMessage } from "./messages";
 import { SimpleContext, TelegramBot } from "./telegram";
 import { getTransactionByName, initializeTransactions, Transaction } from "./transactions-new";
@@ -129,7 +130,7 @@ export class Agent {
     // verifier receives start message, generates transactions, sends join message
     async on_start(ctx: SimpleContext, message: StartMessage) {
         let i = this.instances.get(message.setupId);
-        if (i) 
+        if (i)
             throw new Error('Setup instance already exists');
 
         i = new SetupInstance(message.setupId, AgentRoles.VERIFIER, {
@@ -263,16 +264,18 @@ export class Agent {
                     myTransaction.outputs[outputIndex].spendingConditions[scIndex].wotsPublicKeys = sc.wotsPublicKeys;
                 });
             });
-        });        
+        });
 
         i.state = SetupState.SIGNATURES;
 
         if (this.role == AgentRoles.PROVER) {
-            generateAllScripts(this.agentId, i.setupId, i.transactions!);            
+            i.transactions = await generateAllScripts(this.agentId, i.setupId, i.transactions!);
+            i.transactions = await addAmounts(this.agentId, i.setupId);
             this.sendSignatures(ctx, i.setupId);
         } else {
             await this.sendTransactions(ctx, i.setupId);
-            generateAllScripts(this.agentId, i.setupId, i.transactions!);            
+            i.transactions = await generateAllScripts(this.agentId, i.setupId, i.transactions!);
+            i.transactions = await addAmounts(this.agentId, i.setupId);
         }
     }
 
@@ -309,8 +312,8 @@ export class Agent {
             throw new Error('Invalid state');
 
         i.state = SetupState.DONE;
-        
-        if (this.role == AgentRoles.PROVER) {    
+
+        if (this.role == AgentRoles.PROVER) {
             await ctx.send(new DoneMessage({ setupId: i.setupId }));
         } else {
             await this.sendSignatures(ctx, i.setupId);
