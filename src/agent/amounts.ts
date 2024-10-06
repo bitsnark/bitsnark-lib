@@ -58,6 +58,10 @@ export async function addAmounts(agentId: string, setupId: string): Promise<Tran
 // This should probably be in a unit test.
 export function validateTransactionFees(transactions: Transaction[]) {
     const totals = transactions.reduce((totals, t) => {
+        if (t.outputs.some(output => !output.amount)) throw new Error(
+            `Transaction ${t.transactionName} has undefined output amounts`);
+
+        // Skip externally funded transactions for summing up fees.
         if (externallyFundedTxs.includes(t.transactionName)) return totals;
 
         const inputsValue = t.inputs.reduce(

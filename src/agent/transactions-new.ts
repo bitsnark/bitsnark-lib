@@ -122,6 +122,7 @@ const protocolStart: Transaction[] = [
             spendingConditionIndex: 0
         }],
         outputs: [{
+            amount: agentConf.verifierPaymentAmount,
             spendingConditions: [{
                 nextRole: AgentRoles.PROVER,
                 signatureType: SignatureType.PROVER
@@ -394,7 +395,7 @@ export async function initializeTransactions(
 
     const transactions = [...protocolStart, ...makeProtocolSteps(), ...protocolEnd];
     assertOrder(transactions);
-    
+
     const payload = getTransactionByName(transactions, TransactionNames.LOCKED_FUNDS);
     payload.txId = payloadUtxo.txId;
     payload.outputs[0].amount = payloadUtxo.amount;
@@ -417,7 +418,7 @@ export async function initializeTransactions(
                 if (sc.wotsSpec && sc.nextRole == role) {
                     sc.wotsPublicKeys = sc.wotsSpec!
                         .map((wt, dataIndex) => getWinternitzPublicKeys(
-                            wt, 
+                            wt,
                             [setupId, t.transactionName, outputIndex, scIndex, dataIndex].toString()));
                 }
             });
