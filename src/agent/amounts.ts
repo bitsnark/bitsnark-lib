@@ -56,7 +56,7 @@ export async function addAmounts(agentId: string, setupId: string): Promise<Tran
 }
 
 // This should probably be in a unit test.
-function validateTransactionFees(transactions: Transaction[]) {
+export function validateTransactionFees(transactions: Transaction[]) {
     const totals = transactions.reduce((totals, t) => {
         if (externallyFundedTxs.includes(t.transactionName)) return totals;
 
