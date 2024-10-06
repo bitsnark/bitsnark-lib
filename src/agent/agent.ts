@@ -2,7 +2,8 @@ import { agentConf, ONE_BITCOIN } from "./agent.conf";
 import { AgentRoles, FundingUtxo, TransactionInfo } from "./common";
 import { stringToBigint } from "../encoding/encoding";
 import { writeTransaction } from "./db";
-import { generateAllScripts, addAmounts } from "./generate-scripts";
+import { generateAllScripts } from "./generate-scripts";
+import { addAmounts } from "./amounts";
 import { DoneMessage, fromJson, JoinMessage, SignaturesMessage, StartMessage, TransactionsMessage } from "./messages";
 import { SimpleContext, TelegramBot } from "./telegram";
 import { getTransactionByName, initializeTransactions, Transaction } from "./transactions-new";
@@ -268,13 +269,13 @@ export class Agent {
         i.state = SetupState.SIGNATURES;
 
         if (this.role == AgentRoles.PROVER) {
-            await generateAllScripts(this.agentId, i.setupId, i.transactions!);
-            await addAmounts(this.agentId, i.setupId, i.transactions!);
+            i.transactions = await generateAllScripts(this.agentId, i.setupId, i.transactions!);
+            i.transactions = await addAmounts(this.agentId, i.setupId);
             this.sendSignatures(ctx, i.setupId);
         } else {
             await this.sendTransactions(ctx, i.setupId);
-            await generateAllScripts(this.agentId, i.setupId, i.transactions!);
-            await addAmounts(this.agentId, i.setupId, i.transactions!);
+            i.transactions = await generateAllScripts(this.agentId, i.setupId, i.transactions!);
+            i.transactions = await addAmounts(this.agentId, i.setupId);
         }
     }
 
