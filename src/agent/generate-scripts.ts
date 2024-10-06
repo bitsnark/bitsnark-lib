@@ -1,6 +1,7 @@
 import { Bitcoin } from '../generator/step3/bitcoin';
 import { encodeWinternitz1, encodeWinternitz24, encodeWinternitz256, getWinternitzPublicKeys, WotsType } from './winternitz';
-import { bufferToBigint160, iterations, random, TransactionNames } from './common';
+import { iterations, random, TransactionNames } from './common';
+import { bufferToBigint160 } from "../encoding/encoding";
 import { StackItem } from '../generator/step3/stack';
 import { SimpleTapTree } from './simple-taptree';
 import { agentConf } from './agent.conf';
@@ -255,4 +256,3 @@ const scriptName = __filename;
 if (process.argv[1] == scriptName) {
     main().catch(console.error);
 }
-
