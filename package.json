@@ -26,7 +26,8 @@
     "tx-chart": "npm run generate-tx && ./analysis/generate-dot.sh",
     "start-db": "docker run --name postgres -e POSTGRES_PASSWORD=1234 -d -p 5432:5432 postgres",
     "start-prover": "ts-node ./src/agent/agent.ts bitsnark_prover_1",
-    "start-verifier": "ts-node ./src/agent/agent.ts bitsnark_verifier_1"
+    "start-verifier": "ts-node ./src/agent/agent.ts bitsnark_verifier_1",
+    "emulate-setup": "ts-node ./src/agent/emulate-setup.ts"
   },
   "config": {
     "commitizen": {

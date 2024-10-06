@@ -8,7 +8,7 @@ import { agentConf } from './agent.conf';
 import { Buffer } from 'node:buffer';
 import { findOutputByInput, getTransactionByName, Input, Output, SpendingCondition, Transaction } from './transactions-new';
 import { generateFinalStepTaproot } from './final-step/generate';
-import { readTransactions, writeTransaction } from './db';
+import { readTransactions, writeTransaction, writeTransactions } from './db';
 
 function findInputsByOutput(
     transactions: Transaction[],
@@ -159,9 +159,8 @@ export async function generateAllScripts(
     // generate the taproot key for all outputs except in the semi-final tx
     setTaprootKey(transactions);
 
-    for (const t of transactions) {
-        await writeTransaction(agentId, setupId, t);
-    }
+    await writeTransactions(agentId, setupId, transactions);
+
     return transactions;
 }
 

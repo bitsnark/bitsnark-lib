@@ -60,7 +60,7 @@ async function getConnection(): Promise<Client> {
         bigints: true,
         keepAlive: true
     });
-    await createDb(client);    
+    await createDb(client);
     return client;
 }
 
@@ -90,6 +90,10 @@ export async function writeTransaction(agentId: string, setupId: string, transac
     } finally {
         await client.end();
     }
+}
+
+export async function writeTransactions(agentId: string, setupId: string, transactions: Transaction[]) {
+    for (const t of transactions) await writeTransaction(agentId, setupId, t);
 }
 
 export async function readTransactionByName(agentId: string, setupId: string, transactionName: string): Promise<Transaction> {
