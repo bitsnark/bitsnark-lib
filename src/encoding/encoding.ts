@@ -16,7 +16,7 @@ export function bigintToBufferBE(n: bigint, bytes: number): Buffer {
 }
 
 export function bufferToBigints256BE(buffer: Buffer): bigint[] {
-    if (buffer.length % 32 != 0) throw new Error('invalid size');
+    if (buffer.length % 32 !== 0) throw new Error("invalid size");
     return bufferToBigintsBE(buffer, 32);
 }
 
@@ -33,8 +33,7 @@ export function bufferToBigintsBE(buffer: Buffer, size: number): bigint[] {
 }
 
 export function padHex(s: string, bytes: number): string {
-    while (s.length < bytes * 2) s = '0' + s;
-    return s;
+    return s.padStart(bytes * 2, "0");
 }
 
 export function hash(input: bigint, times: number = 1): bigint {
@@ -65,7 +64,7 @@ export function bitsToBigint(bits: number[]): bigint {
 export function nibblesToBigint(nibbles: number[]): bigint {
     let n = 0n;
     for (let i = 0; i < nibbles.length; i++) {
-        n += BigInt(nibbles[i]) << BigInt(i * 3);
+        n += BigInt(nibbles[i]) << (3n * BigInt(i));
     }
     return n;
 }
@@ -89,18 +88,39 @@ export function _256To32BE(n: bigint): bigint[] {
 }
 
 export function _32To256LE(na: bigint[]): bigint {
+    if (na.length !== 8) throw new Error("invalid size");
+
     let n = 0n;
     for (let i = 0; i < 8; i++) {
-        n += na[i] << BigInt(i * 32);
+        n += na[i] << (32n * BigInt(i));
     }
     return n;
 }
 
 export function _32To256BE(na: bigint[]): bigint {
+    if (na.length !== 8) throw new Error("invalid size");
+
     let n = 0n;
     for (let i = 0; i < 8; i++) {
         n = n << 32n;
         n += na[i];
     }
     return n;
+}
+
+export function bigintToString(n: bigint): string {
+    return n.toString(16);
+}
+
+export function stringToBigint(s: string): bigint {
+    return BigInt('0x' + s);
+}
+
+export function numToStr2Digits(i: number): string {
+    return i < 10 ? `${i}` : `0${i}`;
+}
+
+export function bufferToBigint160(b: Buffer): bigint {
+    if (b.length !== 20) throw new Error('Invalid size');
+    return BigInt('0x' + b.toString('hex'));
 }

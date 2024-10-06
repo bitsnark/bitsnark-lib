@@ -3,9 +3,9 @@
 .prettierrc
 .pytest-cache/
 __pycache__/
-dist
-node_modules
+node_modules/
 venv/
 /analysis/BitSnark.toolbox/
+/dist/
 /expose/git-filter-repo
 /generated

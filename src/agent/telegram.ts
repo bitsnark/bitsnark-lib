@@ -1,10 +1,10 @@
 
 import { Context, NarrowedContext, Telegraf } from 'telegraf';
 import { channelPost, message } from 'telegraf/filters';
-import { agentConf } from '../../agent.conf';
+import { agentConf } from './agent.conf';
 import axios from 'axios';
 import { toJson } from './messages';
-import { Message, Update } from 'telegraf/types';
+import { Update } from 'telegraf/types';
 
 type TelegrafContext = NarrowedContext<Context<Update>, Update.ChannelPostUpdate>;
 
@@ -15,12 +15,12 @@ export class SimpleContext {
         this.ctx = ctx;
     }
 
-    send(data: any) {
+    async send(data: any) {
         const text = toJson(data);
         if (text.length < 10 * 1024) {
-            this.ctx.reply(text);
+            await this.ctx.reply(text);
         } else {
-            this.ctx.sendDocument({ 
+            await this.ctx.sendDocument({ 
                 source: Buffer.from(text, 'ascii'),
                 filename: `${data.constructor.name}.txt`
             });

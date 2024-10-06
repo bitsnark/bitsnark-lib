@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { agentConf } from "../../agent.conf";
+import { agentConf } from "./agent.conf";
 
 export enum WotsType {
     _256 = 'WOTS_256',
@@ -65,7 +65,7 @@ function toNibbles(input: bigint, count: number): number[] {
 export function encodeWinternitz1(input: bigint, unique: string): Buffer[] {
     const checksumNibbles = 1;
     const dataNibbles = 1;
-    let output: Buffer[] = [];
+    const output: Buffer[] = [];
     let checksum = 0;
     toNibbles(input, dataNibbles).forEach((nibble, i) => {
         checksum += nibble;
@@ -81,7 +81,7 @@ export function encodeWinternitz1(input: bigint, unique: string): Buffer[] {
 export function encodeWinternitz24(input: bigint, unique: string): Buffer[] {
     const checksumNibbles = 2;
     const dataNibbles = 8;
-    let output: Buffer[] = [];
+    const output: Buffer[] = [];
     let checksum = 0;
     toNibbles(input, dataNibbles).forEach((nibble, i) => {
         checksum += nibble;
@@ -98,7 +98,7 @@ export function encodeWinternitz24(input: bigint, unique: string): Buffer[] {
 export function encodeWinternitz256(input: bigint, unique: string): Buffer[] {
     const checksumNibbles = 4;
     const dataNibbles = 86;
-    let output: Buffer[] = [];
+    const output: Buffer[] = [];
     let checksum = 0;
     toNibbles(input, dataNibbles).forEach((nibble, i) => {
         checksum += nibble;

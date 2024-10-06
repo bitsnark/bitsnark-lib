@@ -3,9 +3,10 @@ import groth16Verify, { Key, Proof as Step1_Proof } from '../../generator/step1/
 import { InstrCode, Instruction, InstrCode as Step1_InstrCode } from '../../generator/step1/vm/types';
 import { proof, vKey } from '../../generator/step1/constants';
 import { Bitcoin, Template } from '../../generator/step3/bitcoin';
-import { getTransactionByName, getTransactionFileNames, loadTransactionFromFile, Transaction } from '../transactions-new';
+import { getTransactionByName, Transaction } from '../transactions-new';
 import { bigintToNibblesLS } from './common';
-import { bufferToBigint160, iterations, twoDigits } from '../common';
+import { iterations, TransactionNames, twoDigits } from '../common';
+import { bufferToBigint160 } from '../../encoding/encoding';
 import { getWinternitzPublicKeys, WOTS_NIBBLES, WotsType } from '../winternitz';
 import { step1_vm, VM as Step1_vm } from '../../generator/step1/vm/vm';
 import { StackItem } from '@src/generator/step3/stack';
@@ -95,7 +96,7 @@ export function generateFinalStepTaproot(setupId: string, transactions: Transact
     fs.mkdirSync(`./generated/scripts/${setupId}`, { recursive: true });
 
     const lastSelect = getTransactionByName(transactions, `select_${twoDigits(iterations - 1)}`);
-    const semiFinal = getTransactionByName(transactions, 'semi_final');
+    const semiFinal = getTransactionByName(transactions, TransactionNames.ARGUMENT);
 
     step1_vm.reset();
     groth16Verify(Key.fromSnarkjs(vKey), Step1_Proof.fromSnarkjs(proof));
@@ -105,7 +106,7 @@ export function generateFinalStepTaproot(setupId: string, transactions: Transact
     const started = Date.now();
     let total = 0;
     let max = 0;
-    const compressor = new Compressor(iterations);
+    const compressor = new Compressor(iterations, 1n);
 
     program.forEach((line, index) => {
 
@@ -130,15 +131,15 @@ export function generateFinalStepTaproot(setupId: string, transactions: Transact
             const bitcoin = new Bitcoin();
             const stack = bitcoin.stack.items;
             bitcoin.setDefaultHash('HASH160');
-    
+
             const indexWitness = bigintToNibblesLS(BigInt(index), WOTS_NIBBLES[WotsType._256])
                 .map(n => bitcoin.addWitness(BigInt(n)));
-    
+
             if (!lastSelect.outputs[0].spendingConditions[0].wotsPublicKeys) {
                 // no opponent public keys here, mock them
                 lastSelect.outputs[0].spendingConditions[0].wotsPublicKeys! = [getWinternitzPublicKeys(WotsType._256, '')];
             }
-    
+
             if (!semiFinal.outputs[0].spendingConditions[0].wotsPublicKeys) {
                 // no opponent public keys here, mock them
                 semiFinal.outputs[0].spendingConditions[0].wotsPublicKeys = [
@@ -148,7 +149,7 @@ export function generateFinalStepTaproot(setupId: string, transactions: Transact
                     getWinternitzPublicKeys(WotsType._256, '')
                 ];
             }
-    
+
             const w_a = paramWitness(bitcoin);
             const w_b = paramWitness(bitcoin);
             const w_c = paramWitness(bitcoin);
@@ -156,28 +157,28 @@ export function generateFinalStepTaproot(setupId: string, transactions: Transact
             if (line.name == InstrCode.MULMOD || line.name == InstrCode.DIVMOD) {
                 w_d = paramWitness(bitcoin);
             }
-    
+
             bitcoin.verifyIndex(
                 lastSelect.outputs[0].spendingConditions[0].wotsPublicKeys![0].map(bufferToBigint160),
                 indexWitness, bigintToNibblesLS(BigInt(index), 8)
             );
             bitcoin.drop(indexWitness);
-    
+
             const a = decodeParam(bitcoin, semiFinal, w_a, 0);
             bitcoin.drop(w_a);
-    
+
             const b = decodeParam(bitcoin, semiFinal, w_b, 1);
             bitcoin.drop(w_b);
-    
+
             const c = decodeParam(bitcoin, semiFinal, w_c, 2);
             bitcoin.drop(w_c);
-    
+
             let d: StackItem[];
             if (line.name == InstrCode.MULMOD || line.name == InstrCode.DIVMOD) {
                 d = decodeParam(bitcoin, semiFinal, w_d!, 3);
                 bitcoin.drop(w_d!);
             }
-    
+
             checkLine(bitcoin, line, a, b, c, d!);
             const template = bitcoin.programToTemplate();
             cache[cacheKey] = template;
@@ -187,19 +188,8 @@ export function generateFinalStepTaproot(setupId: string, transactions: Transact
         total += final.length;
         max = Math.max(max, final.length);
 
-        // fs.writeFileSync(`./generated/scripts/${setupId}/${indexToStr(index)}.bin`,
-        //     script
-        // );
-
         compressor.addItem(final);
     });
 
-    return compressor.getRoot();
-}
-
-var scriptName = __filename;
-if (process.argv[1] == scriptName) {
-    const filenames = getTransactionFileNames('test_setup');
-    const transactions = filenames.map(fn => loadTransactionFromFile('test_setup', fn));
-    generateFinalStepTaproot('test_setup', transactions);
+    return compressor.getScriptPubkey();
 }

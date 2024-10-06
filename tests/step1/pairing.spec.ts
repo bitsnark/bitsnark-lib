@@ -1,4 +1,4 @@
-import { expect } from 'chai';
+import { afterEach, beforeEach, describe, expect, it } from "@jest/globals";
 
 import { G1, G1Point } from "../../src/generator/step1/algebra/G1";
 import { G2, G2Point } from "../../src/generator/step1/algebra/G2";
@@ -31,7 +31,7 @@ describe('Pairing', () => {
     });
 
     afterEach(() => {
-        expect(vm.getSuccess()).to.eq(true);
+        expect(vm.getSuccess()).toEqual(true);
     });
 
     it('Pairing check against negative in G1', () => {
@@ -39,7 +39,7 @@ describe('Pairing', () => {
         const pn1 = g3.optimalAte(gen1.neg(), gen2);
         const t1 = p1.mul(pn1);
         const t2 = Fp12t.one();
-        expect(t1.eq(t2).value).eq(1n);
+        expect(t1.eq(t2).value).toEqual(1n);
     });
 
     it('Pairing check against negative in G2', () => {
@@ -47,41 +47,41 @@ describe('Pairing', () => {
         const np1 = g3.optimalAte(gen1, gen2.neg());
         const t1 = p1.mul(np1);
         const t2 = Fp12t.one();
-        expect(t1.eq(t2).value).eq(1n);
+        expect(t1.eq(t2).value).toEqual(1n);
     });
 
     it('Pairing output has correct order', () => {
         const p1 = g3.optimalAte(gen1, gen2);
         const t = p1.powHardcoded(curveOrder);
-        expect(t.eq(Fp12t.one()).value).eq(1n);
+        expect(t.eq(Fp12t.one()).value).toEqual(1n);
     });
 
     it('Pairing bilinearity in G1', () => {
         const p1 = g3.optimalAte(gen1, gen2);
         const p2 = g3.optimalAte(gen1.double(), gen2);
         const t = p1.mul(p1);
-        expect(t.eq(p2).value).eq(1n);
+        expect(t.eq(p2).value).toEqual(1n);
     });
 
     it('Pairing is non-degenerate', () => {
         const p1 = g3.optimalAte(gen1, gen2);
         const p2 = g3.optimalAte(gen1.double(), gen2);
         const np1 = g3.optimalAte(gen1, gen2.neg());
-        expect(p1.eq(p2).value).eq(0n);
-        expect(p1.eq(np1).value).eq(0n);
-        expect(p2.eq(np1).value).eq(0n);
+        expect(p1.eq(p2).value).toEqual(0n);
+        expect(p1.eq(np1).value).toEqual(0n);
+        expect(p2.eq(np1).value).toEqual(0n);
     });
 
     it('Pairing bilinearity in G2', () => {
         const p1 = g3.optimalAte(gen1, gen2);
         const po2 = g3.optimalAte(gen1, gen2.double());
         const t = p1.mul(p1);
-        expect(t.eq(po2).value).eq(1n);
+        expect(t.eq(po2).value).toEqual(1n);
     });
 
     it('Composite check passed', () => {
         const p3 = g3.optimalAte(gen1.mul(_37), gen2.mul(_27));
         const po3 = g3.optimalAte(gen1.mul(_999), gen2);
-        expect(p3.eq(po3).value).eq(1n);
+        expect(p3.eq(po3).value).toEqual(1n);
     });
 });
