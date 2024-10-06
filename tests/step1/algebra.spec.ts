@@ -1,4 +1,4 @@
-import { expect } from 'chai';
+import { afterEach, beforeAll, beforeEach, describe, expect, it } from "@jest/globals";
 import { Fp } from '../../src/generator/step1/algebra/fp';
 import { Fp2 } from '../../src/generator/step1/algebra/fp2';
 import { step1_vm as vm } from '../../src/generator/step1/vm/vm';
@@ -28,13 +28,13 @@ describe('Algebra', () => {
 	});
 
 	afterEach(() => {
-		expect(vm.success?.value).to.eq(1n);
+		expect(vm.success?.value).toEqual(1n);
 	});
 
 	describe('Fp', () => {
 
 		function checkFp(p1: Fp, p2: Fp) {
-			expect(p1.getRegister().value).eq(p2.getRegister().value);
+			expect(p1.getRegister().value).toEqual(p2.getRegister().value);
 		}
 
 		it('2 * 2 = 4', () => checkFp(_2.mul(_2), _4));
@@ -45,7 +45,7 @@ describe('Algebra', () => {
 	describe('Fp2', () => {
 
 		function checkFp2(p1: Fp2, p2: Fp2) {
-			expect(p1.eq(p2).value).eq(1n);
+			expect(p1.eq(p2).value).toEqual(1n);
 		}
 
 		it('x + f = fpx', () => checkFp2(x.add(f), fpx));
@@ -71,23 +71,23 @@ describe('Algebra', () => {
 		it('add(G1, G1) = double(G1)', () => {
 			const a = gen.add(gen);
 			const b = gen.double();
-			expect(a.eq(b).value).eq(1n);
+			expect(a.eq(b).value).toEqual(1n);
 		});
 
 		it('add(add(double(G1), G1), G1) = double(double(G1))', () => {
 			const a = gen.double().add(gen).add(gen);
 			const b = gen.double().double();
-			expect(a.eq(b).value).eq(1n);
+			expect(a.eq(b).value).toEqual(1n);
 		});
 
 		it('double(G1) != G1', () => {
-			expect(gen.eq(gen.double()).value).eq(0n);
+			expect(gen.eq(gen.double()).value).toEqual(0n);
 		});
 
 		it('add(multiply(G1, 9), multiply(G1, 5)) = add(multiply(G1, 12), multiply(G1, 2))', () => {
 			const a = gen.mul(_9.register).add(gen.mul(_5.register));
 			const b = gen.mul(_12.register).add(gen.mul(_2.register));
-			expect(a.eq(b).value).eq(1n);
+			expect(a.eq(b).value).toEqual(1n);
 		});
 
 		it('assert G1*9', () => {
@@ -107,17 +107,17 @@ describe('Algebra', () => {
 		it('add(add(double(G2), G2), G2) = double(double(G2))', () => {
 			const a = gen.double().add(g2.generator!).add(gen);
 			const b = gen.double().double();
-			expect(a.eq(b).value).eq(1n);
+			expect(a.eq(b).value).toEqual(1n);
 		});
 
 		it('double(G2) != G2', () => {
-			expect(gen.eq(gen.double()).value).eq(0n);
+			expect(gen.eq(gen.double()).value).toEqual(0n);
 		});
 
 		it('add(multiply(G2, 9), multiply(G2, 5)) = add(multiply(G2, 12), multiply(G2, 2))', () => {
 			const a = gen.mul(_9.register).add(gen.mul(_5.register));
 			const b = gen.mul(_12.register).add(gen.mul(_2.register));
-			expect(a.eq(b).value).eq(1n);
+			expect(a.eq(b).value).toEqual(1n);
 		});
 
 		it('assert G2*9', () => {
