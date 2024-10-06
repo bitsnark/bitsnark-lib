@@ -1,13 +1,12 @@
 import { agentConf, ONE_BITCOIN } from "./agent.conf";
-import { AgentRoles, FundingUtxo, TransactionInfo } from "./common";
+import { AgentRoles, FundingUtxo } from "./common";
 import { stringToBigint } from "../encoding/encoding";
-import { writeTransaction } from "./db";
+import { writeTransactions } from "./db";
 import { generateAllScripts } from "./generate-scripts";
 import { addAmounts } from "./amounts";
 import { DoneMessage, fromJson, JoinMessage, SignaturesMessage, StartMessage, TransactionsMessage } from "./messages";
 import { SimpleContext, TelegramBot } from "./telegram";
-import { getTransactionByName, initializeTransactions, mergeWots, Transaction } from "./transactions-new";
-import { WotsType } from "./winternitz";
+import { initializeTransactions, mergeWots, Transaction } from "./transactions-new";
 
 interface AgentInfo {
     agentId: string;
@@ -233,9 +232,7 @@ export class Agent {
     private async sendSignatures(ctx: SimpleContext, setupId: string) {
         const i = this.getInstance(setupId);
 
-        for (const t of i.transactions!) {
-            await writeTransaction(agentId, setupId, t);
-        }
+        await writeTransactions(agentId, setupId, i.transactions!);
 
         const signed: any[] = i.transactions!.map(t => {
             return {

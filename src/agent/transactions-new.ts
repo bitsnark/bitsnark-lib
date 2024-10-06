@@ -1,9 +1,8 @@
-import fs from 'fs';
 import { TransactionNames, AgentRoles, FundingUtxo, iterations, twoDigits } from './common';
 import { getWinternitzPublicKeys, WotsType } from './winternitz';
 import { agentConf } from './agent.conf';
 import { calculateStateSizes } from './regs-calc';
-import { writeTransaction } from './db';
+import { writeTransactions } from './db';
 
 export const PROTOCOL_VERSION = 0.1;
 
@@ -452,9 +451,7 @@ export async function initializeTransactions(
         });
     });
 
-    for (const t of transactions) {
-        await writeTransaction(agentId, setupId, t);
-    }
+    await writeTransactions(agentId, setupId, transactions);
 
     return transactions;
 }
