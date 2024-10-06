@@ -109,7 +109,6 @@ export function fromJson(json: string): Message {
     if (!t) throw new Error('Invalid message type');
     const m = new t();
     Object.keys(m).forEach(k => {
-        // if (m[k] && !obj[k]) throw new Error('Value expected');
         m[k] = obj[k];
     });
     return m;

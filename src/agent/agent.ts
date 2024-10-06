@@ -6,7 +6,7 @@ import { generateAllScripts } from "./generate-scripts";
 import { addAmounts } from "./amounts";
 import { DoneMessage, fromJson, JoinMessage, SignaturesMessage, StartMessage, TransactionsMessage } from "./messages";
 import { SimpleContext, TelegramBot } from "./telegram";
-import { getTransactionByName, initializeTransactions, Transaction } from "./transactions-new";
+import { getTransactionByName, initializeTransactions, mergeWots, Transaction } from "./transactions-new";
 import { WotsType } from "./winternitz";
 
 interface AgentInfo {
@@ -189,55 +189,9 @@ export class Agent {
         this.sendTransactions(ctx, i.setupId);
     }
 
-    private myWotsCheck(transactions: Transaction[]) {
-        console.log('myWotsCheck');
-        transactions.forEach(t => {
-            t.outputs.forEach(o => {
-                o.spendingConditions.forEach(sc => {
-                    if (!sc.wotsSpec) return;
-                    if (sc.nextRole != this.role) return;
-                    if (!sc.wotsPublicKeys) {
-                        console.log(t.transactionName + ' MISSING');
-                    } else if (sc.wotsSpec) {
-                        const flag = true;
-                        for (let i = 0; i < sc.wotsSpec.length; i++) {
-                            let flag = true;
-                            flag = flag && sc.wotsSpec[i] == WotsType._1 && sc.wotsPublicKeys![i].length == 2;
-                            flag = flag && sc.wotsSpec[i] == WotsType._256 && sc.wotsPublicKeys![i].length == 90;
-                        }
-                        if (!flag) console.log(t.transactionName + ' BAD');
-                    }
-                });
-            });
-        });
-    }
-
-    private wotsCheck(transactions: Transaction[]) {
-        console.log('wotsCheck');
-        transactions.forEach(t => {
-            t.outputs.forEach(o => {
-                o.spendingConditions.forEach(sc => {
-                    if (sc.wotsSpec && !sc.wotsPublicKeys) {
-                        console.log(t.transactionName + ' MISSING');
-                    } else if (sc.wotsSpec) {
-                        const flag = true;
-                        for (let i = 0; i < sc.wotsSpec.length; i++) {
-                            let flag = true;
-                            flag = flag && sc.wotsSpec[i] == WotsType._1 && sc.wotsPublicKeys![i].length == 2;
-                            flag = flag && sc.wotsSpec[i] == WotsType._256 && sc.wotsPublicKeys![i].length == 90;
-                        }
-                        if (!flag) console.log(t.transactionName + ' BAD');
-                    }
-                });
-            });
-        });
-    }
-
     // prover sends transaction structure
     private async sendTransactions(ctx: SimpleContext, setupId: string) {
         const i = this.getInstance(setupId);
-
-        this.myWotsCheck(i.transactions!);
 
         const transactionsMessage = new TransactionsMessage({
             setupId,
@@ -253,18 +207,12 @@ export class Agent {
         if (i.state != SetupState.TRANSACTIONS)
             throw new Error('Invalid state');
 
-        message.transactions.forEach(transaction => {
-            const myTransaction = getTransactionByName(i.transactions!, transaction.transactionName);
-            if (!myTransaction)
-                throw new Error('Invalid transaction');
-            transaction.outputs.forEach((output, outputIndex) => {
-                output.spendingConditions.forEach((sc, scIndex) => {
-                    if (!myTransaction.outputs[outputIndex].spendingConditions[scIndex].wotsSpec) return;
-                    if (myTransaction.outputs[outputIndex].spendingConditions[scIndex].nextRole == this.role) return;
-                    myTransaction.outputs[outputIndex].spendingConditions[scIndex].wotsPublicKeys = sc.wotsPublicKeys;
-                });
-            });
-        });
+        // make sure two arrays have same structure
+        if (i.transactions!.some((t, tindex) => t.transactionName != message.transactions[tindex].transactionName))
+            throw new Error('Incompatible');
+
+        // copy their wots pubkeys to ours
+        mergeWots(i.myRole, i.transactions!, message.transactions!);
 
         i.state = SetupState.SIGNATURES;
 
@@ -284,8 +232,6 @@ export class Agent {
     // prover sends all of the signatures
     private async sendSignatures(ctx: SimpleContext, setupId: string) {
         const i = this.getInstance(setupId);
-
-        this.wotsCheck(i.transactions!);
 
         for (const t of i.transactions!) {
             await writeTransaction(agentId, setupId, t);
