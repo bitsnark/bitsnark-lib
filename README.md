@@ -112,6 +112,7 @@ The following requires docker for running a local postgres database server.
 npm run start-db
 npm run generate-tx
 npm run generate-scripts
+npm run add-amounts
 ```
 
 ### Running the Agents
