@@ -183,9 +183,9 @@ function calculateTransactionFee(transaction: Transaction): bigint {
     return factoredFee + 1n;
 }
 
-function addAmounts(agentId: string, setupId: string, transactions: Transaction[]) {
+async function addAmounts(agentId: string, setupId: string, transactions: Transaction[]) {
 
-    function add(transaction: Transaction) {
+    async function add(transaction: Transaction) {
         if (externallyFundedTxs.includes(transaction.transactionName)) return;
         const amountlessOutputs = transaction.outputs.filter(output => !output.amount);
         if (amountlessOutputs.length == 0) return;
@@ -202,10 +202,10 @@ function addAmounts(agentId: string, setupId: string, transactions: Transaction[
             (totalValue, output) => totalValue + (output.amount || 0n), 0n);
 
         amountlessOutputs[0].amount = incomingAmount - existingOutputsAmount - calculateTransactionFee(transaction);
-        writeTransaction(agentId, setupId, transaction);
+        await writeTransaction(agentId, setupId, transaction);
     }
 
-    transactions.forEach(add);
+    await transactions.forEach(add);
 }
 
 // This should probably be in a unit test.
@@ -248,7 +248,7 @@ async function main() {
     const setupId = 'test_setup';
     const transactions = await readTransactions(agentId, setupId);
     await generateAllScripts(agentId, 'test_setup', transactions);
-    addAmounts(agentId, 'test_setup', transactions);
+    await addAmounts(agentId, 'test_setup', transactions);
     validateTransactionFees(transactions);
 }
 
