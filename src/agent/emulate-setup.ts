@@ -1,7 +1,8 @@
 import { agentConf } from "./agent.conf";
+import { addAmounts, validateTransactionFees } from "./amounts";
 import { AgentRoles, TransactionNames } from "./common";
 import { writeTransactions } from "./db";
-import { addAmounts, generateAllScripts, validateTransactionFees } from "./generate-scripts";
+import { generateAllScripts } from "./generate-scripts";
 import { initializeTransactions, mergeWots, Transaction } from "./transactions-new";
 
 
@@ -36,7 +37,7 @@ export async function emulateSetup(setupId: string, proverAgentId: string, verif
 
     async function generateScripts(agentId: string, transactions: Transaction[]) {
         await generateAllScripts(agentId, setupId, transactions);
-        addAmounts(agentId, setupId, transactions);
+        transactions = await addAmounts(agentId, setupId);
         validateTransactionFees(transactions);
     }
 
