@@ -1,9 +1,8 @@
-import fs from 'fs';
 import { TransactionNames, AgentRoles, FundingUtxo, iterations, twoDigits } from './common';
 import { getWinternitzPublicKeys, WotsType } from './winternitz';
 import { agentConf } from './agent.conf';
 import { calculateStateSizes } from './regs-calc';
-import { writeTransaction } from './db';
+import { writeTransactions } from './db';
 
 export const PROTOCOL_VERSION = 0.1;
 
@@ -123,6 +122,7 @@ const protocolStart: Transaction[] = [
             spendingConditionIndex: 0
         }],
         outputs: [{
+            amount: agentConf.verifierPaymentAmount,
             spendingConditions: [{
                 nextRole: AgentRoles.PROVER,
                 signatureType: SignatureType.PROVER
@@ -346,6 +346,21 @@ function makeProtocolSteps(): Transaction[] {
     return result;
 }
 
+export function mergeWots(role: AgentRoles, mine: Transaction[], theirs: Transaction[]): Transaction[] {
+    return mine.map((transaction, transactionIndex) => ({
+        ...transaction,
+        outputs: transaction.outputs.map((output, outputIndex) => ({
+            ...output,
+            spendingConditions: output.spendingConditions.map((sc, scIndex) => ({
+                ...sc,
+                wotsPublicKeys: transaction.role != role ? 
+                    sc.wotsPublicKeys : 
+                    theirs[transactionIndex].outputs[outputIndex].spendingConditions[scIndex].wotsPublicKeys
+            }))
+        }))
+    }));
+}
+
 export function getTransactionByName(transactions: Transaction[], name: string): Transaction {
     const tx = transactions.find(t => t.transactionName == name);
     if (!tx) throw new Error('Transaction not found: ' + name);
@@ -354,13 +369,13 @@ export function getTransactionByName(transactions: Transaction[], name: string):
 
 function assertOrder(transactions: Transaction[]) {
     const map: any = {};
-    transactions.forEach(t => {
-        t.inputs.forEach(i => {
+    for (const t of transactions) {
+        for (const i of t.inputs) {
             if (!map[i.transactionName!]) throw new Error('Transaction not found: ' + i.transactionName);
             if (!map[i.transactionName!].outputs[i.outputIndex]) throw new Error(`Index not found: ${t.transactionName} ${i.outputIndex}`);
-        });
+        }
         map[t.transactionName] = t;
-    });
+    }
 }
 
 export function findOutputByInput(transactions: Transaction[], input: Input): Output {
@@ -380,7 +395,7 @@ export async function initializeTransactions(
 
     const transactions = [...protocolStart, ...makeProtocolSteps(), ...protocolEnd];
     assertOrder(transactions);
-    
+
     const payload = getTransactionByName(transactions, TransactionNames.LOCKED_FUNDS);
     payload.txId = payloadUtxo.txId;
     payload.outputs[0].amount = payloadUtxo.amount;
@@ -403,7 +418,7 @@ export async function initializeTransactions(
                 if (sc.wotsSpec && sc.nextRole == role) {
                     sc.wotsPublicKeys = sc.wotsSpec!
                         .map((wt, dataIndex) => getWinternitzPublicKeys(
-                            wt, 
+                            wt,
                             [setupId, t.transactionName, outputIndex, scIndex, dataIndex].toString()));
                 }
             });
@@ -437,9 +452,7 @@ export async function initializeTransactions(
         });
     });
 
-    for (const t of transactions) {
-        await writeTransaction(agentId, setupId, t);
-    }
+    await writeTransactions(agentId, setupId, transactions);
 
     return transactions;
 }

@@ -2,6 +2,7 @@ import { createHash } from "crypto";
 import * as bitcoin from 'bitcoinjs-lib';
 import * as ecc from 'tiny-secp256k1';
 
+const DEAD_ROOT = Buffer.from('UNSPENDABLE', 'ascii');
 const taprootVersion = 0xc0;
 const p = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2Fn;
 const SECP256K1_ORDER = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141n;
@@ -134,6 +135,7 @@ export class SimpleTapTree {
     }
 
     getRoot(): Buffer {
+        if (this.scripts.length == 0) return DEAD_ROOT;
         let temp = this.scripts.map(b => getHash(b));
         while (temp.length > 1) {
             const other: Buffer[] = [];

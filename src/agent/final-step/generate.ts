@@ -108,7 +108,9 @@ export function generateFinalStepTaproot(setupId: string, transactions: Transact
     let max = 0;
     const compressor = new Compressor(iterations, 1n);
 
-    program.forEach((line, index) => {
+    for (let index = 0; index < program.length; index++) {
+
+        const line = program[index];
 
         if (index && index % 1000 == 0) {
             const todo = (program.length - index) * (Date.now() - started) / index;
@@ -189,7 +191,7 @@ export function generateFinalStepTaproot(setupId: string, transactions: Transact
         max = Math.max(max, final.length);
 
         compressor.addItem(final);
-    });
+    }
 
     return compressor.getScriptPubkey();
 }

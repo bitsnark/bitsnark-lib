@@ -1,7 +1,7 @@
 import { TransactionNames } from './common';
 import { agentConf } from './agent.conf';
 import { findOutputByInput, getTransactionByName, Transaction } from './transactions-new';
-import { readTransactions, writeTransaction } from './db';
+import { readTransactions, writeTransactions } from './db';
 
 const externallyFundedTxs: string[] = [
     TransactionNames.LOCKED_FUNDS,
@@ -50,13 +50,18 @@ export async function addAmounts(agentId: string, setupId: string): Promise<Tran
 
     transactions = transactions.map(addAmounts);
     validateTransactionFees(transactions);
-    for (const t of transactions) await writeTransaction(agentId, setupId, t);
+    await writeTransactions(agentId, setupId, transactions);
+
     return transactions;
 }
 
 // This should probably be in a unit test.
-function validateTransactionFees(transactions: Transaction[]) {
+export function validateTransactionFees(transactions: Transaction[]) {
     const totals = transactions.reduce((totals, t) => {
+        if (t.outputs.some(output => !output.amount)) throw new Error(
+            `Transaction ${t.transactionName} has undefined output amounts`);
+
+        // Skip externally funded transactions for summing up fees.
         if (externallyFundedTxs.includes(t.transactionName)) return totals;
 
         const inputsValue = t.inputs.reduce(

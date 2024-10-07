@@ -7,8 +7,10 @@ import { SimpleTapTree } from './simple-taptree';
 import { agentConf } from './agent.conf';
 import { Buffer } from 'node:buffer';
 import { findOutputByInput, getTransactionByName, Input, Output, SpendingCondition, Transaction } from './transactions-new';
+import { readTransactions, writeTransactions } from './db';
 import { generateFinalStepTaproot } from './final-step/generate';
-import { readTransactions, writeTransaction } from './db';
+
+const DEAD_SCRIPT = Buffer.from([0x6a]); // opcode fails transaction
 
 function findInputsByOutput(
     transactions: Transaction[],
@@ -23,22 +25,22 @@ function findInputsByOutput(
 }
 
 function setTaprootKey(transactions: Transaction[]) {
-    transactions.forEach(t => {
-        t.outputs.forEach((output, outputIndex) => {
-            const scripts: Buffer[] = [];
-            output.spendingConditions.forEach((sc, scIndex) => {
+    for (const t of transactions) {
+        for (let outputIndex = 0; outputIndex < t.outputs.length; outputIndex++) {
+            const output = t.outputs[outputIndex];
+            if (output.taprootKey) continue;
+            const scripts = output.spendingConditions.map((sc, scIndex) => {
                 const inputs = findInputsByOutput(transactions, t.transactionName, outputIndex, scIndex);
-                if (inputs.length && inputs[0].script) scripts.push(inputs[0].script!);
+                return inputs.length && inputs[0].script ? inputs[0].script : DEAD_SCRIPT;
             });
-            if (!output.taprootKey && scripts && scripts.length > 0) {
-                const stt = new SimpleTapTree(agentConf.internalPubkey, scripts);
-                output.taprootKey = stt.getScriptPubkey();
-            }
-        });
-    });
+            const stt = new SimpleTapTree(agentConf.internalPubkey, scripts);
+            output.taprootKey = stt.getScriptPubkey();
+        };
+    };
 }
 
 function generateBoilerplate(setupId: string, transactionName: string, outputIndex: number, scIndex: number, spendingCondition: SpendingCondition): Buffer {
+
     const bitcoin = new Bitcoin();
     bitcoin.setDefaultHash('HASH160');
 
@@ -54,39 +56,38 @@ function generateBoilerplate(setupId: string, transactionName: string, outputInd
 
     if (spendingCondition.wotsSpec) {
 
-        spendingCondition.exampleWitness = [];
+        const keys = spendingCondition.wotsPublicKeys!
+            .map(keys => keys.map(b => bufferToBigint160(b)));
 
-        spendingCondition.wotsSpec.forEach((spec, dataIndex) => {
+        const encoders = {
+            [WotsType._256]: (dataIndex: number) => 
+                encodeWinternitz256(random(32), [setupId, transactionName, outputIndex, scIndex, dataIndex].toString()),
+            [WotsType._24]: (dataIndex: number) => 
+                encodeWinternitz24(random(3), [setupId, transactionName, outputIndex, scIndex, dataIndex].toString()),
+            [WotsType._1]: (dataIndex: number) => 
+                encodeWinternitz1(random(1) % 7n, [setupId, transactionName, outputIndex, scIndex, dataIndex].toString())
+        };
+        spendingCondition.exampleWitness = spendingCondition.wotsSpec
+            .map((spec, dataIndex) => encoders[spec](dataIndex));
 
-            if (spec == WotsType._256) {
-                bitcoin.winternitzCheck256(
-                    spendingCondition.wotsPublicKeys![dataIndex].map(_ => bitcoin.addWitness(0n)),
-                    spendingCondition.wotsPublicKeys![dataIndex].map(b => bufferToBigint160(b))
-                );
-                spendingCondition.exampleWitness!.push(
-                    encodeWinternitz256(random(32), [setupId, transactionName, outputIndex, scIndex, dataIndex].toString()));
-            } else if (spec == WotsType._24) {
-                bitcoin.winternitzCheck24(
-                    spendingCondition.wotsPublicKeys![dataIndex].map(_ => bitcoin.addWitness(0n)),
-                    spendingCondition.wotsPublicKeys![dataIndex].map(b => bufferToBigint160(b))
-                );
-                spendingCondition.exampleWitness!.push(
-                    encodeWinternitz24(random(3), [setupId, transactionName, outputIndex, scIndex, dataIndex].toString()));
-            } else {
-                bitcoin.winternitzCheck1(
-                    spendingCondition.wotsPublicKeys![dataIndex].map(_ => bitcoin.addWitness(0n)),
-                    spendingCondition.wotsPublicKeys![dataIndex].map(b => bufferToBigint160(b))
-                );
-                spendingCondition.exampleWitness!.push(
-                    encodeWinternitz1(random(1) % 7n, [setupId, transactionName, outputIndex, scIndex, dataIndex].toString()));
-            }
-        });
+        const witnessSIs = spendingCondition.exampleWitness
+            .map(values => values.map(v => bitcoin.addWitness(bufferToBigint160(v))));
+
+        const decoders = {
+            [WotsType._256]: (dataIndex: number) => 
+                bitcoin.winternitzCheck256(witnessSIs[dataIndex], keys[dataIndex]),
+            [WotsType._24]: (dataIndex: number) => 
+                bitcoin.winternitzCheck24(witnessSIs[dataIndex], keys[dataIndex]),
+            [WotsType._1]: (dataIndex: number) => 
+                bitcoin.winternitzCheck1(witnessSIs[dataIndex], keys[dataIndex]),
+        };
+        spendingCondition.wotsSpec.forEach((spec, dataIndex) => decoders[spec](dataIndex));
     }
 
     return bitcoin.programToBinary();
 }
 
-function generateSemiFinalScript(lastSelectOutput: Output, semiFinalInput: Input) {
+function generateSemiFinalScript(lastSelectOutput: Output): Buffer {
     const bitcoin = new Bitcoin();
     bitcoin.setDefaultHash('HASH160');
 
@@ -112,8 +113,7 @@ function generateSemiFinalScript(lastSelectOutput: Output, semiFinalInput: Input
 
     bitcoin.checkSemiFinal(pathNibbles, indexNibbles, iterations);
 
-    lastSelectOutput.spendingConditions[0].script = bitcoin.programToBinary();
-    semiFinalInput.script = bitcoin.programToBinary();
+    return bitcoin.programToBinary();
 }
 
 export async function generateAllScripts(
@@ -134,34 +134,58 @@ export async function generateAllScripts(
         });
     });
 
-    transactions.forEach(t => {
+    for (const t of transactions) {
 
         console.log('transaction name: ', t.transactionName);
 
         if (t.transactionName == TransactionNames.PROOF_REFUTED) {
             const taproot = generateFinalStepTaproot(setupId, transactions);
             const semi_final = getTransactionByName(transactions, TransactionNames.ARGUMENT);
+            if (semi_final.outputs.length != 1)
+                throw new Error('Wrong number of outputs');
             semi_final.outputs[0].taprootKey = taproot;
         } else if (t.transactionName == TransactionNames.ARGUMENT) {
+            if (t.inputs.length != 1)
+                throw new Error('Wrong number of inputs');
             const prevOutput = findOutputByInput(transactions, t.inputs[0]);
-            generateSemiFinalScript(prevOutput, t.inputs[0]);
+            if (prevOutput.spendingConditions.length < 1)
+                throw new Error('Wrong number of spending conditions');
+            const script = generateSemiFinalScript(prevOutput);
+            prevOutput.spendingConditions[0].script = script;
+            t.inputs[0].script = script;
         } else {
-            t.inputs.forEach(input => {
-                const prev = getTransactionByName(transactions, input.transactionName);
-                const sc = prev.outputs[input.outputIndex].spendingConditions[input.spendingConditionIndex];
+            for (const input of t.inputs) {
+                const prevOutput = findOutputByInput(transactions, input);
+                const sc = prevOutput.spendingConditions[input.spendingConditionIndex];
                 const script = generateBoilerplate(setupId, t.transactionName, input.outputIndex, input.spendingConditionIndex, sc);
                 sc.script = script;
                 input.script = script;
-            });
+            };
         }
-    });
+    };
+
+    // copy scripts from spending conditions to matching inputs
+    for (const transaction of transactions) {
+        if (transaction.transactionName == TransactionNames.PROOF_REFUTED) continue;
+        for (const input of transaction.inputs) {
+            const prev = getTransactionByName(transactions, input.transactionName);
+            if (!prev || input.outputIndex >= prev.outputs.length)
+                throw new Error("Input doesn't match any outputs");
+            const output = prev.outputs[input.outputIndex];
+            const spendingCondition = output.spendingConditions[input.spendingConditionIndex];
+            if (!spendingCondition)
+                throw new Error("Input doesn't match any spending conditions");
+            if (!spendingCondition.script)
+                throw new Error('Script in spending condition is missing');
+            input.script = spendingCondition.script;
+        }
+    }
 
     // generate the taproot key for all outputs except in the semi-final tx
     setTaprootKey(transactions);
 
-    for (const t of transactions) {
-        await writeTransaction(agentId, setupId, t);
-    }
+    await writeTransactions(agentId, setupId, transactions);
+
     return transactions;
 }
 
