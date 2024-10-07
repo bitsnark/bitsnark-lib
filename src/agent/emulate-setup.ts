@@ -4,6 +4,7 @@ import { AgentRoles, TransactionNames } from "./common";
 import { writeTransactions } from "./db";
 import { generateAllScripts } from "./generate-scripts";
 import { initializeTransactions, mergeWots, Transaction } from "./transactions-new";
+import { verifySetup } from "./verify-setup";
 
 
 export async function emulateSetup(setupId: string, proverAgentId: string, verifierAgentId: string) {
@@ -45,6 +46,11 @@ export async function emulateSetup(setupId: string, proverAgentId: string, verif
 
     await generateScripts(proverAgentId, proverTemplates);
     await generateScripts(verifierAgentId, verifierTemplates);
+
+    console.log('checking...');
+
+    await verifySetup(proverAgentId, setupId);
+    await verifySetup(verifierAgentId, setupId);
 
     console.log('done.');
 }

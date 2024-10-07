@@ -1,5 +1,6 @@
 import { readTransaction } from "@bitauth/libauth";
 import { readTransactions } from "./db";
+import { TransactionNames } from "./common";
 
 export async function verifySetup(agentId: string, setupId: string) {
 
@@ -12,22 +13,22 @@ export async function verifySetup(agentId: string, setupId: string) {
         return;
     }
 
-    // check that all inputs correspond to valid outputs
-
-    // check that all spending conditions have scripts
-
-    console.log('check that all spending conditions have wots keys');
-    if (!transactions.every(t => t.outputs.every(o => o.spendingConditions.every(sc => {
-        if (sc.wotsSpec && !sc.wotsPublicKeys) console.log('No wots keys', t, o, sc);
-        return sc.wotsSpec ? !!sc.wotsPublicKeys : true;
-    })))) console.log('Fail');
-    else console.log('Success');
-
     console.log('check that all outputs have taproot keys');
-    if (!transactions.every(t => t.outputs.every(o => {
+    const taprootCheck = !transactions.every(t => t.outputs.every(o => {
         if (!o.taprootKey) console.log('Missing taproot key', t, o);
         return o.taprootKey;
-    }))) console.log('Fail');
+    }));
+    if (taprootCheck) console.log('Fail');
+    else console.log('Success');
+
+    console.log('check that all outputs have amounts');
+    const amountCheck = transactions
+        .filter(t => t.transactionName != TransactionNames.CHALLENGE)
+        .every(t => t.outputs.every(o => {
+            if (!o.amount || o.amount <= 0n) console.log('Missing amount', t, o);
+            return o.amount && o.amount > 0n;
+        }));
+    if (!amountCheck) console.log('Fail');
     else console.log('Success');
 }
 
