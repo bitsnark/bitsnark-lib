@@ -17,9 +17,11 @@
   ],
   "scripts": {
     "test": "jest",
+    "py-install": "cd python && pip install -r requirements.txt",
     "generate-tx": "ts-node ./src/agent/transactions-new.ts",
     "generate-scripts": "ts-node ./src/agent/generate-scripts.ts",
     "add-amounts": "ts-node ./src/agent/amounts.ts",
+    "sign-tx": "ts-node ./src/agent/sign-transactions.ts",
     "verify-setup": "ts-node ./src/agent/verify-setup.ts",
     "lint": "eslint",
     "lint-fix": "eslint --fix",
