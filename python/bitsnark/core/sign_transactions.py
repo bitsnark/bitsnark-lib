@@ -1,6 +1,7 @@
 import argparse
 import os
 from dataclasses import dataclass
+from typing import Literal
 
 from bitcointx.core import CTransaction, COutPoint, CTxIn, CTxOut
 from bitcointx.core.script import CScript
@@ -11,6 +12,8 @@ from sqlalchemy.orm.attributes import flag_modified
 
 from bitsnark.core.parsing import parse_bignum, parse_hex_bytes, serialize_hex
 from .models import TransactionTemplate
+
+Role = Literal['prover', 'verifier']
 
 
 @dataclass
@@ -63,11 +66,14 @@ for keypairs in KEYPAIRS.values():
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--db', default='postgresql://postgres:1234@localhost:5432/postgres')
-    parser.add_argument('--all', action='store_true', help='Process all transaction templates')
+    parser.add_argument('--all', action='store_true',
+                        help='Process all transaction templates (get role from agent id)')
     parser.add_argument('--setup-id', required=False,
                         help='Process only transactions with this setup ID. Required if --all is not set')
     parser.add_argument('--agent-id', required=False,
                         help='Process only transactions with this agent ID. Required if --all is not set')
+    parser.add_argument('--role', required=False, choices=['prover', 'verifier'],
+                        help='Role of the agent (prover or verifier). Required if --all is not set')
 
     args = parser.parse_args()
 
@@ -79,6 +85,8 @@ def main():
             parser.error("Must specify --setup-id if --all is not set")
         if not args.agent_id:
             parser.error("Must specify --agent-id if --all is not set")
+        if not args.role:
+            parser.error("Must specify --role if --all is not set")
 
     engine = create_engine(args.db)
     dbsession = Session(engine, autobegin=False)
@@ -98,10 +106,21 @@ def main():
         print(f"Processing {len(tx_templates)} transaction templates...")
 
         for tx in tx_templates:
+            if args.all:
+                if 'verifier' in tx.agentId:
+                    role = 'verifier'
+                elif 'prover' in tx.agentId:
+                    role = 'prover'
+                else:
+                    raise ValueError(f"Cannot determine role from agent ID {tx.agentId}")
+            else:
+                role = args.role
+
             print(f"Processing transaction #{tx.ordinal}: {tx.name}...")
             success = _handle_tx_template(
                 dbsession=dbsession,
                 tx_template=tx,
+                role=role,
             )
             if success:
                 successes.append(tx.name)
@@ -124,7 +143,8 @@ def main():
 def _handle_tx_template(
     *,
     dbsession: Session,
-    tx_template: TransactionTemplate
+    tx_template: TransactionTemplate,
+    role: Role,
 ):
     if tx_template.name in HARDCODED_MOCK_INPUTS:
         # assert len(tx_template.inputs) == 0  # cannot do it, this script might have been already run
@@ -243,7 +263,14 @@ def _handle_tx_template(
         if len(tx_template.object['inputs']) <= i:
             # HACK: the hardcoded initial transactions have an empty list of inputs
             tx_template.object['inputs'].append({})
-        tx_template.object['inputs'][i]['signature'] = serialize_hex(signature)
+
+        if role == 'prover':
+            role_signature_key = 'proverSignature'
+        elif role == 'verifier':
+            role_signature_key = 'verifierSignature'
+        else:
+            raise ValueError(f"Unknown role {role}")
+        tx_template.object['inputs'][i][role_signature_key] = serialize_hex(signature)
 
     # Make sure SQLAlchemy knows that the JSON object has changed
     flag_modified(tx_template, 'object')
