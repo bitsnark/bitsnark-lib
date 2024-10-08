@@ -6,7 +6,7 @@ interface Point {
 }
 
 function modulus(a: bigint, b: bigint): bigint {
-    let result = a % b;
+    const result = a % b;
     if (result < 0) {
         return result + b;
     }
