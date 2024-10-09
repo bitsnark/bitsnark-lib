@@ -4,8 +4,9 @@ docker rm bitcoin-node
 
 # Start the Bitcoin node in regtest mode with the correct port bindings -p 8332:8332
 echo "Starting the Bitcoin node in regtest mode..."
-docker run -d --name bitcoin-node -v bitcoin-data:/bitcoin/.bitcoin  -p 18443:18443 -p 18444:18444 ruimarinho/bitcoin-core:latest \
-  -regtest -rpcuser=rpcuser -rpcpassword=rpcpassword -fallbackfee=0.0002 
+docker run -d --name bitcoin-node -v bitcoin-data:/bitcoin/.bitcoin -p 18443:18443 -p 18444:18444 ruimarinho/bitcoin-core:latest \
+    -regtest -rpcuser=rpcuser -rpcpassword=rpcpassword -fallbackfee=0.0002  -rpcallowip=0.0.0.0/0 -rpcbind=0.0.0.0
+   
 
 
 # Wait for the node to start
