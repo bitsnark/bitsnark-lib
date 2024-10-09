@@ -12,7 +12,7 @@ export async function signTransactions(
 
     await writeTransactions(agentId, setupId, transactions);
 
-    const result = execFileSync('python', [
+    const result = execFileSync('../venv/bin/python', [
         '-m', 'bitsnark.core.sign_transactions',
         '--role', role.toLowerCase(),
         '--agent-id', agentId,

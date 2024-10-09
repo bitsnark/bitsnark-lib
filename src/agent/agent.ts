@@ -261,8 +261,7 @@ export class Agent {
 
         for (const s of message.signed) {
             const transaction = getTransactionByName(i.transactions!, s.transactionName);
-            if (transaction.txId != s.txId)
-                throw new Error('wrong txId');
+            if (transaction.external) continue;
             transaction.inputs.forEach((input, inputIndex) => {
                 if (!s.signatures[inputIndex]) return;
                 if (this.role == AgentRoles.PROVER) {
@@ -286,8 +285,10 @@ export class Agent {
         if (i.state != SetupState.DONE)
             throw new Error('Invalid state');
 
-        await verifySetup(this.agentId, i.setupId);
-        await ctx.send(new DoneMessage({ setupId: i.setupId }));
+        if (this.role == AgentRoles.VERIFIER) {
+            await verifySetup(this.agentId, i.setupId);
+            await ctx.send(new DoneMessage({ setupId: i.setupId }));
+        }
     }
 }
 

@@ -1,4 +1,3 @@
-import { readTransaction } from "@bitauth/libauth";
 import { readTransactions } from "./db";
 import { TransactionNames } from "./common";
 import { getSpendingConditionByInput, SignatureType } from "./transactions-new";
@@ -36,8 +35,7 @@ export async function verifySetup(agentId: string, setupId: string) {
     const sigCheck = transactions
         .every(t => t.inputs.every(input => {
 
-            if (t.transactionName == TransactionNames.LOCKED_FUNDS ||
-                t.transactionName == TransactionNames.PROVER_STAKE ||
+            if (t.external ||
                 t.transactionName == TransactionNames.PROOF_REFUTED) return true;
 
             const sc = getSpendingConditionByInput(transactions, input);
@@ -54,6 +52,12 @@ export async function verifySetup(agentId: string, setupId: string) {
         }));
     if (!sigCheck) console.log('Fail');
     else console.log('Success');
+
+    transactions.forEach(t => {
+        let total = 0;
+        t.inputs.forEach(i => total += i.script?.length ?? 0);
+        console.log(`${t.transactionName}: ${total}`);
+    });
 
 }
 

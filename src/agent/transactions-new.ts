@@ -51,12 +51,14 @@ export interface Transaction {
     txId?: string;
     inputs: Input[];
     outputs: Output[];
+    external?: boolean;
 }
 
 const protocolStart: Transaction[] = [
     {
         role: AgentRoles.PROVER,
         transactionName: TransactionNames.LOCKED_FUNDS,
+        external: true,
         inputs: [],
         outputs: [{
             spendingConditions: [{
@@ -68,6 +70,7 @@ const protocolStart: Transaction[] = [
     {
         role: AgentRoles.PROVER,
         transactionName: TransactionNames.PROVER_STAKE,
+        external: true,
         inputs: [],
         outputs: [{
             spendingConditions: [{
