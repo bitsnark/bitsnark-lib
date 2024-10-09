@@ -37,10 +37,8 @@ export async function verifySetup(agentId: string, setupId: string) {
         .every(t => t.inputs.every(input => {
 
             if (t.transactionName == TransactionNames.LOCKED_FUNDS ||
-                t.transactionName == TransactionNames.PROVER_STAKE) return true;
-
-            if (t.transactionName == TransactionNames.PROOF_REFUTED &&
-                input.transactionName != TransactionNames.LOCKED_FUNDS) return true;
+                t.transactionName == TransactionNames.PROVER_STAKE ||
+                t.transactionName == TransactionNames.PROOF_REFUTED) return true;
 
             const sc = getSpendingConditionByInput(transactions, input);
             if ((sc.signatureType == SignatureType.PROVER ||
