@@ -26,10 +26,12 @@
     "lint": "eslint --ignore-pattern node_modules/ --ignore-pattern dist/ --ignore-pattern python/ .",
     "lint-fix": "npm run lint -- --fix",
     "tx-chart": "npm run generate-tx && ./analysis/generate-dot.sh",
-    "start-db": "docker run --name postgres -e POSTGRES_PASSWORD=1234 -d -p 5432:5432 postgres",
+    "start-db": "docker run --name postgres -e POSTGRES_PASSWORD=1234 -d -p 5433:5432 postgres",
     "start-prover": "ts-node ./src/agent/agent.ts bitsnark_prover_1",
     "start-verifier": "ts-node ./src/agent/agent.ts bitsnark_verifier_1",
-    "emulate-setup": "./python/run-in-venv.sh ts-node ./src/agent/emulate-setup.ts"
+    "emulate-setup": "./python/run-in-venv.sh ts-node ./src/agent/emulate-setup.ts",
+    "install-node": "./scripts/create-node.sh",
+    "uninstall-node": "./scripts/uninstall-node.sh"
   },
   "config": {
     "commitizen": {
@@ -50,7 +52,7 @@
     "telegraf": "4.16.3",
     "tiny-secp256k1": "2.2.3",
     "ts-graphviz": "2.1.4",
-    "ts-postgres": "^2.0.4",
+    "ts-postgres": "2.0.4",
     "websnark": "git+https://github.com/tornadocash/websnark.git#4c0af6a8b65aabea3c09f377f63c44e7a58afa6d"
   },
   "devDependencies": {

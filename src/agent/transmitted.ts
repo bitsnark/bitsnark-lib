@@ -48,13 +48,17 @@ const recheckInterval = 1000;
 export class BlockchainListener {
     private scheduler: NodeJS.Timeout | null = null;
     private lastBlockHeight: number = 0;
+
+
+
     private client = new Client({
         network: 'regtest',
-        host: 'localhost',
-        port: 18443,
-        username: 'yourrpcuser',
-        password: 'yourrpcpassword'
-    });
+        username: 'rpcuser', // Replace with the actual RPC username
+        password: 'rpcpassword', // Replace with the actual RPC password
+        host: '127.0.0.1',
+        port: 18443 // Default RPC port for the Docker container
+
+    })
 
     constructor() {
         this.initialize();
@@ -65,6 +69,7 @@ export class BlockchainListener {
         try {
             const { height, time } = await this.getLastBlockByHeightAndTime();
             this.lastBlockHeight = height;
+            console.log('Last block height:', height);
             const initialInterval = this.calculateNextCheckTime(time);
             this.setMonitorInterval(initialInterval);
         } catch (error) {
@@ -93,6 +98,7 @@ export class BlockchainListener {
             const block = await this.client.getBlock(blockHash);
             return { height: block.height, time: block.time };
         } catch (error) {
+            console.log(error);
             throw new Error('Error fetching block:' + error);
         }
     }
@@ -141,13 +147,6 @@ export class BlockchainListener {
         }
     }
 
-    async getTransactionByTxid(txid: string) {
-        try {
-
-        } catch (error) {
-
-        }
-    }
-
 }
 
+const listener = new BlockchainListener();
