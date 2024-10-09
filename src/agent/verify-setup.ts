@@ -1,6 +1,7 @@
 import { readTransaction } from "@bitauth/libauth";
 import { readTransactions } from "./db";
 import { TransactionNames } from "./common";
+import { getSpendingConditionByInput, SignatureType } from "./transactions-new";
 
 export async function verifySetup(agentId: string, setupId: string) {
 
@@ -30,6 +31,32 @@ export async function verifySetup(agentId: string, setupId: string) {
         }));
     if (!amountCheck) console.log('Fail');
     else console.log('Success');
+
+    console.log('check that all inputs have signatures');
+    const sigCheck = transactions
+        .every(t => t.inputs.every(input => {
+
+            if (t.transactionName == TransactionNames.LOCKED_FUNDS ||
+                t.transactionName == TransactionNames.PROVER_STAKE) return true;
+
+            if (t.transactionName == TransactionNames.PROOF_REFUTED &&
+                input.transactionName != TransactionNames.LOCKED_FUNDS) return true;
+
+            const sc = getSpendingConditionByInput(transactions, input);
+            if ((sc.signatureType == SignatureType.PROVER ||
+                sc.signatureType == SignatureType.BOTH) && !input.proverSignature) {
+                console.log('Missing signature', t, input);
+                return false;
+            } else if ((sc.signatureType == SignatureType.VERIFIER ||
+                sc.signatureType == SignatureType.BOTH) && !input.proverSignature) {
+                console.log('Missing signature', t, input);
+                return false;
+            }
+            return true;
+        }));
+    if (!sigCheck) console.log('Fail');
+    else console.log('Success');
+
 }
 
 

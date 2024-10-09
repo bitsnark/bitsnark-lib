@@ -3,6 +3,7 @@ import { addAmounts, validateTransactionFees } from "./amounts";
 import { AgentRoles, TransactionNames } from "./common";
 import { writeTransactions } from "./db";
 import { generateAllScripts } from "./generate-scripts";
+import { signTransactions } from "./sign-transactions";
 import { initializeTransactions, mergeWots, Transaction } from "./transactions-new";
 import { verifySetup } from "./verify-setup";
 
@@ -22,8 +23,8 @@ export async function emulateSetup(setupId: string, proverAgentId: string, verif
 
     console.log('generating templates...');
 
-    const proverTemplates = await initializeTransactions(proverAgentId, AgentRoles.PROVER, 'test_setup', 1n, 2n, mockLockedFunds, mockPayload);
-    const verifierTemplates = await initializeTransactions(verifierAgentId, AgentRoles.VERIFIER, 'test_setup', 1n, 2n, mockLockedFunds, mockPayload);
+    let proverTemplates = await initializeTransactions(proverAgentId, AgentRoles.PROVER, 'test_setup', 1n, 2n, mockLockedFunds, mockPayload);
+    let verifierTemplates = await initializeTransactions(verifierAgentId, AgentRoles.VERIFIER, 'test_setup', 1n, 2n, mockLockedFunds, mockPayload);
 
     console.log('merging templates...');
 
@@ -46,6 +47,16 @@ export async function emulateSetup(setupId: string, proverAgentId: string, verif
 
     await generateScripts(proverAgentId, proverTemplates);
     await generateScripts(verifierAgentId, verifierTemplates);
+
+    console.log('adding amounts...');
+
+    proverTemplates = await addAmounts(proverAgentId, setupId);
+    verifierTemplates = await addAmounts(verifierAgentId, setupId);
+
+    console.log('signing...');
+
+    proverTemplates = await signTransactions(AgentRoles.PROVER, proverAgentId, setupId, proverTemplates);
+    verifierTemplates = await signTransactions(AgentRoles.VERIFIER, verifierAgentId, setupId, verifierTemplates);
 
     console.log('checking...');
 

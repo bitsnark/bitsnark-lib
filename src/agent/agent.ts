@@ -6,7 +6,9 @@ import { generateAllScripts } from "./generate-scripts";
 import { addAmounts } from "./amounts";
 import { DoneMessage, fromJson, JoinMessage, SignaturesMessage, StartMessage, TransactionsMessage } from "./messages";
 import { SimpleContext, TelegramBot } from "./telegram";
-import { initializeTransactions, mergeWots, Transaction } from "./transactions-new";
+import { getTransactionByName, initializeTransactions, mergeWots, Transaction } from "./transactions-new";
+import { signTransactions } from "./sign-transactions";
+import { verifySetup } from "./verify-setup";
 
 interface AgentInfo {
     agentId: string;
@@ -232,13 +234,14 @@ export class Agent {
     private async sendSignatures(ctx: SimpleContext, setupId: string) {
         const i = this.getInstance(setupId);
 
-        await writeTransactions(agentId, setupId, i.transactions!);
+        i.transactions = await signTransactions(this.role, this.agentId, i.setupId, i.transactions!);
 
         const signed: any[] = i.transactions!.map(t => {
             return {
                 transactionName: t.transactionName,
-                txId: '' + Math.random,
-                signature: '' + Math.random,
+                txId: t.txId,
+                signatures: t.inputs
+                    .map(input => this.role == AgentRoles.PROVER ? input.proverSignature : input.verifierSignature)
             };
         });
 
@@ -256,7 +259,22 @@ export class Agent {
 
         i.state = SetupState.DONE;
 
+        for (const s of message.signed) {
+            const transaction = getTransactionByName(i.transactions!, s.transactionName);
+            if (transaction.txId != s.txId)
+                throw new Error('wrong txId');
+            transaction.inputs.forEach((input, inputIndex) => {
+                if (!s.signatures[inputIndex]) return;
+                if (this.role == AgentRoles.PROVER) {
+                    input.verifierSignature = s.signatures[inputIndex];
+                } else {
+                    input.proverSignature = s.signatures[inputIndex];
+                }
+            });
+        }
+
         if (this.role == AgentRoles.PROVER) {
+            await verifySetup(this.agentId, i.setupId);
             await ctx.send(new DoneMessage({ setupId: i.setupId }));
         } else {
             await this.sendSignatures(ctx, i.setupId);
@@ -268,9 +286,8 @@ export class Agent {
         if (i.state != SetupState.DONE)
             throw new Error('Invalid state');
 
-        if (this.role == AgentRoles.VERIFIER) {
-            await ctx.send(new DoneMessage({ setupId: i.setupId }));
-        }
+        await verifySetup(this.agentId, i.setupId);
+        await ctx.send(new DoneMessage({ setupId: i.setupId }));
     }
 }
 

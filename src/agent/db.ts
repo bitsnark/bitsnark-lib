@@ -82,7 +82,7 @@ export async function writeTransaction(agentId: string, setupId: string, transac
              "${FIELDS.ordinal}" = $4,
              "${FIELDS.txId}" = $5,
              "${FIELDS.object}" = $6`,
-            [agentId, setupId, transaction.transactionName, transaction.ordinal, transaction.txId, jsonizedObject]
+            [agentId, setupId, transaction.transactionName, transaction.ordinal, transaction.txId ?? '', jsonizedObject]
         );
     } catch (e) {
         console.error((e as any).message);

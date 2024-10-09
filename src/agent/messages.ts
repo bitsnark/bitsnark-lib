@@ -50,7 +50,7 @@ export class TransactionsMessage {
 class Signed {
     transactionName: string = '';
     txId: string = '';
-    signature: string = ''
+    signatures: string = ''
 }
 
 export class SignaturesMessage {
