@@ -1,9 +1,11 @@
 import { jsonParseCustom, jsonStringifyCustom } from './common';
 import { Transaction } from './transactions-new';
 import { Client, connect } from 'ts-postgres';
+import { TxData } from './transmitted';
 
 enum TABLES {
     transaction_templates = 'transaction_templates',
+    transmitted_transactions = 'transmitted_transactions',
 }
 
 enum FIELDS {
@@ -13,6 +15,12 @@ enum FIELDS {
     ordinal = 'ordinal',
     txId = 'txId',
     object = 'object'
+}
+enum TRANSMITTED_FIELDS {
+    setupId = 'setupId',
+    txId = 'txId',
+    blockHeight = 'blockHeight',
+    rawTransaction = 'rawTransaction'
 }
 
 function jsonizeObject(obj: any): any {
@@ -31,6 +39,7 @@ let tablesExistFlag = false;
 async function createDb(client: Client) {
     if (tablesExistFlag) return;
     try {
+        await client.query('BEGIN');
         await client.query(
             `CREATE TABLE IF NOT EXISTS public.transaction_templates
             (
@@ -41,11 +50,23 @@ async function createDb(client: Client) {
                 "txId" character varying,
                 ordinal integer,
                 CONSTRAINT transaction_template_pkey PRIMARY KEY ("agentId", "setupId", name)
+            );`, []);
+
+        await client.query(
+            `CREATE TABLE IF NOT EXISTS public.transmitted_transactions
+            (
+                "setupId" character varying NOT NULL,
+                "txId" character varying NOT NULL,
+                "blockHeight" character varying NOT NULL,
+                "rawTransaction" json NOT NULL,
+                CONSTRAINT transmitted_transaction_pkey PRIMARY KEY ("txId")
             );`,
             []
         );
+        await client.query('COMMIT');
         tablesExistFlag = true;
     } catch (e) {
+        await client.query('ROLLBACK');
         console.error((e as any).message);
         throw e;
     }
@@ -55,7 +76,7 @@ async function getConnection(): Promise<Client> {
     const client = await connect({
         user: 'postgres',
         host: 'localhost',
-        port: undefined,
+        port: 5433,
         password: '1234',
         bigints: true,
         keepAlive: true
@@ -147,7 +168,7 @@ export async function readTransactions(agentId: string, setupId?: string): Promi
         const result = await client.query(
             `select * from ${TABLES.transaction_templates} where 
                 "${FIELDS.agentId}" = $1 ` + (setupId ? ` AND "${FIELDS.setupId}" = $2` : '') +
-                ` order by ordinal asc `,
+            ` order by ordinal asc `,
             [agentId, setupId]
         );
         const results = [...result];
@@ -160,4 +181,87 @@ export async function readTransactions(agentId: string, setupId?: string): Promi
         await client.end();
     }
 }
+
+export async function writeTransmittedTransaction(setupId: string, transaction: TxData) {
+    const client = await getConnection();
+    const jsonizedTx = jsonizeObject(transaction);
+    try {
+        const result = await client.query(
+            `insert into "${TABLES.transmitted_transactions}" (
+                "${TRANSMITTED_FIELDS.setupId}",
+                "${TRANSMITTED_FIELDS.txId}",
+                "${TRANSMITTED_FIELDS.blockHeight}",
+                "${TRANSMITTED_FIELDS.rawTransaction}") 
+            values ($1, $2, $3, $4)`,
+            [setupId, jsonizedTx.txid, jsonizedTx.status.block_height, jsonizedTx]
+        );
+    } catch (e) {
+        console.error((e as any).message);
+        throw e;
+    } finally {
+        await client.end();
+    }
+}
+
+
+export async function writeTransmittedTransactions(setupId: string, transmitted: TxData[]) {
+    const client = await getConnection();
+    let values = '';
+    for (const transaction of transmitted) {
+        values += `('${setupId}', 
+            '${transaction.txid}', 
+            '${transaction.status.block_height}', 
+            '${jsonizeObject(transaction)}'),`;
+    }
+    values = values.slice(0, -1);
+
+    try {
+
+        console.log(`insert into "${TABLES.transmitted_transactions}" (
+                "${TRANSMITTED_FIELDS.setupId}",
+                "${TRANSMITTED_FIELDS.txId}",
+                "${TRANSMITTED_FIELDS.blockHeight}",
+                "${TRANSMITTED_FIELDS.rawTransaction}") 
+            values ${values}`);
+
+        const result = await client.query(
+            `insert into "${TABLES.transmitted_transactions}" (
+                "${TRANSMITTED_FIELDS.setupId}",
+                "${TRANSMITTED_FIELDS.txId}",
+                "${TRANSMITTED_FIELDS.blockHeight}",
+                "${TRANSMITTED_FIELDS.rawTransaction}") 
+            values ${values}`, []);
+    } catch (e) {
+        console.error((e as any).message);
+        throw e;
+    } finally {
+        await client.end();
+    }
+}
+export async function readPendingTransactions() {
+    const client = await getConnection();
+    try {
+        const result = await client.query(
+            `select  "${FIELDS.setupId}" , "${FIELDS.txId}" 
+                from ${TABLES.transaction_templates} where 
+                 "${FIELDS.txId}" not in (
+                    select  "${TRANSMITTED_FIELDS.txId}" 
+                    from ${TABLES.transmitted_transactions})`);
+
+        const results = result.rows.map(row => ({ setupId: row[0], txid: row[1] }));
+        console.log('results', results);
+        return results;
+
+    } catch (e) {
+        console.error((e as any).message);
+        throw e;
+    } finally {
+        await client.end();
+    }
+}
+
+
+
+
+
 
