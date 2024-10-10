@@ -19,12 +19,19 @@ if ! . "$venv_dir/bin/activate"; then
 fi
 
 # Install requirements if they are not already installed.
-pip freeze | sort > /tmp/bitsnark_venv_installed
-sort "$requirements" > /tmp/bitsnark_requirements
-missing_packages="$(comm -23 /tmp/bitsnark_requirements /tmp/bitsnark_venv_installed)"
-rm /tmp/bitsnark_venv_installed /tmp/bitsnark_requirements
-if [ "$missing_packages" ]; then
+missing_packages() {
+    pip freeze | sort > /tmp/bitsnark_venv_installed
+    sort "$requirements" > /tmp/bitsnark_requirements
+    missing_packages="$(comm -23 /tmp/bitsnark_requirements /tmp/bitsnark_venv_installed)"
+    rm /tmp/bitsnark_venv_installed /tmp/bitsnark_requirements
+    echo "$missing_packages"
+}
+if [ "$(missing_packages)" ]; then
     pip install -r "$requirements"
+    if [ "$(missing_packages)" ]; then
+        echo "Failed to install all requirements"
+        exit 1
+    fi
 fi
 
 # Add node_modules/.bin to PATH. and run the command.
