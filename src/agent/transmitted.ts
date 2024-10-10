@@ -12,7 +12,6 @@ export interface TxData {
     vout: Vout[];
     status: TxStstus;
 }
-
 export interface Vin {
     txid: string;
     vout: number;
@@ -20,7 +19,6 @@ export interface Vin {
     sequence: number;
     witness: string[];
     prevout: Vout;
-    // decoded?: string; // Decoded witness - not from api but from the service
 }
 
 export interface Vout {
@@ -39,8 +37,6 @@ export interface TxStstus {
 }
 
 
-
-
 const blocksUntilFinalized = 6;
 const averageBlockTime = 600000;
 const recheckInterval = 1000;
@@ -49,27 +45,23 @@ export class BlockchainListener {
     private scheduler: NodeJS.Timeout | null = null;
     private lastBlockHeight: number = 0;
 
-
-
     private client = new Client({
         network: 'regtest',
-        username: 'rpcuser', // Replace with the actual RPC username
-        password: 'rpcpassword', // Replace with the actual RPC password
+        username: 'rpcuser',
+        password: 'rpcpassword',
         host: '127.0.0.1',
-        port: 18443 // Default RPC port for the Docker container
+        port: 18443
 
     })
 
     constructor() {
         this.initialize();
-
     }
 
     async initialize() {
         try {
             const { height, time } = await this.getLastBlockByHeightAndTime();
             this.lastBlockHeight = height;
-            console.log('Last block height:', height);
             const initialInterval = this.calculateNextCheckTime(time);
             this.setMonitorInterval(initialInterval);
         } catch (error) {
@@ -78,14 +70,11 @@ export class BlockchainListener {
     }
 
     async setMonitorInterval(interval: number) {
-        if (this.scheduler) {
-            clearInterval(this.scheduler);
-        }
+        if (this.scheduler) clearInterval(this.scheduler);
         this.scheduler = setInterval(() => {
             this.checkForNewBlock();
         }, interval);
     }
-
 
     calculateNextCheckTime(lastBlockTime: number) {
         const nextBlockTime = lastBlockTime * 1000 + averageBlockTime;
@@ -137,7 +126,6 @@ export class BlockchainListener {
     }
 
 
-
     async getPendingTransactionsFromDB() {
         try {
             const transactions = await this.client.getRawMemPool();
@@ -149,4 +137,3 @@ export class BlockchainListener {
 
 }
 
-const listener = new BlockchainListener();
