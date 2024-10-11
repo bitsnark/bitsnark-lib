@@ -2,6 +2,7 @@ import { jsonParseCustom, jsonStringifyCustom } from './common';
 import { Transaction } from './transactions-new';
 import { Client, connect } from 'ts-postgres';
 import { TxData } from './transmitted';
+import format from 'pg-format';
 
 enum TABLES {
     transaction_templates = 'transaction_templates',
@@ -184,20 +185,18 @@ export async function readTransactions(agentId: string, setupId?: string): Promi
 export async function writeTransmittedTransactions(transmitted: TxData[]) {
     const client = await getConnection();
     try {
-        const placeholders: string[] = [];
+        const values = transmitted.map((t) =>
+            [t.setupId, t.txid, t.status.block_height, jsonizeObject(t)]);
 
-        const values = transmitted.flatMap((t, i) => {
-            placeholders.push(`($${i * 4 + 1}, $${i * 4 + 2}, $${i * 4 + 3}, $${i * 4 + 4})`);
-            return [t.setupId, t.txid, t.status.block_height, jsonizeObject(t)]
-        });
-
-        const result = await client.query(
+        const sql = format(
             `insert into "${TABLES.transmitted_transactions}" (
             "${TRANSMITTED_FIELDS.setupId}",
             "${TRANSMITTED_FIELDS.txId}",
             "${TRANSMITTED_FIELDS.blockHeight}",
             "${TRANSMITTED_FIELDS.rawTransaction}") 
-        values ${placeholders.join(', ')}`, values);
+        values %L`, values);
+
+        const result = await client.query(sql);
 
     } catch (e) {
         console.error((e as any).message);
@@ -220,7 +219,6 @@ export async function readPendingTransactions() {
 
         const results = result.rows.map(row => ({ setupId: row[0], txid: row[1] }));
         return results;
-
     } catch (e) {
         console.error((e as any).message);
         throw e;
@@ -228,9 +226,3 @@ export async function readPendingTransactions() {
         await client.end();
     }
 }
-
-
-
-
-
-
