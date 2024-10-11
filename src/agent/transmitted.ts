@@ -1,5 +1,6 @@
-import { readPendingTransactions, writeTransmittedTransaction } from './db';
+import { readPendingTransactions, writeTransmittedTransactions } from './db';
 const Client = require('bitcoin-core');
+
 
 export interface TxData {
     txid: string;
@@ -11,6 +12,7 @@ export interface TxData {
     vin: Vin[];
     vout: Vout[];
     status: TxStstus;
+    setupId?: string; // custom field added for db update
 }
 export interface Vin {
     txid: string;
@@ -38,12 +40,12 @@ export interface TxStstus {
 
 
 const blocksUntilFinalized = 6;
-const averageBlockTime = 600000;
-const recheckInterval = 1000;
+const checkNodeInterval = 100000;
 
 export class BlockchainListener {
     private scheduler: NodeJS.Timeout | null = null;
     private lastBlockHeight: number = 0;
+    private lastBlockHash: string = '';
 
     private client = new Client({
         network: 'regtest',
@@ -55,85 +57,61 @@ export class BlockchainListener {
     })
 
     constructor() {
-        this.initialize();
+        this.initialize().catch(error => {
+            console.error('Error during initialization:', error);
+        });
     }
 
     async initialize() {
-        try {
-            const { height, time } = await this.getLastBlockByHeightAndTime();
-            this.lastBlockHeight = height;
-            const initialInterval = this.calculateNextCheckTime(time);
-            this.setMonitorInterval(initialInterval);
-        } catch (error) {
-            console.error('Error fetching block:', error);
-        }
-    }
+        ({
+            height: this.lastBlockHeight,
+            hash: this.lastBlockHash
+        } = await this.getLastBlockByHeightAndTime());
 
-    async setMonitorInterval(interval: number) {
-        if (this.scheduler) clearInterval(this.scheduler);
         this.scheduler = setInterval(() => {
-            this.checkForNewBlock();
-        }, interval);
+            this.checkForNewBlock().catch(error => console.error(error));
+        }, checkNodeInterval);
+
+        await this.monitorTransmitted();
     }
 
-    calculateNextCheckTime(lastBlockTime: number) {
-        const nextBlockTime = lastBlockTime * 1000 + averageBlockTime;
-        return nextBlockTime - Date.now();
-    }
-
-    async getLastBlockByHeightAndTime(): Promise<{ height: number, time: number }> {
-        try {
-            const blockHash = await this.client.getBestBlockHash();
-            const block = await this.client.getBlock(blockHash);
-            return { height: block.height, time: block.time };
-        } catch (error) {
-            console.log(error);
-            throw new Error('Error fetching block:' + error);
-        }
+    async getLastBlockByHeightAndTime(): Promise<{ height: number, hash: string }> {
+        const blockHash = await this.client.getBestBlockHash();
+        const block = await this.client.getBlock(blockHash);
+        return { height: block.height, hash: blockHash };
     }
 
     async checkForNewBlock() {
-        try {
-            const { height } = await this.getLastBlockByHeightAndTime();
-            if (height > this.lastBlockHeight) {
-                this.lastBlockHeight = height;
-                this.monitorTransmitted();
-            } else {
-                this.setMonitorInterval(recheckInterval);
-            }
-        } catch (error) {
-            console.error('Error fetching block:', error);
+        const lastBlockHash = await this.client.getBestBlockHash();
+        if (lastBlockHash !== this.lastBlockHash) {
+            this.lastBlockHash = lastBlockHash;
+            this.monitorTransmitted();
         }
     }
 
     async monitorTransmitted() {
-        try {
-            const pending = await readPendingTransactions();
-            for (const pendingTx of pending) {
+        const pending = await readPendingTransactions();
+        const transmittedTxs: TxData[] = [];
+
+        for (const pendingTx of pending) {
+            try {
                 const transmittedTx = await this.client.getRawTransaction(pendingTx.txid, true);
                 if (transmittedTx && transmittedTx.status.confirmed &&
                     transmittedTx.status.block_height > this.lastBlockHeight - blocksUntilFinalized) {
-                    await writeTransmittedTransaction(pendingTx.setupId, transmittedTx as TxData);
+                    transmittedTx.push(transmittedTx as TxData);
                 }
-            }
-
-            const blockHash = await this.client.getBestBlockHash();
-            const block = await this.client.getBlock(blockHash);
-            console.log(block);
-        } catch (error) {
-            console.error('Error fetching block:', error);
+            } catch (error) { continue }
         }
+
+        if (transmittedTxs.length) await writeTransmittedTransactions(transmittedTxs);
     }
 
-
-    async getPendingTransactionsFromDB() {
-        try {
-            const transactions = await this.client.getRawMemPool();
-            console.log(transactions);
-        } catch (error) {
-            console.error('Error fetching pending transactions:', error);
+    destroy() {
+        if (this.scheduler) {
+            clearInterval(this.scheduler);
+            this.scheduler = null;
         }
     }
-
 }
 
+new BlockchainListener();

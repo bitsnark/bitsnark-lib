@@ -173,7 +173,6 @@ export async function readTransactions(agentId: string, setupId?: string): Promi
         );
         const results = [...result];
         return results.map(r => unjsonizeObject(r[FIELDS.object]));
-
     } catch (e) {
         console.error((e as any).message);
         throw e;
@@ -182,55 +181,24 @@ export async function readTransactions(agentId: string, setupId?: string): Promi
     }
 }
 
-export async function writeTransmittedTransaction(setupId: string, transaction: TxData) {
+export async function writeTransmittedTransactions(transmitted: TxData[]) {
     const client = await getConnection();
-    const jsonizedTx = jsonizeObject(transaction);
     try {
-        const result = await client.query(
-            `insert into "${TABLES.transmitted_transactions}" (
-                "${TRANSMITTED_FIELDS.setupId}",
-                "${TRANSMITTED_FIELDS.txId}",
-                "${TRANSMITTED_FIELDS.blockHeight}",
-                "${TRANSMITTED_FIELDS.rawTransaction}") 
-            values ($1, $2, $3, $4)`,
-            [setupId, jsonizedTx.txid, jsonizedTx.status.block_height, jsonizedTx]
-        );
-    } catch (e) {
-        console.error((e as any).message);
-        throw e;
-    } finally {
-        await client.end();
-    }
-}
+        const placeholders: string[] = [];
 
-
-export async function writeTransmittedTransactions(setupId: string, transmitted: TxData[]) {
-    const client = await getConnection();
-    let values = '';
-    for (const transaction of transmitted) {
-        values += `('${setupId}', 
-            '${transaction.txid}', 
-            '${transaction.status.block_height}', 
-            '${jsonizeObject(transaction)}'),`;
-    }
-    values = values.slice(0, -1);
-
-    try {
-
-        console.log(`insert into "${TABLES.transmitted_transactions}" (
-                "${TRANSMITTED_FIELDS.setupId}",
-                "${TRANSMITTED_FIELDS.txId}",
-                "${TRANSMITTED_FIELDS.blockHeight}",
-                "${TRANSMITTED_FIELDS.rawTransaction}") 
-            values ${values}`);
+        const values = transmitted.flatMap((t, i) => {
+            placeholders.push(`($${i * 4 + 1}, $${i * 4 + 2}, $${i * 4 + 3}, $${i * 4 + 4})`);
+            return [t.setupId, t.txid, t.status.block_height, jsonizeObject(t)]
+        });
 
         const result = await client.query(
             `insert into "${TABLES.transmitted_transactions}" (
-                "${TRANSMITTED_FIELDS.setupId}",
-                "${TRANSMITTED_FIELDS.txId}",
-                "${TRANSMITTED_FIELDS.blockHeight}",
-                "${TRANSMITTED_FIELDS.rawTransaction}") 
-            values ${values}`, []);
+            "${TRANSMITTED_FIELDS.setupId}",
+            "${TRANSMITTED_FIELDS.txId}",
+            "${TRANSMITTED_FIELDS.blockHeight}",
+            "${TRANSMITTED_FIELDS.rawTransaction}") 
+        values ${placeholders.join(', ')}`, values);
+
     } catch (e) {
         console.error((e as any).message);
         throw e;
@@ -238,6 +206,8 @@ export async function writeTransmittedTransactions(setupId: string, transmitted:
         await client.end();
     }
 }
+
+
 export async function readPendingTransactions() {
     const client = await getConnection();
     try {
@@ -249,7 +219,6 @@ export async function readPendingTransactions() {
                     from ${TABLES.transmitted_transactions})`);
 
         const results = result.rows.map(row => ({ setupId: row[0], txid: row[1] }));
-        console.log('results', results);
         return results;
 
     } catch (e) {
