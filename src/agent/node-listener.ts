@@ -1,5 +1,7 @@
 import { readPendingTransactions, writeTransmittedTransactions } from './db';
 const Client = require('bitcoin-core');
+import { agentConf } from './agent.conf';
+import { create } from 'domain';
 
 
 export interface TxData {
@@ -42,17 +44,17 @@ export interface TxStstus {
 const blocksUntilFinalized = 6;
 const checkNodeInterval = 100000;
 
-export class BlockchainListener {
+export class NodeListener {
     private scheduler: NodeJS.Timeout | null = null;
     private lastBlockHeight: number = 0;
     private lastBlockHash: string = '';
 
     private client = new Client({
-        network: 'regtest',
-        username: 'rpcuser',
-        password: 'rpcpassword',
-        host: '127.0.0.1',
-        port: 18443
+        network: agentConf.bitcoinNodeNetwork,
+        username: agentConf.bitcoinNodeUsername,
+        password: agentConf.bitcoinNodePassword,
+        host: agentConf.bitcoinNodeHost,
+        port: agentConf.bitcoinNodePort
 
     })
 
@@ -113,3 +115,5 @@ export class BlockchainListener {
         }
     }
 }
+
+

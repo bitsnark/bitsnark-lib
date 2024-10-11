@@ -2,7 +2,6 @@ export const ONE_SATOSHI = 1n;
 export const ONE_BITCOIN = ONE_SATOSHI * (10n ** 8n);
 
 interface AgentConf {
-
     internalPubkey: bigint;
     timeoutBlocks: number;
     smallTimeoutBlocks: number;
@@ -16,12 +15,21 @@ interface AgentConf {
     winternitzSecret: string;
     tokens: { [key: string]: string };
     keyPairs: { [key: string]: { public: string, private: string } };
+    bitcoinNodeNetwork: String;
+    bitcoinNodeUsername: String;
+    bitcoinNodePassword: String;
+    bitcoinNodeHost: string;
+    bitcoinNodePort: number;
+    postgresUser: string;
+    postgresHost: string;
+    postgresPort: number;
+    postgresPassword: string;
+    postgresBigints: boolean;
+    postgresKeepAlive: boolean;
 };
 
 export const agentConf: AgentConf = {
-
     internalPubkey: BigInt(process.env['INTERNAL_PUBKEY'] ?? 1),
-
     timeoutBlocks: 5,
     smallTimeoutBlocks: 6,
     largeTimeoutBlocks: 18,
@@ -48,5 +56,16 @@ export const agentConf: AgentConf = {
             public: process.env['VERIFIER_SCHNORR_PUBLIC'] ?? '0386ad52a51b65ab3aed9a64e7202a7aa1f2bd3da7a6a2dae0f5c8e28bda29de79',
             private: process.env['VERIFIER_SCHNORR_PRIVATE'] ?? 'd4067af1132afcb352b0edef53d8aa2a5fc713df61dee31b1d937e69ece0ebf0'
         }
-    }
+    },
+    bitcoinNodeNetwork: 'regtest',
+    bitcoinNodeUsername: 'rpcuser',
+    bitcoinNodePassword: 'rpcpassword',
+    bitcoinNodeHost: '127.0.0.1',
+    bitcoinNodePort: 18443,
+    postgresUser: 'postgres',
+    postgresHost: 'localhost',
+    postgresPort: 5432,
+    postgresPassword: '1234',
+    postgresBigints: true,
+    postgresKeepAlive: true
 };

@@ -1,8 +1,9 @@
 import { jsonParseCustom, jsonStringifyCustom } from './common';
 import { Transaction } from './transactions-new';
 import { Client, connect } from 'ts-postgres';
-import { TxData } from './transmitted';
+import { TxData } from './node-listener';
 import format from 'pg-format';
+import { agentConf } from './agent.conf';
 
 enum TABLES {
     transaction_templates = 'transaction_templates',
@@ -75,12 +76,12 @@ async function createDb(client: Client) {
 
 async function getConnection(): Promise<Client> {
     const client = await connect({
-        user: 'postgres',
-        host: 'localhost',
-        port: 5432,
-        password: '1234',
-        bigints: true,
-        keepAlive: true
+        user: agentConf.postgresUser,
+        host: agentConf.postgresHost,
+        port: agentConf.postgresPort,
+        password: agentConf.postgresPassword,
+        bigints: agentConf.postgresBigints,
+        keepAlive: agentConf.postgresKeepAlive
     });
     await createDb(client);
     return client;
@@ -100,7 +101,7 @@ export async function writeTransaction(agentId: string, setupId: string, transac
                 "${FIELDS.object}"
             ) values (
                 $1, $2, $3, $4, $5, $6
-            ) ON CONFLICT("${FIELDS.agentId}", "${FIELDS.setupId}", "${FIELDS.name}") DO UPDATE SET 
+            ) ON CONFLICT("${FIELDS.agentId}", "${FIELDS.setupId}", "${FIELDS.name}") DO UPDATE SET
              "${FIELDS.ordinal}" = $4,
              "${FIELDS.txId}" = $5,
              "${FIELDS.object}" = $6`,
@@ -122,7 +123,7 @@ export async function readTransactionByName(agentId: string, setupId: string, tr
     const client = await getConnection();
     try {
         const result = await client.query(
-            `select * from ${TABLES.transaction_templates} where 
+            `select * from ${TABLES.transaction_templates} where
                 "${FIELDS.agentId}" = $1 AND
                 "${FIELDS.setupId}" = $2 AND
                 "${FIELDS.name}" = $3`,
@@ -145,7 +146,7 @@ export async function readTransactionByTxId(agentId: string, txId: string): Prom
     const client = await getConnection();
     try {
         const result = await client.query(
-            `select * from ${TABLES.transaction_templates} where 
+            `select * from ${TABLES.transaction_templates} where
                 "${FIELDS.agentId}" = $1 AND
                 "${FIELDS.txId}" = $3`,
             [agentId, txId]
@@ -193,7 +194,7 @@ export async function writeTransmittedTransactions(transmitted: TxData[]) {
             "${TRANSMITTED_FIELDS.setupId}",
             "${TRANSMITTED_FIELDS.txId}",
             "${TRANSMITTED_FIELDS.blockHeight}",
-            "${TRANSMITTED_FIELDS.rawTransaction}") 
+            "${TRANSMITTED_FIELDS.rawTransaction}")
         values %L`, values);
 
         const result = await client.query(sql);
@@ -206,15 +207,14 @@ export async function writeTransmittedTransactions(transmitted: TxData[]) {
     }
 }
 
-
 export async function readPendingTransactions() {
     const client = await getConnection();
     try {
         const result = await client.query(
-            `select  "${FIELDS.setupId}" , "${FIELDS.txId}" 
-                from ${TABLES.transaction_templates} where 
+            `select  "${FIELDS.setupId}" , "${FIELDS.txId}"
+                from ${TABLES.transaction_templates} where
                  "${FIELDS.txId}" not in (
-                    select  "${TRANSMITTED_FIELDS.txId}" 
+                    select  "${TRANSMITTED_FIELDS.txId}"
                     from ${TABLES.transmitted_transactions})`);
 
         const results = result.rows.map(row => ({ setupId: row[0], txid: row[1] }));
