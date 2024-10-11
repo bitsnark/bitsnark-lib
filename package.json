@@ -29,8 +29,8 @@
     "start-db": "docker run --name postgres -e POSTGRES_PASSWORD=1234 -d -p 5432:5432 postgres",
     "start-prover": "ts-node ./src/agent/agent.ts bitsnark_prover_1",
     "start-verifier": "ts-node ./src/agent/agent.ts bitsnark_verifier_1",
-    "install-node": "./scripts/create-node.sh",
-    "uninstall-node": "./scripts/uninstall-node.sh",
+    "start-node": "./scripts/start-node.sh",
+    "stop-node": "docker stop bitcoin-node",
     "emulate-setup": "./python/run-in-venv.sh ts-node ./src/agent/emulate-setup.ts"
   },
   "config": {

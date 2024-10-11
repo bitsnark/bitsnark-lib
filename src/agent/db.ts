@@ -77,7 +77,7 @@ async function getConnection(): Promise<Client> {
     const client = await connect({
         user: 'postgres',
         host: 'localhost',
-        port: 5433,
+        port: 5432,
         password: '1234',
         bigints: true,
         keepAlive: true

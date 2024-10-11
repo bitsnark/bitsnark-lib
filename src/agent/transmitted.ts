@@ -113,5 +113,3 @@ export class BlockchainListener {
         }
     }
 }
-
-new BlockchainListener();
