@@ -217,7 +217,7 @@ export async function readPendingTransactions() {
                     select  "${TRANSMITTED_FIELDS.txId}"
                     from ${TABLES.transmitted_transactions})`);
 
-        const results = result.rows.map(row => ({ setupId: row[0], txid: row[1] }));
+        const results = result.rows.map(row => ({ setupId: row[0], txId: row[1] }));
         return results;
     } catch (e) {
         console.error((e as any).message);

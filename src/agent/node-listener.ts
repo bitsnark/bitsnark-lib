@@ -1,7 +1,6 @@
 import { readPendingTransactions, writeTransmittedTransactions } from './db';
 const Client = require('bitcoin-core');
 import { agentConf } from './agent.conf';
-import { create } from 'domain';
 
 
 export interface TxData {
@@ -40,9 +39,7 @@ export interface TxStstus {
     block_time: number;
 }
 
-
-const blocksUntilFinalized = 6;
-const checkNodeInterval = 100000;
+const checkNodeInterval = 60000;
 
 export class NodeListener {
     private scheduler: NodeJS.Timeout | null = null;
@@ -65,11 +62,6 @@ export class NodeListener {
     }
 
     async initialize() {
-        ({
-            height: this.lastBlockHeight,
-            hash: this.lastBlockHash
-        } = await this.getLastBlockByHeightAndTime());
-
         this.scheduler = setInterval(() => {
             this.checkForNewBlock().catch(error => console.error(error));
         }, checkNodeInterval);
@@ -86,6 +78,7 @@ export class NodeListener {
     async checkForNewBlock() {
         const lastBlockHash = await this.client.getBestBlockHash();
         if (lastBlockHash !== this.lastBlockHash) {
+            console.log('New block detected:', lastBlockHash);
             this.lastBlockHash = lastBlockHash;
             this.monitorTransmitted();
         }
@@ -97,9 +90,9 @@ export class NodeListener {
 
         for (const pendingTx of pending) {
             try {
-                const transmittedTx = await this.client.getRawTransaction(pendingTx.txid, true);
+                const transmittedTx = await this.client.getRawTransaction(pendingTx.txId, true);
                 if (transmittedTx && transmittedTx.status.confirmed &&
-                    transmittedTx.status.block_height > this.lastBlockHeight - blocksUntilFinalized) {
+                    transmittedTx.status.block_height > this.lastBlockHeight - agentConf.) {
                     transmittedTx.push(transmittedTx as TxData);
                 }
             } catch (error) { continue }

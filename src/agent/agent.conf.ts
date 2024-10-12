@@ -26,6 +26,7 @@ interface AgentConf {
     postgresPassword: string;
     postgresBigints: boolean;
     postgresKeepAlive: boolean;
+    blocksUntilFinalized: number;
 };
 
 export const agentConf: AgentConf = {
@@ -67,5 +68,6 @@ export const agentConf: AgentConf = {
     postgresPort: 5432,
     postgresPassword: '1234',
     postgresBigints: true,
-    postgresKeepAlive: true
+    postgresKeepAlive: true,
+    blocksUntilFinalized: 0 // 6
 };
