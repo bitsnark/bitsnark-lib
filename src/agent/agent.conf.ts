@@ -15,9 +15,9 @@ interface AgentConf {
     winternitzSecret: string;
     tokens: { [key: string]: string };
     keyPairs: { [key: string]: { public: string, private: string } };
-    bitcoinNodeNetwork: String;
-    bitcoinNodeUsername: String;
-    bitcoinNodePassword: String;
+    bitcoinNodeNetwork: string;
+    bitcoinNodeUsername: string;
+    bitcoinNodePassword: string;
     bitcoinNodeHost: string;
     bitcoinNodePort: number;
     postgresUser: string;
