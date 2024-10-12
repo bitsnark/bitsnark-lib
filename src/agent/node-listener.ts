@@ -92,7 +92,7 @@ export class NodeListener {
             try {
                 const transmittedTx = await this.client.getRawTransaction(pendingTx.txId, true);
                 if (transmittedTx && transmittedTx.status.confirmed &&
-                    transmittedTx.status.block_height > this.lastBlockHeight - agentConf.) {
+                    transmittedTx.status.block_height > this.lastBlockHeight - agentConf.blocksUntilFinalized) {
                     transmittedTx.push(transmittedTx as TxData);
                 }
             } catch (error) { continue }
