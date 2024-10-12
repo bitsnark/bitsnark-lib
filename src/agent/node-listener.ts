@@ -66,7 +66,7 @@ export class NodeListener {
             this.checkForNewBlock().catch(error => console.error(error));
         }, checkNodeInterval);
 
-        await this.monitorTransmitted();
+        await this.checkForNewBlock();
     }
 
     async getLastBlockByHeightAndTime(): Promise<{ height: number, hash: string }> {
@@ -108,5 +108,3 @@ export class NodeListener {
         }
     }
 }
-
-
