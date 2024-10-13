@@ -34,6 +34,7 @@ export class Bitcoin {
     hardcoded: bigint[] = [];
     success = true;
     public maxStack = 0;
+    public stackLimit: boolean = true;
 
     defaultHash: HashOption = 'SHA256';
 
@@ -60,8 +61,10 @@ export class Bitcoin {
         const si = this.DATA(value);
         this.maxStack = Math.max(this.maxStack, this.stack.items.length);
         // console.log('Stack: ', this.stack.items.length);
-        if (this.stack.items.length + this.altStack.length > 1000)
-            throw new Error('Stack too big');
+        if (this.stackLimit) {
+            if (this.stack.items.length + this.altStack.length > 1000)
+                throw new Error(`Stack too big: ${this.stack.items.length + this.altStack.length}`);
+        }
         return si;
     }
 
@@ -418,6 +421,17 @@ export class Bitcoin {
         this.opcodes.push({ op: OpcodeType.OP_CHECKSEQUENCEVERIFY });
     }
 
+    /// on stack ops ///
+
+    mul8() {
+        this.OP_DUP();
+        this.OP_ADD();
+        this.OP_DUP();
+        this.OP_ADD();
+        this.OP_DUP();
+        this.OP_ADD();
+    }
+
     /// Complex operations ///
 
     roll(si: StackItem) {
@@ -476,7 +490,6 @@ export class Bitcoin {
         if (this.stack.items[this.stack.items.length - 1].value > table.length)
             throw new Error('Table overflow: ' + this.stack.items[this.stack.items.length - 1].value);
         const rel = this.getRelativeStackPosition(table[0]) - 1;
-        const dataSize = rel < 256 ? 1 : rel < 512 ? 2 : 4;
         this.DATA(BigInt(rel));
         this.OP_SWAP();
         this.OP_SUB();

@@ -1,0 +1,158 @@
+import assert from "assert";
+import { Bitcoin } from "./bitcoin";
+import { StackItem } from "./stack";
+import { _256To32BE, _32To256BE, hash, hashPair } from '../../encoding/encoding';
+import { bigintToNibblesLS } from "../../agent/final-step/common";
+
+export type Register = StackItem[];
+
+const RIPEMD160_BLOCK_LENGTH = 64;
+const RIPEMD160_DIGEST_LENGTH = 20;
+
+export class RIPEMD160 {
+
+    bitcoin: Bitcoin;
+
+    total: number = 0;
+    state: Register[] = []; // [5]
+    buffer: Register[] = []; // [RIPEMD160_BLOCK_LENGTH]
+
+    constructor(bitcoin: Bitcoin) {
+
+        this.bitcoin = bitcoin;
+
+        this.total = 0;
+
+        this.state[0] = this.hardcodeRegister(0x67452301n);
+        this.state[1] = this.hardcodeRegister(0xEFCDAB89n);
+        this.state[2] = this.hardcodeRegister(0x98BADCFEn);
+        this.state[3] = this.hardcodeRegister(0x10325476n);
+        this.state[4] = this.hardcodeRegister(0xC3D2E1F0n);
+    }
+
+    public hardcodeRegister(n: bigint): Register {
+        return new Array(11).fill(0)
+            .map((_, i) => this.bitcoin.newStackItem((n >> BigInt(i * 3)) & 7n));
+    }
+
+    public hardcodeRegisters(na: bigint[]): Register[] {
+        return na.map(n => this.hardcodeRegister(n));
+    }
+
+    public newRegister(n: bigint): Register {
+        return new Array(11).fill(0)
+            .map((_, i) => this.bitcoin.newStackItem((n >> BigInt(i * 3)) & 7n));
+    }
+
+    public registerToBigint(r: Register): bigint {
+        let n = 0n;
+        r.forEach((si, i) => n += si.value << BigInt(i * 3));
+        return n;
+    }
+
+    public free() {
+        this.state.forEach(r => this.bitcoin.drop(r));
+    }
+
+    process(data: StackItem[]) {
+        if (data.length != Math.ceil(RIPEMD160_BLOCK_LENGTH / 3)) throw new Error('Wrong block size');
+
+
+
+    }
+
+    mov(target: Register, x: Register) {
+        target.forEach((t, i) => this.bitcoin.mov(t, x[i]));
+    }
+
+    mov_hc(target: Register, x: bigint) {
+        const xa = bigintToNibblesLS(x, 11);
+        target.forEach((t, i) => {
+            this.bitcoin.DATA(BigInt(xa[i]));
+            this.bitcoin.replaceWithTop(t);
+        });
+    }
+
+    zero(target: Register) {
+        target.forEach(si => this.bitcoin.setBit_0(si));
+    }
+
+    public sha256(target: Register[], a: Register[]) {
+        for (let i = 0; i < 8; i++) {
+            this.mov_hc(this.hash[i], hHex[i]);
+        }
+        for (let i = 0; i < 8; i++) {
+            this.W[i] = a[i];
+            this.W[i + 8] = this.hardcodeRegister(0n);
+        }
+        this.mov_hc(this.W[8], 0x80000000n);
+        this.mov_hc(this.W[15], 256n);
+        this.calculateHash()
+        for (let i = 0; i < 8; i++) {
+            this.mov(target[i], this.hash[i]);
+            this.bitcoin.drop(this.W[i + 8]);
+        }
+    }
+
+    public sha256pair(target: Register[], a: Register[], b: Register[]) {
+        for (let i = 0; i < 8; i++) {
+            this.mov_hc(this.hash[i], hHex[i]);
+        }
+        for (let i = 0; i < 8; i++) {
+            this.W[i] = a[i];
+            this.W[i + 8] = b[i];
+        }
+        this.calculateHash()
+        for (let i = 1; i < 15; i++) {
+            this.zero(this.W[i]);
+        }
+        this.mov_hc(this.W[0], 0x80000000n);
+        this.mov_hc(this.W[15], 512n);
+        this.calculateHash();
+        for (let i = 0; i < 8; i++) {
+            this.mov(target[i], this.hash[i]);
+        }
+    }
+}
+
+{
+    const test1 = 123456789012345678901234567890n;
+
+    const h1 = hash(test1);
+    const bitcoin = new Bitcoin();
+    const sha256 = new SHA256(bitcoin);
+    const regs: Register[] = _256To32BE(test1).map(n => sha256.hardcodeRegister(n));
+    const h2regs = _256To32BE(0n).map(n => sha256.newRegister(0n));
+    sha256.sha256(h2regs, regs);
+    const h2 = _32To256BE(h2regs.map(r => sha256.registerToBigint(r)));
+    console.log('h1', h1);
+    console.log('h2', h2);
+    assert(h1 == h2);
+    console.log(`max stack: ${bitcoin.maxStack}    size: ${bitcoin.programSizeInBitcoinBytes()}`);
+    sha256.free();
+}
+
+{
+
+    const test1 = 123456789012345678901234567890n;
+    const test2 = 98765432109876543210987654321n;
+
+    const h1 = hashPair(test1, test2);
+
+    const bitcoin = new Bitcoin();
+    const sha256 = new SHA256(bitcoin);
+
+    const aRegs: Register[] = _256To32BE(test1).map(n => sha256.newRegister(n));
+    const bRegs: Register[] = _256To32BE(test2).map(n => sha256.newRegister(n));
+
+    const h2regs = _256To32BE(0n).map(n => sha256.newRegister(0n));
+
+    sha256.sha256pair(h2regs, aRegs, bRegs);
+    const h2 = _32To256BE(h2regs.map(r => sha256.registerToBigint(r)));
+
+    console.log('h1', h1);
+    console.log('h2', h2);
+    assert(h1 == h2);
+    console.log(`max stack: ${bitcoin.maxStack}    size: ${bitcoin.programSizeInBitcoinBytes()}`);
+    sha256.free();
+}

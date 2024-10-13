@@ -112,7 +112,7 @@ export class SHA256 {
         vm.add(this.W[index], this.W[index], this.T1);
         this.sigma0(this.T1, this.W[(index+1) & 0xf]);
         vm.add(this.W[index], this.W[index], this.T1);
-        vm.and(this.W[index], this.W[index], mask32Reg);
+        vm.and(this.W[index], this.W[index], mask32Reg); // ???
     }
 
     calculateHash() {
