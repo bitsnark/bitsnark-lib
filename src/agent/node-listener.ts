@@ -1,6 +1,6 @@
 import { readPendingTransactions, writeTransmittedTransactions } from './db';
-const Client = require('bitcoin-core');
 import { agentConf } from './agent.conf';
+import { BitcoinNode } from './bitcoin-node';
 
 
 export interface TxData {
@@ -45,23 +45,13 @@ export class NodeListener {
     private scheduler: NodeJS.Timeout | null = null;
     private lastBlockHeight: number = 0;
     private lastBlockHash: string = '';
-
-    private client = new Client({
-        network: agentConf.bitcoinNodeNetwork,
-        username: agentConf.bitcoinNodeUsername,
-        password: agentConf.bitcoinNodePassword,
-        host: agentConf.bitcoinNodeHost,
-        port: agentConf.bitcoinNodePort
-
-    })
+    public client
 
     constructor() {
-        this.initialize().catch(error => {
-            console.error('Error during initialization:', error);
-        });
+        this.client = new BitcoinNode().client
     }
 
-    async initialize() {
+    async setMonitorSchedule() {
         this.scheduler = setInterval(() => {
             this.checkForNewBlock().catch(error => console.error(error));
         }, checkNodeInterval);
@@ -69,16 +59,11 @@ export class NodeListener {
         await this.checkForNewBlock();
     }
 
-    async getLastBlockByHeightAndTime(): Promise<{ height: number, hash: string }> {
-        const blockHash = await this.client.getBestBlockHash();
-        const block = await this.client.getBlock(blockHash);
-        return { height: block.height, hash: blockHash };
-    }
-
     async checkForNewBlock() {
         const lastBlockHash = await this.client.getBestBlockHash();
         if (lastBlockHash !== this.lastBlockHash) {
-            console.log('New block detected:', lastBlockHash);
+            this.lastBlockHeight = (await this.client.getBlock(lastBlockHash)).height;
+            console.log('New block detected:', lastBlockHash, this.lastBlockHeight);
             this.lastBlockHash = lastBlockHash;
             this.monitorTransmitted();
         }
@@ -87,17 +72,16 @@ export class NodeListener {
     async monitorTransmitted() {
         const pending = await readPendingTransactions();
         const transmittedTxs: TxData[] = [];
-
         for (const pendingTx of pending) {
             try {
                 const transmittedTx = await this.client.getRawTransaction(pendingTx.txId, true);
+                transmittedTx.status.block_height >= this.lastBlockHeight - agentConf.blocksUntilFinalized
                 if (transmittedTx && transmittedTx.status.confirmed &&
-                    transmittedTx.status.block_height > this.lastBlockHeight - agentConf.blocksUntilFinalized) {
-                    transmittedTx.push(transmittedTx as TxData);
+                    this.lastBlockHeight - transmittedTx.status.block_height >= agentConf.blocksUntilFinalized) {
+                    transmittedTxs.push(transmittedTx as TxData);
                 }
-            } catch (error) { continue }
+            } catch (error) { console.log(error); continue }
         }
-
         if (transmittedTxs.length) await writeTransmittedTransactions(transmittedTxs);
     }
 

@@ -168,7 +168,7 @@ export async function readTransactions(agentId: string, setupId?: string): Promi
     const client = await getConnection();
     try {
         const result = await client.query(
-            `select * from ${TABLES.transaction_templates} where 
+            `select * from ${TABLES.transaction_templates} where
                 "${FIELDS.agentId}" = $1 ` + (setupId ? ` AND "${FIELDS.setupId}" = $2` : '') +
             ` order by ordinal asc `,
             [agentId, setupId]
