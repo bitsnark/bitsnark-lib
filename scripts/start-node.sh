@@ -1,3 +1,4 @@
+#!/bin/sh -e
 
 echo "Starting the Bitcoin node in regtest mode..."
 docker run --rm -d --name bitcoin-node -v bitcoin-data:/bitcoin/.bitcoin -p 18443:18443 -p 18444:18444 ruimarinho/bitcoin-core:latest \
@@ -18,7 +19,6 @@ bitcoin_cli() {
 
 echo "Creating and loading a wallet..."
 bitcoin_cli createwallet "testwallet"
-bitcoin_cli loadwallet "testwallet"
 
 echo "Generating initial blocks..."
 bitcoin_cli generatetoaddress 101 $(bitcoin_cli getnewaddress)
