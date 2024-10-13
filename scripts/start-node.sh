@@ -4,28 +4,30 @@ docker run --rm -d --name bitcoin-node -v bitcoin-data:/bitcoin/.bitcoin -p 1844
     -regtest -rpcuser=rpcuser -rpcpassword=rpcpassword -fallbackfee=0.0002  -rpcallowip=0.0.0.0/0 -rpcbind=0.0.0.0 
 
 echo "Waiting for the Bitcoin node to start..."
-sleep 20
 
-echo "Checking if the Bitcoin node is running and accessible..."
+while ! docker ps | grep -q 'bitcoin-node'; do
+  sleep 1
+done
+
+echo "Bitcoin node is up and running."
 docker logs bitcoin-node
 
-if ! docker exec bitcoin-node bitcoin-cli -regtest -rpcuser=rpcuser -rpcpassword=rpcpassword getblockchaininfo > /dev/null 2>&1; then
-    echo "Error: Bitcoin node is not running or RPC credentials are incorrect."
-    exit 1
-fi
+bitcoin_cli() {
+  docker exec bitcoin-node bitcoin-cli -regtest -rpcuser=rpcuser -rpcpassword=rpcpassword "$@"
+}
 
 echo "Creating and loading a wallet..."
-docker exec bitcoin-node bitcoin-cli -regtest -rpcuser=rpcuser -rpcpassword=rpcpassword createwallet "testwallet"
-docker exec bitcoin-node bitcoin-cli -regtest -rpcuser=rpcuser -rpcpassword=rpcpassword loadwallet "testwallet"
+bitcoin_cli createwallet "testwallet"
+bitcoin_cli loadwallet "testwallet"
 
 echo "Generating initial blocks..."
-docker exec bitcoin-node bitcoin-cli -regtest -rpcuser=rpcuser -rpcpassword=rpcpassword generatetoaddress 101 $(docker exec bitcoin-node bitcoin-cli -regtest -rpcuser=rpcuser -rpcpassword=rpcpassword getnewaddress)
+bitcoin_cli generatetoaddress 101 $(bitcoin_cli getnewaddress)
 
 echo "Generating mock transactions..."
 for i in {1..10}
 do
-    docker exec bitcoin-node bitcoin-cli -regtest -rpcuser=rpcuser -rpcpassword=rpcpassword sendtoaddress $(docker exec bitcoin-node bitcoin-cli -regtest -rpcuser=rpcuser -rpcpassword=rpcpassword getnewaddress) 0.1
+  bitcoin_cli sendtoaddress $(bitcoin_cli getnewaddress) 0.1
 done
 
 echo "Generating another block to include the transactions..."
-docker exec bitcoin-node bitcoin-cli -regtest -rpcuser=rpcuser -rpcpassword=rpcpassword generatetoaddress 1 $(docker exec bitcoin-node bitcoin-cli -regtest -rpcuser=rpcuser -rpcpassword=rpcpassword getnewaddress)
+bitcoin_cli generatetoaddress 1 $(bitcoin_cli getnewaddress)
