@@ -74,13 +74,12 @@ export class NodeListener {
         const transmittedTxs: TxData[] = [];
         for (const pendingTx of pending) {
             try {
-                const transmittedTx = await this.client.getRawTransaction(pendingTx.txId, true);
-                transmittedTx.status.block_height >= this.lastBlockHeight - agentConf.blocksUntilFinalized
+                const transmittedTx: TxData = await this.client.getRawTransaction(pendingTx.txId, true);
                 if (transmittedTx && transmittedTx.status.confirmed &&
                     this.lastBlockHeight - transmittedTx.status.block_height >= agentConf.blocksUntilFinalized) {
                     transmittedTxs.push(transmittedTx as TxData);
                 }
-            } catch (error) { console.log(error); continue }
+            } catch (error) { continue }
         }
         if (transmittedTxs.length) await writeTransmittedTransactions(transmittedTxs);
     }

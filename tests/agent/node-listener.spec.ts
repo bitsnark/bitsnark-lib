@@ -2,6 +2,7 @@ import { NodeListener } from '../../src/agent/node-listener';
 import { readPendingTransactions, writeTransmittedTransactions } from '../../src/agent/db';
 import { resolve } from 'path';
 import { agentConf } from '../../src/agent/agent.conf';
+import { error } from 'console';
 const Client = require('bitcoin-core');
 
 
@@ -96,6 +97,20 @@ describe('NodeListener', () => {
         (readPendingTransactions as jest.Mock).mockResolvedValue(getPendingTransactions());
         clientMock.getRawTransaction
             .mockImplementationOnce(() => Promise.resolve(Tx1Block12))
+            .mockImplementationOnce(() => Promise.resolve(Tx2Block5));
+
+        await nodeListener.monitorTransmitted();
+
+        expect(clientMock.getRawTransaction).toHaveBeenCalledTimes(2);
+        expect(writeTransmittedTransactions).toHaveBeenCalled();
+        expect(writeTransmittedTransactions).toHaveBeenCalledWith([Tx2Block5]);
+    });
+
+    it('Ignor \'Transaction not found\' error', async () => {
+        setupLastBlockProperties(nodeListener, 'hash', 12);
+        (readPendingTransactions as jest.Mock).mockResolvedValue(getPendingTransactions());
+        clientMock.getRawTransaction
+            .mockImplementationOnce(() => new Error('Transaction not found'))
             .mockImplementationOnce(() => Promise.resolve(Tx2Block5));
 
         await nodeListener.monitorTransmitted();
