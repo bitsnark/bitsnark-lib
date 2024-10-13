@@ -1,5 +1,6 @@
-const Client = require('bitcoin-core');
 import { agentConf } from "./agent.conf";
+//import cannot find module 'bitcoin-core'
+const Client = require('bitcoin-core');
 
 export class BitcoinNode {
     public client

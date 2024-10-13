@@ -1,16 +1,11 @@
 import { NodeListener } from '../../src/agent/node-listener';
 import { readPendingTransactions, writeTransmittedTransactions } from '../../src/agent/db';
-import { resolve } from 'path';
-import { agentConf } from '../../src/agent/agent.conf';
-import { error } from 'console';
 const Client = require('bitcoin-core');
-
 
 jest.mock('../../src/agent/db', () => ({
     readPendingTransactions: jest.fn(),
     writeTransmittedTransactions: jest.fn(),
 }));
-
 
 jest.mock('bitcoin-core', () => {
     return jest.fn().mockImplementation(() => ({
@@ -63,7 +58,6 @@ describe('NodeListener', () => {
     const Tx2Block5 = { txid: 'txId2', status: { confirmed: true, block_height: 5 } };
     const Tx3Block10 = { txid: 'txId3', status: { confirmed: true, block_height: 10 } };
 
-
     it('<Monitor transmitted if new block is detected', async () => {
         const monitorTransmittedSpy = jest.spyOn(nodeListener, 'monitorTransmitted').mockResolvedValue(undefined);
         clientMock.getBestBlockHash.mockResolvedValue('hash');
@@ -90,7 +84,6 @@ describe('NodeListener', () => {
 
         expect(clientMock.getRawTransaction).not.toHaveBeenCalled();
     });
-
 
     it('Write to DB if new finalized transmitted are found', async () => {
         setupLastBlockProperties(nodeListener, 'hash', 12);
@@ -131,7 +124,4 @@ describe('NodeListener', () => {
 
         expect(writeTransmittedTransactions).not.toHaveBeenCalled();
     });
-
-
-
 });

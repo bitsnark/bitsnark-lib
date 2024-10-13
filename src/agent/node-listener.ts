@@ -2,7 +2,6 @@ import { readPendingTransactions, writeTransmittedTransactions } from './db';
 import { agentConf } from './agent.conf';
 import { BitcoinNode } from './bitcoin-node';
 
-
 export interface TxData {
     txid: string;
     version: number;

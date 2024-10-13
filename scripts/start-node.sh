@@ -15,6 +15,8 @@ while ! bitcoin_cli getblockchaininfo > /dev/null 2>&1; do
     sleep 1
 done
 
+echo
+
 echo "Bitcoin node is up and running."
 docker logs bitcoin-node
 
