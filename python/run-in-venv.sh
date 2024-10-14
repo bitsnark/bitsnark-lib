@@ -27,6 +27,7 @@ missing_packages() {
     echo "$missing_packages"
 }
 if [ "$(missing_packages)" ]; then
+    pip install --upgrade pip
     pip install -r "$requirements"
     if [ "$(missing_packages)" ]; then
         echo "Failed to install all requirements"
