@@ -36,6 +36,10 @@ export function padHex(s: string, bytes: number): string {
     return s.padStart(bytes * 2, "0");
 }
 
+export function cat(buffers: Buffer[]): Buffer {
+    return Buffer.concat(buffers as any);
+}
+
 export function hash(input: bigint, times: number = 1): bigint {
     let t = input;
     for (let i = 0; i < times; i++) {
@@ -51,6 +55,21 @@ export function hashPair(inputA: bigint, inputB: bigint): bigint {
     return BigInt('0x' + createHash('sha256')
         .update(s, 'hex')
         .digest('hex'));
+}
+
+export function taggedHash(tag: string, msg: Buffer): Buffer {
+    const tagHash = createHash("sha256").update(tag, "utf-8").digest();
+    return createHash("sha256")
+        .update(Buffer.concat([tagHash, tagHash, msg]))
+        .digest();
+}
+
+export function bigintFromBytes(buf: Buffer): bigint {
+    return BigInt("0x" + buf.toString("hex"));
+}
+
+export function bytesFromBigint(n: bigint): Buffer {
+    return Buffer.from(n.toString(16), "hex");
 }
 
 export function bitsToBigint(bits: number[]): bigint {
