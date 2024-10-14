@@ -1,3 +1,6 @@
+// Prime field characteristic (p) for SECP256K1
+// This is the large prime defining the finite field F_p over which the curve is defined.
+// p = 2^256 - 2^32 - 977
 const p = 0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2fn;
 
 interface Point {

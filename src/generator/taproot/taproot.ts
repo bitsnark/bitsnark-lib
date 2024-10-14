@@ -67,14 +67,19 @@ export function getProof(node: TapNode, path: number[]): Buffer {
 }
 
 export function taprootControlBlock(internalPubkey: Buffer, rootNode: TapNode, path: number[]): Buffer {
-    const versionBuf = Buffer.from([taprootVersion | 0x01]);
+    const h = rootNode.getHash();
+    const [parity, _] = taprootTweakPubkey(internalPubkey, h);
+
     const P = lift_x(bigintFromBytes(internalPubkey));
+
+    const versionBuf = Buffer.from([taprootVersion | Number(parity)]);
     const keyBuf = Buffer.from(P.x.toString(16), "hex");
     const proof = getProof(rootNode, path);
+
     return Buffer.concat([versionBuf, keyBuf, proof]);
 }
 
-export function simpleTaproot(internalPubkey: Buffer, script: Buffer): { 
+export function simpleTaproot(internalPubkey: Buffer, script: Buffer): {
     root: Buffer,
     controlBlock: Buffer,
     scriptHash: Buffer,
@@ -87,9 +92,14 @@ export function simpleTaproot(internalPubkey: Buffer, script: Buffer): {
     );
     const [parity, output_pubkey] = taprootTweakPubkey(internalPubkey, hash);
     const root = Buffer.concat([Buffer.from([0x51, 0x20]), output_pubkey]);
+
     const P = lift_x(bigintFromBytes(internalPubkey));
+
+    const versionBuf = Buffer.from([taprootVersion | Number(parity)]);
     const keyBuf = Buffer.from(padHex(P.x.toString(16), 32), "hex");
-    const controlBlock = Buffer.concat([Buffer.from([taprootVersion | Number(parity)]), keyBuf]);
+
+    const controlBlock = Buffer.concat([versionBuf, keyBuf]);
+
     return {
         root,
         controlBlock,

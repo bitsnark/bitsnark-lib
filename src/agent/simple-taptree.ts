@@ -80,8 +80,9 @@ export class SimpleTapTree {
         const h = this.getRoot();
         const [parity, _] = taprootTweakPubkey(this.internalPubkey, h);
         const P = lift_x(this.internalPubkey);
+        const versionBuf = Buffer.from([taprootVersion | Number(parity)]);
         const keyBuf = Buffer.from(padHex(P.x.toString(16), 32), "hex");
-        return Buffer.concat([Buffer.from([taprootVersion | Number(parity)]), keyBuf, proof]);
+        return Buffer.concat([versionBuf, keyBuf, proof]);
     }
 
     public getScriptPubkey(): Buffer {
