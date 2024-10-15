@@ -1,4 +1,10 @@
 
+CREATE TABLE IF NOT EXISTS public.setups
+(
+    "setupId" character varying NOT NULL,
+    "status" character varying NOT NULL,
+    CONSTRAINT setup_pkey PRIMARY KEY ("setupId")
+);
 
 CREATE TABLE IF NOT EXISTS public.transaction_templates
 (

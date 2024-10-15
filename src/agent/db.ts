@@ -4,24 +4,10 @@ import { Client, connect } from 'ts-postgres';
 import { TxData } from './node-listener';
 import { agentConf } from './agent.conf';
 
-enum TABLES {
-    transaction_templates = 'transaction_templates',
-    transmitted_transactions = 'transmitted_transactions',
-}
-
-enum FIELDS {
-    agentId = 'agentId',
-    setupId = 'setupId',
-    name = 'name',
-    ordinal = 'ordinal',
-    txId = 'txId',
-    object = 'object'
-}
-enum TRANSMITTED_FIELDS {
-    setupId = 'setupId',
-    txId = 'txId',
-    blockHeight = 'blockHeight',
-    rawTransaction = 'rawTransaction'
+export enum SetupStatus {
+    preparing = 'preparing',
+    active = 'active',
+    completed = 'completed',
 }
 
 function jsonizeObject(obj: any): any {
@@ -36,11 +22,19 @@ function unjsonizeObject(obj: any): any {
 
 let tablesExistFlag = false;
 
-// create tables if don't exist
 async function createDb(client: Client) {
     if (tablesExistFlag) return;
     try {
         await client.query('BEGIN');
+
+        await client.query(
+            `CREATE TABLE IF NOT EXISTS public.setups
+            (
+                "setupId" character varying NOT NULL,
+                "status" character varying NOT NULL,
+                CONSTRAINT setup_pkey PRIMARY KEY ("setupId")
+            );`, []);
+
         await client.query(
             `CREATE TABLE IF NOT EXISTS public.transaction_templates
             (
@@ -60,7 +54,7 @@ async function createDb(client: Client) {
                 "txId" character varying NOT NULL,
                 "blockHeight" character varying NOT NULL,
                 "rawTransaction" json NOT NULL,
-                CONSTRAINT transmitted_transaction_pkey PRIMARY KEY ("setupId", "txId")
+                CONSTRAINT transmitted_transaction_pkey PRIMARY KEY ("txId")
             );`,
             []
         );
@@ -91,19 +85,13 @@ export async function writeTransaction(agentId: string, setupId: string, transac
     const jsonizedObject = jsonizeObject(transaction);
     try {
         const result = await client.query(
-            `insert into "${TABLES.transaction_templates}" (
-                "${FIELDS.agentId}",
-                "${FIELDS.setupId}",
-                "${FIELDS.name}",
-                "${FIELDS.ordinal}",
-                "${FIELDS.txId}",
-                "${FIELDS.object}"
-            ) values (
-                $1, $2, $3, $4, $5, $6
-            ) ON CONFLICT("${FIELDS.agentId}", "${FIELDS.setupId}", "${FIELDS.name}") DO UPDATE SET
-             "${FIELDS.ordinal}" = $4,
-             "${FIELDS.txId}" = $5,
-             "${FIELDS.object}" = $6`,
+            `insert into "transaction_templates"
+                ("agentId", "setupId", "name", "ordinal", "txId", "object")
+            values ($1, $2, $3, $4, $5, $6)
+            ON CONFLICT("agentId", "setupId", "name") DO UPDATE SET
+             "ordinal" = $4,
+             "txId" = $5,
+             "object" = $6`,
             [agentId, setupId, transaction.transactionName, transaction.ordinal, transaction.txId ?? '', jsonizedObject]
         );
     } catch (e) {
@@ -117,21 +105,21 @@ export async function writeTransaction(agentId: string, setupId: string, transac
 export async function writeTransactions(agentId: string, setupId: string, transactions: Transaction[]) {
     for (const t of transactions) await writeTransaction(agentId, setupId, t);
 }
-
+//
 export async function readTransactionByName(agentId: string, setupId: string, transactionName: string): Promise<Transaction> {
     const client = await getConnection();
     try {
         const result = await client.query(
-            `select * from ${TABLES.transaction_templates} where
-                "${FIELDS.agentId}" = $1 AND
-                "${FIELDS.setupId}" = $2 AND
-                "${FIELDS.name}" = $3`,
+            `select * from transaction_templates where
+                "agentId" = $1 AND
+                "setupId" = $2 AND
+                "name" = $3`,
             [agentId, setupId, transactionName]
         );
         const results = [...result];
         if (results.length == 0)
             throw new Error('Transaction not found');
-        return unjsonizeObject(results[0].get(FIELDS.object));
+        return unjsonizeObject(results[0].get('object'));
 
     } catch (e) {
         console.error((e as any).message);
@@ -145,15 +133,15 @@ export async function readTransactionByTxId(agentId: string, txId: string): Prom
     const client = await getConnection();
     try {
         const result = await client.query(
-            `select * from ${TABLES.transaction_templates} where
-                "${FIELDS.agentId}" = $1 AND
-                "${FIELDS.txId}" = $3`,
+            `select * from transaction_templates where
+                "agentId" = $1 AND
+                "txId" = $2`,
             [agentId, txId]
         );
         const results = [...result];
         if (results.length == 0)
             throw new Error('Transaction not found');
-        return unjsonizeObject(results[0].get(FIELDS.object));
+        return unjsonizeObject(results[0].get('object'));
 
     } catch (e) {
         console.error((e as any).message);
@@ -162,18 +150,19 @@ export async function readTransactionByTxId(agentId: string, txId: string): Prom
         await client.end();
     }
 }
+
 
 export async function readTransactions(agentId: string, setupId?: string): Promise<Transaction[]> {
     const client = await getConnection();
     try {
         const result = await client.query(
-            `select * from ${TABLES.transaction_templates} where
-                "${FIELDS.agentId}" = $1 ` + (setupId ? ` AND "${FIELDS.setupId}" = $2` : '') +
+            `select * from transaction_templates where
+                "agentId" = $1 ` + (setupId ? ` AND "setupId" = $2` : '') +
             ` order by ordinal asc `,
             [agentId, setupId]
         );
         const results = [...result];
-        return results.map(r => unjsonizeObject(r[FIELDS.object]));
+        return results.map(r => unjsonizeObject(r['object']));
     } catch (e) {
         console.error((e as any).message);
         throw e;
@@ -182,16 +171,21 @@ export async function readTransactions(agentId: string, setupId?: string): Promi
     }
 }
 
-
 export async function readPendingTransactions() {
     const client = await getConnection();
     try {
-        const result = await client.query(
-            `select  "${FIELDS.setupId}" , "${FIELDS.txId}"
-                from ${TABLES.transaction_templates} where
-                 "${FIELDS.txId}" not in (
-                    select  "${TRANSMITTED_FIELDS.txId}"
-                    from ${TABLES.transmitted_transactions})`);
+        const result = await client.query(`
+            select "tmp"."setupId", "tmp"."txId"
+            from setups
+                inner join
+            transaction_templates as "tmp"
+                on "setups"."setupId" = "tmp"."setupId"
+                and "status" = '${SetupStatus.active}'
+                left join
+            transmitted_transactions as "trns"
+                on "tmp"."txId" = "trns"."txId"
+            where "trns"."txId" is null`
+        );
 
         const results = result.rows.map(row => ({ setupId: row[0], txId: row[1] }));
         return results;
@@ -203,24 +197,38 @@ export async function readPendingTransactions() {
     }
 }
 
+export async function writeSetupStatus(setupId: string, status: SetupStatus) {
+    const client = await getConnection();
+    try {
+        const result = await client.query(
+            `insert into "setups"
+                ("setupId", "status") values ($1, $2)
+            ON CONFLICT("setupId") DO
+                update set "status" = $2`,
+            [setupId, status]
+        );
+    } catch (e) {
+        console.error((e as any).message);
+        throw e;
+    } finally {
+        await client.end();
+    }
+}
+
 export async function writeTransmittedTransactions(transmitted: TxData[]) {
     for (const t of transmitted) await writeTransmittedTransaction(t);
 }
-
+//
 export async function writeTransmittedTransaction(transmitted: TxData) {
     const client = await getConnection();
     const jsonizedObject = jsonizeObject(transmitted);
     try {
         const result = await client.query(
-            `insert into "${TABLES.transmitted_transactions}" (
-            "${TRANSMITTED_FIELDS.txId}",
-            "${TRANSMITTED_FIELDS.setupId}",
-            "${TRANSMITTED_FIELDS.blockHeight}",
-            "${TRANSMITTED_FIELDS.rawTransaction}"
-            ) values (
-                $1, $2, $3, $4
-            ) ON CONFLICT("${TRANSMITTED_FIELDS.txId}", "${TRANSMITTED_FIELDS.txId}") DO NOTHING`,
-            [transmitted.setupId, transmitted.txid, transmitted.status.block_height, jsonizedObject]
+            `insert into "transmitted_transactions"
+                ("txId", "setupId", "blockHeight", "rawTransaction")
+            values ($1, $2, $3, $4)
+            ON CONFLICT("txId") DO NOTHING`,
+            [transmitted.txid, transmitted.setupId, transmitted.status.block_height, jsonizedObject]
         );
     } catch (e) {
         console.error((e as any).message);
