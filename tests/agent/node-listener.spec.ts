@@ -1,10 +1,10 @@
 import { NodeListener } from '../../src/agent/node-listener';
-import { readPendingTransactions, writeTransmittedTransactions } from '../../src/agent/db';
+import { readPendingTransactions, writeTransmittedTransaction } from '../../src/agent/db';
 const Client = require('bitcoin-core');
 
 jest.mock('../../src/agent/db', () => ({
     readPendingTransactions: jest.fn(),
-    writeTransmittedTransactions: jest.fn(),
+    writeTransmittedTransaction: jest.fn(),
 }));
 
 jest.mock('bitcoin-core', () => {
@@ -95,8 +95,8 @@ describe('NodeListener', () => {
         await nodeListener.monitorTransmitted();
 
         expect(clientMock.getRawTransaction).toHaveBeenCalledTimes(2);
-        expect(writeTransmittedTransactions).toHaveBeenCalled();
-        expect(writeTransmittedTransactions).toHaveBeenCalledWith([Tx2Block5]);
+        expect(writeTransmittedTransaction).toHaveBeenCalledTimes(1);
+        expect(writeTransmittedTransaction).toHaveBeenCalledWith(Tx2Block5);
     });
 
     it('Ignor \'Transaction not found\' error', async () => {
@@ -109,8 +109,8 @@ describe('NodeListener', () => {
         await nodeListener.monitorTransmitted();
 
         expect(clientMock.getRawTransaction).toHaveBeenCalledTimes(2);
-        expect(writeTransmittedTransactions).toHaveBeenCalled();
-        expect(writeTransmittedTransactions).toHaveBeenCalledWith([Tx2Block5]);
+        expect(writeTransmittedTransaction).toHaveBeenCalledTimes(1);
+        expect(writeTransmittedTransaction).toHaveBeenCalledWith(Tx2Block5);
     });
 
     it('on\'t write to DB if new transmitted aren\'t finalized', async () => {
@@ -122,6 +122,6 @@ describe('NodeListener', () => {
 
         await nodeListener.monitorTransmitted();
 
-        expect(writeTransmittedTransactions).not.toHaveBeenCalled();
+        expect(writeTransmittedTransaction).not.toHaveBeenCalled();
     });
 });

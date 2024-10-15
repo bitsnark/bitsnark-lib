@@ -2,7 +2,6 @@ import { jsonParseCustom, jsonStringifyCustom } from './common';
 import { Transaction } from './transactions-new';
 import { Client, connect } from 'ts-postgres';
 import { TxData } from './node-listener';
-import format from 'pg-format';
 import { agentConf } from './agent.conf';
 
 enum TABLES {
@@ -61,7 +60,7 @@ async function createDb(client: Client) {
                 "txId" character varying NOT NULL,
                 "blockHeight" character varying NOT NULL,
                 "rawTransaction" json NOT NULL,
-                CONSTRAINT transmitted_transaction_pkey PRIMARY KEY ("txId")
+                CONSTRAINT transmitted_transaction_pkey PRIMARY KEY ("setupId", "txId")
             );`,
             []
         );
@@ -183,29 +182,6 @@ export async function readTransactions(agentId: string, setupId?: string): Promi
     }
 }
 
-export async function writeTransmittedTransactions(transmitted: TxData[]) {
-    const client = await getConnection();
-    try {
-        const values = transmitted.map((t) =>
-            [t.setupId, t.txid, t.status.block_height, jsonizeObject(t)]);
-
-        const sql = format(
-            `insert into "${TABLES.transmitted_transactions}" (
-            "${TRANSMITTED_FIELDS.setupId}",
-            "${TRANSMITTED_FIELDS.txId}",
-            "${TRANSMITTED_FIELDS.blockHeight}",
-            "${TRANSMITTED_FIELDS.rawTransaction}")
-        values %L`, values);
-
-        const result = await client.query(sql);
-
-    } catch (e) {
-        console.error((e as any).message);
-        throw e;
-    } finally {
-        await client.end();
-    }
-}
 
 export async function readPendingTransactions() {
     const client = await getConnection();
@@ -219,6 +195,33 @@ export async function readPendingTransactions() {
 
         const results = result.rows.map(row => ({ setupId: row[0], txId: row[1] }));
         return results;
+    } catch (e) {
+        console.error((e as any).message);
+        throw e;
+    } finally {
+        await client.end();
+    }
+}
+
+export async function writeTransmittedTransactions(transmitted: TxData[]) {
+    for (const t of transmitted) await writeTransmittedTransaction(t);
+}
+
+export async function writeTransmittedTransaction(transmitted: TxData) {
+    const client = await getConnection();
+    const jsonizedObject = jsonizeObject(transmitted);
+    try {
+        const result = await client.query(
+            `insert into "${TABLES.transmitted_transactions}" (
+            "${TRANSMITTED_FIELDS.txId}",
+            "${TRANSMITTED_FIELDS.setupId}",
+            "${TRANSMITTED_FIELDS.blockHeight}",
+            "${TRANSMITTED_FIELDS.rawTransaction}"
+            ) values (
+                $1, $2, $3, $4
+            ) ON CONFLICT("${TRANSMITTED_FIELDS.txId}", "${TRANSMITTED_FIELDS.txId}") DO NOTHING`,
+            [transmitted.setupId, transmitted.txid, transmitted.status.block_height, jsonizedObject]
+        );
     } catch (e) {
         console.error((e as any).message);
         throw e;
