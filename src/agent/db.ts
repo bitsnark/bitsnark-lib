@@ -7,7 +7,7 @@ import { TxData, TxRawData } from './bitcoin-node';
 export enum SetupStatus {
     preparing = 'preparing',
     active = 'active',
-    completed = 'completed',
+    used = 'used',
 }
 
 function jsonizeObject(obj: any): any {
