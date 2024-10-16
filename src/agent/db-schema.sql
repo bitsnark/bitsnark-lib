@@ -1,4 +1,10 @@
 
+CREATE TABLE IF NOT EXISTS public.setups
+(
+    "setupId" character varying NOT NULL,
+    "status" character varying NOT NULL,
+    CONSTRAINT setup_pkey PRIMARY KEY ("setupId")
+);
 
 CREATE TABLE IF NOT EXISTS public.transaction_templates
 (
@@ -16,6 +22,7 @@ CREATE TABLE IF NOT EXISTS public.transmitted_transactions
     "setupId" character varying NOT NULL,
     "txId" character varying NOT NULL,
     "blockHeight" character varying NOT NULL,
-    "rawTransaction" json NOT NULL,
+    "transaction" jsonb NOT NULL,
+    "rawTransaction" jsonb NOT NULL,
     CONSTRAINT transmitted_transaction_pkey PRIMARY KEY ("txId")
 );
