@@ -432,6 +432,17 @@ export class Bitcoin {
         this.OP_ADD();
     }
 
+    mul16() {
+        this.OP_DUP();
+        this.OP_ADD();
+        this.OP_DUP();
+        this.OP_ADD();
+        this.OP_DUP();
+        this.OP_ADD();
+        this.OP_DUP();
+        this.OP_ADD();
+    }
+
     /// Complex operations ///
 
     roll(si: StackItem) {

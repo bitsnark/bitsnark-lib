@@ -43,6 +43,7 @@
     "bscript-parser": "0.1.0",
     "crypto-js": "4.2.0",
     "ecpair": "2.1.0",
+    "hash-wasm": "^4.11.0",
     "sitka": "1.1.1",
     "snarkjs": "0.7.4",
     "telegraf": "4.16.3",

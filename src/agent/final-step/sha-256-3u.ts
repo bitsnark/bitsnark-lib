@@ -1,6 +1,6 @@
 import assert from "assert";
-import { Bitcoin } from "./bitcoin";
-import { StackItem } from "./stack";
+import { Bitcoin } from "../../generator/step3/bitcoin";
+import { StackItem } from "../../generator/step3/stack";
 import { _256To32BE, _32To256BE, hash, hashPair } from '../../../src/encoding/encoding';
 import { bigintToNibblesLS } from "../../agent/final-step/common";
 
@@ -313,13 +313,27 @@ export class SHA256 {
         const tx = this.registerToBigint(x);
         const ty = kHex[ki];
 
-        let carry = 0n;
         for (let i = 0; i < target.length; i++) {
-            const t = carry + x[i].value + krn[i];
-            carry = BigInt(Math.floor(Number(t) / 8));
-            target[i].value = t % 8n;
+            if (i == 0) {
+                this.bitcoin.OP_0_16(0n);        
+            } else {
+                this.bitcoin.OP_FROMALTSTACK();
+            }
+            this.bitcoin.pick(x[i]);
+            this.bitcoin.DATA(krn[i]);
+            this.bitcoin.OP_ADD();
+            this.bitcoin.OP_ADD();
+            if (i + 1 < target.length) {
+                this.bitcoin.OP_DUP();
+                this.bitcoin.tableFetchInStack(this.breakCarryTable);
+                this.bitcoin.OP_TOALTSTACK();
+                this.bitcoin.tableFetchInStack(this.breakValueTable);
+                this.bitcoin.replaceWithTop(target[i]);    
+            } else {
+                this.bitcoin.tableFetchInStack(this.breakValueTable2bit);
+                this.bitcoin.replaceWithTop(target[i]);    
+            }
         }
-        target[target.length - 1].value %= 4n;
 
         const tt = this.registerToBigint(target);
         assert((tx + ty) % (2n ** 32n) == tt);
