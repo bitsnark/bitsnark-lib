@@ -155,7 +155,7 @@ export async function readTransactions(agentId: string, setupId?: string): Promi
 
 export async function readPendingTransactions() {
     const result = await runQuery(`
-        select "tmp"."setupId", "tmp"."txId"
+        select distinct "tmp"."setupId", "tmp"."txId"
         from setups
             inner join
         transaction_templates as "tmp"
@@ -189,7 +189,7 @@ export async function writeTransmittedTransaction(transmitted: TxData, transmitt
     const result = await runQuery(
         `insert into "transmitted_transactions"
             ("txId", "setupId", "blockHeight", "transaction", "rawTransaction")
-        values ($1, $2, $3, $4)
+        values ($1, $2, $3, $4, $5)
         ON CONFLICT("txId") DO NOTHING`,
         [transmitted.txid,
         transmitted.setupId,
