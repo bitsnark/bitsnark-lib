@@ -1,8 +1,8 @@
 import { jsonParseCustom, jsonStringifyCustom } from './common';
 import { Transaction } from './transactions-new';
 import { Client, connect } from 'ts-postgres';
-import { TxData } from './node-listener';
 import { agentConf } from './agent.conf';
+import { TxData, TxRawData } from './bitcoin-node';
 
 export enum SetupStatus {
     preparing = 'preparing',
@@ -53,7 +53,8 @@ async function createDb(client: Client) {
                 "setupId" character varying NOT NULL,
                 "txId" character varying NOT NULL,
                 "blockHeight" character varying NOT NULL,
-                "rawTransaction" json NOT NULL,
+                "transaction" jsonb NOT NULL,
+                "rawTransaction" jsonb NOT NULL,
                 CONSTRAINT transmitted_transaction_pkey PRIMARY KEY ("txId")
             );`,
             []
@@ -180,16 +181,20 @@ export async function writeSetupStatus(setupId: string, status: SetupStatus) {
     );
 }
 
-export async function writeTransmittedTransactions(transmitted: TxData[]) {
-    for (const t of transmitted) await writeTransmittedTransaction(t);
+export async function writeTransmittedTransactions(transmitted: [TxData, TxRawData][]) {
+    for (const [t, tRaw] of transmitted) await writeTransmittedTransaction(t, tRaw);
 }
 
-export async function writeTransmittedTransaction(transmitted: TxData) {
+export async function writeTransmittedTransaction(transmitted: TxData, transmittedRaw: TxRawData) {
     const result = await runQuery(
         `insert into "transmitted_transactions"
-            ("txId", "setupId", "blockHeight", "rawTransaction")
+            ("txId", "setupId", "blockHeight", "transaction", "rawTransaction")
         values ($1, $2, $3, $4)
         ON CONFLICT("txId") DO NOTHING`,
-        [transmitted.txid, transmitted.setupId, transmitted.status.block_height, jsonizeObject(transmitted)]
+        [transmitted.txid,
+        transmitted.setupId,
+        transmitted.blockheight,
+        jsonizeObject(transmitted),
+        jsonizeObject(transmittedRaw)]
     );
 }

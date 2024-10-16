@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS public.transmitted_transactions
     "setupId" character varying NOT NULL,
     "txId" character varying NOT NULL,
     "blockHeight" character varying NOT NULL,
-    "rawTransaction" json NOT NULL,
+    "transaction" jsonb NOT NULL,
+    "rawTransaction" jsonb NOT NULL,
     CONSTRAINT transmitted_transaction_pkey PRIMARY KEY ("txId")
 );
