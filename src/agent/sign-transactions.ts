@@ -1,5 +1,4 @@
 import { Transaction } from "./transactions-new";
-import util from 'node:util';
 import { execFileSync } from 'node:child_process';
 import { readTransactions, writeTransactions } from "./db";
 import { AgentRoles, TransactionNames } from "./common";

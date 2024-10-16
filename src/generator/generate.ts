@@ -1,15 +1,13 @@
 
-import fs from 'fs';
 import groth16Verify, { Key, Proof as Step1_Proof } from './step1/verifier';
 import { step1_vm } from './step1/vm/vm';
 import { step2_vm } from './step2/vm/vm';
-import { ProgramLine, SavedVm } from './common/saved-vm';
+import { SavedVm } from './common/saved-vm';
 import { InstrCode as Step1_InstrCode } from './step1/vm/types';
 import { InstrCode as Step2_InstrCode } from './step2/vm/types';
 import { validateInstr } from './step2/final-step';
 import { Runner as Step1_Runner } from './step1/vm/runner';
 import { Runner as Step2_Runner } from './step2/vm/runner';
-import { Register } from './common/register';
 import { verifyStep2Instr } from './step3/verify-step2-instr';
 import { Bitcoin } from './step3/bitcoin';
 import { Compressor } from './taproot/compressor';
