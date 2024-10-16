@@ -17,17 +17,21 @@
   ],
   "scripts": {
     "test": "jest",
+    "py-install": "./python/run-in-venv.sh echo done",
     "generate-tx": "ts-node ./src/agent/transactions-new.ts",
     "generate-scripts": "ts-node ./src/agent/generate-scripts.ts",
     "add-amounts": "ts-node ./src/agent/amounts.ts",
+    "sign-tx": "./python/run-in-venv.sh ts-node ./src/agent/sign-transactions.ts",
     "verify-setup": "ts-node ./src/agent/verify-setup.ts",
-    "lint": "eslint",
-    "lint-fix": "eslint --fix",
+    "lint": "eslint --ignore-pattern node_modules/ --ignore-pattern dist/ --ignore-pattern python/ .",
+    "lint-fix": "npm run lint -- --fix",
     "tx-chart": "npm run generate-tx && ./analysis/generate-dot.sh",
     "start-db": "docker run --name postgres -e POSTGRES_PASSWORD=1234 -d -p 5432:5432 postgres",
     "start-prover": "ts-node ./src/agent/agent.ts bitsnark_prover_1",
     "start-verifier": "ts-node ./src/agent/agent.ts bitsnark_verifier_1",
-    "emulate-setup": "ts-node ./src/agent/emulate-setup.ts"
+    "start-node": "./scripts/start-node.sh",
+    "stop-node": "docker stop bitcoin-node",
+    "emulate-setup": "./python/run-in-venv.sh ts-node ./src/agent/emulate-setup.ts"
   },
   "config": {
     "commitizen": {
@@ -43,13 +47,14 @@
     "bscript-parser": "0.1.0",
     "crypto-js": "4.2.0",
     "ecpair": "2.1.0",
-    "hash-wasm": "^4.11.0",
+    "pg-format": "1.0.4",
+    "hash-wasm": "4.11.0",
     "sitka": "1.1.1",
     "snarkjs": "0.7.4",
     "telegraf": "4.16.3",
     "tiny-secp256k1": "2.2.3",
     "ts-graphviz": "2.1.4",
-    "ts-postgres": "^2.0.4",
+    "ts-postgres": "2.0.4",
     "websnark": "git+https://github.com/tornadocash/websnark.git#4c0af6a8b65aabea3c09f377f63c44e7a58afa6d"
   },
   "devDependencies": {
@@ -58,6 +63,7 @@
     "@types/eslint__js": "8.42.3",
     "@types/jest": "29.5.12",
     "@types/node": "20.16.10",
+    "@types/pg-format": "1.0.5",
     "@types/sinon": "17.0.3",
     "@types/snarkjs": "0.7.8",
     "conventional-changelog-cli": "5.0.0",

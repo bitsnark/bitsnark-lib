@@ -6,7 +6,7 @@ import { writeTransactions } from './db';
 
 export const PROTOCOL_VERSION = 0.1;
 
-enum SignatureType {
+export enum SignatureType {
     NONE = 'NONE',
     PROVER = 'PROVER',
     VERIFIER = 'VERIFIER',
@@ -31,6 +31,8 @@ export interface Input {
     spendingConditionIndex: number;
     data?: bigint[];
     script?: Buffer;
+    proverSignature?: string;
+    verifierSignature?: string;
 }
 
 export interface Output {
@@ -49,12 +51,14 @@ export interface Transaction {
     txId?: string;
     inputs: Input[];
     outputs: Output[];
+    external?: boolean;
 }
 
 const protocolStart: Transaction[] = [
     {
         role: AgentRoles.PROVER,
         transactionName: TransactionNames.LOCKED_FUNDS,
+        external: true,
         inputs: [],
         outputs: [{
             spendingConditions: [{
@@ -66,6 +70,7 @@ const protocolStart: Transaction[] = [
     {
         role: AgentRoles.PROVER,
         transactionName: TransactionNames.PROVER_STAKE,
+        external: true,
         inputs: [],
         outputs: [{
             spendingConditions: [{
@@ -367,6 +372,18 @@ export function getTransactionByName(transactions: Transaction[], name: string):
     return tx;
 }
 
+export function getSpendingConditionByInput(transactions: Transaction[], input: Input): SpendingCondition {
+    const tx = transactions.find(t => t.transactionName == input.transactionName);
+    if (!tx) {
+        console.error('Transaction not found: ', input);
+        throw new Error('Transaction not found');
+    }
+    if (!tx.outputs[input.outputIndex]) throw new Error('Output not found');
+    if (!tx.outputs[input.outputIndex].spendingConditions[input.spendingConditionIndex]) throw new Error('Spending condition not found');
+    
+    return tx.outputs[input.outputIndex].spendingConditions[input.spendingConditionIndex];
+}
+
 function assertOrder(transactions: Transaction[]) {
     const map: any = {};
     for (const t of transactions) {
@@ -460,11 +477,11 @@ export async function initializeTransactions(
 async function main() {
     const agentId = process.argv[2] ?? 'bitsnark_prover_1';
     await initializeTransactions(agentId, AgentRoles.PROVER, 'test_setup', 1n, 2n, {
-        txId: TransactionNames.LOCKED_FUNDS,
+        txId: '000',
         outputIndex: 0,
         amount: agentConf.payloadAmount
     }, {
-        txId: TransactionNames.PROVER_STAKE,
+        txId: '001',
         outputIndex: 0,
         amount: agentConf.proverStakeAmount
     });
