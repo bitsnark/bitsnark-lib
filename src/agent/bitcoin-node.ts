@@ -73,43 +73,7 @@ export interface TxData {
     setupId?: string; // Optional field
 
 }
-///////
-export interface TxRawDataOld {
-    txid: string;
-    version: number;
-    locktime: number;
-    size: number;
-    weight: number;
-    fee: number;
-    vin: Vin[];
-    vout: Vout[];
-    status: TxStstus;
-    setupId?: string; // custom field added for db update
-}
 
-export interface Vin {
-    txid: string;
-    vout: number;
-    scriptsig: string;
-    sequence: number;
-    witness: string[];
-    prevout: Vout;
-}
-
-export interface Vout {
-    scriptpubkey: string;
-    value: number;
-    scriptpubkey_asm: string;
-    scriptpubkey_type: string;
-    scriptpubkey_address: string;
-}
-
-export interface TxStstus {
-    confirmed: boolean;
-    block_height: number;
-    block_hash: string;
-    block_time: number;
-}
 
 export class BitcoinNode {
     public client

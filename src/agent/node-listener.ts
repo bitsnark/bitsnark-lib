@@ -61,5 +61,3 @@ export class NodeListener {
     }
 }
 
-// const listener = new NodeListener();
-// listener.checkForNewBlock()
