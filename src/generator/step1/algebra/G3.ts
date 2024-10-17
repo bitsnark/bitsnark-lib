@@ -1,4 +1,3 @@
-import { step1_vm as vm } from "../vm/vm";
 import { EC, ECPoint } from "./ec";
 import { Fp } from "./fp";
 import { Fp12t } from "./fp12t";

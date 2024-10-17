@@ -6,8 +6,6 @@ import { getEncodingIndexForPat, getEncodingIndexForVic, ProtocolRole, ProtocolS
 import { decodeLamportBit, encodeLamportBit, getLamportPublicKeys } from '../../src/encoding/lamport';
 import { SavedVm } from '../../src/generator/common/saved-vm';
 import { InstrCode } from '../../src/generator/step1/vm/types';
-import { simpleTaproot } from '../../src/generator/taproot/taproot';
-import { internalPblicKey } from './public-key';
 import { writeToFile } from './utils';
 
 const maxLineCount = 2 ** 19 - 1;

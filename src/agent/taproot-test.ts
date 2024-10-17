@@ -3,11 +3,7 @@
 import {
     initEccLib,
     networks,
-    script,
-    Signer,
-    payments,
-    crypto,
-    Psbt
+    payments
 } from "bitcoinjs-lib";
 import { ECPairFactory, ECPairAPI, TinySecp256k1Interface } from 'ecpair';
 import { Taptree } from "bitcoinjs-lib/src/types";

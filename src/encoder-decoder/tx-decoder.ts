@@ -1,8 +1,7 @@
 
 import { Lamport } from "./lamport";
 import { Winternitz } from "./winternitz";
-import { CodecProvider, CodecType, DecodeData, DecodeError, Decodeconflict } from "./codec-provider";
-import { deleteDir } from "./files-utils";
+import { CodecProvider, CodecType, DecodeData, DecodeError } from "./codec-provider";
 
 
 const hashSize = 32;

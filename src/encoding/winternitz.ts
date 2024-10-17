@@ -1,4 +1,4 @@
-import { bigintToBufferBE, hash, padHex } from "./encoding";
+import { bigintToBufferBE, hash } from "./encoding";
 
 const winternitzSecret = 0x92654528273736353535555533553553874383876346n;
 

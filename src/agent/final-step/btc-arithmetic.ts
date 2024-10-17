@@ -1,4 +1,3 @@
-import assert from "assert";
 import { Bitcoin } from '../../generator/step3/bitcoin';
 import { StackItem } from "../../generator/step3/stack";
 import { nibblesToBigintLS, teaPot } from "./common";

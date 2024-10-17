@@ -1,4 +1,3 @@
-import { bitcoin } from "bitcoinjs-lib/src/networks";
 import { padHex } from "../../encoding/encoding";
 import { hardcode, OpcodeType, opcodeValues } from "./bitcoin-opcodes";
 import { StackItem, Stack } from "./stack";

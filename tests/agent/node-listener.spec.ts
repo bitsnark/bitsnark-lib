@@ -1,6 +1,5 @@
 import { NodeListener } from '../../src/agent/node-listener';
 import { readPendingTransactions, writeTransmittedTransaction } from '../../src/agent/db';
-import { TxData, TxRawData } from '../../src/agent/bitcoin-node';
 const Client = require('bitcoin-core');
 
 jest.mock('../../src/agent/db', () => ({
