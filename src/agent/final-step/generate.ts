@@ -132,7 +132,6 @@ export function generateFinalStepTaproot(setupId: string, transactions: Transact
 
             const bitcoin = new Bitcoin();
             const stack = bitcoin.stack.items;
-            bitcoin.setDefaultHash('HASH160');
 
             const indexWitness = bigintToNibblesLS(BigInt(index), WOTS_NIBBLES[WotsType._256])
                 .map(n => bitcoin.addWitness(BigInt(n)));

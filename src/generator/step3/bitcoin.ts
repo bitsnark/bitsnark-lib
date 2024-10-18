@@ -21,8 +21,6 @@ export interface SimulatedRegister {
     hardcoded: boolean;
 }
 
-type HashOption = 'SHA256' | 'HASH160';
-
 export class Bitcoin {
 
     opcodes: Operation[] = [];
@@ -33,8 +31,7 @@ export class Bitcoin {
     hardcoded: bigint[] = [];
     success = true;
     public maxStack = 0;
-
-    defaultHash: HashOption = 'SHA256';
+    public throwOnFail = false;
 
     constructor() {
     }
@@ -46,8 +43,10 @@ export class Bitcoin {
         this.success = true;
     }
 
-    fail() {
+    fail(msg?: string) {
         this.success = false;
+        if (this.throwOnFail)
+            throw new Error('Failed: ' + msg);
     }
 
     /// BASIC ///
@@ -58,9 +57,8 @@ export class Bitcoin {
             throw new Error('Invalid value');
         const si = this.DATA(value);
         this.maxStack = Math.max(this.maxStack, this.stack.items.length);
-        // console.log('Stack: ', this.stack.items.length);
         if (this.stack.items.length + this.altStack.length > 1000)
-            throw new Error('Stack too big');
+            this.fail('Stack too big');
         return si;
     }
 
@@ -133,10 +131,6 @@ export class Bitcoin {
 
     getTopStackItam(): StackItem {
         return this.stack.items[this.stack.items.length - 1];
-    }
-
-    setDefaultHash(defaultHash: HashOption) {
-        this.defaultHash = defaultHash;
     }
 
     /// NATIVE OPERATIONS ///
@@ -309,7 +303,7 @@ export class Bitcoin {
         this.opcodes.push({ op: OpcodeType.OP_NUMEQUALVERIFY });
         const f1 = this.stack.pop().value;
         const f2 = this.stack.pop().value;
-        if (f1 != f2) this.fail();
+        if (f1 != f2) this.fail('OP_NUMEQUALVERIFY');
     }
 
     OP_TOALTSTACK() {
@@ -319,7 +313,7 @@ export class Bitcoin {
     }
 
     OP_FROMALTSTACK() {
-        if (this.altStack.length == 0) this.fail();
+        if (this.altStack.length == 0) this.fail('OP_FROMALTSTACK');
         this.opcodes.push({ op: OpcodeType.OP_FROMALTSTACK });
         this.stack.newItem(this.altStack.pop() ?? 0n);
     }
@@ -380,7 +374,7 @@ export class Bitcoin {
     OP_VERIFY() {
         this.opcodes.push({ op: OpcodeType.OP_VERIFY });
         const t = this.stack.items.pop()!;
-        if (!t.value) this.fail();
+        if (!t.value) this.fail('OP_VERIFY');
     }
 
     OP_SHA256() {
@@ -396,15 +390,10 @@ export class Bitcoin {
         this.opcodes.push({ op: OpcodeType.OP_HASH160 });
         const t = this.stack.items.pop()!;
         let hex = t.value.toString(16);
-        while (hex.length < 64) hex = '0' + hex;
+        while (hex.length < 40) hex = '0' + hex;
         const h1 = createHash('sha256').update(hex, 'hex').digest();
         const h2 = createHash('ripemd160').update(h1).digest('hex');
         this.stack.newItem(BigInt('0x' + h2));
-    }
-
-    OP_HASH_DEFAULT() {
-        if (this.defaultHash == 'SHA256') return this.OP_SHA256();
-        if (this.defaultHash == 'HASH160') return this.OP_HASH160();
     }
 
     OP_CHECKSIGVERIFY() {
@@ -792,10 +781,11 @@ export class Bitcoin {
     /***  Witness decoding ***/
 
     winternitzDecodeNibble(target: StackItem, witness: StackItem, publicKey: bigint) {
-        const pk = this.hardcode(publicKey, 32);
+        const pk = this.hardcode(publicKey, 20);
         this.pick(witness); // witness
         for (let i = 0; i < 8; i++) {
-            this.OP_HASH_DEFAULT(); // hash
+            this.OP_HASH160(); // hash
+            // console.log('witness: ', witness.value.toString(16), '    hash: ', this.stack.top().value.toString(16));
             this.OP_DUP(); // hash hash 
             this.pick(pk); // hash hash pk
             this.OP_EQUAL(); // hash 0/1
@@ -823,11 +813,14 @@ export class Bitcoin {
         const checksum = this.newStackItem();
         this.winternitzDecodeNibble(data, witness[0], publicKeys[0]);
         this.winternitzDecodeNibble(checksum, witness[1], publicKeys[1]);
-        this.pick(data);
+
+        this.DATA(7n);
         this.pick(checksum);
         this.OP_SUB();
-        this.OP_NOT();
-        this.OP_VERIFY();
+
+        this.pick(data);
+        this.OP_NUMEQUALVERIFY();
+
         this.drop(checksum);
         this.drop(data);
     }
@@ -837,17 +830,19 @@ export class Bitcoin {
         const checksum = this.newStackItem();
         this.winternitzDecodeNibble(target, witness[0], publicKeys[0]);
         this.winternitzDecodeNibble(checksum, witness[1], publicKeys[1]);
-        this.pick(target);
+
+        this.DATA(7n);
         this.pick(checksum);
         this.OP_SUB();
-        this.OP_NOT();
-        this.OP_VERIFY();
+
+        this.pick(target);
+        this.OP_NUMEQUALVERIFY();
         this.drop(checksum);
     }
 
     checkPrehash(target: StackItem, prehash: StackItem, hash: bigint) {
         this.pick(prehash);
-        this.OP_HASH_DEFAULT();
+        this.OP_HASH160();
         this.DATA(hash);
         this.OP_EQUAL();
         this.replaceWithTop(target);
@@ -1055,6 +1050,49 @@ export class Bitcoin {
 
         this.drop(checksum);
         this.drop(temp);
+        this.drop(checksumNibbles);
+    }
+
+    winternitzDecode24(target: StackItem[], witness: StackItem[], publicKeys: bigint[]) {
+        const totalNibbles = 10;
+        const checksumNibbles: StackItem[] = [];
+        for (let i = 0; i < 2; i++) checksumNibbles.push(this.newStackItem(0n));
+        const checksum = this.newStackItem(0n);
+
+        for (let i = 0; i < totalNibbles - 2; i++) {
+            this.winternitzDecodeNibble(target[i], witness[i], publicKeys[i]);
+            this.pick(checksum);
+            this.pick(target[i]);
+            this.OP_ADD();
+            this.replaceWithTop(checksum);
+        }
+
+        for (let i = 0; i < 2; i++) {
+            this.winternitzDecodeNibble(checksumNibbles[i], witness[totalNibbles - 2 + i], publicKeys[totalNibbles - 2 + i]);
+        }
+
+        this.DATA(7n);
+        this.pick(checksumNibbles[1]);
+        this.OP_SUB();
+
+        // * 8
+        this.OP_DUP();
+        this.OP_ADD();
+        this.OP_DUP();
+        this.OP_ADD();
+        this.OP_DUP();
+        this.OP_ADD();
+
+        this.DATA(7n);
+        this.pick(checksumNibbles[0]);
+        this.OP_SUB();
+        this.OP_ADD();
+
+        this.pick(checksum);
+        this.OP_EQUAL();
+        this.OP_VERIFY();
+
+        this.drop(checksum);
         this.drop(checksumNibbles);
     }
 

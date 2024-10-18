@@ -42,7 +42,7 @@ function setTaprootKey(transactions: Transaction[]) {
 function generateBoilerplate(setupId: string, transactionName: string, outputIndex: number, scIndex: number, spendingCondition: SpendingCondition): Buffer {
 
     const bitcoin = new Bitcoin();
-    bitcoin.setDefaultHash('HASH160');
+    bitcoin.throwOnFail = false;
 
     if (spendingCondition.signaturesPublicKeys) {
         spendingCondition.signaturesPublicKeys.forEach(key => {
@@ -89,7 +89,7 @@ function generateBoilerplate(setupId: string, transactionName: string, outputInd
 
 function generateSemiFinalScript(lastSelectOutput: Output): Buffer {
     const bitcoin = new Bitcoin();
-    bitcoin.setDefaultHash('HASH160');
+    bitcoin.throwOnFail = false;
 
     const pubKeys = lastSelectOutput.spendingConditions[0].wotsPublicKeys!;
 
