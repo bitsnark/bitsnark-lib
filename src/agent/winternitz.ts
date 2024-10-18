@@ -50,7 +50,7 @@ function getWinternitzPublicKey(unique: string, bitsPerNibble: number): Buffer {
 export function getWinternitzPrivateKeys(wotsType: WotsType, unique: string): Buffer[] {
     const t: Buffer[] = [];
     for (let i = 0; i < WOTS_NIBBLES[wotsType]; i++) {
-        t.push(getWinternitzPrivateKey(unique + i));
+        t.push(getWinternitzPrivateKey(unique + '/' + i));
     }
     return t;
 }
@@ -58,12 +58,12 @@ export function getWinternitzPrivateKeys(wotsType: WotsType, unique: string): Bu
 export function getWinternitzPublicKeys(wotsType: WotsType, unique: string): Buffer[] {
     const t: Buffer[] = [];
     for (let i = 0; i < WOTS_NIBBLES[wotsType]; i++) {
-        t.push(getWinternitzPublicKey(unique + i, 3));
+        t.push(getWinternitzPublicKey(unique + '/' + i, 3));
     }
     return t;
 }
 
-function toNibbles(input: bigint, count: number): number[] {
+export function toNibbles(input: bigint, count: number): number[] {
     const nibbles: number[] = [];
     for (let i = 0; i < count; i++) {
         nibbles.push(Number(input & 7n));
@@ -72,7 +72,7 @@ function toNibbles(input: bigint, count: number): number[] {
     return nibbles;
 }
 
-function fromNibbles(nibbles: number[]): bigint {
+export function fromNibbles(nibbles: number[]): bigint {
     let n = 0n;
     for (let i = 0; i < nibbles.length; i++) {
         n += BigInt(nibbles[i]) << BigInt(i * 3);
@@ -86,9 +86,9 @@ export function encodeWinternitz1(input: bigint, unique: string): Buffer[] {
     const dataNibbles = toNibbles(input, 1);
     checksum += dataNibbles[0];
     const t = 7 - dataNibbles[0];
-    output.push(hash(getWinternitzPrivateKey(unique + 0), t));
+    output.push(hash(getWinternitzPrivateKey(unique + '/' + 0), t));
     const checksumNibbles = toNibbles(BigInt(checksum), 1);
-    output.push(hash(getWinternitzPrivateKey(unique + 1), checksumNibbles[0]));
+    output.push(hash(getWinternitzPrivateKey(unique + '/' + 1), checksumNibbles[0]));
     return output;
 }
 
@@ -111,11 +111,11 @@ export function encodeWinternitz24(input: bigint, unique: string): Buffer[] {
     dataNibbles.forEach((nibble, i) => {
         checksum += nibble;
         const t = 7 - nibble;
-        output.push(hash(getWinternitzPrivateKey(unique + i), t));
+        output.push(hash(getWinternitzPrivateKey(unique + '/' + i), t));
     });
     const checksumNibbles = toNibbles(BigInt(checksum), 2);
     checksumNibbles.forEach((nibble, i) => {
-        output.push(hash(getWinternitzPrivateKey(unique + (8 + i)), nibble));
+        output.push(hash(getWinternitzPrivateKey(unique + '/' + (8 + i)), nibble));
     });
     return output;
 }
@@ -143,11 +143,11 @@ export function encodeWinternitz256(input: bigint, unique: string): Buffer[] {
     nibbles.forEach((nibble, i) => {
         checksum += nibble;
         const t = 7 - nibble;
-        output.push(hash(getWinternitzPrivateKey(unique + i), t));
+        output.push(hash(getWinternitzPrivateKey(unique + '/' + i), t));
     });
     const checksumNibbles = toNibbles(BigInt(checksum), 4);
     checksumNibbles.forEach((nibble, i) => {
-        output.push(hash(getWinternitzPrivateKey(unique + (86 + i)), nibble));
+        output.push(hash(getWinternitzPrivateKey(unique + '/' + (86 + i)), nibble));
     });
     return output;
 }
@@ -168,15 +168,21 @@ export function decodeWinternitz256(input: Buffer[], publicKeys: Buffer[]): bigi
     return n;
 }
 
-function bufferToBigintBE(buffer: Buffer): bigint {
+export function bufferToBigintBE(buffer: Buffer): bigint {
     return BigInt('0x' + buffer.toString('hex'));
 }
 
+export function bigintToBufferBE(n: bigint, bits: number): Buffer {
+    let s = n.toString(16);
+    while (s.length < Math.ceil(bits / 4)) s = '0' + s;
+    return Buffer.from(s, 'hex');
+}
 function test_1() {
 
-    const keys = getWinternitzPublicKeys(WotsType._1, fuManchu)
+
+    const keys = getWinternitzPublicKeys(WotsType._1, '')
     const test1 = 1n;
-    const encoded = encodeWinternitz1(test1, fuManchu);
+    const encoded = encodeWinternitz1(test1, '');
     const decoded = decodeWinternitz1(encoded, keys);
     assert(test1 == decoded);
 
@@ -187,10 +193,10 @@ function test_1() {
         bitcoin.winternitzCheck1(witness, keys.map(b => bufferToBigintBE(b)));
         if (!bitcoin.success) throw new Error('Bitcoin script failed');
 
-        console.log('winternitz 1 check'); 
+        console.log('winternitz 1 check');
         console.log('data: ', encoded.reduce<number>((p, c) => p + c.length, 0));
         console.log('script: ', bitcoin.programSizeInBitcoinBytes());
-        }
+    }
 
     {
         const bitcoin = new Bitcoin();
@@ -202,9 +208,9 @@ function test_1() {
 
         const btcDecoded = target.value;
 
-        console.log('winternitz 1 decode'); 
+        console.log('winternitz 1 decode');
         console.log('data: ', encoded.reduce<number>((p, c) => p + c.length, 0));
-        console.log('script: ', bitcoin.programSizeInBitcoinBytes());    
+        console.log('script: ', bitcoin.programSizeInBitcoinBytes());
 
         assert(test1 == btcDecoded);
     }
@@ -213,9 +219,9 @@ function test_1() {
 
 function test_24() {
 
-    const keys = getWinternitzPublicKeys(WotsType._24, fuManchu)
+    const keys = getWinternitzPublicKeys(WotsType._24, '')
     const test1 = 234987n;
-    const encoded = encodeWinternitz24(test1, fuManchu);
+    const encoded = encodeWinternitz24(test1, '');
     const decoded = decodeWinternitz24(encoded, keys);
     assert(test1 == decoded);
 
@@ -226,10 +232,10 @@ function test_24() {
         bitcoin.winternitzCheck24(witness, keys.map(b => bufferToBigintBE(b)));
         if (!bitcoin.success) throw new Error('Bitcoin script failed');
 
-        console.log('winternitz 24 check'); 
+        console.log('winternitz 24 check');
         console.log('data: ', encoded.reduce<number>((p, c) => p + c.length, 0));
         console.log('script: ', bitcoin.programSizeInBitcoinBytes());
-        }
+    }
 
     {
         const bitcoin = new Bitcoin();
@@ -241,20 +247,19 @@ function test_24() {
 
         const btcDecoded = fromNibbles(target.map(si => Number(si.value)));
 
-        console.log('winternitz 24 decode'); 
+        console.log('winternitz 24 decode');
         console.log('data: ', encoded.reduce<number>((p, c) => p + c.length, 0));
-        console.log('script: ', bitcoin.programSizeInBitcoinBytes());    
+        console.log('script: ', bitcoin.programSizeInBitcoinBytes());
 
         assert(test1 == btcDecoded);
     }
-
 }
 
 function test_256() {
 
-    const keys = getWinternitzPublicKeys(WotsType._256, fuManchu)
+    const keys = getWinternitzPublicKeys(WotsType._256, '')
     const test1 = 13298712394871234987n;
-    const encoded = encodeWinternitz256(test1, fuManchu);
+    const encoded = encodeWinternitz256(test1, '');
     const decoded = decodeWinternitz256(encoded, keys);
     assert(test1 == decoded);
 
@@ -265,10 +270,10 @@ function test_256() {
         bitcoin.winternitzCheck256(witness, keys.map(b => bufferToBigintBE(b)));
         if (!bitcoin.success) throw new Error('Bitcoin script failed');
 
-        console.log('winternitz 256 check'); 
+        console.log('winternitz 256 check');
         console.log('data: ', encoded.reduce<number>((p, c) => p + c.length, 0));
         console.log('script: ', bitcoin.programSizeInBitcoinBytes());
-        }
+    }
 
     {
         const bitcoin = new Bitcoin();
@@ -280,9 +285,9 @@ function test_256() {
 
         const btcDecoded = fromNibbles(target.map(si => Number(si.value)));
 
-        console.log('winternitz 256 decode'); 
+        console.log('winternitz 256 decode');
         console.log('data: ', encoded.reduce<number>((p, c) => p + c.length, 0));
-        console.log('script: ', bitcoin.programSizeInBitcoinBytes());    
+        console.log('script: ', bitcoin.programSizeInBitcoinBytes());
 
         assert(test1 == btcDecoded);
     }

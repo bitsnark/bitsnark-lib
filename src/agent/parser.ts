@@ -61,10 +61,10 @@ export async function parseTransactionData(agentId: string, setupId: string, txI
 }
 
 async function test(agentId: string, setupId: string) {
-    const transactions = (await readTransactions(agentId, setupId))
-        .filter(t => !t.external);
+    const transactions = (await readTransactions(agentId, setupId));
 
     for (const transaction of transactions) {
+        if (transaction.external) continue;
         let witness = Buffer.from([]);
         for (const input of transaction.inputs) {
             const sc = getSpendingConditionByInput(transactions, input);
