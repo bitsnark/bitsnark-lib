@@ -1,7 +1,7 @@
 import fs from 'fs';
 import { createChallengeTx } from "./challenge";
 import { createInitialTx } from "./initial";
-import groth16Verify, { Key, Proof, Proof as Step1_Proof } from '../../src/generator/step1/verifier';
+import groth16Verify, { Key, Proof } from '../../src/generator/step1/verifier';
 import { proof, publicSignals } from './proof';
 import { step1_vm } from '../../src/generator/step1/vm/vm';
 import { SavedVm } from '../../src/generator/common/saved-vm';

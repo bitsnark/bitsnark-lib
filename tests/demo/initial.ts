@@ -3,8 +3,6 @@ import { proof, publicSignals } from './proof';
 import { encodeWinternitz256, getWinternitzPublicKeys256 } from '../../src/encoding/winternitz';
 import { bufferToBigints256BE } from '../../src/encoding/encoding';
 import { getEncodingIndexForPat, ProtocolRole, ProtocolStep } from './common';
-import { simpleTaproot } from '../../src/generator/taproot/taproot';
-import { internalPblicKey } from './public-key';
 import { writeToFile } from './utils';
 
 export function createInitialTx(): bigint[] {

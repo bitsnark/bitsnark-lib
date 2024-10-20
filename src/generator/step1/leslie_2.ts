@@ -1,6 +1,3 @@
-import { bufferToBigintsBE } from '../../encoding/encoding';
-import { encodeWinternitz256, getWinternitzPublicKeys256 } from '../../encoding/winternitz';
-import { Bitcoin } from '../step3/bitcoin';
 import { proof, vKey } from './constants';
 import groth16Verify, { Key, Proof as Step1_Proof } from './verifier';
 import { Runner } from "./vm/runner";

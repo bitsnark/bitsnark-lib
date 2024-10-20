@@ -1,5 +1,4 @@
 import { step2_vm } from "./vm/vm";
-import { Register } from "../common/register";
 import { SHA256 } from "./sha-256"
 import { _256 } from "./vm/types"
 

@@ -1,6 +1,6 @@
 import fs from 'fs';
 import groth16Verify, { Key, Proof as Step1_Proof } from '../../generator/step1/verifier';
-import { InstrCode, Instruction, InstrCode as Step1_InstrCode } from '../../generator/step1/vm/types';
+import { InstrCode, Instruction } from '../../generator/step1/vm/types';
 import { proof, vKey } from '../../generator/step1/constants';
 import { Bitcoin, Template } from '../../generator/step3/bitcoin';
 import { getTransactionByName, Transaction } from '../transactions-new';
@@ -8,7 +8,7 @@ import { bigintToNibblesLS } from './common';
 import { iterations, TransactionNames, twoDigits } from '../common';
 import { bufferToBigint160 } from '../../encoding/encoding';
 import { getWinternitzPublicKeys, WOTS_NIBBLES, WotsType } from '../winternitz';
-import { step1_vm, VM as Step1_vm } from '../../generator/step1/vm/vm';
+import { step1_vm } from '../../generator/step1/vm/vm';
 import { StackItem } from '@src/generator/step3/stack';
 import { verifyAddMod, verifyAnd, verifyAndBit, verifyAndNotBit, verifyAssertOne, verifyAssertZero, verifyDivMod, verifyEqual, verifyMov, verifyMulMod, verifyNot, verifyOr, verifySubMod } from './step1_btc';
 import { Compressor } from '../simple-taptree';

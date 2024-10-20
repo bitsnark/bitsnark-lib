@@ -1,5 +1,4 @@
 import { Transaction } from "./transactions-new";
-import util from 'node:util';
 import { execFileSync } from 'node:child_process';
 import { readTransactions, writeTransactions } from "./db";
 import { AgentRoles, TransactionNames } from "./common";
@@ -11,6 +10,10 @@ export async function signTransactions(
     transactions: Transaction[]): Promise<Transaction[]> {
 
     await writeTransactions(agentId, setupId, transactions);
+
+    // On macOS, "System Integrety Protection" clears the DYLD_FALLBACK_LIBRARY_PATH,
+    // which leaves the Python executable unable to find the secp256k1 library installed by Homebrew.
+    if (!process.env.DYLD_FALLBACK_LIBRARY_PATH) process.env.DYLD_FALLBACK_LIBRARY_PATH = '/opt/homebrew/lib';
 
     const result = execFileSync('python3', [
         '-m', 'bitsnark.core.sign_transactions',

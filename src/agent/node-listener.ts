@@ -1,42 +1,7 @@
-import { readPendingTransactions, writeTransmittedTransactions } from './db';
+import { readPendingTransactions, writeTransmittedTransaction } from './db';
 import { agentConf } from './agent.conf';
-import { BitcoinNode } from './bitcoin-node';
+import { BitcoinNode, TxData, TxRawData } from './bitcoin-node';
 
-export interface TxData {
-    txid: string;
-    version: number;
-    locktime: number;
-    size: number;
-    weight: number;
-    fee: number;
-    vin: Vin[];
-    vout: Vout[];
-    status: TxStstus;
-    setupId?: string; // custom field added for db update
-}
-export interface Vin {
-    txid: string;
-    vout: number;
-    scriptsig: string;
-    sequence: number;
-    witness: string[];
-    prevout: Vout;
-}
-
-export interface Vout {
-    scriptpubkey: string;
-    value: number;
-    scriptpubkey_asm: string;
-    scriptpubkey_type: string;
-    scriptpubkey_address: string;
-}
-
-export interface TxStstus {
-    confirmed: boolean;
-    block_height: number;
-    block_hash: string;
-    block_time: number;
-}
 
 const checkNodeInterval = 60000;
 
@@ -70,17 +35,22 @@ export class NodeListener {
 
     async monitorTransmitted() {
         const pending = await readPendingTransactions();
-        const transmittedTxs: TxData[] = [];
         for (const pendingTx of pending) {
             try {
-                const transmittedTx: TxData = await this.client.getRawTransaction(pendingTx.txId, true);
-                if (transmittedTx && transmittedTx.status.confirmed &&
-                    this.lastBlockHeight - transmittedTx.status.block_height >= agentConf.blocksUntilFinalized) {
-                    transmittedTxs.push(transmittedTx as TxData);
+                const transmittedTx: TxData = await this.client.getTransaction(pendingTx.txId);
+                if (transmittedTx &&
+                    this.lastBlockHeight - transmittedTx.blockheight >= agentConf.blocksUntilFinalized) {
+
+                    const transmittedRawTx: TxRawData =
+                        await this.client.getRawTransaction(pendingTx.txId, true, transmittedTx.blockhash)
+
+                    writeTransmittedTransaction(
+                        { setupId: pendingTx.setupId, ...transmittedTx },
+                        { setupId: pendingTx.setupId, ...transmittedRawTx }
+                    );
                 }
             } catch (error) { continue }
         }
-        if (transmittedTxs.length) await writeTransmittedTransactions(transmittedTxs);
     }
 
     destroy() {
@@ -90,3 +60,4 @@ export class NodeListener {
         }
     }
 }
+

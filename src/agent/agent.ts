@@ -1,7 +1,6 @@
 import { agentConf, ONE_BITCOIN } from "./agent.conf";
 import { AgentRoles, FundingUtxo } from "./common";
 import { stringToBigint } from "../encoding/encoding";
-import { writeTransactions } from "./db";
 import { generateAllScripts } from "./generate-scripts";
 import { addAmounts } from "./amounts";
 import { DoneMessage, fromJson, JoinMessage, SignaturesMessage, StartMessage, TransactionsMessage } from "./messages";

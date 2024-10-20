@@ -6,8 +6,6 @@ import { getEncodingIndexForPat, getEncodingIndexForVic, ProtocolRole, ProtocolS
 import { decodeLamportBit, encodeLamportBit, getLamportPublicKeys } from '../../src/encoding/lamport';
 import { SavedVm } from '../../src/generator/common/saved-vm';
 import { InstrCode } from '../../src/generator/step2/vm/types';
-import { internalPblicKey } from './public-key';
-import { simpleTaproot } from '../../src/generator/taproot/taproot';
 import { writeToFile } from './utils';
 
 function compare(a: bigint[], b: bigint[]): boolean {

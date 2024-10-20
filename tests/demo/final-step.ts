@@ -5,8 +5,6 @@ import { StackItem } from '../../src/generator/step3/stack';
 import { encodeLamportBit, getLamportPublicKey } from '../../src/encoding/lamport';
 import { encodeWinternitz32, getWinternitzPublicKeys32 } from '../../src/encoding/winternitz';
 import { bufferToBigints256BE } from '../../src/encoding/encoding';
-import { internalPblicKey } from './public-key';
-import { simpleTaproot } from '../../src/generator/taproot/taproot';
 import { writeToFile } from './utils';
 
 const step1_iterations = 19;
