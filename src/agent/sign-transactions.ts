@@ -13,7 +13,9 @@ export async function signTransactions(
 
     // On macOS, "System Integrety Protection" clears the DYLD_FALLBACK_LIBRARY_PATH,
     // which leaves the Python executable unable to find the secp256k1 library installed by Homebrew.
-    if (!process.env.DYLD_FALLBACK_LIBRARY_PATH) process.env.DYLD_FALLBACK_LIBRARY_PATH = '/opt/homebrew/lib';
+    if (!process.env.DYLD_FALLBACK_LIBRARY_PATH) {
+        process.env.DYLD_FALLBACK_LIBRARY_PATH = '/opt/homebrew/lib:/usr/local/lib';
+    }
 
     const result = execFileSync('python3', [
         '-m', 'bitsnark.core.sign_transactions',
