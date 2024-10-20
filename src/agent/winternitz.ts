@@ -168,6 +168,24 @@ export function decodeWinternitz256(input: Buffer[], publicKeys: Buffer[]): bigi
     return n;
 }
 
+export function encodeWinternitz(type: WotsType, input: bigint, unique: string): Buffer[] {
+    const encoders = {
+        [WotsType._256]: encodeWinternitz256,
+        [WotsType._24]: encodeWinternitz24,
+        [WotsType._1]: encodeWinternitz1
+    };
+    return encoders[type](input, unique);
+}
+
+export function decodeWinternitz(type: WotsType, input: Buffer[], keys: Buffer[]): bigint {
+    const decoders = {
+        [WotsType._256]: decodeWinternitz256,
+        [WotsType._24]: decodeWinternitz24,
+        [WotsType._1]: decodeWinternitz1
+    };
+    return decoders[type](input, keys);
+}
+
 export function bufferToBigintBE(buffer: Buffer): bigint {
     return BigInt('0x' + buffer.toString('hex'));
 }

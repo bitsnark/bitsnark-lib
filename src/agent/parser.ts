@@ -1,6 +1,7 @@
+import { AgentRoles } from "./common";
 import { readTransactions } from "./db";
 import { findOutputByInput, getSpendingConditionByInput } from "./transactions-new";
-import { decodeWinternitz1, decodeWinternitz24, decodeWinternitz256, WOTS_NIBBLES, WotsType } from "./winternitz";
+import { decodeWinternitz, WOTS_NIBBLES } from "./winternitz";
 
 function hashesFromBuffer(data: Buffer): Buffer[] {
     const result: Buffer[] = [];
@@ -16,6 +17,10 @@ export async function parseTransactionData(agentId: string, setupId: string, txI
     const template = transactions.find(t => t.txId == txId);
     if (!template) throw new Error('Template not found');
 
+    console.log('Parsing transaction: ', template.transactionName);
+    if (template.transactionName == 'state_00')
+        console.log('foooooooo');
+    
     const result: bigint[] = [];
     const hashes = hashesFromBuffer(data);
     let hashesIndex = 0;
@@ -36,34 +41,26 @@ export async function parseTransactionData(agentId: string, setupId: string, txI
             const spec = sc.wotsSpec[i];
             const keys = sc.wotsPublicKeys[i];
             const nibbleCount = WOTS_NIBBLES[spec];
-            if (keys.length != nibbleCount) throw new Error('Wrong number of keys');
-            let n = 0n;
-            switch (spec) {
-                case WotsType._256:
-                    n = decodeWinternitz256(hashes.slice(hashesIndex, nibbleCount), keys);
-                    break;
-                case WotsType._24:
-                    n = decodeWinternitz24(hashes.slice(hashesIndex, nibbleCount), keys);
-                    break;
-                case WotsType._1:
-                    n = decodeWinternitz1(hashes.slice(hashesIndex, nibbleCount), keys);
-                    break;
-                default:
-                    throw new Error('Invaid spec');
-
-            }
+            if (keys.length != nibbleCount) 
+                throw new Error('Wrong number of keys');
+            // remove later
+            if (sc.exampleWitness![i].length != nibbleCount) 
+                throw new Error('Wrong number of Values');
+            result[resultIndex++] = decodeWinternitz(spec, hashes.slice(hashesIndex, hashesIndex + nibbleCount), keys)
             hashesIndex += nibbleCount;
-            result[resultIndex++] = n;
         }
     }
 
     return result;
 }
 
-async function test(agentId: string, setupId: string) {
+async function test(agentId: string, setupId: string, myRole: AgentRoles) {
     const transactions = (await readTransactions(agentId, setupId));
 
     for (const transaction of transactions) {
+
+        if (transaction.role == myRole) continue;
+
         if (transaction.external) continue;
         let witness = Buffer.from([]);
         for (const input of transaction.inputs) {
@@ -76,5 +73,5 @@ async function test(agentId: string, setupId: string) {
 
 const scriptName = __filename;
 if (process.argv[1] == scriptName) {
-    test('bitsnark_prover_1', 'test_setup');
+    test('bitsnark_prover_1', 'test_setup', AgentRoles.PROVER);
 }

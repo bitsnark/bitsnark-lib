@@ -1,5 +1,5 @@
 import { Bitcoin } from '../generator/step3/bitcoin';
-import { bufferToBigintBE, encodeWinternitz1, encodeWinternitz24, encodeWinternitz256, getWinternitzPublicKeys, WOTS_NIBBLES, WotsType } from './winternitz';
+import { bufferToBigintBE, encodeWinternitz, encodeWinternitz1, encodeWinternitz24, encodeWinternitz256, getWinternitzPublicKeys, WOTS_NIBBLES, WotsType } from './winternitz';
 import { AgentRoles, iterations, random, TransactionNames } from './common';
 import { StackItem } from '../generator/step3/stack';
 import { SimpleTapTree } from './simple-taptree';
@@ -65,19 +65,17 @@ function generateBoilerplate(setupId: string, myRole: AgentRoles, prevTransactio
 
         if (prevTransaction.role == myRole) {
 
-            const encoders = {
-                [WotsType._256]: (dataIndex: number) =>
-                    encodeWinternitz256(random(32), createUniqueDataId(setupId, prevTransaction.transactionName, input.outputIndex, input.spendingConditionIndex, dataIndex)),
-                [WotsType._24]: (dataIndex: number) =>
-                    encodeWinternitz24(random(3), createUniqueDataId(setupId, prevTransaction.transactionName, input.outputIndex, input.spendingConditionIndex, dataIndex)),
-                [WotsType._1]: (dataIndex: number) =>
-                    encodeWinternitz1(random(1) % 8n, createUniqueDataId(setupId, prevTransaction.transactionName, input.outputIndex, input.spendingConditionIndex, dataIndex))
-            };
+            const exampleWitness = spendingCondition.wotsSpec
+                .map((spec, dataIndex) => {
+                    const rnd = random(32) % (2n ** BigInt(3 * WOTS_NIBBLES[spec]));
+                    return encodeWinternitz(spec, rnd, createUniqueDataId(setupId, prevTransaction.transactionName, input.outputIndex, input.spendingConditionIndex, dataIndex));
+                });
 
-            spendingCondition.exampleWitness = spendingCondition.wotsSpec
-                .map((spec, dataIndex) => encoders[spec](dataIndex));
-
-            witnessSIs = spendingCondition.exampleWitness
+            if (spendingCondition.nextRole == myRole) {
+                spendingCondition.exampleWitness = exampleWitness;
+            }
+        
+            witnessSIs = exampleWitness
                 .map(values => values.map(v => bitcoin.addWitness(bufferToBigintBE(v))));
 
         } else {
