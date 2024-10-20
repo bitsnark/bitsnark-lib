@@ -108,6 +108,7 @@ export function generateFinalStepTaproot(setupId: string, transactions: Transact
     let max = 0;
     const compressor = new Compressor(iterations, 1n);
 
+    console.log(`Generating final step taproot for ${program.length} instructions`);
     for (let index = 0; index < program.length; index++) {
 
         const line = program[index];
@@ -116,7 +117,7 @@ export function generateFinalStepTaproot(setupId: string, transactions: Transact
             const todo = (program.length - index) * (Date.now() - started) / index;
             const m = Math.floor(todo / 60000);
             const s = Math.floor((todo - m * 60000) / 1000);
-            console.log('index: ', index, '   max: ', max, '   totel: ', total, '   left: ', `${m}:${s}`);
+            console.log('index: ', index, '   max: ', max, '   total: ', total, '   left: ', `${m}:${s}`);
         }
 
         // this is a hack to make this run (somewhat) faster

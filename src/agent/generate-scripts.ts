@@ -47,9 +47,9 @@ function generateBoilerplate(setupId: string, myRole: AgentRoles, prevTransactio
     const spendingCondition = output.spendingConditions[input.spendingConditionIndex];
 
     if (spendingCondition.signaturesPublicKeys) {
-        spendingCondition.signaturesPublicKeys.forEach(key => {
+        for (const key of spendingCondition.signaturesPublicKeys) {
             bitcoin.verifySignature(key);
-        });
+        }
     }
 
     if (spendingCondition.timeoutBlocks) {
@@ -91,13 +91,13 @@ function generateBoilerplate(setupId: string, myRole: AgentRoles, prevTransactio
             [WotsType._1]: (dataIndex: number) =>
                 bitcoin.winternitzCheck1(witnessSIs[dataIndex], keys[dataIndex]),
         };
-        spendingCondition.wotsSpec.forEach((spec, dataIndex) => decoders[spec](dataIndex));
+        for (const [dataIndex, spec] of spendingCondition.wotsSpec.entries()) decoders[spec](dataIndex);
     }
 
     return bitcoin.programToBinary();
 }
 
-function generateSemiFinalScript(lastSelectOutput: Output): Buffer {
+function generateArgumentScript(lastSelectOutput: Output): Buffer {
     const bitcoin = new Bitcoin();
     bitcoin.throwOnFail = false;
 
@@ -131,7 +131,6 @@ export async function generateAllScripts(
 ): Promise<Transaction[]> {
 
     for (const t of transactions.filter(t => !t.external)) {
-
         console.log('transaction name: ', t.transactionName);
 
         // check that all sc have wots public keys if they need them
@@ -151,17 +150,17 @@ export async function generateAllScripts(
 
         if (t.transactionName == TransactionNames.PROOF_REFUTED) {
             const taproot = generateFinalStepTaproot(setupId, transactions);
-            const semi_final = getTransactionByName(transactions, TransactionNames.ARGUMENT);
-            if (semi_final.outputs.length != 1)
+            const argument = getTransactionByName(transactions, TransactionNames.ARGUMENT);
+            if (argument.outputs.length != 1)
                 throw new Error('Wrong number of outputs');
-            semi_final.outputs[0].taprootKey = taproot;
+            argument.outputs[0].taprootKey = taproot;
         } else if (t.transactionName == TransactionNames.ARGUMENT) {
             if (t.inputs.length != 1)
                 throw new Error('Wrong number of inputs');
             const prevOutput = findOutputByInput(transactions, t.inputs[0]);
             if (prevOutput.spendingConditions.length < 1)
                 throw new Error('Wrong number of spending conditions');
-            const script = generateSemiFinalScript(prevOutput);
+            const script = generateArgumentScript(prevOutput);
             prevOutput.spendingConditions[0].script = script;
             t.inputs[0].script = script;
         } else {
@@ -193,7 +192,7 @@ export async function generateAllScripts(
         }
     }
 
-    // generate the taproot key for all outputs except in the semi-final tx
+    // generate the taproot key for all outputs except in the argument tx
     setTaprootKey(transactions);
 
     await writeTransactions(agentId, setupId, transactions);

@@ -387,7 +387,6 @@ export function getSpendingConditionByInput(transactions: Transaction[], input: 
     }
     if (!tx.outputs[input.outputIndex]) throw new Error('Output not found');
     if (!tx.outputs[input.outputIndex].spendingConditions[input.spendingConditionIndex]) throw new Error('Spending condition not found');
-
     return tx.outputs[input.outputIndex].spendingConditions[input.spendingConditionIndex];
 }
 
@@ -433,38 +432,38 @@ export async function initializeTransactions(
     proverStake.outputs[0].amount = proverUtxo.amount;
 
     // set ordinal, setup id and protocol version
-    transactions.forEach((t, i) => {
+    for (const [i, t] of transactions.entries()) {
         t.protocolVersion = t.protocolVersion ?? PROTOCOL_VERSION;
         t.setupId = setupId;
         t.ordinal = i;
-    });
+    }
 
     // generate wots keys
     for (const transaction of transactions) {
-        transaction.outputs.forEach((output, outputIndex) => {
-            output.spendingConditions.forEach((sc, scIndex) => {
+        for (const [outputIndex, output] of transaction.outputs.entries()) {
+            for (const [scIndex, sc] of output.spendingConditions.entries()) {
                 if (sc.wotsSpec && sc.nextRole == role) {
                     sc.wotsPublicKeys = sc.wotsSpec!
                         .map((wt, dataIndex) => getWinternitzPublicKeys(
                             wt, createUniqueDataId(setupId, transaction.transactionName, outputIndex, scIndex, dataIndex)));
                 }
-            });
-        });
-    };
+            }
+        }
+    }
 
     // copy timeouts from input to output for indexer
-    transactions.forEach(t => {
-        t.inputs.forEach((input, inputIndex) => {
+    for (const t of transactions) {
+        for (const [inputIndex, input] of t.inputs.entries()) {
             const output = findOutputByInput(transactions, input);
             const spend = output.spendingConditions[input.spendingConditionIndex];
             output.timeoutBlocks = spend.timeoutBlocks;
-        });
-    });
+        }
+    }
 
     // put schnorr keys where needed
 
-    transactions.forEach(t => {
-        t.inputs.forEach((input, inputIndex) => {
+    for (const t of transactions) {
+        for (const [inputIndex, input] of t.inputs.entries()) {
             const output = findOutputByInput(transactions, input);
             const spend = output.spendingConditions[input.spendingConditionIndex];
             if (!spend)
@@ -476,8 +475,8 @@ export async function initializeTransactions(
             if (spend.signatureType == SignatureType.VERIFIER || spend.signatureType == SignatureType.BOTH) {
                 spend.signaturesPublicKeys.push(verifierPublicKey);
             }
-        });
-    });
+        }
+    }
 
     await writeTransactions(agentId, setupId, transactions);
 
