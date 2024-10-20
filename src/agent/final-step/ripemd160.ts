@@ -414,7 +414,6 @@ console.log('r1: ', r1.toString('hex'));
 
 const numa: number[] = rstr2binl(test1);
 const bitcoin: Bitcoin = new Bitcoin();
-bitcoin.stackLimit = false;
 const ripemd = new RIPEMD160(bitcoin);
 const inRegisters = numa.map(n => ripemd.newRegister(BigInt(n)));
 const outRegisters = ripemd.binl_rmd160(inRegisters, numa.length * 32);

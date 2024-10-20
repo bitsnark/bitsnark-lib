@@ -354,7 +354,6 @@ export class SHA256 {
 
     const h1 = hash(test1);
     const bitcoin = new Bitcoin();
-    bitcoin.stackLimit = false;
 
     const sha256 = new SHA256(bitcoin);
     const regs: Register[] = _256To32BE(test1).map(n => sha256.hardcodeRegister(n));
@@ -376,7 +375,6 @@ export class SHA256 {
     const h1 = hashPair(test1, test2);
 
     const bitcoin = new Bitcoin();
-    bitcoin.stackLimit = false;
 
     const sha256 = new SHA256(bitcoin);
 

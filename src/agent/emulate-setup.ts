@@ -31,22 +31,22 @@ export async function emulateSetup(setupId: string, proverAgentId: string, verif
     if (proverTemplates.length != verifierTemplates.length)
         throw new Error('Invalid length of template list?');
 
-    mergeWots(AgentRoles.PROVER, proverTemplates, verifierTemplates);
+    proverTemplates = mergeWots(AgentRoles.PROVER, proverTemplates, verifierTemplates);
     await writeTransactions(proverAgentId, setupId, proverTemplates);
 
-    mergeWots(AgentRoles.VERIFIER, verifierTemplates, proverTemplates);
+    verifierTemplates = mergeWots(AgentRoles.VERIFIER, verifierTemplates, proverTemplates);
     await writeTransactions(verifierAgentId, setupId, verifierTemplates);
 
-    async function generateScripts(agentId: string, transactions: Transaction[]) {
-        await generateAllScripts(agentId, setupId, transactions);
+    async function generateScripts(agentId: string, role: AgentRoles, transactions: Transaction[]) {
+        await generateAllScripts(agentId, setupId, role, transactions);
         transactions = await addAmounts(agentId, setupId);
         validateTransactionFees(transactions);
     }
 
-    console.log('genrating scripts...');
+    console.log('generating scripts...');
 
-    await generateScripts(proverAgentId, proverTemplates);
-    await generateScripts(verifierAgentId, verifierTemplates);
+    await generateScripts(proverAgentId, AgentRoles.PROVER, proverTemplates);
+    await generateScripts(verifierAgentId, AgentRoles.VERIFIER, verifierTemplates);
 
     console.log('adding amounts...');
 

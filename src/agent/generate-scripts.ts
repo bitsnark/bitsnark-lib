@@ -1,12 +1,11 @@
 import { Bitcoin } from '../generator/step3/bitcoin';
-import { encodeWinternitz1, encodeWinternitz24, encodeWinternitz256, getWinternitzPublicKeys, WotsType } from './winternitz';
-import { iterations, random, TransactionNames } from './common';
-import { bufferToBigint160 } from "../encoding/encoding";
+import { bufferToBigintBE, encodeWinternitz, WOTS_NIBBLES, WotsType } from './winternitz';
+import { AgentRoles, iterations, random, TransactionNames } from './common';
 import { StackItem } from '../generator/step3/stack';
 import { SimpleTapTree } from './simple-taptree';
 import { agentConf } from './agent.conf';
 import { Buffer } from 'node:buffer';
-import { findOutputByInput, getTransactionByName, Input, Output, SpendingCondition, Transaction } from './transactions-new';
+import { createUniqueDataId, findOutputByInput, getTransactionByName, Input, Output, Transaction } from './transactions-new';
 import { readTransactions, writeTransactions } from './db';
 import { generateFinalStepTaproot } from './final-step/generate';
 
@@ -39,10 +38,13 @@ function setTaprootKey(transactions: Transaction[]) {
     };
 }
 
-function generateBoilerplate(setupId: string, transactionName: string, outputIndex: number, scIndex: number, spendingCondition: SpendingCondition): Buffer {
+function generateBoilerplate(setupId: string, myRole: AgentRoles, prevTransaction: Transaction, input: Input): Buffer {
 
     const bitcoin = new Bitcoin();
-    bitcoin.setDefaultHash('HASH160');
+    bitcoin.throwOnFail = false;
+
+    const output = prevTransaction.outputs[input.outputIndex];
+    const spendingCondition = output.spendingConditions[input.spendingConditionIndex];
 
     if (spendingCondition.signaturesPublicKeys) {
         spendingCondition.signaturesPublicKeys.forEach(key => {
@@ -57,28 +59,36 @@ function generateBoilerplate(setupId: string, transactionName: string, outputInd
     if (spendingCondition.wotsSpec) {
 
         const keys = spendingCondition.wotsPublicKeys!
-            .map(keys => keys.map(b => bufferToBigint160(b)));
+            .map(keys => keys.map(b => bufferToBigintBE(b)));
 
-        const encoders = {
-            [WotsType._256]: (dataIndex: number) => 
-                encodeWinternitz256(random(32), [setupId, transactionName, outputIndex, scIndex, dataIndex].toString()),
-            [WotsType._24]: (dataIndex: number) => 
-                encodeWinternitz24(random(3), [setupId, transactionName, outputIndex, scIndex, dataIndex].toString()),
-            [WotsType._1]: (dataIndex: number) => 
-                encodeWinternitz1(random(1) % 7n, [setupId, transactionName, outputIndex, scIndex, dataIndex].toString())
-        };
-        spendingCondition.exampleWitness = spendingCondition.wotsSpec
-            .map((spec, dataIndex) => encoders[spec](dataIndex));
+        let witnessSIs: StackItem[][];
 
-        const witnessSIs = spendingCondition.exampleWitness
-            .map(values => values.map(v => bitcoin.addWitness(bufferToBigint160(v))));
+        if (prevTransaction.role == myRole) {
+
+            const exampleWitness = spendingCondition.wotsSpec
+                .map((spec, dataIndex) => {
+                    const rnd = random(32) % (2n ** BigInt(3 * WOTS_NIBBLES[spec]));
+                    return encodeWinternitz(spec, rnd, createUniqueDataId(setupId, prevTransaction.transactionName, input.outputIndex, input.spendingConditionIndex, dataIndex));
+                });
+
+            if (spendingCondition.nextRole == myRole) {
+                spendingCondition.exampleWitness = exampleWitness;
+            }
+
+            witnessSIs = exampleWitness
+                .map(values => values.map(v => bitcoin.addWitness(bufferToBigintBE(v))));
+
+        } else {
+            witnessSIs = spendingCondition.wotsSpec
+                .map(spec => new Array(WOTS_NIBBLES[spec]).fill(0).map(_ => bitcoin.addWitness(0n)));
+        }
 
         const decoders = {
-            [WotsType._256]: (dataIndex: number) => 
+            [WotsType._256]: (dataIndex: number) =>
                 bitcoin.winternitzCheck256(witnessSIs[dataIndex], keys[dataIndex]),
-            [WotsType._24]: (dataIndex: number) => 
+            [WotsType._24]: (dataIndex: number) =>
                 bitcoin.winternitzCheck24(witnessSIs[dataIndex], keys[dataIndex]),
-            [WotsType._1]: (dataIndex: number) => 
+            [WotsType._1]: (dataIndex: number) =>
                 bitcoin.winternitzCheck1(witnessSIs[dataIndex], keys[dataIndex]),
         };
         spendingCondition.wotsSpec.forEach((spec, dataIndex) => decoders[spec](dataIndex));
@@ -89,7 +99,7 @@ function generateBoilerplate(setupId: string, transactionName: string, outputInd
 
 function generateSemiFinalScript(lastSelectOutput: Output): Buffer {
     const bitcoin = new Bitcoin();
-    bitcoin.setDefaultHash('HASH160');
+    bitcoin.throwOnFail = false;
 
     const pubKeys = lastSelectOutput.spendingConditions[0].wotsPublicKeys!;
 
@@ -107,7 +117,7 @@ function generateSemiFinalScript(lastSelectOutput: Output): Buffer {
         bitcoin.winternitzDecode1(
             result,
             pathWitness[i],
-            pubKeys[i + 1].map(b => bufferToBigint160(b))
+            pubKeys[i + 1].map(b => bufferToBigintBE(b))
         );
     }
 
@@ -117,26 +127,27 @@ function generateSemiFinalScript(lastSelectOutput: Output): Buffer {
 }
 
 export async function generateAllScripts(
-    agentId: string, setupId: string, transactions: Transaction[]
+    agentId: string, setupId: string, myRole: AgentRoles, transactions: Transaction[]
 ): Promise<Transaction[]> {
 
-    // generate wots keys where they are missing, in case we're not really in a setup process
-    transactions.forEach(t => {
-        t.outputs.forEach((output, outputIndex) => {
-            output.spendingConditions.forEach((sc, scIndex) => {
-                if (sc.wotsSpec && !sc.wotsPublicKeys) {
-                    sc.wotsPublicKeys = sc.wotsSpec!
-                        .map((wt, dataIndex) => getWinternitzPublicKeys(
-                            wt,
-                            [setupId, t.transactionName, outputIndex, scIndex, dataIndex].toString()));
-                }
-            });
-        });
-    });
-
-    for (const t of transactions) {
+    for (const t of transactions.filter(t => !t.external)) {
 
         console.log('transaction name: ', t.transactionName);
+
+        // check that all sc have wots public keys if they need them
+        for (const output of t.outputs) {
+            for (const sc of output.spendingConditions) {
+                if (!sc.wotsSpec) break;
+                if (!sc.wotsPublicKeys)
+                    throw new Error('Missing keys');
+                if (sc.wotsSpec.length != sc.wotsPublicKeys.length)
+                    throw new Error('Invalid keys length 1');
+                sc.wotsSpec.forEach((spec, dataIndex) => {
+                    if (sc.wotsPublicKeys![dataIndex].length != WOTS_NIBBLES[spec])
+                        throw new Error('Invaid keys length 2');
+                });
+            }
+        }
 
         if (t.transactionName == TransactionNames.PROOF_REFUTED) {
             const taproot = generateFinalStepTaproot(setupId, transactions);
@@ -155,9 +166,10 @@ export async function generateAllScripts(
             t.inputs[0].script = script;
         } else {
             for (const input of t.inputs) {
-                const prevOutput = findOutputByInput(transactions, input);
+                const prevT = getTransactionByName(transactions, input.transactionName);
+                const prevOutput = prevT.outputs[input.outputIndex];
                 const sc = prevOutput.spendingConditions[input.spendingConditionIndex];
-                const script = generateBoilerplate(setupId, t.transactionName, input.outputIndex, input.spendingConditionIndex, sc);
+                const script = generateBoilerplate(setupId, myRole, prevT, input);
                 sc.script = script;
                 input.script = script;
             };
@@ -193,7 +205,7 @@ async function main() {
     const agentId = process.argv[2] ?? 'bitsnark_prover_1';
     const setupId = 'test_setup';
     const transactions = await readTransactions(agentId, setupId);
-    await generateAllScripts(agentId, 'test_setup', transactions);
+    await generateAllScripts(agentId, 'test_setup', AgentRoles.PROVER, transactions);
 }
 
 const scriptName = __filename;

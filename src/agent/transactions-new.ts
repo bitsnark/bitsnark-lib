@@ -352,15 +352,21 @@ function makeProtocolSteps(): Transaction[] {
 }
 
 export function mergeWots(role: AgentRoles, mine: Transaction[], theirs: Transaction[]): Transaction[] {
+
+    const notNull = (t: any) => {
+        if (!t) throw new Error('Null error');
+        return t;
+    }
+
     return mine.map((transaction, transactionIndex) => ({
         ...transaction,
         outputs: transaction.outputs.map((output, outputIndex) => ({
             ...output,
             spendingConditions: output.spendingConditions.map((sc, scIndex) => ({
                 ...sc,
-                wotsPublicKeys: transaction.role != role ? 
-                    sc.wotsPublicKeys : 
-                    theirs[transactionIndex].outputs[outputIndex].spendingConditions[scIndex].wotsPublicKeys
+                wotsPublicKeys: !sc.wotsSpec ? undefined : (sc.nextRole == role ?
+                    notNull(sc.wotsPublicKeys) :
+                    notNull(theirs[transactionIndex].outputs[outputIndex].spendingConditions[scIndex].wotsPublicKeys))
             }))
         }))
     }));
@@ -368,7 +374,8 @@ export function mergeWots(role: AgentRoles, mine: Transaction[], theirs: Transac
 
 export function getTransactionByName(transactions: Transaction[], name: string): Transaction {
     const tx = transactions.find(t => t.transactionName == name);
-    if (!tx) throw new Error('Transaction not found: ' + name);
+    if (!tx)
+        throw new Error('Transaction not found: ' + name);
     return tx;
 }
 
@@ -380,7 +387,7 @@ export function getSpendingConditionByInput(transactions: Transaction[], input: 
     }
     if (!tx.outputs[input.outputIndex]) throw new Error('Output not found');
     if (!tx.outputs[input.outputIndex].spendingConditions[input.spendingConditionIndex]) throw new Error('Spending condition not found');
-    
+
     return tx.outputs[input.outputIndex].spendingConditions[input.spendingConditionIndex];
 }
 
@@ -402,6 +409,10 @@ export function findOutputByInput(transactions: Transaction[], input: Input): Ou
     return output;
 }
 
+export function createUniqueDataId(setupId: string, transactionName: string, outputIndex: number, scIndex: number, dataIndex: number) {
+    return `${setupId}/${transactionName}/${outputIndex}/${scIndex}/${dataIndex}`;
+}
+
 export async function initializeTransactions(
     agentId: string,
     role: AgentRoles,
@@ -421,26 +432,25 @@ export async function initializeTransactions(
     proverStake.txId = proverUtxo.txId;
     proverStake.outputs[0].amount = proverUtxo.amount;
 
-    // set ordinal
-    transactions.forEach((t, i) => t.ordinal = i);
-
-    // generate wots keys
-    transactions.forEach(t => {
+    // set ordinal, setup id and protocol version
+    transactions.forEach((t, i) => {
         t.protocolVersion = t.protocolVersion ?? PROTOCOL_VERSION;
         t.setupId = setupId;
+        t.ordinal = i;
+    });
 
-        t.outputs.forEach((output, outputIndex) => {
+    // generate wots keys
+    for (const transaction of transactions) {
+        transaction.outputs.forEach((output, outputIndex) => {
             output.spendingConditions.forEach((sc, scIndex) => {
-
                 if (sc.wotsSpec && sc.nextRole == role) {
                     sc.wotsPublicKeys = sc.wotsSpec!
                         .map((wt, dataIndex) => getWinternitzPublicKeys(
-                            wt,
-                            [setupId, t.transactionName, outputIndex, scIndex, dataIndex].toString()));
+                            wt, createUniqueDataId(setupId, transaction.transactionName, outputIndex, scIndex, dataIndex)));
                 }
             });
         });
-    });
+    };
 
     // copy timeouts from input to output for indexer
     transactions.forEach(t => {
