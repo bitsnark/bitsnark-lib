@@ -18,8 +18,6 @@ export async function parseTransactionData(agentId: string, setupId: string, txI
     if (!template) throw new Error('Template not found');
 
     console.log('Parsing transaction: ', template.transactionName);
-    if (template.transactionName == 'state_00')
-        console.log('foooooooo');
     
     const result: bigint[] = [];
     const hashes = hashesFromBuffer(data);
