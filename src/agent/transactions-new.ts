@@ -3,7 +3,6 @@ import { getWinternitzPublicKeys, WotsType } from './winternitz';
 import { agentConf } from './agent.conf';
 import { calculateStateSizes } from './regs-calc';
 import { writeTransactions } from './db';
-import { create } from 'node:domain';
 
 export const PROTOCOL_VERSION = 0.1;
 
@@ -365,8 +364,8 @@ export function mergeWots(role: AgentRoles, mine: Transaction[], theirs: Transac
             ...output,
             spendingConditions: output.spendingConditions.map((sc, scIndex) => ({
                 ...sc,
-                wotsPublicKeys: !sc.wotsSpec ? undefined : (sc.nextRole == role ? 
-                    notNull(sc.wotsPublicKeys) : 
+                wotsPublicKeys: !sc.wotsSpec ? undefined : (sc.nextRole == role ?
+                    notNull(sc.wotsPublicKeys) :
                     notNull(theirs[transactionIndex].outputs[outputIndex].spendingConditions[scIndex].wotsPublicKeys))
             }))
         }))
@@ -375,7 +374,7 @@ export function mergeWots(role: AgentRoles, mine: Transaction[], theirs: Transac
 
 export function getTransactionByName(transactions: Transaction[], name: string): Transaction {
     const tx = transactions.find(t => t.transactionName == name);
-    if (!tx) 
+    if (!tx)
         throw new Error('Transaction not found: ' + name);
     return tx;
 }
@@ -388,7 +387,7 @@ export function getSpendingConditionByInput(transactions: Transaction[], input: 
     }
     if (!tx.outputs[input.outputIndex]) throw new Error('Output not found');
     if (!tx.outputs[input.outputIndex].spendingConditions[input.spendingConditionIndex]) throw new Error('Spending condition not found');
-    
+
     return tx.outputs[input.outputIndex].spendingConditions[input.spendingConditionIndex];
 }
 

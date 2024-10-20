@@ -18,7 +18,7 @@ export async function parseTransactionData(agentId: string, setupId: string, txI
     if (!template) throw new Error('Template not found');
 
     console.log('Parsing transaction: ', template.transactionName);
-    
+
     const result: bigint[] = [];
     const hashes = hashesFromBuffer(data);
     let hashesIndex = 0;
@@ -39,10 +39,10 @@ export async function parseTransactionData(agentId: string, setupId: string, txI
             const spec = sc.wotsSpec[i];
             const keys = sc.wotsPublicKeys[i];
             const nibbleCount = WOTS_NIBBLES[spec];
-            if (keys.length != nibbleCount) 
+            if (keys.length != nibbleCount)
                 throw new Error('Wrong number of keys');
             // remove later
-            if (sc.exampleWitness![i].length != nibbleCount) 
+            if (sc.exampleWitness![i].length != nibbleCount)
                 throw new Error('Wrong number of Values');
             result[resultIndex++] = decodeWinternitz(spec, hashes.slice(hashesIndex, hashesIndex + nibbleCount), keys)
             hashesIndex += nibbleCount;

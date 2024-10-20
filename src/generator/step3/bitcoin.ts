@@ -755,7 +755,7 @@ export class Bitcoin {
         this.pick(c[0]);
         this.OP_NUMEQUALVERIFY();
     }
-    
+
     assertNotMany(a: StackItem[], c: StackItem[]) {
 
         this.assertZeroMany(c.slice(1));
@@ -785,8 +785,7 @@ export class Bitcoin {
         this.pick(witness); // witness
         for (let i = 0; i < 8; i++) {
             this.OP_HASH160(); // hash
-            // console.log('witness: ', witness.value.toString(16), '    hash: ', this.stack.top().value.toString(16));
-            this.OP_DUP(); // hash hash 
+            this.OP_DUP(); // hash hash
             this.pick(pk); // hash hash pk
             this.OP_EQUAL(); // hash 0/1
 

@@ -1,11 +1,11 @@
 import { Bitcoin } from '../generator/step3/bitcoin';
-import { bufferToBigintBE, encodeWinternitz, encodeWinternitz1, encodeWinternitz24, encodeWinternitz256, getWinternitzPublicKeys, WOTS_NIBBLES, WotsType } from './winternitz';
+import { bufferToBigintBE, encodeWinternitz, WOTS_NIBBLES, WotsType } from './winternitz';
 import { AgentRoles, iterations, random, TransactionNames } from './common';
 import { StackItem } from '../generator/step3/stack';
 import { SimpleTapTree } from './simple-taptree';
 import { agentConf } from './agent.conf';
 import { Buffer } from 'node:buffer';
-import { createUniqueDataId, findOutputByInput, getTransactionByName, Input, Output, SpendingCondition, Transaction } from './transactions-new';
+import { createUniqueDataId, findOutputByInput, getTransactionByName, Input, Output, Transaction } from './transactions-new';
 import { readTransactions, writeTransactions } from './db';
 import { generateFinalStepTaproot } from './final-step/generate';
 
@@ -74,7 +74,7 @@ function generateBoilerplate(setupId: string, myRole: AgentRoles, prevTransactio
             if (spendingCondition.nextRole == myRole) {
                 spendingCondition.exampleWitness = exampleWitness;
             }
-        
+
             witnessSIs = exampleWitness
                 .map(values => values.map(v => bitcoin.addWitness(bufferToBigintBE(v))));
 
@@ -138,12 +138,12 @@ export async function generateAllScripts(
         for (const output of t.outputs) {
             for (const sc of output.spendingConditions) {
                 if (!sc.wotsSpec) break;
-                if (!sc.wotsPublicKeys) 
+                if (!sc.wotsPublicKeys)
                     throw new Error('Missing keys');
-                if (sc.wotsSpec.length != sc.wotsPublicKeys.length) 
+                if (sc.wotsSpec.length != sc.wotsPublicKeys.length)
                     throw new Error('Invalid keys length 1');
                 sc.wotsSpec.forEach((spec, dataIndex) => {
-                    if (sc.wotsPublicKeys![dataIndex].length != WOTS_NIBBLES[spec]) 
+                    if (sc.wotsPublicKeys![dataIndex].length != WOTS_NIBBLES[spec])
                         throw new Error('Invaid keys length 2');
                 });
             }
