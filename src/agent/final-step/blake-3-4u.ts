@@ -356,7 +356,7 @@ async function test1() {
     const h2Regs = blake3.hash(blockWords);
     let h2 = '';
     for (const r of h2Regs) {
-        let n = blake3.registerToBigint(r);
+        const n = blake3.registerToBigint(r);
         for (let i = 0; i < 4; i++) 
             h2 += ((n >> (BigInt(i) * 8n)) & 0xffn).toString(16).padStart(2, '0');
     }
@@ -384,7 +384,7 @@ async function test2() {
     const h2Regs = blake3.hash(blockWords);
     let h2 = '';
     for (const r of h2Regs) {
-        let n = blake3.registerToBigint(r);
+        const n = blake3.registerToBigint(r);
         for (let i = 0; i < 4; i++) 
             h2 += ((n >> (BigInt(i) * 8n)) & 0xffn).toString(16).padStart(2, '0');
     }
