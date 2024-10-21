@@ -4,7 +4,7 @@
         USERID: ${USERID:-1000}
         GROUPID: ${GROUPID:-1000}
       stop_grace_period: 5m
-      image: polarlightning/bitcoind:26.0
+      image: polarlightning/bitcoind:28.0
       hostname: bitcoind
       command: >-
         bitcoind -server=1 -regtest=1

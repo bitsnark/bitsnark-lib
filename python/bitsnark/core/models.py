@@ -1,8 +1,8 @@
 from __future__ import annotations
 from typing import TypedDict, Optional, Any
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy.orm import declarative_base, Mapped, mapped_column
 from sqlalchemy import Column, Integer, JSON, String
-from sqlalchemy.ext.declarative import declarative_base
+
 
 Base = declarative_base()
 
