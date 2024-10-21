@@ -24,7 +24,7 @@
     "add-amounts": "ts-node ./src/agent/amounts.ts",
     "sign-tx": "./python/run-in-venv.sh ts-node ./src/agent/sign-transactions.ts",
     "verify-setup": "ts-node ./src/agent/verify-setup.ts",
-    "lint": "eslint --ignore-pattern node_modules/ --ignore-pattern dist/ --ignore-pattern python/ .",
+    "lint": "eslint --ignore-pattern node_modules/ --ignore-pattern dist/ --ignore-pattern python/ . && tsc --noEmit",
     "lint-fix": "npm run lint -- --fix",
     "tx-chart": "npm run generate-tx && ./analysis/generate-dot.sh",
     "start-db": "./scripts/start-db.sh",
