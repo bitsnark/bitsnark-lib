@@ -114,9 +114,17 @@ def test_transactions_regtest(
                     )))
 
                 tx.wit = CTxWitness(vtxinwit=input_witnesses)
+
+                serialized_tx = tx.serialize().hex(),
+                mempool_accept = btc_rpc.call(
+                    'testmempoolaccept',
+                    serialized_tx,
+                )
+                assert mempool_accept[0]['allowed'], mempool_accept
+
                 tx_id = btc_rpc.call(
                     'sendrawtransaction',
-                    tx.serialize().hex(),
+                    serialized_tx,
                 )
                 print(tx_id)
                 assert tx_id == tx_template.txId
