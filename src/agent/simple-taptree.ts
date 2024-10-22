@@ -101,7 +101,7 @@ export class Compressor {
     counter: number = 0;
 
     constructor(private depth: number, private internalPubkey: bigint) {
-        this.data = new Array(depth).fill(0).map(_ => []);
+        this.data = new Array(depth).fill(null).map(() => []);
         this.internalPubkey = internalPubkey;
     }
 
