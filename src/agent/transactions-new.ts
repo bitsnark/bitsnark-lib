@@ -1,5 +1,5 @@
-import { TransactionNames, AgentRoles, FundingUtxo, iterations, twoDigits } from './common';
-import { getWinternitzPublicKeys, WotsType } from './winternitz';
+import { TransactionNames, AgentRoles, FundingUtxo, iterations, twoDigits, random } from './common';
+import { encodeWinternitz, getWinternitzPublicKeys, WOTS_NIBBLES, WotsType } from './winternitz';
 import { agentConf } from './agent.conf';
 import { calculateStateSizes } from './regs-calc';
 import { clearTransactions, writeTransactions } from './db';
@@ -14,6 +14,7 @@ export enum SignatureType {
 }
 
 export interface SpendingCondition {
+    index?: number;
     timeoutBlocks?: number,
     signatureType: SignatureType;
     signaturesPublicKeys?: bigint[];
@@ -21,10 +22,13 @@ export interface SpendingCondition {
     wotsSpec?: WotsType[],
     wotsPublicKeys?: Buffer[][],
     script?: Buffer
-    exampleWitness?: Buffer[][]
+    exampleWitness?: Buffer[][],
+    wotsPublicKeysDebug?: string[][]
+    exampleWitnessDebug?: string[][]
 }
 
 export interface Input {
+    index?: number;
     transactionId?: string;
     transactionName: string;
     outputIndex: number;
@@ -36,6 +40,7 @@ export interface Input {
 }
 
 export interface Output {
+    index?: number;
     taprootKey?: Buffer;
     amount?: bigint;
     spendingConditions: SpendingCondition[];
@@ -105,13 +110,13 @@ const protocolStart: Transaction[] = [
                 timeoutBlocks: agentConf.largeTimeoutBlocks,
                 signatureType: SignatureType.BOTH,
             }]
-        }, ...new Array(5).fill({
+        }, ...new Array(5).fill(0).map(_ => ({
             spendingConditions: [{
                 nextRole: AgentRoles.PROVER,
                 signatureType: SignatureType.BOTH,
                 wotsSpec: new Array(11).fill(WotsType._256)
             }]
-        }), {
+        })), {
             spendingConditions: [{
                 // challenge
                 nextRole: AgentRoles.VERIFIER,
@@ -251,7 +256,7 @@ function makeProtocolSteps(): Transaction[] {
         const state: Transaction = {
             role: AgentRoles.PROVER,
             transactionName: `${TransactionNames.STATE}_${twoDigits(i)}`,
-            inputs: Array.from({length: Math.ceil(regCounts[i] / 10)}, (_, i) => i).map(j => ({
+            inputs: Array.from({ length: Math.ceil(regCounts[i] / 10) }, (_, i) => i).map(j => ({
                 transactionName: i == 0 ? TransactionNames.PROOF : `${TransactionNames.SELECT}_${twoDigits(i - 1)}`,
                 outputIndex: j,
                 spendingConditionIndex: i == 0 && j == 0 ? 1 : 0,
@@ -423,6 +428,14 @@ export async function initializeTransactions(
     const transactions = [...protocolStart, ...makeProtocolSteps(), ...protocolEnd];
     assertOrder(transactions);
 
+    for (const t of transactions) {
+        t.inputs.forEach((input, i) => input.index = i);
+        t.outputs.forEach((output, i) => {
+            output.index = i;
+            output.spendingConditions.forEach((sc, i) => sc.index = i);
+        });
+    }
+
     const payload = getTransactionByName(transactions, TransactionNames.LOCKED_FUNDS);
     payload.txId = payloadUtxo.txId;
     payload.outputs[0].amount = payloadUtxo.amount;
@@ -446,6 +459,28 @@ export async function initializeTransactions(
                     sc.wotsPublicKeys = sc.wotsSpec!
                         .map((wt, dataIndex) => getWinternitzPublicKeys(
                             wt, createUniqueDataId(setupId, transaction.transactionName, outputIndex, scIndex, dataIndex)));
+
+                    sc.exampleWitness = sc.wotsSpec
+                        .map((spec, dataIndex) => {
+                            const rnd = random(32) % (2n ** BigInt(3 * WOTS_NIBBLES[spec]));
+                            return encodeWinternitz(spec, rnd, createUniqueDataId(setupId, transaction.transactionName, outputIndex, scIndex, dataIndex));
+                        });
+
+                    sc.exampleWitnessDebug = sc.wotsSpec
+                        .map((spec, dataIndex) => new Array(WOTS_NIBBLES[spec]).fill(0).map((_, i) =>
+                            createUniqueDataId(setupId, transaction.transactionName, outputIndex, scIndex, dataIndex) + '/' + i));
+                }
+            }
+        }
+    }
+
+    for (const transaction of transactions) {
+        for (const [outputIndex, output] of transaction.outputs.entries()) {
+            for (const [scIndex, sc] of output.spendingConditions.entries()) {
+                if (sc.wotsSpec && sc.nextRole == role) {
+                    sc.wotsPublicKeysDebug = sc.wotsSpec!
+                        .map((spec, dataIndex) =>
+                            new Array(WOTS_NIBBLES[spec]).fill(0).map((_, i) => createUniqueDataId(setupId, transaction.transactionName, outputIndex, scIndex, dataIndex) + '/' + i));
                 }
             }
         }

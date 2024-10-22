@@ -5,8 +5,6 @@ import { Bitcoin } from "../generator/step3/bitcoin";
 
 export const winternitzHashSizeInBytes = 20;
 
-const fuManchu = 'fu manchu';
-
 export enum WotsType {
     _256 = 'WOTS_256',
     _24 = 'WOTS_24',

@@ -57,7 +57,7 @@ async function test(agentId: string, setupId: string, myRole: AgentRoles) {
 
     for (const transaction of transactions) {
 
-        if (transaction.role == myRole) continue;
+        if (transaction.role != myRole) continue;
 
         if (transaction.external) continue;
         let witness = Buffer.from([]);

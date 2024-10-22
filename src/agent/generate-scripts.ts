@@ -63,25 +63,10 @@ function generateBoilerplate(setupId: string, myRole: AgentRoles, prevTransactio
 
         let witnessSIs: StackItem[][];
 
-        if (prevTransaction.role == myRole) {
-
-            const exampleWitness = spendingCondition.wotsSpec
-                .map((spec, dataIndex) => {
-                    const rnd = random(32) % (2n ** BigInt(3 * WOTS_NIBBLES[spec]));
-                    return encodeWinternitz(spec, rnd, createUniqueDataId(setupId, prevTransaction.transactionName, input.outputIndex, input.spendingConditionIndex, dataIndex));
-                });
-
-            if (spendingCondition.nextRole == myRole) {
-                spendingCondition.exampleWitness = exampleWitness;
-            }
-
-            witnessSIs = exampleWitness
-                .map(values => values.map(v => bitcoin.addWitness(bufferToBigintBE(v))));
-
-        } else {
-            witnessSIs = spendingCondition.wotsSpec
+        witnessSIs = spendingCondition.exampleWitness ? spendingCondition.exampleWitness!
+            .map(values => values.map(v => bitcoin.addWitness(bufferToBigintBE(v)))) :
+            spendingCondition.wotsSpec!
                 .map(spec => new Array(WOTS_NIBBLES[spec]).fill(0).map(_ => bitcoin.addWitness(0n)));
-        }
 
         const decoders = {
             [WotsType._256]: (dataIndex: number) =>
