@@ -2,7 +2,7 @@ import { TransactionNames, AgentRoles, FundingUtxo, iterations, twoDigits } from
 import { getWinternitzPublicKeys, WotsType } from './winternitz';
 import { agentConf } from './agent.conf';
 import { calculateStateSizes } from './regs-calc';
-import { writeTransactions } from './db';
+import { clearTransactions, writeTransactions } from './db';
 
 export const PROTOCOL_VERSION = 0.1;
 
@@ -485,7 +485,15 @@ export async function initializeTransactions(
 
 async function main() {
     const agentId = process.argv[2] ?? 'bitsnark_prover_1';
-    await initializeTransactions(agentId, AgentRoles.PROVER, 'test_setup', 1n, 2n, {
+    const setupId = 'test_setup';
+
+    if (process.argv.some(s => s == '--clear')) {
+        console.log('Deleting transactions...');
+        clearTransactions(agentId, setupId);
+    }
+
+    console.log('Initializing transactions...');
+    await initializeTransactions(agentId, AgentRoles.PROVER, setupId, 1n, 2n, {
         txId: '000',
         outputIndex: 0,
         amount: agentConf.payloadAmount
@@ -494,6 +502,7 @@ async function main() {
         outputIndex: 0,
         amount: agentConf.proverStakeAmount
     });
+    console.log('Done.');
 }
 
 const scriptName = __filename;

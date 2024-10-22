@@ -95,6 +95,13 @@ async function runQuery(sql: string, params: any[] = []) {
     }
 }
 
+export async function clearTransactions(agentId: string, setupId: string) {
+    await runQuery(
+        `delete from "transaction_templates" where "agentId" = $1 AND "setupId" = $2`,
+        [agentId, setupId]
+    );
+}
+
 export async function writeTransaction(agentId: string, setupId: string, transaction: Transaction) {
     const jsonizedObject = jsonizeObject(transaction);
     const result = await runQuery(
@@ -140,7 +147,6 @@ export async function readTransactionByTxId(agentId: string, txId: string): Prom
         throw new Error('Transaction not found');
     return unjsonizeObject(results[0].get('object'));
 }
-
 
 export async function readTransactions(agentId: string, setupId?: string): Promise<Transaction[]> {
     const result = await runQuery(
