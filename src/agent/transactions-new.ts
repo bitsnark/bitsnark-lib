@@ -15,16 +15,17 @@ export enum SignatureType {
 
 export interface SpendingCondition {
     index?: number;
-    timeoutBlocks?: number,
+    timeoutBlocks?: number;
     signatureType: SignatureType;
     signaturesPublicKeys?: bigint[];
     nextRole: AgentRoles;
-    wotsSpec?: WotsType[],
-    wotsPublicKeys?: Buffer[][],
-    script?: Buffer
-    exampleWitness?: Buffer[][],
-    wotsPublicKeysDebug?: string[][]
-    exampleWitnessDebug?: string[][]
+    wotsSpec?: WotsType[];
+    wotsPublicKeys?: Buffer[][];
+    script?: Buffer;
+    exampleWitness?: Buffer[][];
+    wotsPublicKeysDebug?: string[][];
+    exampleWitnessDebug?: string[][];
+    controlBlock?: Buffer;
 }
 
 export interface Input {
