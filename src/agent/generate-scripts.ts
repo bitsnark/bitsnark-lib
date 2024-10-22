@@ -36,7 +36,12 @@ function setTaprootKey(transactions: Transaction[]) {
             output.taprootKey = stt.getScriptPubkey();
 
             for (const [scIndex, sc] of output.spendingConditions.entries()) {
-                sc.controlBlock = stt.getControlBlock(scIndex);
+                // Temporary hack until we figure out why proof's first output's third spending condition is fucked.
+                try {
+                    sc.controlBlock = stt.getControlBlock(scIndex);
+                } catch (e) {
+                    console.warn(`skipping transaction: ${t.transactionName}, output: ${outputIndex}, sc: ${scIndex}`);
+                }
             }
         };
     };
