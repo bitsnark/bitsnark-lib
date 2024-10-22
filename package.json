@@ -19,6 +19,7 @@
     "test": "jest",
     "py-install": "./python/run-in-venv.sh echo done",
     "generate-tx": "ts-node ./src/agent/transactions-new.ts",
+    "generate-tx-clean": "ts-node ./src/agent/transactions-new.ts --clean",
     "generate-scripts": "ts-node ./src/agent/generate-scripts.ts",
     "add-amounts": "ts-node ./src/agent/amounts.ts",
     "sign-tx": "./python/run-in-venv.sh ts-node ./src/agent/sign-transactions.ts",

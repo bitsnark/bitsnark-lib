@@ -21,7 +21,7 @@ export const enum TransactionNames {
     PROOF_REFUTED = 'proof_refuted'
 }
 
-export const iterations = 19;
+export const iterations = 6;
 
 export enum ProtocolStep {
     INITIAL = 'INITIAL',

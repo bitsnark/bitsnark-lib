@@ -97,7 +97,7 @@ async function runQuery(sql: string, params: any[] = []) {
 
 export async function writeTransaction(agentId: string, setupId: string, transaction: Transaction) {
     const jsonizedObject = jsonizeObject(transaction);
-    const result = await runQuery(
+    await runQuery(
         `insert into "transaction_templates"
             ("agentId", "setupId", "name", "ordinal", "txId", "object")
         values ($1, $2, $3, $4, $5, $6)
@@ -111,6 +111,13 @@ export async function writeTransaction(agentId: string, setupId: string, transac
 
 export async function writeTransactions(agentId: string, setupId: string, transactions: Transaction[]) {
     for (const t of transactions) await writeTransaction(agentId, setupId, t);
+}
+
+export async function clearTransactions(agentId: string, setupId: string) {
+    await runQuery(
+        `delete from "transaction_templates" where "agentId" = $1 AND "setupId" = $2`,
+        [agentId, setupId]
+    );
 }
 
 export async function readTransactionByName(agentId: string, setupId: string, transactionName: string): Promise<Transaction> {

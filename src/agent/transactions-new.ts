@@ -2,9 +2,9 @@ import { TransactionNames, AgentRoles, FundingUtxo, iterations, twoDigits } from
 import { getWinternitzPublicKeys, WotsType } from './winternitz';
 import { agentConf } from './agent.conf';
 import { calculateStateSizes } from './regs-calc';
-import { writeTransactions } from './db';
+import { clearTransactions, writeTransactions } from './db';
 
-export const PROTOCOL_VERSION = 0.1;
+export const PROTOCOL_VERSION = 0.2;
 
 export enum SignatureType {
     NONE = 'NONE',
@@ -14,7 +14,8 @@ export enum SignatureType {
 }
 
 export interface SpendingCondition {
-    timeoutBlocks?: number,
+    index?: number;
+    timeoutBlocks?: number;
     signatureType: SignatureType;
     signaturesPublicKeys?: bigint[];
     nextRole: AgentRoles;
@@ -25,6 +26,7 @@ export interface SpendingCondition {
 }
 
 export interface Input {
+    index?: number;
     transactionId?: string;
     transactionName: string;
     outputIndex: number;
@@ -36,6 +38,7 @@ export interface Input {
 }
 
 export interface Output {
+    index?: number;
     taprootKey?: Buffer;
     amount?: bigint;
     spendingConditions: SpendingCondition[];
@@ -76,7 +79,7 @@ const protocolStart: Transaction[] = [
             spendingConditions: [{
                 nextRole: AgentRoles.PROVER,
                 signatureType: SignatureType.BOTH,
-                wotsSpec: new Array(10).fill(WotsType._256)
+                wotsSpec: new Array(8).fill(WotsType._256)
             }]
         }]
     },
@@ -98,20 +101,14 @@ const protocolStart: Transaction[] = [
                 // state
                 nextRole: AgentRoles.PROVER,
                 signatureType: SignatureType.BOTH,
-                wotsSpec: new Array(11).fill(WotsType._256)
+                wotsSpec: new Array(10).fill(WotsType._256)
             }, {
                 // challenge but no state
                 nextRole: AgentRoles.VERIFIER,
                 timeoutBlocks: agentConf.largeTimeoutBlocks,
                 signatureType: SignatureType.BOTH,
             }]
-        }, ...new Array(5).fill({
-            spendingConditions: [{
-                nextRole: AgentRoles.PROVER,
-                signatureType: SignatureType.BOTH,
-                wotsSpec: new Array(11).fill(WotsType._256)
-            }]
-        }), {
+        }, {
             spendingConditions: [{
                 // challenge
                 nextRole: AgentRoles.VERIFIER,
@@ -123,7 +120,7 @@ const protocolStart: Transaction[] = [
         transactionName: TransactionNames.CHALLENGE,
         inputs: [{
             transactionName: TransactionNames.PROOF,
-            outputIndex: 6,
+            outputIndex: 1,
             spendingConditionIndex: 0
         }],
         outputs: [{
@@ -147,7 +144,7 @@ const protocolStart: Transaction[] = [
             spendingConditionIndex: 0
         }, {
             transactionName: TransactionNames.PROOF,
-            outputIndex: 6,
+            outputIndex: 1,
             spendingConditionIndex: 0
         }],
         outputs: [{
@@ -177,12 +174,11 @@ const protocolEnd: Transaction[] = [
     {
         role: AgentRoles.PROVER,
         transactionName: TransactionNames.ARGUMENT,
-        inputs: [
-            {
-                transactionName: `${TransactionNames.SELECT}_${twoDigits(iterations - 1)}`,
-                outputIndex: 0,
-                spendingConditionIndex: 0
-            }
+        inputs: [... new Array(4).fill({
+            transactionName: `${TransactionNames.SELECT}_${twoDigits(iterations - 1)}`,
+            outputIndex: 0,
+            spendingConditionIndex: 0
+        })
         ],
         outputs: [
             {
@@ -243,19 +239,17 @@ const protocolEnd: Transaction[] = [
 
 function makeProtocolSteps(): Transaction[] {
 
-    const regCounts = calculateStateSizes();
-
     const result: Transaction[] = [];
     for (let i = 0; i < iterations; i++) {
 
         const state: Transaction = {
             role: AgentRoles.PROVER,
             transactionName: `${TransactionNames.STATE}_${twoDigits(i)}`,
-            inputs: Array.from({length: Math.ceil(regCounts[i] / 10)}, (_, i) => i).map(j => ({
+            inputs: [{
                 transactionName: i == 0 ? TransactionNames.PROOF : `${TransactionNames.SELECT}_${twoDigits(i - 1)}`,
-                outputIndex: j,
-                spendingConditionIndex: i == 0 && j == 0 ? 1 : 0,
-            })),
+                outputIndex: 0,
+                spendingConditionIndex: i == 0 ? 1 : 0,
+            }],
             outputs: [{
                 spendingConditions: [{
                     nextRole: AgentRoles.VERIFIER,
@@ -297,40 +291,41 @@ function makeProtocolSteps(): Transaction[] {
                 outputIndex: 0,
                 spendingConditionIndex: 0
             }],
-            outputs: []
-        };
-
-        if (i + 1 < iterations) {
-            let regs = regCounts[i + 1];
-            select.outputs = [];
-            for (let j = 0; j < Math.ceil(regCounts[i + 1] / 10); j++) {
-                select.outputs.push({
-                    spendingConditions: [{
-                        nextRole: AgentRoles.PROVER,
-                        signatureType: SignatureType.BOTH,
-                        wotsSpec: new Array(regs > 10 ? 10 : regs).fill(WotsType._256)
-                    }]
-                });
-                regs -= 10;
-            }
-        } else {
-            select.outputs = [{
+            outputs: i + 1 < iterations ? [{
                 spendingConditions: [{
                     nextRole: AgentRoles.PROVER,
                     signatureType: SignatureType.BOTH,
                     wotsSpec: [
-                        WotsType._24,
-                        ...new Array(iterations).fill(WotsType._1)
+                        WotsType._24
                     ]
+                }, {
+                    nextRole: AgentRoles.VERIFIER,
+                    timeoutBlocks: agentConf.smallTimeoutBlocks,
+                    signatureType: SignatureType.BOTH
                 }]
-            }];
-        }
-        select.outputs[0].spendingConditions.push({
-            nextRole: AgentRoles.VERIFIER,
-            timeoutBlocks: agentConf.smallTimeoutBlocks,
-            signatureType: SignatureType.BOTH
-        });
-
+            }] : [
+                {
+                    spendingConditions: [{
+                        nextRole: AgentRoles.PROVER,
+                        signatureType: SignatureType.BOTH,
+                        wotsSpec: [
+                            ...new Array(7).fill(WotsType._24)
+                        ]
+                    }, {
+                        nextRole: AgentRoles.VERIFIER,
+                        timeoutBlocks: agentConf.smallTimeoutBlocks,
+                        signatureType: SignatureType.BOTH
+                    }]
+                }, ...new Array(3).fill(0).map(_ => ({
+                    spendingConditions: [{
+                        nextRole: AgentRoles.PROVER,
+                        signatureType: SignatureType.BOTH,
+                        wotsSpec: [
+                            ...new Array(12).fill(WotsType._256)
+                        ]
+                    }]
+                }))]
+        };
         const selectTimeout: Transaction = {
             role: AgentRoles.VERIFIER,
             transactionName: `${TransactionNames.SELECT_UNCONTESTED}_${twoDigits(i)}`,
@@ -453,13 +448,13 @@ export async function initializeTransactions(
     };
 
     // copy timeouts from input to output for indexer
-    transactions.forEach(t => {
-        t.inputs.forEach((input, inputIndex) => {
+    for (const t of transactions) {
+        for (const input of t.inputs) {
             const output = findOutputByInput(transactions, input);
             const spend = output.spendingConditions[input.spendingConditionIndex];
             output.timeoutBlocks = spend.timeoutBlocks;
-        });
-    });
+        }
+    }
 
     // put schnorr keys where needed
 
@@ -479,14 +474,29 @@ export async function initializeTransactions(
         });
     });
 
+    // put index in each object to make it easier later!
+    transactions.forEach(t => t.inputs.forEach((i, index) => i.index = index));
+    transactions.forEach(t => t.outputs.forEach((o, index) => {
+        o.index = index; 
+        o.spendingConditions.forEach((sc, index) => sc.index = index);
+    }));
+
     await writeTransactions(agentId, setupId, transactions);
 
     return transactions;
 }
 
 async function main() {
-    const agentId = process.argv[2] ?? 'bitsnark_prover_1';
-    await initializeTransactions(agentId, AgentRoles.PROVER, 'test_setup', 1n, 2n, {
+
+    const agentId = 'bitsnark_prover_1';
+    const setupId = 'test_setup';
+
+    if (process.argv.some(s => s == '--clean')) {
+        console.log('Deleting transacgions for agent: ', agentId, ' setup: ', setupId);
+        await clearTransactions(agentId, setupId);
+    }
+
+    await initializeTransactions(agentId, AgentRoles.PROVER, setupId, 1n, 2n, {
         txId: '000',
         outputIndex: 0,
         amount: agentConf.payloadAmount

@@ -86,7 +86,7 @@ export class Bitcoin {
         }
         while (n > 2) {
             this.OP_2DUP();
-            n-=2;
+            n -= 2;
         }
         while (n > 0) {
             this.OP_DUP();
@@ -404,6 +404,34 @@ export class Bitcoin {
 
     OP_CHECKSEQUENCEVERIFY() {
         this.opcodes.push({ op: OpcodeType.OP_CHECKSEQUENCEVERIFY });
+    }
+
+    // on-stack operations
+
+    mul(n: number) {
+        // get bits
+        const bits = n.toString(2);
+        // make sure we have <bits> copies of the value
+        for (let i = 0; i < bits.length - 1; i++) {
+            this.OP_DUP();
+        }
+        // take each one, multiply it by power of 2, and push to altstack
+        let counter = 0;
+        for (let i = 0; i < bits.length; i++) {
+            if (bits[i] == '1') {
+                for (let j = 0; j < bits.length - i; j++) {
+                    this.OP_DUP();
+                    this.OP_ADD();
+                }
+                this.OP_TOALTSTACK();
+                counter++;
+            }
+        }
+        // add them all up!
+        for (let i = 0; i < counter; i++) {
+            this.OP_FROMALTSTACK();
+            if (i > 0) this.OP_ADD();
+        }
     }
 
     /// Complex operations ///
@@ -1282,47 +1310,31 @@ export class Bitcoin {
         this.OP_DROP();
     }
 
-    checkSemiFinal(pathNibbles: StackItem[], indexNibbles: StackItem[], iterations: number) {
+    checkSemiFinal(pathNibbles: StackItem[][], indexNibbles: StackItem[]) {
 
-        // compare them one nibble at a time
         const temp = this.newStackItem();
-        for (let i = 0; i < Math.ceil(iterations / 3); i++) {
-
-            // start with zero
-            this.OP_0_16(0n);
-            this.replaceWithTop(temp);
-
-            for (let j = 0; j < 3; j++) {
-
-                if (j > 0) {
-                    // temp = temp * 2;
-                    this.pick(temp);
-                    this.OP_DUP();
-                    this.OP_ADD();
-                    this.replaceWithTop(temp);
-                }
-
-                // pick bit
-                if (pathNibbles[i * 3 + j]) this.pick(pathNibbles[i * 3 + j]);
-                else this.OP_0_16(0n);
-                this.OP_IF();
-                this.OP_0_16(1n);
-                this.OP_ELSE();
-                this.OP_0_16(0n);
-                this.OP_ENDIF();
-
-                // hack
-                this.stack.items.pop();
-
-                // add bit to temp
-                this.pick(temp);
-                this.OP_ADD();
-                this.replaceWithTop(temp);
-            }
-
-            // check equality
-            this.assertEqual(temp, indexNibbles[i]);
+        for (let i = 0; i < pathNibbles.length; i++) {
+            this.pick(pathNibbles[i][1]);
+            this.mul(8);
+            this.pick(pathNibbles[i][0]);
+            this.OP_ADD();
+            this.pick(temp);
+            this.mul(10);
+            this.OP_ADD();
         }
+        this.replaceWithTop(temp);
+
+        const index = this.newStackItem();
+        for (let i = 0; i < indexNibbles.length; i++) {
+            this.pick(index);
+            this.mul(8);
+            this.pick(indexNibbles[i]);
+            this.OP_ADD();
+        }
+        this.replaceWithTop(index);
+
+        // check equality
+        this.assertEqual(temp, index);
     }
 
     verifyIndex(keys: bigint[], indexWitness: StackItem[], indexNibbles: number[]) {

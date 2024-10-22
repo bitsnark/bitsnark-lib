@@ -5,7 +5,7 @@ import { StackItem } from '../generator/step3/stack';
 import { SimpleTapTree } from './simple-taptree';
 import { agentConf } from './agent.conf';
 import { Buffer } from 'node:buffer';
-import { createUniqueDataId, findOutputByInput, getTransactionByName, Input, Output, Transaction } from './transactions-new';
+import { createUniqueDataId, findOutputByInput, getTransactionByName, Input, Output, SpendingCondition, Transaction } from './transactions-new';
 import { readTransactions, writeTransactions } from './db';
 import { generateFinalStepTaproot } from './final-step/generate';
 
@@ -97,31 +97,31 @@ function generateBoilerplate(setupId: string, myRole: AgentRoles, prevTransactio
     return bitcoin.programToBinary();
 }
 
-function generateSemiFinalScript(lastSelectOutput: Output): Buffer {
+function generateProcessSelectionPath(sc: SpendingCondition): Buffer {
     const bitcoin = new Bitcoin();
     bitcoin.throwOnFail = false;
 
-    const pubKeys = lastSelectOutput.spendingConditions[0].wotsPublicKeys!;
-
-    const indexNibbles: StackItem[] = pubKeys[0].map(_ => bitcoin.addWitness(0n));
+    const pubKeys = sc.wotsPublicKeys!;
 
     const pathWitness: StackItem[][] = [];
     for (let i = 0; i < iterations; i++) {
-        pathWitness[i] = pubKeys[i + 1].map(_ => bitcoin.addWitness(0n));
+        pathWitness[i] = pubKeys[i].map(_ => bitcoin.addWitness(0n));
     }
 
-    const pathNibbles: StackItem[] = [];
+    const indexNibbles: StackItem[] = pubKeys[0].map(_ => bitcoin.addWitness(0n));
+
+    const pathNibbles: StackItem[][] = [];
     for (let i = 0; i < iterations; i++) {
-        const result = bitcoin.newStackItem();
+        const result = indexNibbles.map(_ => bitcoin.newStackItem(0n));
         pathNibbles.push(result);
-        bitcoin.winternitzDecode1(
+        bitcoin.winternitzDecode24(
             result,
             pathWitness[i],
-            pubKeys[i + 1].map(b => bufferToBigintBE(b))
+            pubKeys[i].map(b => bufferToBigintBE(b))
         );
     }
 
-    bitcoin.checkSemiFinal(pathNibbles, indexNibbles, iterations);
+    bitcoin.checkSemiFinal(pathNibbles, indexNibbles);
 
     return bitcoin.programToBinary();
 }
@@ -155,21 +155,23 @@ export async function generateAllScripts(
             if (semi_final.outputs.length != 1)
                 throw new Error('Wrong number of outputs');
             semi_final.outputs[0].taprootKey = taproot;
-        } else if (t.transactionName == TransactionNames.ARGUMENT) {
-            if (t.inputs.length != 1)
-                throw new Error('Wrong number of inputs');
-            const prevOutput = findOutputByInput(transactions, t.inputs[0]);
-            if (prevOutput.spendingConditions.length < 1)
-                throw new Error('Wrong number of spending conditions');
-            const script = generateSemiFinalScript(prevOutput);
-            prevOutput.spendingConditions[0].script = script;
-            t.inputs[0].script = script;
         } else {
             for (const input of t.inputs) {
+
+
                 const prevT = getTransactionByName(transactions, input.transactionName);
                 const prevOutput = prevT.outputs[input.outputIndex];
                 const sc = prevOutput.spendingConditions[input.spendingConditionIndex];
-                const script = generateBoilerplate(setupId, myRole, prevT, input);
+
+                let script;
+
+                // the first input of the argument is different
+                if (t.transactionName == TransactionNames.ARGUMENT && input.index == 0) {
+                    script = generateProcessSelectionPath(sc);
+                } else {
+                    script = generateBoilerplate(setupId, myRole, prevT, input);
+                }
+
                 sc.script = script;
                 input.script = script;
             };

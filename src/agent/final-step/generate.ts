@@ -3,7 +3,7 @@ import groth16Verify, { Key, Proof as Step1_Proof } from '../../generator/step1/
 import { InstrCode, Instruction } from '../../generator/step1/vm/types';
 import { proof, vKey } from '../../generator/step1/constants';
 import { Bitcoin, Template } from '../../generator/step3/bitcoin';
-import { getTransactionByName, Transaction } from '../transactions-new';
+import { getSpendingConditionByInput, getTransactionByName, Transaction } from '../transactions-new';
 import { bigintToNibblesLS } from './common';
 import { iterations, TransactionNames, twoDigits } from '../common';
 import { bufferToBigint160 } from '../../encoding/encoding';
@@ -91,9 +91,7 @@ function checkLine(bitcoin: Bitcoin, line: Instruction, a: StackItem[], b: Stack
     }
 }
 
-export function generateFinalStepTaproot(setupId: string, transactions: Transaction[]): Buffer {
-
-    fs.mkdirSync(`./generated/scripts/${setupId}`, { recursive: true });
+export function generateRefuteInstructionTaproot(argument: Transaction): Buffer {
 
     const lastSelect = getTransactionByName(transactions, `select_${twoDigits(iterations - 1)}`);
     const semiFinal = getTransactionByName(transactions, TransactionNames.ARGUMENT);
@@ -193,4 +191,26 @@ export function generateFinalStepTaproot(setupId: string, transactions: Transact
     }
 
     return compressor.getScriptPubkey();
+}
+
+function generateRefuteMerkleTaproot(transactions: Transaction[], argument: Transaction) {
+
+    // there are 3 merkle proofs in the argument, right after the index
+    for (let i of [1, 2, 3]) {
+        const sc = getSpendingConditionByInput(transactions, argument.inputs[i]);
+
+        // Each one is a level 7 merkle proof, with added nodes along the path. 
+        // The root was already given in one of the two last state transactions
+        // We need to figure out which one
+
+        
+
+
+    });
+
+
+
+}
+
+export function generateFinalStepTaproot(transactions: Transaction[]): Buffer {
 }
