@@ -62,7 +62,7 @@ export class SimpleTapTree {
         while (temp.length > 1) {
             const other: Buffer[] = [];
             const siblingIndex = index ^ 1;
-            const sibling = temp[siblingIndex];
+            const sibling = temp[siblingIndex] ?? temp[index];
             buffers.push(sibling);
             while (temp.length > 0) {
                 const left = temp.shift()!;
