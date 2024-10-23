@@ -1,3 +1,4 @@
+import assert from "assert";
 import { padHex } from "../../encoding/encoding";
 import { hardcode, OpcodeType, opcodeValues } from "./bitcoin-opcodes";
 import { StackItem, Stack } from "./stack";
@@ -57,8 +58,11 @@ export class Bitcoin {
             throw new Error('Invalid value');
         const si = this.DATA(value);
         this.maxStack = Math.max(this.maxStack, this.stack.items.length);
-        if (this.stack.items.length + this.altStack.length > 1000)
-            this.fail('Stack too big');
+        // console.log('Stack: ', this.stack.items.length);
+        if (this.throwOnFail) {
+            if (this.stack.items.length + this.altStack.length > 1000)
+                throw new Error(`Stack too big: ${this.stack.items.length + this.altStack.length}`);
+        }
         return si;
     }
 
@@ -86,7 +90,7 @@ export class Bitcoin {
         }
         while (n > 2) {
             this.OP_2DUP();
-            n -= 2;
+            n-=2;
         }
         while (n > 0) {
             this.OP_DUP();
@@ -409,6 +413,9 @@ export class Bitcoin {
     // on-stack operations
 
     mul(n: number) {
+
+        if (n < 2 || n > 256) throw new Error('n should be between 2 and 256');
+        
         // get bits
         const bits = n.toString(2);
         // make sure we have <bits> copies of the value
@@ -419,7 +426,7 @@ export class Bitcoin {
         let counter = 0;
         for (let i = 0; i < bits.length; i++) {
             if (bits[i] == '1') {
-                for (let j = 0; j < bits.length - i; j++) {
+                for (let j = bits.length - i; j > 1; j--) {
                     this.OP_DUP();
                     this.OP_ADD();
                 }
@@ -492,7 +499,6 @@ export class Bitcoin {
         if (this.stack.items[this.stack.items.length - 1].value > table.length)
             throw new Error('Table overflow: ' + this.stack.items[this.stack.items.length - 1].value);
         const rel = this.getRelativeStackPosition(table[0]) - 1;
-        const dataSize = rel < 256 ? 1 : rel < 512 ? 2 : 4;
         this.DATA(BigInt(rel));
         this.OP_SWAP();
         this.OP_SUB();
@@ -933,26 +939,14 @@ export class Bitcoin {
         this.pick(checksumNibbles[2]);
         this.OP_SUB();
 
-        // * 8
-        this.OP_DUP();
-        this.OP_ADD();
-        this.OP_DUP();
-        this.OP_ADD();
-        this.OP_DUP();
-        this.OP_ADD();
+        this.mul(8);
 
         this.DATA(7n);
         this.pick(checksumNibbles[1]);
         this.OP_SUB();
         this.OP_ADD();
 
-        // * 8
-        this.OP_DUP();
-        this.OP_ADD();
-        this.OP_DUP();
-        this.OP_ADD();
-        this.OP_DUP();
-        this.OP_ADD();
+        this.mul(8);
 
         this.DATA(7n);
         this.pick(checksumNibbles[0]);
@@ -988,26 +982,14 @@ export class Bitcoin {
         this.pick(target[totalNibbles - 1]);
         this.OP_SUB();
 
-        // * 8
-        this.OP_DUP();
-        this.OP_ADD();
-        this.OP_DUP();
-        this.OP_ADD();
-        this.OP_DUP();
-        this.OP_ADD();
+        this.mul(8);
 
         this.DATA(7n);
         this.pick(target[totalNibbles - 2]);
         this.OP_SUB();
         this.OP_ADD();
 
-        // * 8
-        this.OP_DUP();
-        this.OP_ADD();
-        this.OP_DUP();
-        this.OP_ADD();
-        this.OP_DUP();
-        this.OP_ADD();
+        this.mul(8);
 
         this.DATA(7n);
         this.pick(target[totalNibbles - 3]);
@@ -1058,13 +1040,7 @@ export class Bitcoin {
         this.pick(checksumNibbles[1]);
         this.OP_SUB();
 
-        // * 8
-        this.OP_DUP();
-        this.OP_ADD();
-        this.OP_DUP();
-        this.OP_ADD();
-        this.OP_DUP();
-        this.OP_ADD();
+        this.mul(8);
 
         this.DATA(7n);
         this.pick(checksumNibbles[0]);
@@ -1102,13 +1078,7 @@ export class Bitcoin {
         this.pick(checksumNibbles[1]);
         this.OP_SUB();
 
-        // * 8
-        this.OP_DUP();
-        this.OP_ADD();
-        this.OP_DUP();
-        this.OP_ADD();
-        this.OP_DUP();
-        this.OP_ADD();
+        this.mul(8);
 
         this.DATA(7n);
         this.pick(checksumNibbles[0]);
@@ -1146,39 +1116,21 @@ export class Bitcoin {
         this.pick(checksumNibbles[3]);
         this.OP_SUB();
 
-        // * 8
-        this.OP_DUP();
-        this.OP_ADD();
-        this.OP_DUP();
-        this.OP_ADD();
-        this.OP_DUP();
-        this.OP_ADD();
+        this.mul(8);
 
         this.DATA(7n);
         this.pick(checksumNibbles[2]);
         this.OP_SUB();
         this.OP_ADD();
 
-        // * 8
-        this.OP_DUP();
-        this.OP_ADD();
-        this.OP_DUP();
-        this.OP_ADD();
-        this.OP_DUP();
-        this.OP_ADD();
+        this.mul(8);
 
         this.DATA(7n);
         this.pick(checksumNibbles[1]);
         this.OP_SUB();
         this.OP_ADD();
 
-        // * 8
-        this.OP_DUP();
-        this.OP_ADD();
-        this.OP_DUP();
-        this.OP_ADD();
-        this.OP_DUP();
-        this.OP_ADD();
+        this.mul(8);
 
         this.DATA(7n);
         this.pick(checksumNibbles[0]);
@@ -1217,39 +1169,21 @@ export class Bitcoin {
         this.pick(checksumNibbles[3]);
         this.OP_SUB();
 
-        // * 8
-        this.OP_DUP();
-        this.OP_ADD();
-        this.OP_DUP();
-        this.OP_ADD();
-        this.OP_DUP();
-        this.OP_ADD();
+        this.mul(8);
 
         this.DATA(7n);
         this.pick(checksumNibbles[2]);
         this.OP_SUB();
         this.OP_ADD();
 
-        // * 8
-        this.OP_DUP();
-        this.OP_ADD();
-        this.OP_DUP();
-        this.OP_ADD();
-        this.OP_DUP();
-        this.OP_ADD();
+        this.mul(8);
 
         this.DATA(7n);
         this.pick(checksumNibbles[1]);
         this.OP_SUB();
         this.OP_ADD();
 
-        // * 8
-        this.OP_DUP();
-        this.OP_ADD();
-        this.OP_DUP();
-        this.OP_ADD();
-        this.OP_DUP();
-        this.OP_ADD();
+        this.mul(8);
 
         this.DATA(7n);
         this.pick(checksumNibbles[0]);

@@ -1,7 +1,6 @@
-import { TransactionNames, AgentRoles, FundingUtxo, iterations, twoDigits } from './common';
-import { getWinternitzPublicKeys, WotsType } from './winternitz';
+import { TransactionNames, AgentRoles, FundingUtxo, iterations, twoDigits, random } from './common';
+import { encodeWinternitz, getWinternitzPublicKeys, WOTS_NIBBLES, WotsType } from './winternitz';
 import { agentConf } from './agent.conf';
-import { calculateStateSizes } from './regs-calc';
 import { clearTransactions, writeTransactions } from './db';
 
 export const PROTOCOL_VERSION = 0.2;
@@ -22,7 +21,9 @@ export interface SpendingCondition {
     wotsSpec?: WotsType[],
     wotsPublicKeys?: Buffer[][],
     script?: Buffer
-    exampleWitness?: Buffer[][]
+    exampleWitness?: Buffer[][],
+    wotsPublicKeysDebug?: string[][]
+    exampleWitnessDebug?: string[][]
 }
 
 export interface Input {
@@ -174,12 +175,11 @@ const protocolEnd: Transaction[] = [
     {
         role: AgentRoles.PROVER,
         transactionName: TransactionNames.ARGUMENT,
-        inputs: [... new Array(4).fill({
+        inputs: new Array(5).fill(0).map(_ => ({
             transactionName: `${TransactionNames.SELECT}_${twoDigits(iterations - 1)}`,
             outputIndex: 0,
             spendingConditionIndex: 0
-        })
-        ],
+        })),
         outputs: [
             {
                 spendingConditions: [{
@@ -291,41 +291,73 @@ function makeProtocolSteps(): Transaction[] {
                 outputIndex: 0,
                 spendingConditionIndex: 0
             }],
-            outputs: i + 1 < iterations ? [{
+            outputs: []
+        };
+
+        if (i + 1 < iterations) {
+
+            // every select but the last has a single element of the selection path
+
+            select.outputs = [{
+                // 1 element of the selection path
                 spendingConditions: [{
-                    nextRole: AgentRoles.PROVER,
+                    nextRole: AgentRoles.VERIFIER,
                     signatureType: SignatureType.BOTH,
-                    wotsSpec: [
-                        WotsType._24
-                    ]
-                }, {
+                    wotsSpec: [WotsType._24]
+                },
+                // timeout
+                {
                     nextRole: AgentRoles.VERIFIER,
                     timeoutBlocks: agentConf.smallTimeoutBlocks,
                     signatureType: SignatureType.BOTH
                 }]
-            }] : [
+            }];
+        } else {
+
+            // the last one is leading up to the arhument
+
+            select.outputs = [
                 {
+                    // this is the full selection path
                     spendingConditions: [{
                         nextRole: AgentRoles.PROVER,
                         signatureType: SignatureType.BOTH,
                         wotsSpec: [
                             ...new Array(7).fill(WotsType._24)
                         ]
-                    }, {
+                    },
+                    // timeout
+                    {
                         nextRole: AgentRoles.VERIFIER,
                         timeoutBlocks: agentConf.smallTimeoutBlocks,
                         signatureType: SignatureType.BOTH
                     }]
-                }, ...new Array(3).fill(0).map(_ => ({
+                },
+                // the D value
+                {
+                    spendingConditions: [{
+
+                        nextRole: AgentRoles.PROVER,
+                        signatureType: SignatureType.BOTH,
+                        wotsSpec: [
+                            WotsType._256
+                        ]
+                    }]
+                },
+                // 3 merkle proofs
+
+                ...new Array(4).fill(0).map(_ => ({
                     spendingConditions: [{
                         nextRole: AgentRoles.PROVER,
                         signatureType: SignatureType.BOTH,
                         wotsSpec: [
-                            ...new Array(12).fill(WotsType._256)
+                            ...new Array(10).fill(WotsType._256)
                         ]
                     }]
-                }))]
-        };
+                }))];
+        }
+
+
         const selectTimeout: Transaction = {
             role: AgentRoles.VERIFIER,
             transactionName: `${TransactionNames.SELECT_UNCONTESTED}_${twoDigits(i)}`,
@@ -382,7 +414,6 @@ export function getSpendingConditionByInput(transactions: Transaction[], input: 
     }
     if (!tx.outputs[input.outputIndex]) throw new Error('Output not found');
     if (!tx.outputs[input.outputIndex].spendingConditions[input.spendingConditionIndex]) throw new Error('Spending condition not found');
-
     return tx.outputs[input.outputIndex].spendingConditions[input.spendingConditionIndex];
 }
 
@@ -419,6 +450,14 @@ export async function initializeTransactions(
     const transactions = [...protocolStart, ...makeProtocolSteps(), ...protocolEnd];
     assertOrder(transactions);
 
+    for (const t of transactions) {
+        t.inputs.forEach((input, i) => input.index = i);
+        t.outputs.forEach((output, i) => {
+            output.index = i;
+            output.spendingConditions.forEach((sc, i) => sc.index = i);
+        });
+    }
+
     const payload = getTransactionByName(transactions, TransactionNames.LOCKED_FUNDS);
     payload.txId = payloadUtxo.txId;
     payload.outputs[0].amount = payloadUtxo.amount;
@@ -428,24 +467,46 @@ export async function initializeTransactions(
     proverStake.outputs[0].amount = proverUtxo.amount;
 
     // set ordinal, setup id and protocol version
-    transactions.forEach((t, i) => {
+    for (const [i, t] of transactions.entries()) {
         t.protocolVersion = t.protocolVersion ?? PROTOCOL_VERSION;
         t.setupId = setupId;
         t.ordinal = i;
-    });
+    }
 
     // generate wots keys
     for (const transaction of transactions) {
-        transaction.outputs.forEach((output, outputIndex) => {
-            output.spendingConditions.forEach((sc, scIndex) => {
+        for (const [outputIndex, output] of transaction.outputs.entries()) {
+            for (const [scIndex, sc] of output.spendingConditions.entries()) {
                 if (sc.wotsSpec && sc.nextRole == role) {
                     sc.wotsPublicKeys = sc.wotsSpec!
                         .map((wt, dataIndex) => getWinternitzPublicKeys(
                             wt, createUniqueDataId(setupId, transaction.transactionName, outputIndex, scIndex, dataIndex)));
+
+                    sc.exampleWitness = sc.wotsSpec
+                        .map((spec, dataIndex) => {
+                            const rnd = random(32) % (2n ** BigInt(3 * WOTS_NIBBLES[spec]));
+                            return encodeWinternitz(spec, rnd, createUniqueDataId(setupId, transaction.transactionName, outputIndex, scIndex, dataIndex));
+                        });
+
+                    sc.exampleWitnessDebug = sc.wotsSpec
+                        .map((spec, dataIndex) => new Array(WOTS_NIBBLES[spec]).fill(0).map((_, i) =>
+                            createUniqueDataId(setupId, transaction.transactionName, outputIndex, scIndex, dataIndex) + '/' + i));
                 }
-            });
-        });
-    };
+            }
+        }
+    }
+
+    for (const transaction of transactions) {
+        for (const [outputIndex, output] of transaction.outputs.entries()) {
+            for (const [scIndex, sc] of output.spendingConditions.entries()) {
+                if (sc.wotsSpec && sc.nextRole == role) {
+                    sc.wotsPublicKeysDebug = sc.wotsSpec!
+                        .map((spec, dataIndex) =>
+                            new Array(WOTS_NIBBLES[spec]).fill(0).map((_, i) => createUniqueDataId(setupId, transaction.transactionName, outputIndex, scIndex, dataIndex) + '/' + i));
+                }
+            }
+        }
+    }
 
     // copy timeouts from input to output for indexer
     for (const t of transactions) {
@@ -458,8 +519,8 @@ export async function initializeTransactions(
 
     // put schnorr keys where needed
 
-    transactions.forEach(t => {
-        t.inputs.forEach((input, inputIndex) => {
+    for (const t of transactions) {
+        for (const [inputIndex, input] of t.inputs.entries()) {
             const output = findOutputByInput(transactions, input);
             const spend = output.spendingConditions[input.spendingConditionIndex];
             if (!spend)
@@ -471,13 +532,13 @@ export async function initializeTransactions(
             if (spend.signatureType == SignatureType.VERIFIER || spend.signatureType == SignatureType.BOTH) {
                 spend.signaturesPublicKeys.push(verifierPublicKey);
             }
-        });
-    });
+        }
+    }
 
     // put index in each object to make it easier later!
     transactions.forEach(t => t.inputs.forEach((i, index) => i.index = index));
     transactions.forEach(t => t.outputs.forEach((o, index) => {
-        o.index = index; 
+        o.index = index;
         o.spendingConditions.forEach((sc, index) => sc.index = index);
     }));
 
@@ -487,15 +548,15 @@ export async function initializeTransactions(
 }
 
 async function main() {
-
-    const agentId = 'bitsnark_prover_1';
+    const agentId = process.argv[2] ?? 'bitsnark_prover_1';
     const setupId = 'test_setup';
 
-    if (process.argv.some(s => s == '--clean')) {
-        console.log('Deleting transacgions for agent: ', agentId, ' setup: ', setupId);
-        await clearTransactions(agentId, setupId);
+    if (process.argv.some(s => s == '--clear')) {
+        console.log('Deleting transactions...');
+        clearTransactions(agentId, setupId);
     }
 
+    console.log('Initializing transactions...');
     await initializeTransactions(agentId, AgentRoles.PROVER, setupId, 1n, 2n, {
         txId: '000',
         outputIndex: 0,
@@ -505,6 +566,7 @@ async function main() {
         outputIndex: 0,
         amount: agentConf.proverStakeAmount
     });
+    console.log('Done.');
 }
 
 const scriptName = __filename;

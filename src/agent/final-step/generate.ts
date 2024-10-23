@@ -7,11 +7,12 @@ import { getSpendingConditionByInput, getTransactionByName, Transaction } from '
 import { bigintToNibblesLS } from './common';
 import { iterations, TransactionNames, twoDigits } from '../common';
 import { bufferToBigint160 } from '../../encoding/encoding';
-import { getWinternitzPublicKeys, WOTS_NIBBLES, WotsType } from '../winternitz';
+import { bufferToBigintBE, getWinternitzPublicKeys, WOTS_NIBBLES, WotsType } from '../winternitz';
 import { step1_vm } from '../../generator/step1/vm/vm';
 import { StackItem } from '@src/generator/step3/stack';
 import { verifyAddMod, verifyAnd, verifyAndBit, verifyAndNotBit, verifyAssertOne, verifyAssertZero, verifyDivMod, verifyEqual, verifyMov, verifyMulMod, verifyNot, verifyOr, verifySubMod } from './step1_btc';
-import { Compressor } from '../simple-taptree';
+import { Compressor, SimpleTapTree } from '../simple-taptree';
+import { agentConf } from '../agent.conf';
 
 const cache: any = {};
 
@@ -106,6 +107,7 @@ export function generateRefuteInstructionTaproot(argument: Transaction): Buffer 
     let max = 0;
     const compressor = new Compressor(iterations, 1n);
 
+    console.log(`Generating final step taproot for ${program.length} instructions`);
     for (let index = 0; index < program.length; index++) {
 
         const line = program[index];
@@ -114,7 +116,7 @@ export function generateRefuteInstructionTaproot(argument: Transaction): Buffer 
             const todo = (program.length - index) * (Date.now() - started) / index;
             const m = Math.floor(todo / 60000);
             const s = Math.floor((todo - m * 60000) / 1000);
-            console.log('index: ', index, '   max: ', max, '   totel: ', total, '   left: ', `${m}:${s}`);
+            console.log('index: ', index, '   max: ', max, '   total: ', total, '   left: ', `${m}:${s}`);
         }
 
         // this is a hack to make this run (somewhat) faster
@@ -193,22 +195,53 @@ export function generateRefuteInstructionTaproot(argument: Transaction): Buffer 
     return compressor.getScriptPubkey();
 }
 
-function generateRefuteMerkleTaproot(transactions: Transaction[], argument: Transaction) {
+function generateRefuteMerkleTaproot(transactions: Transaction[], index: number): Buffer {
 
-    // there are 3 merkle proofs in the argument, right after the index
-    for (let i of [1, 2, 3]) {
-        const sc = getSpendingConditionByInput(transactions, argument.inputs[i]);
+    // TODO
+    // first find the roots for the 3 merkle proofs
 
-        // Each one is a level 7 merkle proof, with added nodes along the path. 
-        // The root was already given in one of the two last state transactions
-        // We need to figure out which one
+    const beforeStateIteration = 3;
+    const afterStateIteration = 4;
+
+    const beforeRootKeys = getTransactionByName(transactions, `${TransactionNames.SELECT}_${twoDigits(beforeStateIteration)}}`)
+        .outputs[0].spendingConditions[0].wotsPublicKeys; 
+
+    const afterRootKeys = getTransactionByName(transactions, `${TransactionNames.SELECT}_${twoDigits(afterStateIteration)}}`)
+        .outputs[0].spendingConditions[0].wotsPublicKeys; 
+
+    // now let's get the 3 merkle proofs keys, there are 3 proofs, each with 12 hashes, each with 90 keys
+
+    const merkleProofKeysAll: Buffer[][] = [];
+    const argument = getTransactionByName(transactions, TransactionNames.ARGUMENT);
+    // We need all of the inputs except the first two, which are the path and the D value
+    for (const input of argument.inputs) {
+        const sc = getSpendingConditionByInput(transactions, input);
+        merkleProofKeysAll.push(...sc.wotsPublicKeys!);
+    }
+    // divide these into 3 sets of 12
+    const merkleProofKeys: Buffer[][][] = [0, 1, 2].map (i => merkleProofKeysAll.slice(i * 12, (i + 1) * 12));
+
+    // now there are 3 + 3 * 12 possible refutations
+
+    const scripts: Buffer[] = [];
+
+    function refuteHash(leftKeys: Buffer[], rightKeys: Buffer[], resultKeys: Buffer[]) {
+
+        const bitcoin = new Bitcoin();
+        const leftSi = leftKeys.map(b => bitcoin.newStackItem(bufferToBigintBE(b)));
+        const rightSi = rightKeys.map(b => bitcoin.newStackItem(bufferToBigintBE(b)));
+        const resultSi = resultKeys.map(b => bitcoin.newStackItem(bufferToBigintBE(b)));
 
         
+    }
 
+    for (let i = 0; i < merkleProofKeys.length; i++) {
+        for (let j = 0; j < 13; j++) {
 
-    });
+        }
+    }
 
-
+    const stt = new SimpleTapTree(agentConf.internalPubkey, )
 
 }
 
