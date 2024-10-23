@@ -1,11 +1,11 @@
 import { Bitcoin } from '../generator/step3/bitcoin';
-import { bufferToBigintBE, encodeWinternitz, WOTS_NIBBLES, WotsType } from './winternitz';
-import { AgentRoles, iterations, random, TransactionNames } from './common';
+import { bufferToBigintBE, WOTS_NIBBLES, WotsType } from './winternitz';
+import { AgentRoles, iterations, TransactionNames } from './common';
 import { StackItem } from '../generator/step3/stack';
 import { SimpleTapTree } from './simple-taptree';
 import { agentConf } from './agent.conf';
 import { Buffer } from 'node:buffer';
-import { createUniqueDataId, findOutputByInput, getTransactionByName, Input, Output, Transaction } from './transactions-new';
+import { findOutputByInput, getTransactionByName, Input, Output, Transaction } from './transactions-new';
 import { readTransactions, writeTransactions } from './db';
 import { generateFinalStepTaproot } from './final-step/generate';
 
@@ -61,27 +61,10 @@ function generateBoilerplate(setupId: string, myRole: AgentRoles, prevTransactio
         const keys = spendingCondition.wotsPublicKeys!
             .map(keys => keys.map(b => bufferToBigintBE(b)));
 
-        let witnessSIs: StackItem[][];
-
-        if (prevTransaction.role == myRole) {
-
-            const exampleWitness = spendingCondition.wotsSpec
-                .map((spec, dataIndex) => {
-                    const rnd = random(32) % (2n ** BigInt(3 * WOTS_NIBBLES[spec]));
-                    return encodeWinternitz(spec, rnd, createUniqueDataId(setupId, prevTransaction.transactionName, input.outputIndex, input.spendingConditionIndex, dataIndex));
-                });
-
-            if (spendingCondition.nextRole == myRole) {
-                spendingCondition.exampleWitness = exampleWitness;
-            }
-
-            witnessSIs = exampleWitness
-                .map(values => values.map(v => bitcoin.addWitness(bufferToBigintBE(v))));
-
-        } else {
-            witnessSIs = spendingCondition.wotsSpec
+        const witnessSIs = spendingCondition.exampleWitness ? spendingCondition.exampleWitness!
+            .map(values => values.map(v => bitcoin.addWitness(bufferToBigintBE(v)))) :
+            spendingCondition.wotsSpec!
                 .map(spec => new Array(WOTS_NIBBLES[spec]).fill(0).map(_ => bitcoin.addWitness(0n)));
-        }
 
         const decoders = {
             [WotsType._256]: (dataIndex: number) =>

@@ -97,11 +97,11 @@ export class SimpleTapTree {
 
 export class Compressor {
 
-    data: Buffer[][] = [];
+    data: Buffer[][];
     counter: number = 0;
 
     constructor(private depth: number, private internalPubkey: bigint) {
-        this.data = new Array(depth).fill([]);
+        this.data = new Array(depth).fill(0).map(_ => []);
         this.internalPubkey = internalPubkey;
     }
 

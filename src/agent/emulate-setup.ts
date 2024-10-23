@@ -1,14 +1,17 @@
 import { agentConf } from "./agent.conf";
 import { addAmounts, validateTransactionFees } from "./amounts";
 import { AgentRoles, TransactionNames } from "./common";
-import { writeTransactions } from "./db";
+import { clearTransactions, writeTransactions } from "./db";
 import { generateAllScripts } from "./generate-scripts";
 import { signTransactions } from "./sign-transactions";
 import { initializeTransactions, mergeWots, Transaction } from "./transactions-new";
 import { verifySetup } from "./verify-setup";
 
 
-export async function emulateSetup(setupId: string, proverAgentId: string, verifierAgentId: string) {
+export async function emulateSetup(proverAgentId: string, verifierAgentId: string, setupId: string, ) {
+
+    console.log('Deleting transactions...');
+    clearTransactions(proverAgentId, setupId);
 
     const mockLockedFunds = {
         txId: TransactionNames.LOCKED_FUNDS,
@@ -68,5 +71,5 @@ export async function emulateSetup(setupId: string, proverAgentId: string, verif
 
 const scriptName = __filename;
 if (process.argv[1] == scriptName) {
-    emulateSetup('test_setup', 'bitsnark_prover_1', 'bitsnark_verifier_1').catch(console.error);
+    emulateSetup('bitsnark_prover_1', 'bitsnark_verifier_1', 'test_setup').catch(console.error);
 }
