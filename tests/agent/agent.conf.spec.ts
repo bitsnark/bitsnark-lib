@@ -4,8 +4,8 @@ import * as fs from 'fs';
 
 describe('AgentConfig', () => {
 
-    it ("should use environment variables from .env.local when provided", () => {
-        // Create a fake .env.local file
+    it ("should use environment variables from .env.test when provided", () => {
+        // Create a .env.test file, which precedes .env.local and .env
         fs.writeFileSync('.env.test', `
             INTERNAL_PUBKEY=2
             WOTS_SECRET=wots_secret
@@ -32,7 +32,7 @@ describe('AgentConfig', () => {
     });
 
     afterEach(() => {
-        // Remove the fake .env.local file
+        // Remove the .env.test file
         fs.unlinkSync('.env.test');
     });
 });
