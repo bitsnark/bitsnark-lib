@@ -34,6 +34,15 @@ function setTaprootKey(transactions: Transaction[]) {
             });
             const stt = new SimpleTapTree(agentConf.internalPubkey, scripts);
             output.taprootKey = stt.getScriptPubkey();
+
+            for (const [scIndex, sc] of output.spendingConditions.entries()) {
+                try {
+                    sc.controlBlock = stt.getControlBlock(scIndex);
+                } catch (e) {
+                    throw new Error(
+                        `No control block for: ${t.transactionName}, output: ${outputIndex}, sc: ${scIndex}`);
+                }
+            }
         };
     };
 }

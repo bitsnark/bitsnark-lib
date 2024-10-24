@@ -62,7 +62,7 @@ export class SimpleTapTree {
         while (temp.length > 1) {
             const other: Buffer[] = [];
             const siblingIndex = index ^ 1;
-            const sibling = temp[siblingIndex];
+            const sibling = temp[siblingIndex] ?? temp[index];
             buffers.push(sibling);
             while (temp.length > 0) {
                 const left = temp.shift()!;
@@ -101,7 +101,7 @@ export class Compressor {
     counter: number = 0;
 
     constructor(private depth: number, private internalPubkey: bigint) {
-        this.data = new Array(depth).fill(0).map(_ => []);
+        this.data = new Array(depth).fill(null).map(() => []);
         this.internalPubkey = internalPubkey;
     }
 
