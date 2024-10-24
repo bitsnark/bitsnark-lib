@@ -1,5 +1,10 @@
+import dotenv from 'dotenv';
+
+dotenv.config({ path: ['.env.test', '.env.local', '.env'] });
+
 export const ONE_SATOSHI = 1n;
 export const ONE_BITCOIN = ONE_SATOSHI * (10n ** 8n);
+
 
 interface AgentConf {
     internalPubkey: bigint;
@@ -31,17 +36,17 @@ interface AgentConf {
 
 export const agentConf: AgentConf = {
     internalPubkey: BigInt(process.env['INTERNAL_PUBKEY'] ?? 1),
-    timeoutBlocks: 5,
-    smallTimeoutBlocks: 6,
-    largeTimeoutBlocks: 18,
+    timeoutBlocks: Number(process.env['TIMEOUT_BLOCKS'] ?? 5),
+    smallTimeoutBlocks: Number(process.env['SMALL_TIMEOUT_BLOCKS'] ?? 6),
+    largeTimeoutBlocks: Number(process.env['LARGE_TIMEOUT_BLOCKS'] ?? 18),
 
-    payloadAmount: ONE_BITCOIN * 10n,
-    proverStakeAmount: ONE_BITCOIN * 2n,
-    verifierPaymentAmount: ONE_BITCOIN,
-    symbolicOutputAmount: ONE_SATOSHI,
+    payloadAmount: BigInt(process.env['PAYLOAD_AMOUNT'] ?? ONE_BITCOIN * 10n),
+    proverStakeAmount: BigInt(process.env['PROVER_STAKE_AMOUNT'] ?? ONE_BITCOIN * 2n),
+    verifierPaymentAmount: BigInt(process.env['VERIFIER_PAYMENT_AMOUNT'] ?? ONE_BITCOIN),
+    symbolicOutputAmount: BigInt(process.env['SYMBOLIC_OUTPUT_AMOUNT'] ?? ONE_SATOSHI),
 
-    feePerByte: ONE_SATOSHI * 20n,
-    feeFactorPercent: 125,
+    feePerByte: BigInt(process.env['FEE_PER_BYTE'] ?? ONE_SATOSHI * 20n),
+    feeFactorPercent: Number(process.env['FEE_FACTOR_PERCENT'] ?? 125),
 
     winternitzSecret: process.env['WOTS_SECRET'] ?? 'no rest for the wicked',
     tokens: {
@@ -58,16 +63,16 @@ export const agentConf: AgentConf = {
             private: process.env['VERIFIER_SCHNORR_PRIVATE'] ?? 'd4067af1132afcb352b0edef53d8aa2a5fc713df61dee31b1d937e69ece0ebf0'
         }
     },
-    bitcoinNodeNetwork: 'regtest',
-    bitcoinNodeUsername: 'rpcuser',
-    bitcoinNodePassword: 'rpcpassword',
-    bitcoinNodeHost: '127.0.0.1',
-    bitcoinNodePort: 18443,
-    postgresUser: 'postgres',
-    postgresHost: 'localhost',
-    postgresPort: 5432,
-    postgresPassword: '1234',
-    postgresBigints: true,
-    postgresKeepAlive: true,
-    blocksUntilFinalized: 0 // 6
+    bitcoinNodeNetwork: process.env['BITCOIN_NODE_NETWORK'] ?? 'regtest',
+    bitcoinNodeUsername: process.env['BITCOIN_NODE_USERNAME'] ?? 'rpcuser',
+    bitcoinNodePassword: process.env['BITCOIN_NODE_PASSWORD'] ?? 'rpcpassword',
+    bitcoinNodeHost: process.env['BITCOIN_NODE_HOST'] ?? '127.0.0.1',
+    bitcoinNodePort: Number(process.env['BITCOIN_NODE_PORT'] ?? 18443),
+    postgresUser: process.env['POSTGRES_USER'] ?? 'postgres',
+    postgresHost: process.env['POSTGRES_HOST'] ?? 'localhost',
+    postgresPort: Number(process.env['POSTGRES_PORT'] ?? 5432),
+    postgresPassword: process.env['POSTGRES_PASSWORD'] ?? '1234',
+    postgresBigints: Boolean(process.env['POSTGRES_BIGINTS'] ?? 'true'),
+    postgresKeepAlive: Boolean(process.env['POSTGRES_KEEP_ALIVE'] ?? 'true'),
+    blocksUntilFinalized: Number(process.env['BLOCKS_UNTIL_FINALIZED'] ?? 0) // 6
 };
