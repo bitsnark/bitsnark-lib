@@ -10,15 +10,15 @@ Base = declarative_base()
 class TransactionTemplate(Base):
     __tablename__ = 'transaction_templates'
 
-    agentId: Mapped[str] = mapped_column(String, primary_key=True, nullable=False)
-    setupId: Mapped[str] = mapped_column(String, primary_key=True, nullable=False)
+    agent_id: Mapped[str] = mapped_column(String, primary_key=True, nullable=False)
+    setup_id: Mapped[str] = mapped_column(String, primary_key=True, nullable=False)
     name: Mapped[str] = mapped_column(String, primary_key=True, nullable=False)
     object: Mapped[dict] = mapped_column(JSON, nullable=False)
-    txId: Mapped[Optional[str]] = mapped_column(String)
+    tx_id: Mapped[Optional[str]] = mapped_column(String)
     ordinal: Mapped[Optional[int]] = Column(Integer)
 
     def __repr__(self):
-        return f"<TransactionTemplate(name={self.name}, agentId={self.agentId}, setupId={self.setupId}, txId={self.txId}, ordinal={self.ordinal}, object=...)>"
+        return f"<TransactionTemplate(name={self.name}, agent_id={self.agent_id}, setup_id={self.setup_id}, tx_id={self.tx_id}, ordinal={self.ordinal}, object=...)>"
 
     @property
     def inputs(self) -> list[TxInJson]:

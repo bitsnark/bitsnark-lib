@@ -96,8 +96,8 @@ def main():
     tx_template_query = select(TransactionTemplate).order_by(TransactionTemplate.ordinal)
     if not args.all:
         tx_template_query = tx_template_query.filter(
-            TransactionTemplate.setupId == args.setup_id,
-            TransactionTemplate.agentId == args.agent_id,
+            TransactionTemplate.setup_id == args.setup_id,
+            TransactionTemplate.agent_id == args.agent_id,
         )
 
     with dbsession.begin():
@@ -107,12 +107,12 @@ def main():
 
         for tx in tx_templates:
             if args.all:
-                if 'verifier' in tx.agentId:
+                if 'verifier' in tx.agent_id:
                     role = 'verifier'
-                elif 'prover' in tx.agentId:
+                elif 'prover' in tx.agent_id:
                     role = 'prover'
                 else:
-                    raise ValueError(f"Cannot determine role from agent ID {tx.agentId}")
+                    raise ValueError(f"Cannot determine role from agent ID {tx.agent_id}")
             else:
                 role = args.role
 
@@ -175,12 +175,12 @@ def _handle_tx_template(
         for input_index, inp in enumerate(tx_template.inputs):
             prev_tx = dbsession.get(
                 TransactionTemplate,
-                (tx_template.agentId, tx_template.setupId, inp['transactionName'])
+                (tx_template.agent_id, tx_template.setup_id, inp['transactionName'])
             )
             if not prev_tx:
                 raise KeyError(f"Transaction {inp['transactionName']} not found")
 
-            prev_txid = prev_tx.txId
+            prev_txid = prev_tx.tx_id
             if not prev_txid:
                 raise ValueError(f"Transaction {inp['transactionName']} has no txId")
 
@@ -249,7 +249,7 @@ def _handle_tx_template(
     serialized = tx.serialize()
 
     # Alter the template
-    tx_template.txId = tx_id
+    tx_template.tx_id = tx_id
     tx_template.object['txId'] = tx_id
     tx_template.object['serializedTx'] = serialize_hex(serialized)
     for i, inp in enumerate(tx_inputs):
@@ -258,7 +258,7 @@ def _handle_tx_template(
             tx=tx,
             input_index=i,
             spent_outputs=spent_outputs,
-            private_key=KEYPAIRS[tx_template.agentId]['private'],
+            private_key=KEYPAIRS[tx_template.agent_id]['private'],
         )
         if len(tx_template.object['inputs']) <= i:
             # HACK: the hardcoded initial transactions have an empty list of inputs
