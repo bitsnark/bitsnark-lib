@@ -1,5 +1,5 @@
 import { AgentRoles } from './common';
-import { TransmittedTransaction, readTransactions, readTransmittedTransactions } from './db';
+import { readTransactions, readTransmittedTransactions } from './db';
 import { Transaction, getTransactionByName, findOutputByInput } from './transactions-new';
 
 // All of this should come from agent.conf
@@ -18,6 +18,7 @@ interface Output {
 
 interface TransactionOutputs {
     name?: string;  // For easier debugging.
+    role: AgentRoles;
     spentOutputs: Output[];
     createdOutputs: Output[];
 }
@@ -39,6 +40,7 @@ function getOutputsMap(transactions: Transaction[]): Map<string, TransactionOutp
         if (transaction.external) return outputsMap;
         outputsMap.set(transaction.txId!, {
             name: transaction.transactionName,
+            role: transaction.role,
             spentOutputs: transaction.inputs.map(input => ({
                 name: input.transactionName,
                 transactionId: input.transactionId!,
@@ -77,7 +79,7 @@ async function getPublishableTransactions(
     const transmitted = await readTransmittedTransactions(setupId);
     const unspentOutputs = getUnspentOutputs(outputsMap, transmitted.map(transmittedTx => transmittedTx.txId));
     return Array.from(outputsMap.entries()).filter(([txId, outputs]) => {
-        return outputs.spentOutputs.every(output => unspentOutputs.some(unspentOutput =>
+        return outputs.role === agentRole && outputs.spentOutputs.every(output => unspentOutputs.some(unspentOutput =>
             output.transactionId === unspentOutput.transactionId &&
             output.outputIndex === unspentOutput.outputIndex &&
             transmitted.find(
@@ -98,7 +100,7 @@ async function main() {
     const transactions = await readTransactions(agentId, setupId);
     const outputsMap = getOutputsMap(transactions);
     setInterval(async () => {
-        console.log(await execute(agentId, setupId, outputsMap));
+        console.debug((await execute(agentId, setupId, outputsMap)).map(txId => outputsMap.get(txId)!.name));
     }, 1000);
 }
 
