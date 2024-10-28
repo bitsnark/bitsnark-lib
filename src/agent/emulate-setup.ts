@@ -8,10 +8,10 @@ import { initializeTransactions, mergeWots, Transaction } from "./transactions-n
 import { verifySetup } from "./verify-setup";
 
 
-export async function emulateSetup(proverAgentId: string, verifierAgentId: string, setupId: string, ) {
+export async function emulateSetup(proverAgentId: string, verifierAgentId: string, setupId: string) {
 
     console.log('Deleting transactions...');
-    clearTransactions(proverAgentId, setupId);
+    await clearTransactions(proverAgentId, setupId);
 
     const mockLockedFunds = {
         txId: TransactionNames.LOCKED_FUNDS,
