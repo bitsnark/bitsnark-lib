@@ -2,22 +2,15 @@ import { AgentRoles } from './common';
 import { readTransactions, readTransmittedTransactions } from './db';
 import { Transaction, getTransactionByName, findOutputByInput } from './transactions-new';
 
-// All of this should come from agent.conf
-const setupId = 'test_setup';
-//const agentId = 'bitsnark_prover_1';
-//const agentRole = AgentRoles.PROVER;
-const agentId = 'bitsnark_verifier_1';
-const agentRole = AgentRoles.VERIFIER;
-
 interface Output {
-    name?: string;  // For easier debugging.
-    transactionId: string;
-    outputIndex: number;
+    name: string;  // Transaction name for easier debugging.
+    transactionId: string;  // The ID of the transaction that created this output.
+    outputIndex: number;  // The index of the output in that transaction.
     requiredOutputBlocks?: number;
 }
 
 interface TransactionOutputs {
-    name?: string;  // For easier debugging.
+    name: string;  // For easier debugging.
     role: AgentRoles;
     spentOutputs: Output[];
     createdOutputs: Output[];
@@ -74,7 +67,7 @@ function getUnspentOutputs(outputsMap: Map<string, TransactionOutputs>, transmit
 }
 
 async function getPublishableTransactions(
-    setupId: string, outputsMap: Map<string, TransactionOutputs>, currentHeight: number
+    setupId: string, agentRole: AgentRoles, outputsMap: Map<string, TransactionOutputs>, currentHeight: number
 ): Promise<string[]> {
     const transmitted = await readTransmittedTransactions(setupId);
     const unspentOutputs = getUnspentOutputs(outputsMap, transmitted.map(transmittedTx => transmittedTx.txId));
@@ -89,18 +82,25 @@ async function getPublishableTransactions(
     }).map(([txId, outputs]) => txId);
 }
 
-export async function execute(agentId: string, setupId: string, outputsMap?: Map<string, TransactionOutputs>) {
+export async function execute(
+    setupId: string, agentId: string, agentRole: AgentRoles, outputsMap?: Map<string, TransactionOutputs>
+) {
     if (!outputsMap) outputsMap = getOutputsMap(await readTransactions(agentId, setupId));
     const currentHeight = 0;  // TODO: Get current height from our node.
     console.warn('Only getting publishable transactions for now');
-    return getPublishableTransactions(setupId, outputsMap, currentHeight);
+    return getPublishableTransactions(setupId, agentRole, outputsMap, currentHeight);
 }
 
 async function main() {
+    const setupId = process.argv[2] || 'test_setup';
+    const agentId = process.argv[3] || 'bitsnark_prover_1';
+    const providedAgentRole = process.argv[4]?.toUpperCase();
+    const agentRole = providedAgentRole in AgentRoles ? providedAgentRole as AgentRoles : AgentRoles.PROVER;
+    console.log(`Executing protocol for agent ${agentId} in setup ${setupId} as ${agentRole}`);
     const transactions = await readTransactions(agentId, setupId);
     const outputsMap = getOutputsMap(transactions);
     setInterval(async () => {
-        console.debug((await execute(agentId, setupId, outputsMap)).map(txId => outputsMap.get(txId)!.name));
+        console.debug((await execute(setupId, agentId, agentRole, outputsMap)).map(txId => outputsMap.get(txId)!.name));
     }, 1000);
 }
 
