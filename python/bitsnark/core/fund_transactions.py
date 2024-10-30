@@ -18,7 +18,8 @@ from ..btc.rpc import BitcoinRPC
 def main(argv: Sequence[str] = None):
     parser = argparse.ArgumentParser()
     parser.add_argument('--db', default='postgresql://postgres:1234@localhost:5432/postgres')
-    parser.add_argument('--rpc', required=True, help='Bitcoin RPC url including the wallet')
+    parser.add_argument('--rpc', required=True, help='Bitcoin RPC url including the wallet',
+                        default='http://rpcuser:rpcpassword@localhost:18443/wallet/testwallet')
     parser.add_argument('--setup-id', required=True,
                         help='Process only transactions with this setup ID. Required if --all is not set')
     parser.add_argument('--agent-id', required=True,
@@ -29,7 +30,6 @@ def main(argv: Sequence[str] = None):
                         help='Change address')
     parser.add_argument('tx_names', nargs="+",
                         help='Name of the transaction template to fund. Specify multiple to fund multiple.')
-
 
     args = parser.parse_args(argv)
 
@@ -47,6 +47,7 @@ def main(argv: Sequence[str] = None):
     else:
         raise ValueError(f"Unknown chain {blockchain_info['chain']}")
 
+    print(f"Funding transactions: {args.tx_names}")
     inputs_to_unlock: list[tuple[str, int]] = []  # txid, vout
     with ChainParams(chain):
         try:
@@ -60,6 +61,7 @@ def main(argv: Sequence[str] = None):
                             name=tx_name,
                         )
                     ).scalar_one()
+                    print("Funding", tx_template)
 
                     outputs = []
                     for output_index, out in enumerate(tx_template.outputs):
