@@ -57,6 +57,7 @@ def test_transactions_regtest(
         '--role', 'prover',
         '--no-mocks',
     ])
+
     sign_txs_main([
         '--setup-id', 'test_setup',
         '--agent-id', 'bitsnark_verifier_1',
