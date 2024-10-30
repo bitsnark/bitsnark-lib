@@ -37,7 +37,7 @@ The VM has a limited number of 256 bit registers, each with a unique ID. Each in
 
 * addmod(t, a, b, m) \- add the values of registers a and b, modulo m, into register t.  
 * andbit(t, a, b, c) \- if bit b of register a is 1, write the value of register c into register t, otherwise write the value 0\.  
-* equal(t, a, b) \- if the values of registers a and b are equal, write 0 into register t, otherwise write 0\.
+* equal(t, a, b) \- if the values of registers a and b are equal, write 1 into register t, otherwise write 0\.
 
 	  
 Additionally, an attempt to write a value into an immutable register results in the program being rejected if the value being written is different from the value in that register.
