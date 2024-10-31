@@ -37,7 +37,7 @@ interface AgentConf {
 function getIntegerFromEnv(name: string, defaultValue: number): number {
     const value = Number(process.env[name] ?? defaultValue);
     if (!Number.isInteger(value)) {
-        throw new Error(`Values is not integer ${name}: ${value}`);
+        throw new Error(`Value should be integer ${name}: ${value}`);
     }
     return value;
 }
