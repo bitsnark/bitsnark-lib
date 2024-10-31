@@ -34,11 +34,19 @@ interface AgentConf {
     blocksUntilFinalized: number;
 };
 
+function getIntegerFromEnv(name: string, defaultValue: number): number {
+    const value = Number(process.env[name] ?? defaultValue);
+    if (!Number.isInteger(value)) {
+        throw new Error(`Values is not integer ${name}: ${value}`);
+    }
+    return value;
+}
+
 export const agentConf: AgentConf = {
     internalPubkey: BigInt(process.env['INTERNAL_PUBKEY'] ?? 1),
-    timeoutBlocks: Number(process.env['TIMEOUT_BLOCKS'] ?? 5),
-    smallTimeoutBlocks: Number(process.env['SMALL_TIMEOUT_BLOCKS'] ?? 6),
-    largeTimeoutBlocks: Number(process.env['LARGE_TIMEOUT_BLOCKS'] ?? 18),
+    timeoutBlocks: getIntegerFromEnv('TIMEOUT_BLOCKS', 5),
+    smallTimeoutBlocks: getIntegerFromEnv('SMALL_TIMEOUT_BLOCKS', 6),
+    largeTimeoutBlocks: getIntegerFromEnv('LARGE_TIMEOUT_BLOCKS', 18),
 
     payloadAmount: BigInt(process.env['PAYLOAD_AMOUNT'] ?? ONE_BITCOIN * 10n),
     proverStakeAmount: BigInt(process.env['PROVER_STAKE_AMOUNT'] ?? ONE_BITCOIN * 2n),
@@ -67,12 +75,12 @@ export const agentConf: AgentConf = {
     bitcoinNodeUsername: process.env['BITCOIN_NODE_USERNAME'] ?? 'rpcuser',
     bitcoinNodePassword: process.env['BITCOIN_NODE_PASSWORD'] ?? 'rpcpassword',
     bitcoinNodeHost: process.env['BITCOIN_NODE_HOST'] ?? '127.0.0.1',
-    bitcoinNodePort: Number(process.env['BITCOIN_NODE_PORT'] ?? 18443),
+    bitcoinNodePort: getIntegerFromEnv('BITCOIN_NODE_PORT', 18443),
     postgresUser: process.env['POSTGRES_USER'] ?? 'postgres',
     postgresHost: process.env['POSTGRES_HOST'] ?? 'localhost',
-    postgresPort: Number(process.env['POSTGRES_PORT'] ?? 5432),
+    postgresPort: getIntegerFromEnv('POSTGRES_PORT', 5432),
     postgresPassword: process.env['POSTGRES_PASSWORD'] ?? '1234',
     postgresBigints: Boolean(process.env['POSTGRES_BIGINTS'] ?? 'true'),
     postgresKeepAlive: Boolean(process.env['POSTGRES_KEEP_ALIVE'] ?? 'true'),
-    blocksUntilFinalized: Number(process.env['BLOCKS_UNTIL_FINALIZED'] ?? 0) // 6
+    blocksUntilFinalized: getIntegerFromEnv('BLOCKS_UNTIL_FINALIZED', 0) // 6
 };
