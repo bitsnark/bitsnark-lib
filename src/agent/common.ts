@@ -93,7 +93,7 @@ export function jsonStringifyCustom(obj: any): string {
             return 'hex:' + Buffer.from(value.data).toString('hex');
         }
         return value;
-    });    
+    });
 }
 
 export function jsonParseCustom(json: string): any {
@@ -103,5 +103,5 @@ export function jsonParseCustom(json: string): any {
         if (typeof value === 'string' && value.startsWith('hex:'))
             return Buffer.from(value.replace('hex:', ''), 'hex');
         return value;
-    });    
+    });
 }

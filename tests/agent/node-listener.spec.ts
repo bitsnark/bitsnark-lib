@@ -110,13 +110,12 @@ describe('NodeListener', () => {
         expect(writeTransmittedTransaction).toHaveBeenCalledWith(addSetupIdToData(Tx2Block5), addSetupIdToData(Raw2Block5));
     });
 
-    it('Ignor \'Transaction not found\' error', async () => {
+    it('Ignore \'Transaction not found\' error', async () => {
         setupLastBlockProperties(nodeListener, 'hash', 12);
         (readPendingTransactions as jest.Mock).mockResolvedValue(getPendingTransactions());
         clientMock.getTransaction
             .mockImplementationOnce(() => new Error('Transaction not found'))
             .mockImplementationOnce(() => Promise.resolve(Tx2Block5));
-
 
         clientMock.getRawTransaction
             .mockImplementationOnce(() => Promise.resolve(Raw2Block5));
