@@ -10,10 +10,12 @@ from bitsnark.btc.rpc import BitcoinRPC
 from ._base import Context
 from .fund_and_send import FundAndSendCommand
 from .show import ShowCommand
+from .spend import SpendCommand
 
 COMMAND_CLASSES = [
     FundAndSendCommand,
     ShowCommand,
+    SpendCommand,
 ]
 
 
@@ -62,5 +64,7 @@ def main(argv: Sequence[str] = None):
                 bitcoin_rpc=bitcoin_rpc,
                 dbsession=dbsession,
             ))
+
+
 if __name__ == "__main__":
     main()

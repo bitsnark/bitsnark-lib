@@ -18,6 +18,7 @@ class FundAndSendCommand(Command):
     def init_parser(self, parser: argparse.ArgumentParser):
         add_tx_template_args(parser)
         parser.add_argument('--fee-rate', help='Fee rate in sat/vb', type=float, default=10)
+        parser.add_argument('--change-address', help='Address to send the change to', required=False)
 
     def run(
         self,
@@ -26,7 +27,9 @@ class FundAndSendCommand(Command):
 
         tx_template = find_tx_template(context)
         bitcoin_rpc = context.bitcoin_rpc
-        change_address = bitcoin_rpc.call('getnewaddress')
+        change_address = context.args.change_address
+        if not change_address:
+            change_address = bitcoin_rpc.call('getnewaddress')
 
         outputs = []
         for output_index, out in enumerate(tx_template.outputs):

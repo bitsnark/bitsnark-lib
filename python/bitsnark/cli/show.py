@@ -53,10 +53,12 @@ class ShowCommand(Command):
         for outp in tx_template.outputs:
             index = outp['index']
             amount = parse_bignum(outp['amount'])
-            address = CCoinAddress.from_scriptPubKey(CScript(parse_hex_bytes(outp['taprootKey'])))
+            script_pubkey = CScript(parse_hex_bytes(outp['taprootKey']))
+            address = CCoinAddress.from_scriptPubKey(script_pubkey)
             print(f'- output {index}:')
-            print(f'  - amount:  {amount} sat')
-            print(f'  - address: {address}')
+            print(f'  - amount:       {amount} sat')
+            print(f'  - address:      {address}')
+            print(f'  - scriptPubKey: {script_pubkey!r} ({script_pubkey.hex()})')
             print(f'  - spendingConditions:')
             for sc in outp['spendingConditions']:
                 print(f'    - #{sc["index"]}:')

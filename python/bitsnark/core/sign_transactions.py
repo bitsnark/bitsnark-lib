@@ -198,7 +198,6 @@ def _handle_tx_template(
                 prev_tx_hash = bytes.fromhex(prev_txid)[::-1]
             except ValueError:
                 print(f"Invalid txid {prev_txid} for transaction {prev_tx.name} (required by {tx_template.name} input #{input_index})")
-                import ipdb; ipdb.set_trace()
                 raise
 
             tx_inputs.append(
