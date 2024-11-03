@@ -43,8 +43,8 @@ def find_tx_template(context: Context) -> TransactionTemplate:
     try:
         return dbsession.execute(
             select(TransactionTemplate).filter_by(
-                setupId=args.setup_id,
-                agentId=args.agent_id,
+                setup_id=args.setup_id,
+                agent_id=args.agent_id,
                 name=args.name,
             )
         ).scalar_one()

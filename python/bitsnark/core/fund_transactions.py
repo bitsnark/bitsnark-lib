@@ -56,8 +56,8 @@ def main(argv: Sequence[str] = None):
                 for tx_name in args.tx_names:
                     tx_template = dbsession.execute(
                         select(TransactionTemplate).filter_by(
-                            setupId=args.setup_id,
-                            agentId=args.agent_id,
+                            setup_id=args.setup_id,
+                            agent_id=args.agent_id,
                             name=tx_name,
                         )
                     ).scalar_one()
@@ -120,7 +120,7 @@ def main(argv: Sequence[str] = None):
                     tx = signed_psbt.extract_transaction()
 
                     tx_id = tx.GetTxid()[::-1].hex()
-                    tx_template.txId = tx_id
+                    tx_template.tx_id = tx_id
                     tx_template.object['txId'] = tx_id
                     tx_template.object['external'] = True
                     tx_template.object['signedSerializedTx'] = serialize_hex(tx.serialize())

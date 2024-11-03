@@ -42,7 +42,7 @@ class ShowCommand(Command):
             prev_tx_name = inp['transactionName']
             prev_tx = dbsession.get(
                 TransactionTemplate,
-                (tx_template.agentId, tx_template.setupId, prev_tx_name)
+                (tx_template.agent_id, tx_template.setup_id, prev_tx_name)
             )
             prev_txid = prev_tx.txId
             prevout_index = inp['outputIndex']
