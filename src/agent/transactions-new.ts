@@ -530,11 +530,11 @@ async function main() {
 
     console.log('Initializing transactions...');
     await initializeTransactions(agentId, AgentRoles.PROVER, setupId, 1n, 2n, {
-        txId: '000',
+        txId: '0000000000000000000000000000000000000000000000000000000000000000',
         outputIndex: 0,
         amount: agentConf.payloadAmount
     }, {
-        txId: '001',
+        txId: '1111111111111111111111111111111111111111111111111111111111111111',
         outputIndex: 0,
         amount: agentConf.proverStakeAmount
     });
