@@ -17,14 +17,22 @@ export async function signTransactions(
         process.env.DYLD_FALLBACK_LIBRARY_PATH = '/opt/homebrew/lib:/usr/local/lib';
     }
 
-    const result = execFileSync('python3', [
-        '-m', 'bitsnark.core.sign_transactions',
-        '--role', role.toLowerCase(),
-        '--agent-id', agentId,
-        '--setup-id', setupId
-    ], { cwd: './python' });
-
-    console.log(result.toString());
+    try {
+        const result = execFileSync('python3', [
+            '-m', 'bitsnark.core.sign_transactions',
+            '--role', role.toLowerCase(),
+            '--agent-id', agentId,
+            '--setup-id', setupId
+        ], { cwd: './python' });
+        console.log(result.toString());
+    } catch (error: unknown) {
+        const subprocessError = error as { status: number, stdout: Buffer, stderr: Buffer };
+        console.error(
+            `Python script failed with code ${subprocessError.status}\n` +
+            `stdout:\n${subprocessError.stdout.toString()}\n` +
+            `stderr:\n${subprocessError.stderr.toString()}\n`);
+        throw error;
+    }
 
     transactions = await readTransactions(agentId, setupId);
     for (const transaction of transactions) {

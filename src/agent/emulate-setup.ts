@@ -1,6 +1,6 @@
 import { agentConf } from "./agent.conf";
 import { addAmounts, validateTransactionFees } from "./amounts";
-import { AgentRoles, TransactionNames } from "./common";
+import { AgentRoles } from "./common";
 import { clearTransactions, writeTransactions } from "./db";
 import { generateAllScripts } from "./generate-scripts";
 import { signTransactions } from "./sign-transactions";
@@ -14,12 +14,12 @@ export async function emulateSetup(proverAgentId: string, verifierAgentId: strin
     await clearTransactions(proverAgentId, setupId);
 
     const mockLockedFunds = {
-        txId: TransactionNames.LOCKED_FUNDS,
+        txId: '0000000000000000000000000000000000000000000000000000000000000000',
         outputIndex: 0,
         amount: agentConf.payloadAmount
     };
     const mockPayload = {
-        txId: TransactionNames.PROVER_STAKE,
+        txId: '1111111111111111111111111111111111111111111111111111111111111111',
         outputIndex: 0,
         amount: agentConf.proverStakeAmount
     };
