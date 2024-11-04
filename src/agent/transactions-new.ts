@@ -1,4 +1,4 @@
-import { TransactionNames, AgentRoles, FundingUtxo, iterations, twoDigits, random } from './common';
+import { TransactionNames, AgentRoles, FundingUtxo, iterations, twoDigits, random, array } from './common';
 import { encodeWinternitz, getWinternitzPublicKeys, WOTS_NIBBLES, WotsType } from './winternitz';
 import { agentConf } from './agent.conf';
 import { clearTransactions, writeTransactions } from './db';
@@ -80,7 +80,7 @@ const protocolStart: Transaction[] = [
             spendingConditions: [{
                 nextRole: AgentRoles.PROVER,
                 signatureType: SignatureType.BOTH,
-                wotsSpec: new Array(8).fill(WotsType._256)
+                wotsSpec: array(8, WotsType._256)
             }]
         }]
     },
@@ -102,7 +102,7 @@ const protocolStart: Transaction[] = [
                 // state
                 nextRole: AgentRoles.PROVER,
                 signatureType: SignatureType.BOTH,
-                wotsSpec: new Array(10).fill(WotsType._256)
+                wotsSpec: array(9, WotsType._256)
             }, {
                 // challenge but no state
                 nextRole: AgentRoles.VERIFIER,
@@ -175,9 +175,9 @@ const protocolEnd: Transaction[] = [
     {
         role: AgentRoles.PROVER,
         transactionName: TransactionNames.ARGUMENT,
-        inputs: new Array(5).fill(0).map(_ => ({
+        inputs: array(6, (i: number) => ({
             transactionName: `${TransactionNames.SELECT}_${twoDigits(iterations - 1)}`,
-            outputIndex: 0,
+            outputIndex: i,
             spendingConditionIndex: 0
         })),
         outputs: [
@@ -254,7 +254,7 @@ function makeProtocolSteps(): Transaction[] {
                 spendingConditions: [{
                     nextRole: AgentRoles.VERIFIER,
                     signatureType: SignatureType.BOTH,
-                    wotsSpec: [WotsType._1]
+                    wotsSpec: [WotsType._24]
                 }, {
                     nextRole: AgentRoles.PROVER,
                     timeoutBlocks: agentConf.smallTimeoutBlocks,
@@ -296,14 +296,13 @@ function makeProtocolSteps(): Transaction[] {
 
         if (i + 1 < iterations) {
 
-            // every select but the last has a single element of the selection path
+            // every state should have 9 merkle roots
 
             select.outputs = [{
-                // 1 element of the selection path
                 spendingConditions: [{
                     nextRole: AgentRoles.VERIFIER,
                     signatureType: SignatureType.BOTH,
-                    wotsSpec: [WotsType._24]
+                    wotsSpec: array(9, WotsType._256)
                 },
                 // timeout
                 {
@@ -314,7 +313,7 @@ function makeProtocolSteps(): Transaction[] {
             }];
         } else {
 
-            // the last one is leading up to the arhument
+            // the last one is leading up to the argument
 
             select.outputs = [
                 {
@@ -322,9 +321,7 @@ function makeProtocolSteps(): Transaction[] {
                     spendingConditions: [{
                         nextRole: AgentRoles.PROVER,
                         signatureType: SignatureType.BOTH,
-                        wotsSpec: [
-                            ...new Array(7).fill(WotsType._24)
-                        ]
+                        wotsSpec: array(7, WotsType._24)
                     },
                     // timeout
                     {
@@ -333,30 +330,25 @@ function makeProtocolSteps(): Transaction[] {
                         signatureType: SignatureType.BOTH
                     }]
                 },
-                // the D value
+                // the a, b, c, and d
                 {
                     spendingConditions: [{
 
                         nextRole: AgentRoles.PROVER,
                         signatureType: SignatureType.BOTH,
-                        wotsSpec: [
-                            WotsType._256
-                        ]
+                        wotsSpec: [ WotsType._256, WotsType._256, WotsType._256, WotsType._256 ]
                     }]
                 },
-                // 3 merkle proofs
+                // 3 merkle proofs of 12 hashes each, that's 4 outputs with 10, 10, 10, and 6 values
 
-                ...new Array(4).fill(0).map(_ => ({
+                ...[10, 10, 10, 6].map(n => ({
                     spendingConditions: [{
                         nextRole: AgentRoles.PROVER,
                         signatureType: SignatureType.BOTH,
-                        wotsSpec: [
-                            ...new Array(10).fill(WotsType._256)
-                        ]
+                        wotsSpec: array<WotsType>(n, WotsType._256)
                     }]
                 }))];
         }
-
 
         const selectTimeout: Transaction = {
             role: AgentRoles.VERIFIER,

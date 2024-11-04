@@ -525,5 +525,7 @@ async function main() {
     await test4();
 }
 
-main();
-
+const scriptName = __filename;
+if (process.argv[1] == scriptName) {
+    main();
+}

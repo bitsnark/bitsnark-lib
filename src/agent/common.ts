@@ -105,3 +105,12 @@ export function jsonParseCustom(json: string): any {
         return value;
     });    
 }
+
+export function range(start: number, end: number): number[] {
+    return new Array(end - start).fill(0).map((_, i) => i);
+}
+
+export function array<T>(count: number, f: any): T[] {
+    if (typeof f == 'function') return new Array(count).fill(0).map((_, i) => f(i));
+    return new Array(count).fill(f);
+}

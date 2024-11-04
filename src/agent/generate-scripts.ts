@@ -5,9 +5,9 @@ import { StackItem } from '../generator/step3/stack';
 import { SimpleTapTree } from './simple-taptree';
 import { agentConf } from './agent.conf';
 import { Buffer } from 'node:buffer';
-import { findOutputByInput, getTransactionByName, Input, SpendingCondition, Transaction } from './transactions-new';
+import { getTransactionByName, Input, SpendingCondition, Transaction } from './transactions-new';
 import { readTransactions, writeTransactions } from './db';
-import { generateFinalStepTaproot } from './final-step/generate';
+import { DoomsdayGenerator } from './final-step/doomsday-generator';
 
 const DEAD_SCRIPT = Buffer.from([0x6a]); // opcode fails transaction
 
@@ -133,7 +133,8 @@ export async function generateAllScripts(
         }
 
         if (t.transactionName == TransactionNames.PROOF_REFUTED) {
-            const taproot = generateFinalStepTaproot(transactions);
+            const ddg = new DoomsdayGenerator();
+            const taproot = ddg.generateFinalStepTaproot(transactions);
             const argument = getTransactionByName(transactions, TransactionNames.ARGUMENT);
             if (argument.outputs.length != 1)
                 throw new Error('Wrong number of outputs');

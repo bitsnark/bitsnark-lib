@@ -122,7 +122,7 @@ export class Compressor {
     }
 
     getRoot(): Buffer {
-        while (this.counter < 2 ** this.depth) this.addItem(Buffer.alloc(0));
+        while (this.counter < 2 ** this.depth) this.addItem(DEAD_ROOT);
         this.compress();
         return this.data[0][0];
     }
