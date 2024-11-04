@@ -1,4 +1,3 @@
-import assert from "assert";
 import { padHex } from "../../encoding/encoding";
 import { hardcode, OpcodeType, opcodeValues } from "./bitcoin-opcodes";
 import { StackItem, Stack } from "./stack";
@@ -415,7 +414,7 @@ export class Bitcoin {
     mul(n: number) {
 
         if (n < 2 || n > 256) throw new Error('n should be between 2 and 256');
-        
+
         // get bits
         const bits = n.toString(2);
         // make sure we have <bits> copies of the value
