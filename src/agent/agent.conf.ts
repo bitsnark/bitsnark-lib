@@ -52,7 +52,10 @@ export const agentConf: AgentConf = {
     payloadAmount: BigInt(process.env['PAYLOAD_AMOUNT'] ?? ONE_BITCOIN * 10n),
     proverStakeAmount: BigInt(process.env['PROVER_STAKE_AMOUNT'] ?? ONE_BITCOIN * 2n),
     verifierPaymentAmount: BigInt(process.env['VERIFIER_PAYMENT_AMOUNT'] ?? ONE_BITCOIN),
-    symbolicOutputAmount: BigInt(process.env['SYMBOLIC_OUTPUT_AMOUNT'] ?? ONE_SATOSHI),
+    // Must set an amount that is greater than dust limit.
+    // Note that dust limit actually depends on the specific output:
+    // https://github.com/bitcoin/bitcoin/blob/6463117a29294f6ddc9fafecfd1e9023956cc41b/src/policy/policy.cpp#L26
+    symbolicOutputAmount: BigInt(process.env['SYMBOLIC_OUTPUT_AMOUNT'] ?? ONE_SATOSHI * 546n),
 
     feePerByte: BigInt(process.env['FEE_PER_BYTE'] ?? ONE_SATOSHI * 20n),
     feeFactorPercent: Number(process.env['FEE_FACTOR_PERCENT'] ?? 125),
