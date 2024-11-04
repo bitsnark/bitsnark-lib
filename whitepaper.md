@@ -35,9 +35,9 @@ BitSNARK VM is a virtual machine, emulating a simplified register-based processo
 
 The VM has a limited number of 256 bit registers, each with a unique ID. Each instruction receives register IDs, performs a single calculation and emits its result into the target register. Certain registers can be marked as immutable, so their values cannot be modified and they can be optimized in the Bitcoin script. The following instructions are supported:
 
-* addmod(t, a, b, m) \- add the values of registers a and b, modulo c, into register t.  
+* addmod(t, a, b, m) \- add the values of registers a and b, modulo m, into register t.  
 * andbit(t, a, b, c) \- if bit b of register a is 1, write the value of register c into register t, otherwise write the value 0\.  
-* equal(t, a, b) \- if the values of registers a and b are equal, write 0 into register t, otherwise write 0\.
+* equal(t, a, b) \- if the values of registers a and b are equal, write 1 into register t, otherwise write 0\.
 
 	  
 Additionally, an attempt to write a value into an immutable register results in the program being rejected if the value being written is different from the value in that register.

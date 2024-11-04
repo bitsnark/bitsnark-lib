@@ -72,6 +72,8 @@
     "node_modules",
     "tests",
     "types",
-    "dist"
+    "dist",
+    "analysis",
+    "jest.config.ts"
   ]
 }

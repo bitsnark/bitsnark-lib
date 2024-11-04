@@ -217,12 +217,12 @@ export class Agent {
         i.state = SetupState.SIGNATURES;
 
         if (this.role == AgentRoles.PROVER) {
-            i.transactions = await generateAllScripts(this.agentId, i.setupId, i.transactions!);
+            i.transactions = await generateAllScripts(this.agentId, i.setupId, this.role, i.transactions!);
             i.transactions = await addAmounts(this.agentId, i.setupId);
             this.sendSignatures(ctx, i.setupId);
         } else {
             await this.sendTransactions(ctx, i.setupId);
-            i.transactions = await generateAllScripts(this.agentId, i.setupId, i.transactions!);
+            i.transactions = await generateAllScripts(this.agentId, i.setupId, this.role, i.transactions!);
             i.transactions = await addAmounts(this.agentId, i.setupId);
         }
     }

@@ -2,7 +2,6 @@ import { readPendingTransactions, writeTransmittedTransaction } from './db';
 import { agentConf } from './agent.conf';
 import { BitcoinNode, TxData, TxRawData } from './bitcoin-node';
 
-
 const checkNodeInterval = 60000;
 
 export class NodeListener {
@@ -60,4 +59,3 @@ export class NodeListener {
         }
     }
 }
-
