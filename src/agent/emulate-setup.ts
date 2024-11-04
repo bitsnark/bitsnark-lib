@@ -8,7 +8,7 @@ import { initializeTransactions, mergeWots, Transaction } from "./transactions-n
 import { verifySetup } from "./verify-setup";
 
 
-export async function emulateSetup(proverAgentId: string, verifierAgentId: string, setupId: string) {
+export async function emulateSetup(proverAgentId: string, verifierAgentId: string, setupId: string, generateFinal: boolean) {
 
     console.log('Deleting transactions...');
     await clearTransactions(proverAgentId, setupId);
@@ -41,7 +41,7 @@ export async function emulateSetup(proverAgentId: string, verifierAgentId: strin
     await writeTransactions(verifierAgentId, setupId, verifierTemplates);
 
     async function generateScripts(agentId: string, role: AgentRoles, transactions: Transaction[]) {
-        await generateAllScripts(agentId, setupId, role, transactions);
+        await generateAllScripts(agentId, setupId, role, transactions, generateFinal);
         transactions = await addAmounts(agentId, setupId);
         validateTransactionFees(transactions);
     }
@@ -71,5 +71,6 @@ export async function emulateSetup(proverAgentId: string, verifierAgentId: strin
 
 const scriptName = __filename;
 if (process.argv[1] == scriptName) {
-    emulateSetup('bitsnark_prover_1', 'bitsnark_verifier_1', 'test_setup').catch(console.error);
+    const generateFinal = process.argv.some(s => s == '--final');
+    emulateSetup('bitsnark_prover_1', 'bitsnark_verifier_1', 'test_setup', generateFinal).catch(console.error);
 }

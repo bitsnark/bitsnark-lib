@@ -90,7 +90,7 @@ function generateBoilerplate(setupId: string, myRole: AgentRoles, prevTransactio
 }
 
 function generateProcessSelectionPath(sc: SpendingCondition): Buffer {
-    
+
     const bitcoin = new Bitcoin();
     bitcoin.throwOnFail = false;
 
@@ -120,7 +120,8 @@ function generateProcessSelectionPath(sc: SpendingCondition): Buffer {
 }
 
 export async function generateAllScripts(
-    agentId: string, setupId: string, myRole: AgentRoles, transactions: Transaction[]
+    agentId: string, setupId: string, myRole: AgentRoles, transactions: Transaction[],
+    generateFinal: boolean
 ): Promise<Transaction[]> {
 
     for (const t of transactions.filter(t => !t.external)) {
@@ -143,7 +144,14 @@ export async function generateAllScripts(
 
         if (t.transactionName == TransactionNames.PROOF_REFUTED) {
             const ddg = new DoomsdayGenerator();
-            const taproot = ddg.generateFinalStepTaproot(transactions);
+            let taproot;
+            if (generateFinal) {
+                taproot = ddg.generateFinalStepTaproot(transactions);
+            } else {
+                const mockSTT = new SimpleTapTree(agentConf.internalPubkey, [ DEAD_SCRIPT, DEAD_SCRIPT ]);
+                taproot = mockSTT.getScriptPubkey();
+            }
+
             const argument = getTransactionByName(transactions, TransactionNames.ARGUMENT);
             if (argument.outputs.length != 1)
                 throw new Error('Wrong number of outputs');
@@ -198,8 +206,9 @@ export async function generateAllScripts(
 async function main() {
     const agentId = process.argv[2] ?? 'bitsnark_prover_1';
     const setupId = 'test_setup';
+    const generateFinal = process.argv.some(s => s == '--final');
     const transactions = await readTransactions(agentId, setupId);
-    await generateAllScripts(agentId, 'test_setup', AgentRoles.PROVER, transactions);
+    await generateAllScripts(agentId, 'test_setup', AgentRoles.PROVER, transactions, generateFinal);
 }
 
 const scriptName = __filename;
