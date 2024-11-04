@@ -32,15 +32,12 @@ export function verifyMessage(message: string, signature: string, publicKey: str
     const signatureBuffer = Buffer.from(signature, 'hex');
     const publicKeyBuffer = Buffer.from(publicKey, 'hex');
     console.log('Public key:', publicKeyBuffer, publicKeyBuffer.length);
-
     return secp256k1.verifySchnorr(msgHash, publicKeyBuffer, signatureBuffer);
 }
 
 
 
 if (__filename === process.argv[1]) {
-
-
     // Generate new keypair and sign and verify a message
     const keypair = generateSchnorrKeypair();
     console.log('Private Key:', keypair.privateKey, keypair.privateKey.length);
@@ -67,8 +64,6 @@ if (__filename === process.argv[1]) {
     console.log('Message verified by me:', verified);
 
     //the keys we have in the config file
-
-
     const keyPairs = {
         bitsnark_prover_1: {
             public: process.env['PROVER_SCHNORR_PUBLIC'] ?? '02ae2ea39bca4b6b14567e3c38b9680f6483ceeef4ae17f8dceb5a5a0866999b75',
