@@ -18,6 +18,7 @@ export class StartMessage {
     signature?: string = '';
     payloadUtxo?: FundingUtxo;
     proverUtxo?: FundingUtxo;
+    schnorrMessageSig: string = '';
 
     constructor(obj?: Partial<StartMessage>) {
         _assign(this, obj);
@@ -30,6 +31,7 @@ export class JoinMessage {
     agentId: string = '';
     schnorrPublicKey: string = '';
     signature?: string;
+    schnorrMessageSig: string = '';
 
     constructor(obj?: Partial<JoinMessage>) {
         _assign(this, obj);
@@ -41,6 +43,7 @@ export class TransactionsMessage {
     setupId: string = '';
     agentId: string = '';
     transactions: Transaction[] = [];
+    schnorrMessageSig: string = '';
 
     constructor(obj?: Partial<TransactionsMessage>) {
         _assign(this, obj);
@@ -58,6 +61,7 @@ export class SignaturesMessage {
     setupId: string = '';
     agentId: string = '';
     signed: Signed[] = [];
+    schnorrMessageSig: string = '';
 
     constructor(obj?: Partial<SignaturesMessage>) {
         _assign(this, obj);
@@ -68,6 +72,7 @@ export class DoneMessage {
     messageType: MessageType = 'done';
     setupId: string = '';
     agentId: string = '';
+    schnorrMessageSig: string = '';
 
     constructor(obj?: Partial<SignaturesMessage>) {
         _assign(this, obj);
@@ -80,6 +85,7 @@ export class ErrorMessage {
     setupId: string = '';
     agentId: string = '';
     error: string = '';
+    schnorrMessageSig: string = '';
 
     constructor(obj?: Partial<ErrorMessage>) {
         _assign(this, obj);
@@ -98,7 +104,7 @@ const typeToClass = {
 export type Message = StartMessage | TransactionsMessage | SignaturesMessage | DoneMessage | ErrorMessage;
 
 export function fromJson(json: string): Message {
-    const obj = JSON.parse(json, (key, value) =>{
+    const obj = JSON.parse(json, (key, value) => {
         if (typeof value === 'string' && value.startsWith('0x') && value.endsWith('n'))
             return BigInt(value.replace('n', ''));
         if (typeof value === 'string' && value.startsWith('hex:'))
@@ -115,7 +121,7 @@ export function fromJson(json: string): Message {
 }
 
 export function toJson(message: Message): string {
-    const json = JSON.stringify(message, (key, value) =>{
+    const json = JSON.stringify(message, (key, value) => {
         if (typeof value === "bigint") return `0x${value.toString(16)}n`;
         if (value?.type == "Buffer" && value.data) {
             return 'hex:' + Buffer.from(value.data).toString('hex');
