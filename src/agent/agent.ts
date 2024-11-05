@@ -95,7 +95,7 @@ export class Agent {
         }
     }
 
-    private signMessageAndSend(ctx: SimpleContext, message: StartMessage | JoinMessage | TransactionsMessage | SignaturesMessage | DoneMessage) {
+    private signMessageAndSend(ctx: SimpleContext, message: Message) {
         const signature = signMessage(toJson(message),
             (agentConf.keyPairs as any)[this.agentId].private);
         message.signature = signature;
