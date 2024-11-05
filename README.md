@@ -1,8 +1,8 @@
 # BitSNARK Playground
 
-The BitSNARK protocol is a method of verifying a zero knowledge proof on the Bitcoin network, enabling BTC transfers to be conditional on provable external events such as the transfer or burn of funds on another blockchain. This can be used for atomic swaps, 2-way pegging, and other cross-chain applications.
+The BitSNARK protocol is a method of verifying a zero knowledge proof on the Bitcoin network, enabling BTC transfers to be conditional on provable external events such as the transfer or burn of funds on another blockchain. This can be used for various cross-chain application such as token swaps and 2-way pegging.
 
-The protocol involves a prover and a verifier agreeing upon a program (i.e. a program that checks the validity of a zero-knowledge proof) and preparing a bunch of Bitcoin transactions that allow the prover to publish the result of running that program on a given input (i.e. the zero-knowledge proof to be verified) within a Bitcoin transaction that includes some BTC staked on its correctness, such that the verifier can claim that stake if and only if the result is incorrect (i.e. the supplied proof is not valid).
+The protocol involves a prover and a verifier agreeing upon a deterministic program (i.e. a program that checks the validity of a zero-knowledge proof) and preparing a bunch of Bitcoin transactions that allow the prover to publish the result of running that program on a given input (i.e. the zero-knowledge proof to be verified) within a Bitcoin transaction that includes some BTC staked on its correctness, such that the verifier can claim that stake if and only if the result is incorrect (i.e. the supplied proof is not valid).
 
 This repository is currently aimed at allowing anyone to run a prover-verifier demo locally, but we aim to expand it to be multi-verifier and over the network, and to use the protocol to implement 2-way pegging between Bitcoin and an ERC20 token, and it's almost there.
 
@@ -24,9 +24,9 @@ We start with a prover, a verifier, and a deterministic program that verifies a 
 
 In many cases it is possible and desirable to bind some of the protocol transactions to outputs of other, non-protocol transactions, making them conditional on the outcome of those transactions (i.e. letting the prover unlock the funds only by supplying a proof that the verifier can not refute).
 
-### Contention Bisection
+### Contention Dissection
 
-Since running the entire program in a Bitcoin transaction is not feasible (the Script will be too long and the transaction too large to be included in a block), the protocol implements a binary search for a contentious operation in the program's execution (since the program is deterministic, any discrepancy between the published result and the verified result must include at least one step of the execution for which the prover's and the verifier's views of the program's state differ). Once such an operation is identified, it is may be executed as part of the script of a Bitcoin transaction and automatically checked by the Bitcoin miners.
+Since running the entire program in a Bitcoin transaction is not feasible (the Script will be too long and the transaction too large to be included in a block), the protocol implements a search for a contentious operation in the program's execution (since the program is deterministic, any discrepancy between the published result and the verified result must include at least one step of the execution for which the prover's and the verifier's views of the program's state differ). Once such an operation is identified, it is may be executed as part of the script of a Bitcoin transaction and automatically checked by the Bitcoin miners.
 
 Note this important distinction: the protocol does not validate or check the proof on the blockchain, it just makes it both possible and highly profitable for the verifier to do so, and therefore highly unprofitable for the prover to provide an invalid proof.
 
@@ -44,7 +44,8 @@ The diagram below shows a condensed version of the transactions flow in the BitS
 
 ![BitSNARK Transactions Flow](/analysis/transactions.collapsed.svg)
 
-Most transactions are simple boxes, but transactions that input funds into the protocol are marked with rounded corners and transactions that output funds are marked with a folded corner. Transactions publishable by the prover are green, ones publishable by the verifier are blue, and the `Locked Funds` transaction is magenta. Dashed lines are timelocked to a pre-specified number of blocks, and gray lines are outputs that only carry a symbolic amount of a single satoshi, either used to make transactions mutually exclusive or to accommodate the per-input size limitations of Bitcoin transactions. For simplicity's sake, the entire bisection process is collapsed into a single node marked with a triple octagon, but below you can find a full version of the diagram with all the steps expanded (beware, it currently takes us 19 bisections to identify one out of half a million operations in our zk-SNARK verification program).
+Most transactions are simple boxes, but
+Transactions that input funds into the protocol are drawn as ovals, transactions that output funds are marked with a folded corner, and the rest are simple boxes. Transactions publishable by the prover are green, ones publishable by the verifier are blue, and the `Locked Funds` transaction is magenta. Dashed lines are timelocked to a pre-specified number of blocks, and gray lines are outputs that only carry a symbolic amount of satoshis (just above the dust limit) either used to make transactions mutually exclusive or to accommodate the per-input size limitations of Bitcoin transactions. For simplicity's sake, the entire dissection process is collapsed into a single node marked with a triple octagon, but below you can find a full version of the diagram with all the steps expanded (it currently takes us 5 dissections to identify one out of about half a million operations in our zk-SNARK verification program).
 
 <details>
 <summary>Expand here for a full Diagram with all the steps</summary>
@@ -54,23 +55,23 @@ Most transactions are simple boxes, but transactions that input funds into the p
 
 Once the prover signs and publishes the `Proof` transaction, it spends the prover's stake and locks it.
 
-If the verifier finds the proof valid, they let the shorter timelock expire, at which point the prover can sign and publish the `Proof Uncontested` transaction and claim the stake back (along with any optional locked funds). This transaction spends two outputs from the `Proof` transaction: the symbolic output required to publish the `Challenge` transaction (making it forever invalid) and the output that carries the prover's stake (making `Challenge Uncontested` also forever invalid).
+If the verifier finds the proof valid, they let the shorter timelock expire, at which point the prover can sign and publish the `Proof Uncontested` transaction and claim the stake back (along with any optional locked funds). This transaction spends both outputs of the `Proof` transaction: the symbolic output required to publish the `Challenge` transaction (making it forever invalid) and the output that carries the prover's stake (making `Challenge Uncontested` also forever invalid).
 
-If, however, the verifier finds the proof invalid, they publish the `Challenge` transaction, which sends the verifier's payment (along with the symbolic satoshi from the `Proof` transaction) to the prover's wallet and prevents the `Challenge Uncontested` transaction from ever being valid.
+If, however, the verifier finds the proof invalid, they publish the `Challenge` transaction, which sends the verifier's payment (along with the symbolic output from the `Proof` transaction) to the prover's wallet and prevents the `Challenge Uncontested` transaction from ever being valid.
 
 If the prover does not respond to the challenge (or fails to publish the `Proof Uncontested` transaction when no challenge was made) before the longer timelock expires, the verifier can claim the prover's stake (and prevent the transfer of any locked funds) by publishing the `Challenge Uncontested` transaction.
 
-To avoid this, the prover must publish the first `State` transaction, which includes the state of the program's execution up to the program's middle. This transaction spends the remaining six outputs from the `Proof` transaction, making it mutually exclusive with the `Challenge Uncontested` transaction and providing enough space to include the state of the program's execution.
+To avoid this, the prover must publish the first `State` transaction, which includes the state of the program's execution at nine points, dividing the entire execution into ten segments. This transaction the remaining output from the `Proof` transaction, making it mutually exclusive with the `Challenge Uncontested` transaction.
 
 If the verifier does not respond to the state before the timelock expires, the prover can claim the stake back along with any locked funds by publishing the first `State Uncontested` transaction.
 
-To avoid this, the verifier must publish the first `Select` transaction, either accepting or rejecting the mid-point state presented by the prover. If the verifier disagrees with the state, a point of contention must exist in the first half of the program. If the verifier agrees with the state, but not with the final result, a point of contention must exist in the second half of the program.
+To avoid this, the verifier must publish the first `Select` transaction, selecting one of the ten segments of the execution defined by the `State` transaction as a segment that contains a point of contention. Since the input of the program is given, and the output is contested, an honest verifier will always be able to identify at least one segment they disagree with the prover on (i.e. they accept the state before it, but not the state after it).
 
-This state/select process is then repeated multiple times, with the prover having to publish `State n` before the verifier publishes `Select Uncontested n-1` and then the verifier having to publich `Select n` before the prover publishes `State Ucontested n`, until a point of contention is identified in the last `Select` transaction.
+This state/select process is then repeated multiple times, with the prover having to publish `State n` before the verifier publishes `Select Uncontested n-1` and then the verifier having to publich `Select n` before the prover publishes `State Ucontested n`, until a single contentious instruction is identified in the last `Select` transaction.
 
-In the condensed diagram, the bisection process is collapsed into a single node connecting the first `State` to the last `Select`, but in the full diagram, it is expanded into 19 steps, each with its own timelock, with the prover's stake being spendable from all of the `State Uncontested` and `Select Uncontested` transactions, and the locked funds being spendable from all of the `State Uncontested` transactions.
+In the condensed diagram, the dissection process is collapsed into a single node connecting the first `State` to the last `Select`, but in the full diagram it is expanded into the full 5 steps, each with its own timelock, with the prover's stake being spendable from all of the `State Uncontested` and `Select Uncontested` transactions, and with the locked funds being spendable from all of the `State Uncontested` transactions.
 
-Once the bisection process ends with the last `Select` and the contentious operation is identified, the prover must publish the `Argument` transaction, in which they commit to the two variables that are the input to the contentious operation, the operation itself (as identified by the binary path that located it) and its result, before the timelock expires and the verifier can publish the last `Select Uncontested` transaction.
+Once the dissection process ends with the last `Select` and the contentious operation is identified, the prover must publish the `Argument` transaction, in which they commit to the two variables that are the input to the contentious operation, the operation itself (as identified by the binary path that located it) and its result, before the timelock expires and the verifier can publish the last `Select Uncontested` transaction.
 
 The verifier can now claim the prover's stake and prevent the release of any locked funds by publishing the `Proof Refuted` transaction, which is only valid if the prover's argument is incorrect.
 
