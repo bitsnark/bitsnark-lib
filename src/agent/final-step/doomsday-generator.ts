@@ -203,8 +203,8 @@ export class DoomsdayGenerator {
         let blakeCache: Buffer | undefined = undefined;
 
         const started = Date.now();
-        let total = 0;
-        let max = 0;
+        const total = 0;
+        const max = 0;
 
         console.log(`Generating refute merkle proof taproot for ${this.program.length} instructions`);
         for (let index = 1; index < this.program.length; index++) {

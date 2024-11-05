@@ -144,7 +144,7 @@ class Mojo {
             this.bitcoin.OP_SUB();
             this.bitcoin.OP_ENDIF();
 
-            // hack 
+            // hack
             this.bitcoin.stack.top().value = tv % 16n;
 
             this.bitcoin.replaceWithTop(target[i]);
@@ -408,7 +408,7 @@ async function test1() {
         .map(n => blake3.newRegister(BigInt(n)));
 
     const h2Regs = blake3.hash(blockWords);
-    let h2 = registersToHex(h2Regs);
+    const h2 = registersToHex(h2Regs);
 
     console.log('h2', h2);
     console.log(`max stack: ${bitcoin.maxStack}    size: ${bitcoin.programSizeInBitcoinBytes()}`);
@@ -433,7 +433,7 @@ async function test2() {
         .map(n => blake3.newRegister(BigInt(n)));
 
     const h2Regs = blake3.hash(blockWords);
-    let h2 = registersToHex(h2Regs);
+    const h2 = registersToHex(h2Regs);
 
     console.log('h2', h2);
     console.log(`max stack: ${bitcoin.maxStack}    size: ${bitcoin.programSizeInBitcoinBytes()}`);
@@ -452,7 +452,7 @@ async function test3() {
     const blake3 = new BLAKE3(bitcoin);
 
     const nibbles: StackItem[] = [];
-    let n = BigInt('0x' + test1Hex);
+    const n = BigInt('0x' + test1Hex);
     for (let i = 0; i < 86; i++) {
         nibbles.push(blake3.mojo.bitcoin.newStackItem((n >> BigInt(i * 3)) & 0x7n));
     }

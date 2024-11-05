@@ -1,8 +1,3 @@
-import groth16Verify, { Key, Proof as Step1_Proof } from '../../generator/step1/verifier';
-import { vKey } from "../../generator/step1/constants";
-import { step1_vm } from "../../generator/step1/vm/vm";
-import { InstrCode } from '../../generator/step1/vm/types';
-
 const PARTS = 2;
 const THRESH = 1;
 const AGENTS = 200;
@@ -24,7 +19,7 @@ function makeRand(): boolean[] {
 
 const agents: Secret[][] = [];
 for (let i = 0; i < AGENTS; i++) agents[i] = [];
-let aindex = 0;
+const aindex = 0;
 for (let i = 0; i < SECRETS; i++) {
     for (let j = 0; j < 2; j++) {
         for (let k = 0; k < PARTS; k++) {
