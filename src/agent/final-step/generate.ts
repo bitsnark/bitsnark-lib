@@ -12,6 +12,7 @@ import { step1_vm } from '../../generator/step1/vm/vm';
 import { StackItem } from '@src/generator/step3/stack';
 import { verifyAddMod, verifyAnd, verifyAndBit, verifyAndNotBit, verifyAssertOne, verifyAssertZero, verifyDivMod, verifyEqual, verifyMov, verifyMulMod, verifyNot, verifyOr, verifySubMod } from './step1_btc';
 import { Compressor } from '../simple-taptree';
+import { agentConf } from '../agent.conf';
 
 const cache: any = {};
 
@@ -101,8 +102,11 @@ export function generateFinalStepTaproot(setupId: string, transactions: Transact
     step1_vm.reset();
     groth16Verify(Key.fromSnarkjs(vKey), Step1_Proof.fromSnarkjs(proof));
     if (!step1_vm.success?.value) throw new Error('Failed.');
-    const program = step1_vm.instructions;
-
+    let program = step1_vm.instructions;
+    if (agentConf.useMockProgram) {
+        console.warn('Using mock program');
+        program = program.slice(0, 1);
+    }
     const started = Date.now();
     let total = 0;
     let max = 0;

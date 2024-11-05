@@ -1,7 +1,7 @@
 import argparse
 import os
 from dataclasses import dataclass
-from typing import Literal
+from typing import Literal, Sequence
 
 from bitcointx.core import CTransaction, COutPoint, CTxIn, CTxOut
 from bitcointx.core.script import CScript
@@ -63,7 +63,7 @@ for keypairs in KEYPAIRS.values():
     assert keypairs['public'] == keypairs['private'].pub
 
 
-def main():
+def main(argv: Sequence[str] = None):
     parser = argparse.ArgumentParser()
     parser.add_argument('--db', default='postgresql://postgres:1234@localhost:5432/postgres')
     parser.add_argument('--all', action='store_true',
@@ -74,8 +74,9 @@ def main():
                         help='Process only transactions with this agent ID. Required if --all is not set')
     parser.add_argument('--role', required=False, choices=['prover', 'verifier'],
                         help='Role of the agent (prover or verifier). Required if --all is not set')
+    parser.add_argument('--no-mocks', default=False, action='store_true', help="Don't use mock inputs")
 
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     if args.all:
         if args.setup_id or args.agent_id:
@@ -121,6 +122,7 @@ def main():
                 dbsession=dbsession,
                 tx_template=tx,
                 role=role,
+                use_mocked_inputs=not args.no_mocks,
             )
             if success:
                 successes.append(tx.name)
@@ -145,8 +147,13 @@ def _handle_tx_template(
     dbsession: Session,
     tx_template: TransactionTemplate,
     role: Role,
+    use_mocked_inputs: bool = True,
 ):
-    if tx_template.name in HARDCODED_MOCK_INPUTS:
+    if tx_template.object.get('external'):
+        print(f"Transaction {tx_template.name} is external, skipping")
+        return True
+
+    if use_mocked_inputs and tx_template.name in HARDCODED_MOCK_INPUTS:
         # assert len(tx_template.inputs) == 0  # cannot do it, this script might have been already run
         tx_inputs: list[CTxIn]  = [
             CTxIn(
@@ -187,10 +194,16 @@ def _handle_tx_template(
             prevout_index = inp['outputIndex']
             prevout = prev_tx.outputs[prevout_index]
 
+            try:
+                prev_tx_hash = bytes.fromhex(prev_txid)[::-1]
+            except ValueError:
+                print(f"Invalid txid {prev_txid} for transaction {prev_tx.name} (required by {tx_template.name} input #{input_index})")
+                raise
+
             tx_inputs.append(
                 CTxIn(
                     COutPoint(
-                        hash=bytes.fromhex(prev_txid)[::-1],
+                        hash=prev_tx_hash,
                         n=inp['outputIndex'],
                     )
                 )
@@ -242,9 +255,7 @@ def _handle_tx_template(
         nVersion=2,
     )
 
-    # TODO: check the endianness (BE/LE) of tx_hash / txid
-    tx_hash = tx.GetTxid()
-    tx_id = tx_hash.hex()
+    tx_id = tx.GetTxid()[::-1].hex()
 
     serialized = tx.serialize()
 
