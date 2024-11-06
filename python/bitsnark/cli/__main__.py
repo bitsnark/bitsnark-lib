@@ -1,6 +1,7 @@
 import argparse
 import sys
 from typing import Sequence
+import logging
 
 from bitcointx import ChainParams
 from sqlalchemy import create_engine
@@ -37,6 +38,11 @@ def main(argv: Sequence[str] = None):
         commands[command.name] = command
 
     args = parser.parse_args(argv)
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(message)s",
+    )
 
     engine = create_engine(args.db)
     dbsession = Session(engine, autobegin=False)

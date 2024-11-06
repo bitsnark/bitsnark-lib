@@ -44,7 +44,7 @@ class ShowCommand(Command):
                 TransactionTemplate,
                 (tx_template.agent_id, tx_template.setup_id, prev_tx_name)
             )
-            prev_txid = prev_tx.txId
+            prev_txid = prev_tx.tx_id
             prevout_index = inp['outputIndex']
             sc_index = inp['spendingConditionIndex']
             index = inp['index']

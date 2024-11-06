@@ -1,15 +1,30 @@
-import os
 import argparse
-from decimal import Decimal
+import itertools
+import logging
+import os
 
 from bitcointx.core import CMutableTransaction, CTxIn, CTxOut, COutPoint, CTransaction, CTxInWitness, CTxWitness
 from bitcointx.core.key import CKey
-from bitcointx.core.psbt import PartiallySignedTransaction
-from bitcointx.core.script import CScript, CScriptWitness
+from bitcointx.core.script import CScript, CScriptWitness, OP_RETURN
 from bitcointx.wallet import CCoinAddress
 
 from bitsnark.core.parsing import parse_bignum, parse_hex_bytes
-from ._base import Command, add_tx_template_args, find_tx_template, Context
+from ._base import Command, add_tx_template_args, find_tx_template, Context, get_default_prover_privkey_hex, \
+    get_default_verifier_privkey_hex
+
+logger = logging.getLogger(__name__)
+
+
+class TestMempoolAcceptFailure(Exception):
+    def __init__(
+        self,
+        *,
+        reject_reason: str,
+        raw_result = None,
+    ):
+        super().__init__(reject_reason)
+        self.reject_reason = reject_reason
+        self.raw_result = raw_result
 
 
 class SpendCommand(Command):
@@ -25,13 +40,15 @@ class SpendCommand(Command):
         parser.add_argument('--prevout', required=True, help='Previous output as txid:vout')
         parser.add_argument('--prover-privkey',
                             help='Prover schnorr private key as hex for signing',
-                            default=os.getenv('PROVER_SCHNORR_PRIVATE',
-                                              '415c69b837f4146019574f59c223054c8c144ac61b6ae87bc26824c0f8d034e2'))
+                            default=get_default_prover_privkey_hex())
         parser.add_argument('--verifier-privkey',
                             help='Verifier schnorr private key as hex for signing',
-                            default=os.getenv('VERIFIER_SCHNORR_PRIVATE',
-                                              'd4067af1132afcb352b0edef53d8aa2a5fc713df61dee31b1d937e69ece0ebf0'))
-        parser.add_argument('--to-address', help='Address to send the funds to', required=False)
+                            default=get_default_verifier_privkey_hex())
+        parser.add_argument('--to-address', default='OP_RETURN',
+                            help='Address to send the funds to. Omit or specify OP_RETURN to spend all as fees')
+        parser.add_argument('--amount',
+                            type=int,
+                            help='Amount to send to the output (default: 0 if OP_RETURN, else input amount / 2')
         # parser.add_argument('--fee-rate', help='Fee rate in sat/vb', type=float, default=10)
 
     def run(
@@ -41,10 +58,7 @@ class SpendCommand(Command):
         args = context.args
         tx_template = find_tx_template(context)
         bitcoin_rpc = context.bitcoin_rpc
-        to_address = args.to_address
-        if not to_address:
-            to_address = bitcoin_rpc.call('getnewaddress')
-        to_address = CCoinAddress(to_address)
+
         prover_privkey = CKey.fromhex(args.prover_privkey)
         verifier_privkey = CKey.fromhex(args.verifier_privkey)
 
@@ -57,9 +71,29 @@ class SpendCommand(Command):
         spending_condition = output_spec["spendingConditions"][args.spending_condition]
         tapscript = CScript(parse_hex_bytes(spending_condition['script']))
 
-        print(
-            f"Spending the output {args.prevout}, assuming it corresponds to the {tx_template.name} output with "
-            f"spending condition {args.spending_condition}, to {to_address}"
+        to_address = args.to_address
+        if not to_address or to_address == 'OP_RETURN':
+            to_script_pubkey = CScript([OP_RETURN, b'There must be some filler here or the TX will get rejected'])
+            if args.amount is not None:
+                amount_sat_out = int(args.amount)
+            else:
+                amount_sat_out = 0
+        else:
+            to_script_pubkey = CCoinAddress(to_address).to_scriptPubKey()
+            if args.amount is not None:
+                amount_sat_out = int(args.amount)
+            else:
+                amount_sat_out = amount_sat // 2
+
+        logger.info(
+            "Spending the output %s, assuming it corresponds to the %s output with spending condition %s, to %s "
+            "(amount in: %s sat, amount out: %s sat)",
+            args.prevout,
+            tx_template.name,
+            args.spending_condition,
+            to_address,
+            amount_sat,
+            amount_sat_out,
         )
 
         inputs = [
@@ -76,11 +110,10 @@ class SpendCommand(Command):
                 scriptPubKey=script_pubkey,
             )
         ]
-        amount_sat_out = amount_sat // 2  # TODO: handle fee more gracefully
         outputs = [
             CTxOut(
                 nValue=amount_sat_out,
-                scriptPubKey=to_address.to_scriptPubKey(),
+                scriptPubKey=to_script_pubkey,
             )
         ]
 
@@ -108,7 +141,8 @@ class SpendCommand(Command):
         tapscript = parse_hex_bytes(spending_condition['script'])
         example_witness = [
             parse_hex_bytes(s) for s in
-            spending_condition['exampleWitness'][0]  # ??? what index
+            # This flattens the list of lists
+            itertools.chain.from_iterable(spending_condition['exampleWitness'])
         ]
         input_witnesses = [
             CTxInWitness(CScriptWitness(
@@ -129,14 +163,19 @@ class SpendCommand(Command):
             'testmempoolaccept',
             [serialized_tx],
         )
-        assert mempool_accept[0]['allowed'], mempool_accept
+        if not mempool_accept[0]['allowed']:
+            logger.info("Mempool rejection: %s", mempool_accept)
+            raise TestMempoolAcceptFailure(
+                reject_reason=mempool_accept[0]['reject-reason'],
+                raw_result=mempool_accept,
+            )
 
         tx_id = bitcoin_rpc.call(
             'sendrawtransaction',
             serialized_tx,
         )
-        print(tx_id)
-        assert tx_id == tx_template.txId
+        logger.info("%s", tx_id)
+        assert tx_id == tx_template.tx_id
         bitcoin_rpc.mine_blocks()
 
 
