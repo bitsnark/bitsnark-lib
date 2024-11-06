@@ -1,6 +1,6 @@
 import { Transaction } from "./transactions-new";
 import { execFileSync } from 'node:child_process';
-import { readTransactions, writeTransactions } from "./db";
+import { readTemplates, writeTemplates } from "./db";
 import { AgentRoles, TransactionNames } from "./common";
 
 export async function signTransactions(
@@ -9,7 +9,7 @@ export async function signTransactions(
     setupId: string,
     transactions: Transaction[]): Promise<Transaction[]> {
 
-    await writeTransactions(agentId, role, setupId, transactions);
+    await writeTemplates(agentId, role, setupId, transactions);
 
     // On macOS, "System Integrety Protection" clears the DYLD_FALLBACK_LIBRARY_PATH,
     // which leaves the Python executable unable to find the secp256k1 library installed by Homebrew.
@@ -34,7 +34,7 @@ export async function signTransactions(
         throw error;
     }
 
-    transactions = await readTransactions(agentId, setupId);
+    transactions = await readTemplates(agentId, setupId);
     for (const transaction of transactions) {
         if (transaction.transactionName == TransactionNames.PROOF_REFUTED) continue;
         if (!transaction.txId)
@@ -51,7 +51,7 @@ export async function signTransactions(
 async function main() {
     const agentId = 'bitsnark_prover_1';
     const setupId = 'test_setup';
-    const transactions = await readTransactions(agentId, setupId)
+    const transactions = await readTemplates(agentId, setupId)
     signTransactions(AgentRoles.PROVER, agentId, setupId, transactions).catch(console.error);
 }
 

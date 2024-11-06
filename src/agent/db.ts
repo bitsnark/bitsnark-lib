@@ -125,7 +125,7 @@ export async function dev_ClearTemplates(agentId: string, setupId: string) {
     );
 }
 
-export async function writeTransaction(agentId: string, agentRole: AgentRoles, setupId: string, transaction: Transaction) {
+export async function writeTemplate(agentId: string, agentRole: AgentRoles, setupId: string, transaction: Transaction) {
     const jsonizedObject = jsonizeObject(transaction);
     const result = await runQuery(
         `INSERT INTO templates
@@ -138,11 +138,11 @@ export async function writeTransaction(agentId: string, agentRole: AgentRoles, s
     );
 }
 
-export async function writeTransactions(agentId: string, agentRole: AgentRoles, setupId: string, transactions: Transaction[]) {
-    for (const t of transactions) await writeTransaction(agentId, agentRole, setupId, t);
+export async function writeTemplates(agentId: string, agentRole: AgentRoles, setupId: string, transactions: Transaction[]) {
+    for (const t of transactions) await writeTemplate(agentId, agentRole, setupId, t);
 }
 
-export async function readTransactions(agentId: string, setupId?: string): Promise<Transaction[]> {
+export async function readTemplates(agentId: string, setupId?: string): Promise<Transaction[]> {
     const result = await runQuery(`
         SELECT * FROM templates
         WHERE
@@ -154,7 +154,7 @@ export async function readTransactions(agentId: string, setupId?: string): Promi
     return results.map(r => unjsonizeObject(r['object']));
 }
 
-export async function readPendingTransactions() {
+export async function readAwaitIncoming() {
     const result = await runQuery(`
         SELECT transaction_id, template_id
         FROM outgoing
@@ -168,7 +168,7 @@ export async function readPendingTransactions() {
 }
 
 
-export async function writeTransmittedTransaction(transmittedRaw: TxRawData, blockHeight: number, templateId: number) {
+export async function writeIncomingTransaction(transmittedRaw: TxRawData, blockHeight: number, templateId: number) {
     const result = await runQuery(
         `INSERT INTO incoming(
 	        transaction_id, template_id, raw_tx, block_height)
@@ -181,7 +181,7 @@ export async function writeTransmittedTransaction(transmittedRaw: TxRawData, blo
     );
 }
 
-export async function readTransmittedTransactions(setupId: string): Promise<Incoming[]> {
+export async function readIncomingTransactions(setupId: string): Promise<Incoming[]> {
     const result = await runQuery(`
         SELECT incoming.transaction_id, template_id, block_height, raw_tx, updated
         FROM incoming INNER JOIN templates

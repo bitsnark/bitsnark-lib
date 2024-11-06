@@ -1,5 +1,5 @@
 import { AgentRoles } from './common';
-import { readTransactions, readTransmittedTransactions } from './db';
+import { readTemplates, readIncomingTransactions } from './db';
 import { Transaction, getTransactionByName, findOutputByInput } from './transactions-new';
 
 interface Output {
@@ -69,7 +69,7 @@ function getUnspentOutputs(outputsMap: Map<string, TransactionOutputs>, transmit
 async function getPublishableTransactions(
     setupId: string, agentRole: AgentRoles, outputsMap: Map<string, TransactionOutputs>, currentHeight: number
 ): Promise<string[]> {
-    const transmitted = await readTransmittedTransactions(setupId);
+    const transmitted = await readIncomingTransactions(setupId);
     const unspentOutputs = getUnspentOutputs(outputsMap, transmitted.map(transmittedTx => transmittedTx.txId));
     return Array.from(outputsMap.entries()).filter(([txId, outputs]) => {
         return outputs.role === agentRole && outputs.spentOutputs.every(output => unspentOutputs.some(unspentOutput =>
@@ -85,7 +85,7 @@ async function getPublishableTransactions(
 export async function execute(
     setupId: string, agentId: string, agentRole: AgentRoles, outputsMap?: Map<string, TransactionOutputs>
 ) {
-    if (!outputsMap) outputsMap = getOutputsMap(await readTransactions(agentId, setupId));
+    if (!outputsMap) outputsMap = getOutputsMap(await readTemplates(agentId, setupId));
     const currentHeight = 0;  // TODO: Get current height from our node.
     console.warn('Only getting publishable transactions for now');
     return getPublishableTransactions(setupId, agentRole, outputsMap, currentHeight);
@@ -97,7 +97,7 @@ async function main() {
     const providedAgentRole = process.argv[4]?.toUpperCase();
     const agentRole = providedAgentRole in AgentRoles ? providedAgentRole as AgentRoles : AgentRoles.PROVER;
     console.log(`Executing protocol for agent ${agentId} in setup ${setupId} as ${agentRole}`);
-    const transactions = await readTransactions(agentId, setupId);
+    const transactions = await readTemplates(agentId, setupId);
     const outputsMap = getOutputsMap(transactions);
     setInterval(async () => {
         console.debug((await execute(setupId, agentId, agentRole, outputsMap)).map(txId => outputsMap.get(txId)!.name));

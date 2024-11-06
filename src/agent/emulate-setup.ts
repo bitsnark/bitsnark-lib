@@ -1,7 +1,7 @@
 import { agentConf } from "./agent.conf";
 import { addAmounts, validateTransactionFees } from "./amounts";
 import { AgentRoles } from "./common";
-import { dev_ClearTemplates, SetupStatus, writeSetupStatus, writeTransactions } from "./db";
+import { dev_ClearTemplates, SetupStatus, writeSetupStatus, writeTemplates } from "./db";
 import { generateAllScripts } from "./generate-scripts";
 import { signTransactions } from "./sign-transactions";
 import { initializeTransactions, mergeWots, Transaction } from "./transactions-new";
@@ -38,10 +38,10 @@ export async function emulateSetup(proverAgentId: string, verifierAgentId: strin
         throw new Error('Invalid length of template list?');
 
     proverTemplates = mergeWots(AgentRoles.PROVER, proverTemplates, verifierTemplates);
-    await writeTransactions(proverAgentId, AgentRoles.PROVER, setupId, proverTemplates);
+    await writeTemplates(proverAgentId, AgentRoles.PROVER, setupId, proverTemplates);
 
     verifierTemplates = mergeWots(AgentRoles.VERIFIER, verifierTemplates, proverTemplates);
-    await writeTransactions(verifierAgentId, AgentRoles.VERIFIER, setupId, verifierTemplates);
+    await writeTemplates(verifierAgentId, AgentRoles.VERIFIER, setupId, verifierTemplates);
 
     async function generateScripts(agentId: string, role: AgentRoles, transactions: Transaction[]) {
         await generateAllScripts(agentId, setupId, role, transactions);

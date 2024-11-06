@@ -1,4 +1,4 @@
-import { readPendingTransactions, writeTransmittedTransaction } from './db';
+import { readAwaitIncoming, writeIncomingTransaction } from './db';
 import { agentConf } from './agent.conf';
 import { BitcoinNode, TxRawData } from './bitcoin-node';
 
@@ -33,13 +33,13 @@ export class NodeListener {
     }
 
     async monitorTransmitted() {
-        const pending = await readPendingTransactions();
+        const pending = await readAwaitIncoming();
         for (const pendingTx of pending) {
             try {
                 const rawTx: TxRawData = await this.client.getRawTransaction(pendingTx.txId, true);
                 if (rawTx && rawTx.confirmations >= agentConf.blocksUntilFinalized) {
                     const block = await this.client.getBlock(rawTx.blockhash);
-                    writeTransmittedTransaction(rawTx, block.blockheight, pendingTx.templateId);
+                    writeIncomingTransaction(rawTx, block.blockheight, pendingTx.templateId);
                 }
             } catch (error) { continue }
         }

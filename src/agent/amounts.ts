@@ -1,7 +1,7 @@
 import { AgentRoles, TransactionNames } from './common';
 import { agentConf } from './agent.conf';
 import { findOutputByInput, getTransactionByName, Transaction } from './transactions-new';
-import { readTransactions, writeTransactions } from './db';
+import { readTemplates, writeTemplates } from './db';
 
 const externallyFundedTxs: string[] = [
     TransactionNames.LOCKED_FUNDS,
@@ -26,7 +26,7 @@ function calculateTransactionFee(transaction: Transaction): bigint {
 
 export async function addAmounts(agentId: string, agentRole: AgentRoles, setupId: string): Promise<Transaction[]> {
 
-    let transactions = await readTransactions(agentId, setupId);
+    let transactions = await readTemplates(agentId, setupId);
 
     function addAmounts(transaction: Transaction): Transaction {
         if (externallyFundedTxs.includes(transaction.transactionName)) return transaction;
@@ -50,7 +50,7 @@ export async function addAmounts(agentId: string, agentRole: AgentRoles, setupId
 
     transactions = transactions.map(addAmounts);
     validateTransactionFees(transactions);
-    await writeTransactions(agentId, agentRole, setupId, transactions);
+    await writeTemplates(agentId, agentRole, setupId, transactions);
 
     return transactions;
 }

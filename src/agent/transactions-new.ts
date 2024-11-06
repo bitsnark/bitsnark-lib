@@ -2,7 +2,7 @@ import { TransactionNames, AgentRoles, FundingUtxo, iterations, twoDigits, rando
 import { encodeWinternitz, getWinternitzPublicKeys, WOTS_NIBBLES, WotsType } from './winternitz';
 import { agentConf } from './agent.conf';
 import { calculateStateSizes } from './regs-calc';
-import { dev_ClearTemplates, SetupStatus, writeSetupStatus, writeTransactions } from './db';
+import { dev_ClearTemplates, SetupStatus, writeSetupStatus, writeTemplates } from './db';
 
 export const PROTOCOL_VERSION = 0.1;
 
@@ -514,7 +514,7 @@ export async function initializeTransactions(
         }
     }
 
-    await writeTransactions(agentId, role, setupId, transactions);
+    await writeTemplates(agentId, role, setupId, transactions);
 
     return transactions;
 }

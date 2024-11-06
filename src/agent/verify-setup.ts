@@ -1,12 +1,10 @@
-import { readTransactions } from "./db";
+import { readTemplates } from "./db";
 import { TransactionNames } from "./common";
 import { getSpendingConditionByInput, SignatureType } from "./transactions-new";
 
 export async function verifySetup(agentId: string, setupId: string) {
-
-
     // read from db
-    const transactions = await readTransactions(agentId, setupId);
+    const transactions = await readTemplates(agentId, setupId);
     console.log('Loaded ', transactions.length, 'transactions');
     if (transactions.length < 85) {
         console.error('Not enough transactions found');

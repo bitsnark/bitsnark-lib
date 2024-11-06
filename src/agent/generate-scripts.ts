@@ -6,7 +6,7 @@ import { SimpleTapTree } from './simple-taptree';
 import { agentConf } from './agent.conf';
 import { Buffer } from 'node:buffer';
 import { findOutputByInput, getTransactionByName, Input, Output, Transaction } from './transactions-new';
-import { readTransactions, writeTransactions } from './db';
+import { readTemplates, writeTemplates } from './db';
 import { generateFinalStepTaproot } from './final-step/generate';
 
 const DEAD_SCRIPT = Buffer.from([0x6a]); // opcode fails transaction
@@ -187,7 +187,7 @@ export async function generateAllScripts(
     // generate the taproot key for all outputs except in the argument tx
     setTaprootKey(transactions);
 
-    await writeTransactions(agentId, myRole, setupId, transactions);
+    await writeTemplates(agentId, myRole, setupId, transactions);
 
     return transactions;
 }
@@ -195,7 +195,7 @@ export async function generateAllScripts(
 async function main() {
     const agentId = process.argv[2] ?? 'bitsnark_prover_1';
     const setupId = 'test_setup';
-    const transactions = await readTransactions(agentId, setupId);
+    const transactions = await readTemplates(agentId, setupId);
     await generateAllScripts(agentId, 'test_setup', AgentRoles.PROVER, transactions);
 }
 
