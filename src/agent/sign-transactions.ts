@@ -9,7 +9,7 @@ export async function signTransactions(
     setupId: string,
     transactions: Transaction[]): Promise<Transaction[]> {
 
-    await writeTransactions(agentId, setupId, transactions);
+    await writeTransactions(agentId, role, setupId, transactions);
 
     // On macOS, "System Integrety Protection" clears the DYLD_FALLBACK_LIBRARY_PATH,
     // which leaves the Python executable unable to find the secp256k1 library installed by Homebrew.

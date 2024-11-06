@@ -1,4 +1,4 @@
-import { TransactionNames } from './common';
+import { AgentRoles, TransactionNames } from './common';
 import { agentConf } from './agent.conf';
 import { findOutputByInput, getTransactionByName, Transaction } from './transactions-new';
 import { readTransactions, writeTransactions } from './db';
@@ -24,7 +24,7 @@ function calculateTransactionFee(transaction: Transaction): bigint {
     return factoredFee + 1n;
 }
 
-export async function addAmounts(agentId: string, setupId: string): Promise<Transaction[]> {
+export async function addAmounts(agentId: string, agentRole: AgentRoles, setupId: string): Promise<Transaction[]> {
 
     let transactions = await readTransactions(agentId, setupId);
 
@@ -50,7 +50,7 @@ export async function addAmounts(agentId: string, setupId: string): Promise<Tran
 
     transactions = transactions.map(addAmounts);
     validateTransactionFees(transactions);
-    await writeTransactions(agentId, setupId, transactions);
+    await writeTransactions(agentId, agentRole, setupId, transactions);
 
     return transactions;
 }
@@ -97,8 +97,9 @@ export function validateTransactionFees(transactions: Transaction[]) {
 
 async function main() {
     const agentId = process.argv[2] ?? 'bitsnark_prover_1';
+    const role = process.argv[2] === 'bitsnark_prover_1' || !process.argv[2] ? AgentRoles.PROVER : AgentRoles.VERIFIER;
     const setupId = 'test_setup';
-    await addAmounts(agentId, setupId);
+    await addAmounts(agentId, role, setupId);
 }
 
 const scriptName = __filename;

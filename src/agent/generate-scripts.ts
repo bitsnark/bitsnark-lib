@@ -187,7 +187,7 @@ export async function generateAllScripts(
     // generate the taproot key for all outputs except in the argument tx
     setTaprootKey(transactions);
 
-    await writeTransactions(agentId, setupId, transactions);
+    await writeTransactions(agentId, myRole, setupId, transactions);
 
     return transactions;
 }

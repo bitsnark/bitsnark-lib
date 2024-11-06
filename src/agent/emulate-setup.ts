@@ -1,7 +1,7 @@
 import { agentConf } from "./agent.conf";
 import { addAmounts, validateTransactionFees } from "./amounts";
 import { AgentRoles } from "./common";
-import { clearTransactions, writeTransactions } from "./db";
+import { dev_ClearTemplates, SetupStatus, writeSetupStatus, writeTransactions } from "./db";
 import { generateAllScripts } from "./generate-scripts";
 import { signTransactions } from "./sign-transactions";
 import { initializeTransactions, mergeWots, Transaction } from "./transactions-new";
@@ -10,8 +10,11 @@ import { verifySetup } from "./verify-setup";
 
 export async function emulateSetup(proverAgentId: string, verifierAgentId: string, setupId: string) {
 
-    console.log('Deleting transactions...');
-    await clearTransactions(proverAgentId, setupId);
+    console.log('Deleting template...');
+    await dev_ClearTemplates(proverAgentId, setupId);
+
+    console.log('Createing / updating setup status...');
+    await writeSetupStatus(setupId, SetupStatus.PENDING);
 
     const mockLockedFunds = {
         txId: '0000000000000000000000000000000000000000000000000000000000000000',
@@ -35,14 +38,14 @@ export async function emulateSetup(proverAgentId: string, verifierAgentId: strin
         throw new Error('Invalid length of template list?');
 
     proverTemplates = mergeWots(AgentRoles.PROVER, proverTemplates, verifierTemplates);
-    await writeTransactions(proverAgentId, setupId, proverTemplates);
+    await writeTransactions(proverAgentId, AgentRoles.PROVER, setupId, proverTemplates);
 
     verifierTemplates = mergeWots(AgentRoles.VERIFIER, verifierTemplates, proverTemplates);
-    await writeTransactions(verifierAgentId, setupId, verifierTemplates);
+    await writeTransactions(verifierAgentId, AgentRoles.VERIFIER, setupId, verifierTemplates);
 
     async function generateScripts(agentId: string, role: AgentRoles, transactions: Transaction[]) {
         await generateAllScripts(agentId, setupId, role, transactions);
-        transactions = await addAmounts(agentId, setupId);
+        transactions = await addAmounts(agentId, AgentRoles.VERIFIER, setupId);
         validateTransactionFees(transactions);
     }
 
@@ -53,8 +56,8 @@ export async function emulateSetup(proverAgentId: string, verifierAgentId: strin
 
     console.log('adding amounts...');
 
-    proverTemplates = await addAmounts(proverAgentId, setupId);
-    verifierTemplates = await addAmounts(verifierAgentId, setupId);
+    proverTemplates = await addAmounts(proverAgentId, AgentRoles.PROVER, setupId);
+    verifierTemplates = await addAmounts(verifierAgentId, AgentRoles.VERIFIER, setupId);
 
     console.log('signing...');
 

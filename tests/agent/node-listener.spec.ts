@@ -50,8 +50,8 @@ describe('NodeListener', () => {
 
     function getPendingTransactions() {
         return [
-            { setupId: 'mock-test', txId: 'txId1' },
-            { setupId: 'mock-test', txId: 'txId2' },
+            { templateId: 1, txId: 'txId1' },
+            { templateId: 2, txId: 'txId2' },
         ];
     }
 
@@ -107,7 +107,7 @@ describe('NodeListener', () => {
         expect(clientMock.getTransaction).toHaveBeenCalledTimes(2);
         expect(clientMock.getRawTransaction).toHaveBeenCalledTimes(1);
         expect(writeTransmittedTransaction).toHaveBeenCalledTimes(1);
-        expect(writeTransmittedTransaction).toHaveBeenCalledWith(addSetupIdToData(Tx2Block5), addSetupIdToData(Raw2Block5));
+        expect(writeTransmittedTransaction).toHaveBeenCalledWith(Tx2Block5, Raw2Block5);
     });
 
     it('Ignore \'Transaction not found\' error', async () => {
@@ -125,7 +125,7 @@ describe('NodeListener', () => {
         expect(clientMock.getTransaction).toHaveBeenCalledTimes(2);
         expect(clientMock.getRawTransaction).toHaveBeenCalledTimes(1);
         expect(writeTransmittedTransaction).toHaveBeenCalledTimes(1);
-        expect(writeTransmittedTransaction).toHaveBeenCalledWith(addSetupIdToData(Tx2Block5), addSetupIdToData(Raw2Block5));
+        expect(writeTransmittedTransaction).toHaveBeenCalledWith(Tx2Block5, Raw2Block5);
     });
 
     it('on\'t write to DB if new transmitted aren\'t finalized', async () => {

@@ -14,7 +14,7 @@ CREATE TYPE public.role AS ENUM ( 'PROVER', 'VERIFIER' );
 CREATE TABLE public.templates (
     template_id SERIAL PRIMARY KEY,
     name CHARACTER VARYING NOT NULL,
-    setup_id CHARACTER VARYING NOT NULL,
+    setup_id CHARACTER VARYING NOT NULL REFERENCES public.setups(setup_id),
     agent_id CHARACTER VARYING NOT NULL,
     role public.role NOT NULL,
     is_external BOOLEAN NOT NULL DEFAULT FALSE,
@@ -44,9 +44,5 @@ CREATE TABLE public.incoming (
     transaction_id CHARACTER VARYING PRIMARY KEY,
     template_id INTEGER REFERENCES public.templates NOT NULL,
     raw_tx JSONB NOT NULL,
-    block_height INTEGER NOT NULL,
-    updated TIMESTAMP NOT NULL DEFAULT NOW()
+    block_height INTEGER NOT NULL
 );
-
-CREATE INDEX incoming_id_idx ON public.incoming (status);
-CREATE INDEX incoming_updated_idx ON public.incoming (updated);

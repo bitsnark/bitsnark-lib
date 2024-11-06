@@ -1,6 +1,6 @@
 import { readPendingTransactions, writeTransmittedTransaction } from './db';
 import { agentConf } from './agent.conf';
-import { BitcoinNode, TxData, TxRawData } from './bitcoin-node';
+import { BitcoinNode, TxRawData } from './bitcoin-node';
 
 const checkNodeInterval = 60000;
 
@@ -36,17 +36,10 @@ export class NodeListener {
         const pending = await readPendingTransactions();
         for (const pendingTx of pending) {
             try {
-                const transmittedTx: TxData = await this.client.getTransaction(pendingTx.txId);
-                if (transmittedTx &&
-                    this.lastBlockHeight - transmittedTx.blockheight >= agentConf.blocksUntilFinalized) {
-
-                    const transmittedRawTx: TxRawData =
-                        await this.client.getRawTransaction(pendingTx.txId, true, transmittedTx.blockhash)
-
-                    writeTransmittedTransaction(
-                        { setupId: pendingTx.setupId, ...transmittedTx },
-                        { setupId: pendingTx.setupId, ...transmittedRawTx }
-                    );
+                const rawTx: TxRawData = await this.client.getRawTransaction(pendingTx.txId, true);
+                if (rawTx && rawTx.confirmations >= agentConf.blocksUntilFinalized) {
+                    const block = await this.client.getBlock(rawTx.blockhash);
+                    writeTransmittedTransaction(rawTx, block.blockheight, pendingTx.templateId);
                 }
             } catch (error) { continue }
         }

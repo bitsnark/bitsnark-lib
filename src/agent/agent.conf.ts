@@ -32,6 +32,7 @@ interface AgentConf {
     postgresBigints: boolean;
     postgresKeepAlive: boolean;
     blocksUntilFinalized: number;
+    protocolVersion: number;
 };
 
 function getIntegerFromEnv(name: string, defaultValue: number): number {
@@ -82,5 +83,6 @@ export const agentConf: AgentConf = {
     postgresPassword: process.env['POSTGRES_PASSWORD'] ?? '1234',
     postgresBigints: Boolean(process.env['POSTGRES_BIGINTS'] ?? 'true'),
     postgresKeepAlive: Boolean(process.env['POSTGRES_KEEP_ALIVE'] ?? 'true'),
-    blocksUntilFinalized: getIntegerFromEnv('BLOCKS_UNTIL_FINALIZED', 0) // 6
+    blocksUntilFinalized: getIntegerFromEnv('BLOCKS_UNTIL_FINALIZED', 0), // 6
+    protocolVersion: 1 //incremant as changing versions
 };

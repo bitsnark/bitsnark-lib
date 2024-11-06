@@ -218,12 +218,12 @@ export class Agent {
 
         if (this.role == AgentRoles.PROVER) {
             i.transactions = await generateAllScripts(this.agentId, i.setupId, this.role, i.transactions!);
-            i.transactions = await addAmounts(this.agentId, i.setupId);
+            i.transactions = await addAmounts(this.agentId, this.role, i.setupId);
             this.sendSignatures(ctx, i.setupId);
         } else {
             await this.sendTransactions(ctx, i.setupId);
             i.transactions = await generateAllScripts(this.agentId, i.setupId, this.role, i.transactions!);
-            i.transactions = await addAmounts(this.agentId, i.setupId);
+            i.transactions = await addAmounts(this.agentId, this.role, i.setupId);
         }
     }
 
