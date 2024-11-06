@@ -1,4 +1,4 @@
-CREATE TYPE public.setup_status AS ENUM ( 'PENDING', 'READY', 'SIGNED', 'FAILED' );
+CREATE TYPE public.setup_status AS ENUM ( 'PENDING', 'READY', 'SIGNED', 'FAILED', 'FINISHED' );
 
 CREATE TABLE public.setups (
     setup_id CHARACTER VARYING PRIMARY KEY,
