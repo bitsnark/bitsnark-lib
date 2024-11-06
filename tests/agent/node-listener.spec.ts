@@ -48,15 +48,12 @@ describe('NodeListener', () => {
         });
     };
 
-    function getPendingTransactions() {
-        return [
-            { templateId: 1, txId: 'txId1' },
-            { templateId: 2, txId: 'txId2' },
-        ];
-    }
+    const tx1 = { templateId: 1, txId: 'txId1' };
+    const tx2 = { templateId: 2, txId: 'txId2' };
 
-    function addSetupIdToData(obj: any) {
-        return { setupId: 'mock-test', ...obj };
+
+    function getPendingTransactions() {
+        return [tx1, tx2];
     }
 
     const Tx1Block12 = { txid: 'txId1', blockheight: 12, blockhash: 'hash12' };
@@ -107,7 +104,7 @@ describe('NodeListener', () => {
         expect(clientMock.getTransaction).toHaveBeenCalledTimes(2);
         expect(clientMock.getRawTransaction).toHaveBeenCalledTimes(1);
         expect(writeIncomingTransaction).toHaveBeenCalledTimes(1);
-        expect(writeIncomingTransaction).toHaveBeenCalledWith(Tx2Block5, Raw2Block5);
+        expect(writeIncomingTransaction).toHaveBeenCalledWith(Raw2Block5, Tx2Block5.blockheight, tx2.templateId);
     });
 
     it('Ignore \'Transaction not found\' error', async () => {
@@ -125,7 +122,7 @@ describe('NodeListener', () => {
         expect(clientMock.getTransaction).toHaveBeenCalledTimes(2);
         expect(clientMock.getRawTransaction).toHaveBeenCalledTimes(1);
         expect(writeIncomingTransaction).toHaveBeenCalledTimes(1);
-        expect(writeIncomingTransaction).toHaveBeenCalledWith(Tx2Block5, Raw2Block5);
+        expect(writeIncomingTransaction).toHaveBeenCalledWith(Raw2Block5, Tx2Block5.blockheight, tx2.templateId);
     });
 
     it('on\'t write to DB if new transmitted aren\'t finalized', async () => {
