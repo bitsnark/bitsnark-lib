@@ -11,6 +11,7 @@ from sqlalchemy.orm.session import Session
 from sqlalchemy.orm.attributes import flag_modified
 
 from bitsnark.core.parsing import parse_bignum, parse_hex_bytes, serialize_hex
+from .signing import sign_input
 from .models import TransactionTemplate
 
 Role = Literal['prover', 'verifier']
@@ -264,7 +265,7 @@ def _handle_tx_template(
     tx_template.object['txId'] = tx_id
     tx_template.object['serializedTx'] = serialize_hex(serialized)
     for i, inp in enumerate(tx_inputs):
-        signature = _sign_input(
+        signature = sign_input(
             script=input_tapscripts[i],
             tx=tx,
             input_index=i,
@@ -287,18 +288,6 @@ def _handle_tx_template(
     flag_modified(tx_template, 'object')
 
     return True
-
-
-def _sign_input(
-    *,
-    script: CScript,
-    tx: CTransaction,
-    input_index: int,
-    spent_outputs: list[CTxOut],
-    private_key: CKey,
-) -> bytes:
-    sighash = script.sighash_schnorr(tx, input_index, spent_outputs=spent_outputs)
-    return private_key.sign_schnorr_no_tweak(sighash)
 
 
 if __name__ == "__main__":

@@ -9,6 +9,7 @@ from bitcointx.core.script import CScript, CScriptWitness, OP_RETURN
 from bitcointx.wallet import CCoinAddress
 
 from bitsnark.core.parsing import parse_bignum, parse_hex_bytes
+from bitsnark.core.signing import sign_input
 from ._base import Command, add_tx_template_args, find_tx_template, Context, get_default_prover_privkey_hex, \
     get_default_verifier_privkey_hex
 
@@ -122,14 +123,14 @@ class SpendCommand(Command):
             vout=outputs,
             nVersion=2,
         )
-        prover_signature = _sign_input(
+        prover_signature = sign_input(
             script=tapscript,
             tx=tx,
             input_index=0,
             spent_outputs=spent_outputs,
             private_key=prover_privkey,
         )
-        verifier_signature = _sign_input(
+        verifier_signature = sign_input(
             script=tapscript,
             tx=tx,
             input_index=0,
@@ -177,15 +178,3 @@ class SpendCommand(Command):
         logger.info("%s", tx_id)
         assert tx_id == tx_template.tx_id
         bitcoin_rpc.mine_blocks()
-
-
-def _sign_input(
-    *,
-    script: CScript,
-    tx: CTransaction,
-    input_index: int,
-    spent_outputs: list[CTxOut],
-    private_key: CKey,
-) -> bytes:
-    sighash = script.sighash_schnorr(tx, input_index, spent_outputs=spent_outputs)
-    return private_key.sign_schnorr_no_tweak(sighash)

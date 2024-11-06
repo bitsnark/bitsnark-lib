@@ -13,12 +13,14 @@ from .fund_and_send import FundAndSendCommand
 from .show import ShowCommand
 from .spend import SpendCommand
 from .test_spending_conditions import TestSpendingConditionsCommand
+from .test_scripts import TestScriptsCommand
 
 COMMAND_CLASSES = [
     FundAndSendCommand,
     ShowCommand,
     SpendCommand,
     TestSpendingConditionsCommand,
+    TestScriptsCommand,
 ]
 
 
