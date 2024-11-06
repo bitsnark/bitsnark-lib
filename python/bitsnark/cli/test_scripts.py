@@ -369,3 +369,7 @@ class TestScriptsCommand(Command):
         )
         logger.info("tx send successfully: %s", tx_id)
         bitcoin_rpc.mine_blocks()
+        return Result(
+            test_case=test_case,
+            success=True,
+        )
