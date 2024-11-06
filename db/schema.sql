@@ -1,0 +1,56 @@
+CREATE TYPE public.setup_status AS ENUM ( 'pending', 'ready', 'signed', 'failed' );
+
+CREATE TABLE public.setups (
+    setup_id CHARACTER VARYING PRIMARY KEY,
+    protocol_version CHARACTER VARYING NOT NULL,
+    status public.setup_status NOT NULL DEFAULT 'pending'
+);
+
+CREATE INDEX setups_status_idx ON public.setups (status);
+
+
+CREATE TYPE public.role AS ENUM ( 'prover', 'verifier' );
+
+CREATE TABLE public.templates (
+    template_id SERIAL PRIMARY KEY,
+    name CHARACTER VARYING NOT NULL,
+    setup_id CHARACTER VARYING NOT NULL,
+    agent_id CHARACTER VARYING NOT NULL,
+    role public.role NOT NULL,
+    is_external BOOLEAN NOT NULL DEFAULT FALSE,
+    ordinal INTEGER NOT NULL,
+    object JSONB NOT NULL,
+    UNIQUE (name, setup_id, agent_id)
+);
+
+CREATE INDEX templates_name_setup_id_agent_id_idx ON public.templates (name, setup_id, agent_id);
+
+
+CREATE TYPE public.outgoing_status AS ENUM ( 'pending', 'ready', 'published', 'rejected' );
+
+CREATE TABLE public.outgoing (
+    transaction_id CHARACTER VARYING PRIMARY KEY,
+    template_id INTEGER REFERENCES public.templates NOT NULL,
+    raw_tx JSONB NOT NULL,
+    data JSONB NOT NULL,
+    status CHARACTER VARYING NOT NULL DEFAULT 'pending',
+    updated TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX outgoing_id_idx ON public.outgoing (status);
+CREATE INDEX outgoing_updated_idx ON public.outgoing (updated);
+
+
+CREATE TYPE incoming_status AS ENUM ( 'mined', 'orphaned' );
+
+CREATE TABLE public.incoming (
+    transaction_id CHARACTER VARYING PRIMARY KEY,
+    template_id INTEGER REFERENCES public.templates NOT NULL,
+    raw_tx JSONB NOT NULL,
+    block_height INTEGER NOT NULL,
+    status CHARACTER VARYING NOT NULL DEFAULT 'mined',
+    updated TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX incoming_id_idx ON public.incoming (status);
+CREATE INDEX incoming_updated_idx ON public.incoming (updated);
