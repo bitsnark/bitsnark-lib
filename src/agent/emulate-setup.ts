@@ -30,15 +30,15 @@ export async function emulateSetup(proverAgentId: string, verifierAgentId: strin
         proverAgentId,
         AgentRoles.PROVER,
         setupId,
-        BigInt('0x' + agentConf.keyPairs[proverAgentId].public),
-        BigInt('0x' + agentConf.keyPairs[verifierAgentId].public),
+        BigInt('0x' + agentConf.keyPairs[proverAgentId].schnorrPublic),
+        BigInt('0x' + agentConf.keyPairs[verifierAgentId].schnorrPublic),
         mockLockedFunds, mockPayload);
     let verifierTemplates = await initializeTransactions(
         verifierAgentId,
         AgentRoles.VERIFIER,
         setupId,
-        BigInt('0x' + agentConf.keyPairs[proverAgentId].public),
-        BigInt('0x' + agentConf.keyPairs[verifierAgentId].public),
+        BigInt('0x' + agentConf.keyPairs[proverAgentId].schnorrPublic),
+        BigInt('0x' + agentConf.keyPairs[verifierAgentId].schnorrPublic),
         mockLockedFunds, mockPayload);
 
     console.log('merging templates...');
