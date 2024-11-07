@@ -4,7 +4,7 @@ import * as fs from 'fs';
 
 describe('AgentConfig', () => {
 
-    it ("should use environment variables from .env.test when provided", () => {
+    it("should use environment variables from .env.test when provided", () => {
         // Create a .env.test file, which precedes .env.local and .env
         fs.writeFileSync('.env.test', `
             INTERNAL_PUBKEY=2
@@ -24,10 +24,10 @@ describe('AgentConfig', () => {
             expect(agentConf.winternitzSecret).toEqual('wots_secret');
             expect(agentConf.tokens['bitsnark_prover_1']).toEqual('telegram_token_prover');
             expect(agentConf.tokens['bitsnark_verifier_1']).toEqual('telegram_token_verifier');
-            expect(agentConf.keyPairs['bitsnark_prover_1'].public).toEqual('prover_schnorr_public');
-            expect(agentConf.keyPairs['bitsnark_prover_1'].private).toEqual('prover_schnorr_private');
-            expect(agentConf.keyPairs['bitsnark_verifier_1'].public).toEqual('verifier_schnorr_public');
-            expect(agentConf.keyPairs['bitsnark_verifier_1'].private).toEqual('verifier_schnorr_private');
+            expect(agentConf.keyPairs['bitsnark_prover_1'].schnorrPublic).toEqual('prover_schnorr_public');
+            expect(agentConf.keyPairs['bitsnark_prover_1'].schnorrPrivate).toEqual('prover_schnorr_private');
+            expect(agentConf.keyPairs['bitsnark_verifier_1'].schnorrPublic).toEqual('verifier_schnorr_public');
+            expect(agentConf.keyPairs['bitsnark_verifier_1'].schnorrPrivate).toEqual('verifier_schnorr_private');
         });
     });
 
