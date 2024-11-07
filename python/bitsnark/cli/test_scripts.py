@@ -88,6 +88,8 @@ class TestScriptsCommand(Command):
         parser.add_argument('--debug', help='Drop into Python debugger before testing mempoolaccept',
                             action='store_true')
         parser.add_argument('--print-script', help='Print each script', action='store_true')
+        parser.add_argument('--enable-timelocks', help='Enable testing of timelock transactions',
+                            action='store_true')
 
     def run(
         self,
@@ -140,9 +142,11 @@ class TestScriptsCommand(Command):
                             spending_condition['index']
                         )
                         continue
-                    if 'timeoutBlocks' in spending_condition:
+
+                    if not context.args.enable_timelocks and 'timeoutBlocks' in spending_condition:
                         logger.info(
-                            'Skipping timeoutBlocks spending condition (%s/%s/%s)',
+                            'Skipping timeoutBlocks spending condition (%s/%s/%s) because '
+                            '--enable-timelocks is not set',
                             tx_template.name,
                             output_index,
                             spending_condition['index']
