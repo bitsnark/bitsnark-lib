@@ -44,6 +44,8 @@ class TestSpendingConditionsCommand(Command):
         parser.add_argument('--verifier-privkey',
                             help='Verifier schnorr private key as hex for signing',
                             default=get_default_verifier_privkey_hex())
+        parser.add_argument('--enable-timelocks', help='Enable testing of timelock transactions',
+                            action='store_true')
 
     def run(
         self,
@@ -73,7 +75,16 @@ class TestSpendingConditionsCommand(Command):
         for tx_template in tx_templates:
             for output_index, output in enumerate(tx_template.outputs):
                 for spending_condition in output['spendingConditions']:
-                    if 'timeoutBlocks' in spending_condition:
+                    if 'script' not in spending_condition:
+                        logger.info(
+                            'Skipping spending condition without script (%s/%s/%s)',
+                            tx_template.name,
+                            output_index,
+                            spending_condition['index']
+                        )
+                        continue
+
+                    if not context.args.enable_timelocks and 'timeoutBlocks' in spending_condition:
                         logger.info(
                             'Skipping timeoutBlocks spending condition (%s/%s/%s)',
                             tx_template.name,
