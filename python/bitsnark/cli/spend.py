@@ -139,7 +139,6 @@ class SpendCommand(Command):
         )
 
         control_block = parse_hex_bytes(spending_condition['controlBlock'])
-        tapscript = parse_hex_bytes(spending_condition['script'])
         example_witness = [
             parse_hex_bytes(s) for s in
             # This flattens the list of lists
