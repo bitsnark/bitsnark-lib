@@ -1,6 +1,7 @@
 import argparse
 import sys
 from typing import Sequence
+import logging
 
 from bitcointx import ChainParams
 from sqlalchemy import create_engine
@@ -11,11 +12,15 @@ from ._base import Context
 from .fund_and_send import FundAndSendCommand
 from .show import ShowCommand
 from .spend import SpendCommand
+from .test_spending_conditions import TestSpendingConditionsCommand
+from .test_scripts import TestScriptsCommand
 
 COMMAND_CLASSES = [
     FundAndSendCommand,
     ShowCommand,
     SpendCommand,
+    TestSpendingConditionsCommand,
+    TestScriptsCommand,
 ]
 
 
@@ -37,6 +42,11 @@ def main(argv: Sequence[str] = None):
         commands[command.name] = command
 
     args = parser.parse_args(argv)
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(message)s",
+    )
 
     engine = create_engine(args.db)
     dbsession = Session(engine, autobegin=False)
