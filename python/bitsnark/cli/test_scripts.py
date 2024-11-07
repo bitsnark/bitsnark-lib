@@ -333,8 +333,8 @@ class TestScriptsCommand(Command):
             CTxInWitness(CScriptWitness(
                 stack=[
                     *test_case.witness_elems,
-                    prover_signature,
                     verifier_signature,
+                    prover_signature,
                     spent_script,
                     control_block,
                 ]
@@ -343,13 +343,8 @@ class TestScriptsCommand(Command):
 
         serialized_spending_tx = spending_tx.serialize().hex()
 
-
         if debug:
-            try:
-                import ipdb as pdb
-            except ImportError:
-                import pdb
-            pdb.set_trace()
+            breakpoint()
 
         mempool_accept = bitcoin_rpc.call(
             'testmempoolaccept',
