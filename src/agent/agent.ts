@@ -51,7 +51,7 @@ export class Agent {
     constructor(agentId: string, role: AgentRoles) {
         this.agentId = agentId;
         this.role = role;
-        this.schnorrPublicKey = (agentConf.keyPairs as any)[this.agentId].public;
+        this.schnorrPublicKey = agentConf.keyPairs[this.agentId].schnorrPublic;
         this.bot = new TelegramBot(agentId, this);
     }
 
@@ -97,7 +97,7 @@ export class Agent {
 
     private signMessageAndSend(ctx: SimpleContext, message: Message) {
         const signature = signMessage(toJson(message),
-            (agentConf.keyPairs as any)[this.agentId].private);
+            (agentConf.keyPairs as any)[this.agentId].schnorrPrivate);
         message.signature = signature;
         ctx.send(message);
     }
@@ -112,15 +112,14 @@ export class Agent {
     }
 
     private verifyPubKey(senderPubKey: string, senderAgentId: string): boolean {
-        //Temporary solution - will be replaced with a proper verification against the contract
-        const verifiedPubKey = agentConf.keyPairs[senderAgentId].public;
+        // Temporary solution - will be replaced with a proper verification against the contract
+        const verifiedPubKey = agentConf.keyPairs[senderAgentId].schnorrPublic;
         if (verifiedPubKey != senderPubKey) throw new Error('Invalid public key');
         console.log('Publick key is valid');
         return true;
     }
 
     /// PROTOCOL BEGINS
-
     // prover sends start message
     public async start(ctx: SimpleContext, setupId: string, payloadUtxo: FundingUtxo, proverUtxo: FundingUtxo) {
         if (this.role != AgentRoles.PROVER)
