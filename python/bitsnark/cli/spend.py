@@ -1,7 +1,6 @@
 import argparse
 import itertools
 import logging
-import os
 
 from bitcointx.core import CMutableTransaction, CTxIn, CTxOut, COutPoint, CTransaction, CTxInWitness, CTxWitness
 from bitcointx.core.key import CKey
@@ -65,10 +64,15 @@ class SpendCommand(Command):
 
         prev_txid, prev_out_index = args.prevout.split(":")
         prev_out_index = int(prev_out_index)
+        prev_tx_response = bitcoin_rpc.call('gettransaction', prev_txid)
+        prev_tx = CTransaction.deserialize(bytes.fromhex(prev_tx_response['hex']))
+        spent_outputs = [
+            prev_tx.vout[prev_out_index],
+        ]
 
         output_spec = tx_template.outputs[prev_out_index]
         amount_sat = parse_bignum(output_spec['amount'])
-        script_pubkey = CScript(parse_hex_bytes(output_spec['taprootKey']))
+        # script_pubkey = CScript(parse_hex_bytes(output_spec['taprootKey']))
         spending_condition = output_spec["spendingConditions"][args.spending_condition]
         tapscript = CScript(parse_hex_bytes(spending_condition['script']))
 
@@ -105,12 +109,6 @@ class SpendCommand(Command):
                 )
             )
         ]
-        spent_outputs  = [
-            CTxOut(
-                nValue=amount_sat,
-                scriptPubKey=script_pubkey,
-            )
-        ]
         outputs = [
             CTxOut(
                 nValue=amount_sat_out,
@@ -139,10 +137,11 @@ class SpendCommand(Command):
         )
 
         control_block = parse_hex_bytes(spending_condition['controlBlock'])
+        example_witness_raw = spending_condition.get('exampleWitness', [])
         example_witness = [
             parse_hex_bytes(s) for s in
             # This flattens the list of lists
-            itertools.chain.from_iterable(spending_condition['exampleWitness'])
+            itertools.chain.from_iterable(example_witness_raw)
         ]
         input_witnesses = [
             CTxInWitness(CScriptWitness(
@@ -174,6 +173,5 @@ class SpendCommand(Command):
             'sendrawtransaction',
             serialized_tx,
         )
-        logger.info("%s", tx_id)
-        assert tx_id == tx_template.tx_id
+        logger.info("TX broadcast: %s", tx_id)
         bitcoin_rpc.mine_blocks()

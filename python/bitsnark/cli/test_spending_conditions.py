@@ -83,13 +83,12 @@ class TestSpendingConditionsCommand(Command):
                         continue
 
                     if 'exampleWitness' not in spending_condition:
-                        logger.info(
-                            'Skipping spending condition without exampleWitness (%s/%s/%s)',
+                        logger.warning(
+                            'Warning: spending condition without exampleWitness (%s/%s/%s)',
                             tx_template.name,
                             output_index,
                             spending_condition['index']
                         )
-                        continue
 
                     logger.info(
                         'Adding spending condition to tests: %s/%s/%s',

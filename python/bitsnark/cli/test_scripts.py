@@ -246,7 +246,11 @@ class TestScriptsCommand(Command):
 
         amount_sat = 100_000
         amount_btc = Decimal(amount_sat) / Decimal(10 ** 8)
-        internal_pubkey = XOnlyPubKey(CKey.fromhex('1337' * (64//4)).pub)  # Just some random key
+
+        # internal_pubkey = XOnlyPubKey(CKey.fromhex('1337' * (64//4)).pub)  # Just some random key
+        # This is used in TS code so it will do for now
+        internal_pubkey = XOnlyPubKey.fromhex('0000000000000000000000000000000000000000000000000000000000000001')
+
         taptree = TaprootScriptTree(
             leaves=[test_case.script],
             internal_pubkey=internal_pubkey,
@@ -288,7 +292,7 @@ class TestScriptsCommand(Command):
             serialized_script_tx,
         )
         bitcoin_rpc.mine_blocks()
-        logger.info(f"Broadcasted script transaction %s, attempting to spend it next", script_tx_id)
+        logger.info(f"Broadcast script transaction %s, attempting to spend it next", script_tx_id)
 
         # Spend the output
         spending_tx = CMutableTransaction(
