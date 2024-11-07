@@ -148,8 +148,8 @@ class SpendCommand(Command):
             CTxInWitness(CScriptWitness(
                 stack=[
                     *example_witness,
-                    prover_signature,
                     verifier_signature,
+                    prover_signature,
                     tapscript,
                     control_block,
                 ],
