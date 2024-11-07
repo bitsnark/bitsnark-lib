@@ -1306,7 +1306,7 @@ export class Bitcoin {
 
     verifySignature(publicKey: bigint) {
         this.addWitness(0n);
-        this.DATAwithSize(publicKey, 33);
+        this.DATAwithSize(publicKey, 32);
         this.OP_CHECKSIGVERIFY();
     }
 
