@@ -5,7 +5,7 @@ from typing import Literal, Sequence
 
 from bitcointx.core import CTransaction, COutPoint, CTxIn, CTxOut
 from bitcointx.core.script import CScript
-from bitcointx.core.key import CPubKey, CKey
+from bitcointx.core.key import CPubKey, CKey, XOnlyPubKey
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm.session import Session
 from sqlalchemy.orm.attributes import flag_modified
@@ -52,16 +52,16 @@ HARDCODED_MOCK_INPUTS: dict[str, list[MockInput]] = {
 # Copied from agent.conf.ts
 KEYPAIRS = {
     'bitsnark_prover_1': {
-        'public': CPubKey.fromhex(os.getenv('PROVER_SCHNORR_PUBLIC', '02ae2ea39bca4b6b14567e3c38b9680f6483ceeef4ae17f8dceb5a5a0866999b75')),
+        'public': XOnlyPubKey.fromhex(os.getenv('PROVER_SCHNORR_PUBLIC', 'ae2ea39bca4b6b14567e3c38b9680f6483ceeef4ae17f8dceb5a5a0866999b75')),
         'private': CKey.fromhex(os.getenv('PROVER_SCHNORR_PRIVATE', '415c69b837f4146019574f59c223054c8c144ac61b6ae87bc26824c0f8d034e2')),
     },
     'bitsnark_verifier_1': {
-        'public': CPubKey.fromhex(os.getenv('VERIFIER_SCHNORR_PUBLIC', '0386ad52a51b65ab3aed9a64e7202a7aa1f2bd3da7a6a2dae0f5c8e28bda29de79')),
+        'public': XOnlyPubKey.fromhex(os.getenv('VERIFIER_SCHNORR_PUBLIC', '86ad52a51b65ab3aed9a64e7202a7aa1f2bd3da7a6a2dae0f5c8e28bda29de79')),
         'private': CKey.fromhex(os.getenv('VERIFIER_SCHNORR_PRIVATE', 'd4067af1132afcb352b0edef53d8aa2a5fc713df61dee31b1d937e69ece0ebf0')),
     },
 }
 for keypairs in KEYPAIRS.values():
-    assert keypairs['public'] == keypairs['private'].pub
+    assert keypairs['public'] == XOnlyPubKey(keypairs['private'].pub)
 
 
 def main(argv: Sequence[str] = None):
