@@ -156,9 +156,13 @@ export async function readTemplates(agentId: string, setupId?: string): Promise<
 
 export async function readAwaitIncoming() {
     const result = await runQuery(`
-        SELECT transaction_id, template_id
-        FROM outgoing
-        WHERE status in ( 'PENDING', 'PUBLISHED' )
+        SELECT outgoing.transaction_id, outgoing.template_id
+        FROM outgoing INNER JOIN templates
+        ON outgoing.template_id = templates.template_id
+        INNER JOIN setups
+        ON templates.setup_id = setups.setup_id
+        WHERE outgoing.status in ( 'PENDING', 'PUBLISHED' )
+        and setups.status = 'SIGNED'
         and transaction_id not in (
             SELECT transaction_id
             FROM incoming )`
