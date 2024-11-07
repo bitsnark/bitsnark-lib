@@ -30,7 +30,7 @@ def docker_compose():
 
 @pytest.fixture()
 def btc_rpc(docker_compose) -> BitcoinRPC:
-    rpc = BitcoinRPC("http://rpcuser:rpcpassword@localhost:18443")
+    rpc = BitcoinRPC("http://rpcuser:rpcpassword@localhost:19443")
     blockcount = rpc.call('getblockcount')
     # Mine enough blocks to activate segwit
     required = 432 - blockcount

@@ -6,7 +6,6 @@
       stop_grace_period: 5m
       image: polarlightning/bitcoind:28.0
       hostname: bitcoind
-      # NOTE: -dustrelayfee=0.00000001 disables errors that happen because of dust so it will mask testnet/mainnet errors
       command: >-
         bitcoind -server=1 -regtest=1
         -rpcuser=rpcuser -rpcpassword=rpcpassword
@@ -15,7 +14,6 @@
         -txindex=1 -dnsseed=0 -upnp=0 -rpcbind=0.0.0.0 -rpcallowip=0.0.0.0/0
         -rpcport=18443 -rest -listen=1 -listenonion=0 -fallbackfee=0.0002
         -blockfilterindex=1 -peerblockfilters=1
-        -dustrelayfee=0.00000001
       healthcheck:
         test: [
           "CMD",
@@ -28,8 +26,6 @@
         interval: 2s
 #      volumes:
 #        - ./volumes/bitcoind/bitcoind:/home/bitcoin/.bitcoin
+      # NOTE: we use 19443 instead of 18443 to avoid clashing with npm run start-node
       ports:
-        - '18443:18443'
-        - '19444:18444'
-        - '28334:28334'
-        - '29335:28335'
+        - '19443:18443'
