@@ -26,3 +26,4 @@ function generateSchnorrKeypair() {
 const keypair = generateSchnorrKeypair();
 console.log('Private Key:', keypair.privateKey);
 console.log('Public Key:', keypair.publicKey);
+

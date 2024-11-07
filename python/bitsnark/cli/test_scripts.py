@@ -164,6 +164,7 @@ class TestScriptsCommand(Command):
                         # This flattens the list of lists
                         itertools.chain.from_iterable(example_witness)
                     ]
+                    print(spending_condition['script'])
                     test_case = test_cases_by_script.setdefault(
                         spending_condition['script'],
                         TestCase(
