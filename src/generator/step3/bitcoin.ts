@@ -1,5 +1,6 @@
-import { padHex } from "../../encoding/encoding";
-import { hardcode, OpcodeType, opcodeValues } from "./bitcoin-opcodes";
+import { bufferToBigintBE } from "../../agent/winternitz";
+import { bufferToBigint160, padHex } from "../../encoding/encoding";
+import { hardcode, opcodeMap, OpcodeType, opcodeValues } from "./bitcoin-opcodes";
 import { StackItem, Stack } from "./stack";
 import { createHash } from 'crypto';
 
@@ -89,7 +90,7 @@ export class Bitcoin {
         }
         while (n > 2) {
             this.OP_2DUP();
-            n-=2;
+            n -= 2;
         }
         while (n > 0) {
             this.OP_DUP();
@@ -152,7 +153,7 @@ export class Bitcoin {
         if (data >= 0 && data <= 16) {
             this.opcodes.push({ op: hardcode(data) });
         } else {
-            const dataSizeInBytes = 2 * Math.ceil(data.toString(16).length / 2);
+            const dataSizeInBytes = Math.ceil(data.toString(16).length / 2);
             this.opcodes.push({ op: OpcodeType.DATA, data, dataSizeInBytes });
         }
         return this.stack.newItem(data);
@@ -456,8 +457,7 @@ export class Bitcoin {
         const rel = this.getRelativeStackPosition(si);
         if (rel == 0) return;
         if (rel < 256) this.newStackItem(BigInt(rel), 1);
-        else if (rel < 512) this.newStackItem(BigInt(rel), 2);
-        else this.newStackItem(BigInt(rel), 4);
+        else this.newStackItem(BigInt(rel), 2);
         this.OP_ROLL();
     }
 
@@ -1242,7 +1242,6 @@ export class Bitcoin {
     }
 
     verifySignature(publicKey: bigint) {
-        this.addWitness(0n);
         this.DATAwithSize(publicKey, 32);
         this.OP_CHECKSIGVERIFY();
     }
@@ -1369,4 +1368,67 @@ export class Bitcoin {
 
         return { buffer: Buffer.from(byteArray), items };
     }
+}
+
+export function executeProgram(bitcoin: Bitcoin, script: Buffer, printFlag: boolean): boolean {
+
+    let inIf = false;
+    let inElse = false;
+    let doIf = false;
+    let doElse = false;
+
+    const print = printFlag ? console.log : () => { };
+
+    for (let i = 0; i < script.length; i++) {
+
+        const opcode = opcodeMap[script[i]];
+
+        if (opcode == OpcodeType.OP_IF) {
+            inIf = true; inElse = false;
+            doIf = bitcoin.stack.top().value != 0n;
+            doElse = !doIf;
+
+            bitcoin.OP_IF();
+            print(opcode);
+
+            continue;
+        }
+        if (opcode == OpcodeType.OP_ELSE) {
+            inIf = false; inElse = true;
+
+            bitcoin.OP_ELSE();
+            print(opcode);
+
+            continue;
+        }
+        if (opcode == OpcodeType.OP_ENDIF) {
+            inIf = false; inElse = false;
+
+            bitcoin.OP_ENDIF();
+            print(opcode);
+
+            continue;
+        }
+
+        if (inIf && !doIf) continue;
+        if (inElse && !doElse) continue;
+
+        if (script[i] == 0) {
+            bitcoin.OP_0_16(0n);
+            print('<0>');
+        } else if (script[i] >= 81 && script[i] <= 96) {
+            bitcoin.OP_0_16(BigInt(1 + script[i] - 81));
+            print(`<${1 + script[i] - 81}>`);
+        } else if (script[i] > 0 && script[i] <= 75) {
+            const t = script.subarray(i + 1, i + script[i] + 1);
+            bitcoin.newStackItem(bufferToBigintBE(t), script[i]);
+            i += script[i];
+            print(`<${t.toString('hex')}>`);
+        } else {
+            (bitcoin as any)[String(opcode!)]();
+            print(opcode);
+        }
+    }
+
+    return bitcoin.success;
 }

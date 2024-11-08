@@ -47,7 +47,7 @@ function setTaprootKey(transactions: Transaction[]) {
     };
 }
 
-function generateBoilerplate(setupId: string, myRole: AgentRoles, prevTransaction: Transaction, input: Input): Buffer {
+function generateBoilerplate(prevTransaction: Transaction, input: Input): Buffer {
 
     const bitcoin = new Bitcoin();
     bitcoin.throwOnFail = false;
@@ -57,6 +57,7 @@ function generateBoilerplate(setupId: string, myRole: AgentRoles, prevTransactio
 
     if (spendingCondition.signaturesPublicKeys) {
         for (const key of spendingCondition.signaturesPublicKeys) {
+            bitcoin.addWitness(0n);
             bitcoin.verifySignature(key);
         }
     }
@@ -74,7 +75,7 @@ function generateBoilerplate(setupId: string, myRole: AgentRoles, prevTransactio
             .map(values => values.map(v => bitcoin.addWitness(bufferToBigintBE(v)))) :
             spendingCondition.wotsSpec!
                 .map(spec => new Array(WOTS_NIBBLES[spec]).fill(0).map(_ => bitcoin.addWitness(0n)));
-
+            
         const decoders = {
             [WotsType._256]: (dataIndex: number) =>
                 bitcoin.winternitzCheck256(witnessSIs[dataIndex], keys[dataIndex]),
@@ -83,7 +84,10 @@ function generateBoilerplate(setupId: string, myRole: AgentRoles, prevTransactio
             [WotsType._1]: (dataIndex: number) =>
                 bitcoin.winternitzCheck1(witnessSIs[dataIndex], keys[dataIndex]),
         };
-        for (const [dataIndex, spec] of spendingCondition.wotsSpec.entries()) decoders[spec](dataIndex);
+        for (const [dataIndex, spec] of spendingCondition.wotsSpec.entries()) {
+            decoders[spec](dataIndex);
+            bitcoin.drop(witnessSIs[dataIndex]);
+        }
     }
 
     return bitcoin.programToBinary();
@@ -169,7 +173,7 @@ export async function generateAllScripts(
                 if (t.transactionName == TransactionNames.ARGUMENT && input.index == 0) {
                     script = generateProcessSelectionPath(sc);
                 } else {
-                    script = generateBoilerplate(setupId, myRole, prevT, input);
+                    script = generateBoilerplate(prevT, input);
                 }
 
                 sc.script = script;
