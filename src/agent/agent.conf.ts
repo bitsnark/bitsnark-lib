@@ -1,10 +1,8 @@
 import dotenv from 'dotenv';
 
-import { EnvParser } from '../common/env-parser';
+import { parseEnv, ParsedType } from '../common/env-parser';
 
 dotenv.config({ path: ['.env.test', '.env.local', '.env'] });
-
-const envp = new EnvParser(process.env);
 
 export const ONE_SATOSHI = 1n;
 export const ONE_BITCOIN = ONE_SATOSHI * (10n ** 8n);
@@ -40,21 +38,21 @@ interface AgentConf {
 
 
 export const agentConf: AgentConf = {
-    internalPubkey: envp.parseBigInt('INTERNAL_PUBKEY', 1n),
-    timeoutBlocks: envp.parseInteger('TIMEOUT_BLOCKS', 5),
-    smallTimeoutBlocks: envp.parseInteger('SMALL_TIMEOUT_BLOCKS', 6),
-    largeTimeoutBlocks: envp.parseInteger('LARGE_TIMEOUT_BLOCKS', 18),
+    internalPubkey: parseEnv(process.env, 'INTERNAL_PUBKEY', ParsedType.BIGINT, 1n),
+    timeoutBlocks: parseEnv(process.env, 'TIMEOUT_BLOCKS', ParsedType.INTEGER, 5),
+    smallTimeoutBlocks: parseEnv(process.env, 'SMALL_TIMEOUT_BLOCKS', ParsedType.INTEGER, 6),
+    largeTimeoutBlocks: parseEnv(process.env, 'LARGE_TIMEOUT_BLOCKS', ParsedType.INTEGER, 18),
 
-    payloadAmount: envp.parseBigInt('PAYLOAD_AMOUNT', ONE_BITCOIN * 10n),
-    proverStakeAmount: envp.parseBigInt('PROVER_STAKE_AMOUNT', ONE_BITCOIN * 2n),
-    verifierPaymentAmount: envp.parseBigInt('VERIFIER_PAYMENT_AMOUNT', ONE_BITCOIN),
+    payloadAmount: parseEnv(process.env, 'PAYLOAD_AMOUNT', ParsedType.BIGINT, ONE_BITCOIN * 10n),
+    proverStakeAmount: parseEnv(process.env, 'PROVER_STAKE_AMOUNT', ParsedType.BIGINT, ONE_BITCOIN * 2n),
+    verifierPaymentAmount: parseEnv(process.env, 'VERIFIER_PAYMENT_AMOUNT', ParsedType.BIGINT, ONE_BITCOIN),
 
     // Must set an amount that is greater than dust limit.
     // Note that dust limit actually depends on the specific output:
     // https://github.com/bitcoin/bitcoin/blob/6463117a29294f6ddc9fafecfd1e9023956cc41b/src/policy/policy.cpp#L26
-    symbolicOutputAmount: envp.parseBigInt('SYMBOLIC_OUTPUT_AMOUNT', ONE_SATOSHI * 546n),
+    symbolicOutputAmount: parseEnv(process.env, 'SYMBOLIC_OUTPUT_AMOUNT', ParsedType.BIGINT, ONE_SATOSHI * 546n),
 
-    feePerByte: envp.parseBigInt('FEE_PER_BYTE', ONE_SATOSHI * 20n),
+    feePerByte: parseEnv(process.env, 'FEE_PER_BYTE', ParsedType.BIGINT, ONE_SATOSHI * 20n),
     feeFactorPercent: Number(process.env['FEE_FACTOR_PERCENT'] ?? 125),
 
     winternitzSecret: process.env['WOTS_SECRET'] ?? 'no rest for the wicked',
@@ -76,13 +74,13 @@ export const agentConf: AgentConf = {
     bitcoinNodeUsername: process.env['BITCOIN_NODE_USERNAME'] ?? 'rpcuser',
     bitcoinNodePassword: process.env['BITCOIN_NODE_PASSWORD'] ?? 'rpcpassword',
     bitcoinNodeHost: process.env['BITCOIN_NODE_HOST'] ?? '127.0.0.1',
-    bitcoinNodePort: envp.parseInteger('BITCOIN_NODE_PORT', 18443),
+    bitcoinNodePort: parseEnv(process.env, 'BITCOIN_NODE_PORT', ParsedType.INTEGER, 18443),
     postgresUser: process.env['POSTGRES_USER'] ?? 'postgres',
     postgresHost: process.env['POSTGRES_HOST'] ?? 'localhost',
-    postgresPort: envp.parseInteger('POSTGRES_PORT', 5432),
+    postgresPort: parseEnv(process.env, 'POSTGRES_PORT', ParsedType.INTEGER, 5432),
     postgresPassword: process.env['POSTGRES_PASSWORD'] ?? '1234',
-    postgresBigints: envp.parseBoolean('POSTGRES_BIGINTS', true),
-    postgresKeepAlive: envp.parseBoolean('POSTGRES_KEEP_ALIVE', true),
-    blocksUntilFinalized: envp.parseInteger('BLOCKS_UNTIL_FINALIZED', 0), // 6
-    useMockProgram: envp.parseBoolean('USE_MOCK_PROGRAM', false)
+    postgresBigints: parseEnv(process.env, 'POSTGRES_BIGINTS', ParsedType.BOOLEAN, true),
+    postgresKeepAlive: parseEnv(process.env, 'POSTGRES_KEEP_ALIVE', ParsedType.BOOLEAN, true),
+    blocksUntilFinalized: parseEnv(process.env, 'BLOCKS_UNTIL_FINALIZED', ParsedType.INTEGER, 0), // 6
+    useMockProgram: parseEnv(process.env, 'USE_MOCK_PROGRAM', ParsedType.BOOLEAN, false)
 };
