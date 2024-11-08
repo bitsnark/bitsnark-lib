@@ -23,8 +23,10 @@ docker logs bitcoin-node
 echo "Creating and loading a wallet..."
 bitcoin_cli createwallet "testwallet"
 
-echo "Generating initial blocks..."
-bitcoin_cli generatetoaddress 101 $(bitcoin_cli getnewaddress)
+# Segwit needs 432 blocks, at least according to this:
+# https://gist.github.com/t4sk/0bc6b35a26998b9007d68f376a852636
+echo "Generating initial blocks and activating segwit..."
+bitcoin_cli generatetoaddress 432 $(bitcoin_cli getnewaddress) > /dev/null
 
 echo "Generating mock transactions..."
 for i in {1..10}

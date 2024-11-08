@@ -55,7 +55,7 @@ export class Bitcoin {
         value = value ?? 0n;
         if (value < 0 || value > 16 && !dataSizeInBytes)
             throw new Error('Invalid value');
-        const si = this.DATA(value);
+        const si = dataSizeInBytes ? this.DATAwithSize(value, dataSizeInBytes) : this.DATA(value);
         this.maxStack = Math.max(this.maxStack, this.stack.items.length);
         // console.log('Stack: ', this.stack.items.length);
         if (this.throwOnFail) {
@@ -138,12 +138,22 @@ export class Bitcoin {
 
     /// NATIVE OPERATIONS ///
 
-    DATA(data: bigint, templateItemId?: string): StackItem {
-        if (data >= 0 && data <= 16) {
+    DATAwithSize(data: bigint, dataSizeInBytes: number, templateItemId?: string): StackItem {
+        if (data > 2n ** (BigInt(dataSizeInBytes) * 8n)) throw new Error('Data too big');
+        if (dataSizeInBytes == 1 && data >= 0 && data <= 16) {
             this.opcodes.push({ op: hardcode(data), templateItemId });
         } else {
-            const dataSizeInBytes = data < 256n ? 1 : data < 512n ? 2 : 4;
             this.opcodes.push({ op: OpcodeType.DATA, data, dataSizeInBytes, templateItemId });
+        }
+        return this.stack.newItem(data);
+    }
+
+    DATA(data: bigint): StackItem {
+        if (data >= 0 && data <= 16) {
+            this.opcodes.push({ op: hardcode(data) });
+        } else {
+            const dataSizeInBytes = 2 * Math.ceil(data.toString(16).length / 2);
+            this.opcodes.push({ op: OpcodeType.DATA, data, dataSizeInBytes });
         }
         return this.stack.newItem(data);
     }
@@ -1233,7 +1243,7 @@ export class Bitcoin {
 
     verifySignature(publicKey: bigint) {
         this.addWitness(0n);
-        this.DATA(publicKey);
+        this.DATAwithSize(publicKey, 32);
         this.OP_CHECKSIGVERIFY();
     }
 
@@ -1271,11 +1281,10 @@ export class Bitcoin {
     }
 
     verifyIndex(keys: bigint[], indexWitness: StackItem[], indexNibbles: number[]) {
-
         const tempIndex = this.newNibbles(90);
         this.winternitzDecode256(tempIndex, indexWitness, keys);
         for (let i = 0; i < indexNibbles.length; i++) {
-            this.DATA(BigInt(indexNibbles[i]), `indexNibbles_${i}`);
+            this.DATAwithSize(BigInt(indexNibbles[i]), 4, `indexNibbles_${i}`);
             this.pick(tempIndex[i]);
             this.OP_NUMEQUALVERIFY();
         }
