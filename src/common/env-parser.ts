@@ -1,58 +1,64 @@
-export const enum ParsedType {
-    INTEGER = "int",
-    BIGINT = "bigint",
-    BOOLEAN = "boolean",
-}
-
-// eslint-disable-next-line  @typescript-eslint/no-unsafe-function-type
-const PARSERS = new Map<string, Function>([
-    ['int', parseInteger],
-    ['bigint', parseBigInt],
-    ['boolean', parseBoolean],
-]);
-
-export function parseEnv(env: NodeJS.ProcessEnv, name: string, type: string, defaultValue: any): any {
-    const parser = PARSERS.get(type);
-
-    if (!parser) {
-        throw new Error(`Unsupported type: ${type}`);
+type ParsedValue = string | number | bigint | boolean;
+type ParsingFunction = (value: string, defaultValue?: ParsedValue) => ParsedValue;
+function parseEnv(name: string, parser: ParsingFunction, defaultValue?: ParsedValue): ParsedValue {
+    const value = process.env[name];
+    if (value === undefined) {
+        if (defaultValue === undefined) {
+            throw new Error(`Missing environment variable: '${name}'`);
+        }
+        return defaultValue;
     }
-
-    const value = env[name];
-
     try {
-        return parser(value, defaultValue);
+        return parser(value);
     } catch (e) {
-        throw new Error(`Invalid value: ${name}: ${value}`);
+        const error = e as Error;
+        throw new Error(`${error.message} for environment variable: '${name}'`);
     }
 }
 
-function parseInteger(value: string, defaultValue: number): number {
-    const returnValue = Number(value ?? defaultValue);
+function makeParsingError(value: string, type: string): Error {
+    return new Error(`Invalid ${type} value: '${value}'`);
+}
 
-    if (!Number.isInteger(returnValue)) {
-        throw new Error();
+function parseString(value: string): string {
+    if (value === '') {
+        throw makeParsingError(value, 'string');
     }
-    
-    return returnValue;
+    return value;
 }
-    
-function parseBigInt(value: string, defaultValue: bigint): bigint {
-    if (value === undefined) return defaultValue;
 
-    return BigInt(value);
+function parseInteger(value: string): number {
+    const parsed = parseFloat(value);
+    if (!Number.isInteger(parsed)) {
+        throw makeParsingError(value, 'integer');
+    }
+    return parsed;
 }
-    
-function parseBoolean(value: string, defaultValue: boolean = false): boolean {
-    const TRUE_VALUES = new Set(['true', '1', 'yes', 'y', 'on']);
-    const FALSE_VALUES = new Set(['false', '0', 'no', 'n', 'off']);
 
-    if (value === undefined) return defaultValue;
-    
-    const v = value.toLowerCase();
-
-    if (TRUE_VALUES.has(v)) return true;
-    if (FALSE_VALUES.has(v)) return false;
-
-    throw new Error();
+function parseBigInt(value: string): bigint {
+    if (value === '') {
+        throw makeParsingError(value, 'bigint');
+    }
+    try {
+        return BigInt(value);
+    } catch (_) {
+        throw makeParsingError(value, 'bigint');
+    }
 }
+
+function parseBoolean(value: string): boolean {
+    const TRUE_VALUES = new Set(['true', 't', '1', 'yes', 'y', 'on']);
+    const FALSE_VALUES = new Set(['false', 'f', '0', 'no', 'n', 'off']);
+
+    const lowerValue = value.toLowerCase();
+    if (TRUE_VALUES.has(lowerValue)) return true;
+    if (FALSE_VALUES.has(lowerValue)) return false;
+    throw makeParsingError(value, 'boolean');
+}
+
+export const parse = {
+    string: (name: string, defaultValue?: string): string => parseEnv(name, parseString, defaultValue) as string,
+    integer: (name: string, defaultValue?: number): number => parseEnv(name, parseInteger, defaultValue) as number,
+    bigint: (name: string, defaultValue?: bigint): bigint => parseEnv(name, parseBigInt, defaultValue) as bigint,
+    boolean: (name: string, defaultValue?: boolean): boolean => parseEnv(name, parseBoolean, defaultValue) as boolean,
+};

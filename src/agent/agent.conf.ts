@@ -1,6 +1,6 @@
 import dotenv from 'dotenv';
 
-import { parseEnv, ParsedType } from '../common/env-parser';
+import { parse } from '../common/env-parser';
 
 dotenv.config({ path: ['.env.test', '.env.local', '.env'] });
 
@@ -38,49 +38,49 @@ interface AgentConf {
 
 
 export const agentConf: AgentConf = {
-    internalPubkey: parseEnv(process.env, 'INTERNAL_PUBKEY', ParsedType.BIGINT, 1n),
-    timeoutBlocks: parseEnv(process.env, 'TIMEOUT_BLOCKS', ParsedType.INTEGER, 5),
-    smallTimeoutBlocks: parseEnv(process.env, 'SMALL_TIMEOUT_BLOCKS', ParsedType.INTEGER, 6),
-    largeTimeoutBlocks: parseEnv(process.env, 'LARGE_TIMEOUT_BLOCKS', ParsedType.INTEGER, 18),
+    internalPubkey: parse.bigint('INTERNAL_PUBKEY', 1n),
+    timeoutBlocks: parse.integer('TIMEOUT_BLOCKS', 5),
+    smallTimeoutBlocks: parse.integer('SMALL_TIMEOUT_BLOCKS', 6),
+    largeTimeoutBlocks: parse.integer('LARGE_TIMEOUT_BLOCKS', 18),
 
-    payloadAmount: parseEnv(process.env, 'PAYLOAD_AMOUNT', ParsedType.BIGINT, ONE_BITCOIN * 10n),
-    proverStakeAmount: parseEnv(process.env, 'PROVER_STAKE_AMOUNT', ParsedType.BIGINT, ONE_BITCOIN * 2n),
-    verifierPaymentAmount: parseEnv(process.env, 'VERIFIER_PAYMENT_AMOUNT', ParsedType.BIGINT, ONE_BITCOIN),
+    payloadAmount: parse.bigint('PAYLOAD_AMOUNT', ONE_BITCOIN * 10n),
+    proverStakeAmount: parse.bigint('PROVER_STAKE_AMOUNT', ONE_BITCOIN * 2n),
+    verifierPaymentAmount: parse.bigint('VERIFIER_PAYMENT_AMOUNT', ONE_BITCOIN),
 
     // Must set an amount that is greater than dust limit.
     // Note that dust limit actually depends on the specific output:
     // https://github.com/bitcoin/bitcoin/blob/6463117a29294f6ddc9fafecfd1e9023956cc41b/src/policy/policy.cpp#L26
-    symbolicOutputAmount: parseEnv(process.env, 'SYMBOLIC_OUTPUT_AMOUNT', ParsedType.BIGINT, ONE_SATOSHI * 546n),
+    symbolicOutputAmount: parse.bigint('SYMBOLIC_OUTPUT_AMOUNT', ONE_SATOSHI * 546n),
 
-    feePerByte: parseEnv(process.env, 'FEE_PER_BYTE', ParsedType.BIGINT, ONE_SATOSHI * 20n),
-    feeFactorPercent: Number(process.env['FEE_FACTOR_PERCENT'] ?? 125),
+    feePerByte: parse.bigint('FEE_PER_BYTE', ONE_SATOSHI * 20n),
+    feeFactorPercent: parse.integer('FEE_FACTOR_PERCENT', 125),
 
-    winternitzSecret: process.env['WOTS_SECRET'] ?? 'no rest for the wicked',
+    winternitzSecret: parse.string('WOTS_SECRET', 'no rest for the wicked'),
     tokens: {
-        'bitsnark_prover_1': process.env['TELEGRAM_TOKEN_PROVER'] ?? '7368302319:AAGtvHOBQErcZPuJ0cD3Ele9G0FSDgg0Ct4',
-        'bitsnark_verifier_1': process.env['TELEGRAM_TOKEN_VERIFIER'] ?? '7457777046:AAF7-6cNqn9MCP6sak2A30fcSOgD78QRn3Y'
+        'bitsnark_prover_1': parse.string('TELEGRAM_TOKEN_PROVER', '7368302319:AAGtvHOBQErcZPuJ0cD3Ele9G0FSDgg0Ct4'),
+        'bitsnark_verifier_1': parse.string('TELEGRAM_TOKEN_VERIFIER', '7457777046:AAF7-6cNqn9MCP6sak2A30fcSOgD78QRn3Y')
     },
     keyPairs: {
         'bitsnark_prover_1': {
-            public: process.env['PROVER_SCHNORR_PUBLIC'] ?? '02ae2ea39bca4b6b14567e3c38b9680f6483ceeef4ae17f8dceb5a5a0866999b75',
-            private: process.env['PROVER_SCHNORR_PRIVATE'] ?? '415c69b837f4146019574f59c223054c8c144ac61b6ae87bc26824c0f8d034e2'
+            public: parse.string('PROVER_SCHNORR_PUBLIC', '02ae2ea39bca4b6b14567e3c38b9680f6483ceeef4ae17f8dceb5a5a0866999b75'),
+            private: parse.string('PROVER_SCHNORR_PRIVATE', '415c69b837f4146019574f59c223054c8c144ac61b6ae87bc26824c0f8d034e2')
         },
         'bitsnark_verifier_1': {
-            public: process.env['VERIFIER_SCHNORR_PUBLIC'] ?? '0386ad52a51b65ab3aed9a64e7202a7aa1f2bd3da7a6a2dae0f5c8e28bda29de79',
-            private: process.env['VERIFIER_SCHNORR_PRIVATE'] ?? 'd4067af1132afcb352b0edef53d8aa2a5fc713df61dee31b1d937e69ece0ebf0'
+            public: parse.string('VERIFIER_SCHNORR_PUBLIC', '0386ad52a51b65ab3aed9a64e7202a7aa1f2bd3da7a6a2dae0f5c8e28bda29de79'),
+            private: parse.string('VERIFIER_SCHNORR_PRIVATE', 'd4067af1132afcb352b0edef53d8aa2a5fc713df61dee31b1d937e69ece0ebf0')
         }
     },
-    bitcoinNodeNetwork: process.env['BITCOIN_NODE_NETWORK'] ?? 'regtest',
-    bitcoinNodeUsername: process.env['BITCOIN_NODE_USERNAME'] ?? 'rpcuser',
-    bitcoinNodePassword: process.env['BITCOIN_NODE_PASSWORD'] ?? 'rpcpassword',
-    bitcoinNodeHost: process.env['BITCOIN_NODE_HOST'] ?? '127.0.0.1',
-    bitcoinNodePort: parseEnv(process.env, 'BITCOIN_NODE_PORT', ParsedType.INTEGER, 18443),
-    postgresUser: process.env['POSTGRES_USER'] ?? 'postgres',
-    postgresHost: process.env['POSTGRES_HOST'] ?? 'localhost',
-    postgresPort: parseEnv(process.env, 'POSTGRES_PORT', ParsedType.INTEGER, 5432),
-    postgresPassword: process.env['POSTGRES_PASSWORD'] ?? '1234',
-    postgresBigints: parseEnv(process.env, 'POSTGRES_BIGINTS', ParsedType.BOOLEAN, true),
-    postgresKeepAlive: parseEnv(process.env, 'POSTGRES_KEEP_ALIVE', ParsedType.BOOLEAN, true),
-    blocksUntilFinalized: parseEnv(process.env, 'BLOCKS_UNTIL_FINALIZED', ParsedType.INTEGER, 0), // 6
-    useMockProgram: parseEnv(process.env, 'USE_MOCK_PROGRAM', ParsedType.BOOLEAN, false)
+    bitcoinNodeNetwork: parse.string('BITCOIN_NODE_NETWORK', 'regtest'),
+    bitcoinNodeUsername: parse.string('BITCOIN_NODE_USERNAME', 'rpcuser'),
+    bitcoinNodePassword: parse.string('BITCOIN_NODE_PASSWORD', 'rpcpassword'),
+    bitcoinNodeHost: parse.string('BITCOIN_NODE_HOST', '127.0.0.1'),
+    bitcoinNodePort: parse.integer('BITCOIN_NODE_PORT', 18443),
+    postgresUser: parse.string('POSTGRES_USER', 'postgres'),
+    postgresHost: parse.string('POSTGRES_HOST', 'localhost'),
+    postgresPort: parse.integer('POSTGRES_PORT', 5432),
+    postgresPassword: parse.string('POSTGRES_PASSWORD', '1234'),
+    postgresBigints: parse.boolean('POSTGRES_BIGINTS', true),
+    postgresKeepAlive: parse.boolean('POSTGRES_KEEP_ALIVE', true),
+    blocksUntilFinalized: parse.integer('BLOCKS_UNTIL_FINALIZED', 0), // 6
+    useMockProgram: parse.boolean('USE_MOCK_PROGRAM', false)
 };
