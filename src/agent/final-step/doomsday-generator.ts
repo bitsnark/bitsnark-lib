@@ -131,18 +131,8 @@ export class DoomsdayGenerator {
                 const bitcoin = new Bitcoin();
                 const stack = bitcoin.stack.items;
 
-                const indexWitness = bigintToNibblesLS(BigInt(index), WOTS_NIBBLES[WotsType._256])
+                const indexWitness = bigintToNibblesLS(BigInt(index), WOTS_NIBBLES[WotsType._24])
                     .map(n => bitcoin.addWitness(BigInt(n)));
-
-                // if (!lastSelect.outputs[0].spendingConditions[0].wotsPublicKeys) {
-                //     // no opponent public keys here, mock them
-                //     lastSelect.outputs[0].spendingConditions[0].wotsPublicKeys! = [
-                //         getWinternitzPublicKeys(WotsType._256, ''),
-                //         getWinternitzPublicKeys(WotsType._256, ''),
-                //         getWinternitzPublicKeys(WotsType._256, ''),
-                //         getWinternitzPublicKeys(WotsType._256, '')
-                //     ];
-                // }
 
                 const w_a = this.paramWitness(bitcoin);
                 const w_b = this.paramWitness(bitcoin);
@@ -216,10 +206,10 @@ export class DoomsdayGenerator {
                 console.log('index: ', index, '   max: ', max, '   total: ', total, '   left: ', `${m}:${s}`);
             }
 
-            // TODO
             // first find the 2 roots for the 3 merkle proofs
             const stateCommitmentInfoBefore = this.decasector.getStateCommitmentsForRow(index)[0];
             const stateCommitmentInfoAfter = this.decasector.getStateCommitmentsForRow(index)[1];
+            // transaction names start with 0 while state commitment count starts with 1, so -1 here
             const beforeStateIteration = stateCommitmentInfoBefore[0] - 1;
             const afterStateIteration = stateCommitmentInfoAfter[0] - 1;
             const stateCommitmentIndexBefore = stateCommitmentInfoBefore[1];
@@ -313,13 +303,14 @@ export class DoomsdayGenerator {
             }
         }
 
-        return compressor.getScriptPubkey();
+        return compressor.getRoot();
     }
 
     generateFinalStepTaproot(transactions: Transaction[]): Buffer {
         const tr2 = this.generateRefuteMerkleProofTaproot(transactions);
         const tr1 = this.generateRefuteInstructionTaproot(transactions);
-        return combineHashes(tr1, tr2);
+        const root = combineHashes(tr1, tr2);
+        return  Compressor.toPubKey(agentConf.internalPubkey, root);
     }
 }
 
