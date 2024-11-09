@@ -23,7 +23,7 @@ Base = declarative_base()
 #tx_id: Mapped[Optional[str]] = mapped_column(String)
 class TransactionTemplate(Base):
     __tablename__ = 'templates'
-    template_id: Mapped[int] = mapped_column(Integer,primary_key=True, nullable=False)
+    template_id: Mapped[int] = mapped_column(Integer,primary_key=True)
     name: Mapped[str] = mapped_column(String, nullable=False)
     agent_id: Mapped[str] = mapped_column(String, nullable=False)
     setup_id: Mapped[str] = mapped_column(String, nullable=False)
@@ -52,8 +52,8 @@ JsonBigNum = str
 
 class Outgoing(Base):
     __tablename__ = 'outgoing'
-    transaction_id: Mapped[str] = mapped_column(String, primary_key=True, nullable=False)
-    template_id: Mapped[int] = mapped_column(Integer,nullable=False)
+    template_id: Mapped[int] = mapped_column(Integer,primary_key=True)
+    transaction_id: Mapped[str] = mapped_column(String, nullable=False)
     status: Mapped[str] = mapped_column(Enum(OutgoingStatus), nullable=False)
     raw_tx: Mapped[dict] = mapped_column(JSON, nullable=False)
     data: Mapped[dict] = mapped_column(JSON, nullable=False)

@@ -136,8 +136,8 @@ def main():
                 successes.append(tx.name)
                 outgoing.append(
                     Outgoing(
-                        transaction_id=tx.tx_id,
                         template_id=tx.template_id,
+                        transaction_id=tx.tx_id,
                         status=OutgoingStatus.PENDING,
                         raw_tx=tx.object,
                         data={})

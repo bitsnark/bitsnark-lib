@@ -29,20 +29,22 @@ CREATE INDEX templates_name_setup_id_agent_id_idx ON public.templates (name, set
 CREATE TYPE public.outgoing_status AS ENUM ( 'PENDING', 'READY', 'PUBLISHED', 'REJECTED' );
 
 CREATE TABLE public.outgoing (
-    transaction_id CHARACTER VARYING PRIMARY KEY,
-    template_id INTEGER REFERENCES public.templates NOT NULL,
+    template_id INTEGER PRIMARY KEY REFERENCES public.templates(template_id),
+    transaction_id CHARACTER VARYING NOT NULL,
     raw_tx JSONB NOT NULL,
     data JSONB NOT NULL,
     status CHARACTER VARYING NOT NULL DEFAULT 'PENDING',
     updated TIMESTAMP NOT NULL DEFAULT NOW()
 );
-
-CREATE INDEX outgoing_id_idx ON public.outgoing (status);
+CREATE INDEX outgoing_transaction_id_idx ON public.outgoing (transaction_id);
+CREATE INDEX outgoing_status_idx ON public.outgoing (status);
 CREATE INDEX outgoing_updated_idx ON public.outgoing (updated);
 
 CREATE TABLE public.incoming (
-    transaction_id CHARACTER VARYING PRIMARY KEY,
-    template_id INTEGER REFERENCES public.templates NOT NULL,
+    template_id INTEGER PRIMARY KEY REFERENCES public.templates(template_id),
+    transaction_id CHARACTER VARYING NOT NULL,
     raw_tx JSONB NOT NULL,
     block_height INTEGER NOT NULL
 );
+
+CREATE INDEX incoming_transaction_id_idx ON public.incoming (transaction_id);
