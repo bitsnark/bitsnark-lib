@@ -109,11 +109,13 @@ def eval_tapscript(
         )
     except EvalScriptError as exc:
         state = exc.state
-        logger.info("Script evaluation failed.")
-        logger.info("Stack length: %s", len(state.stack))
-        logger.info("AltStack length: %s", len(state.altstack))
+        logger.info(
+            "Script evaluation failed. Stack length: %s, Altstack length: %s.",
+            len(state.stack),
+            len(state.altstack),
+        )
         if debug:
-            logger.info("Entering python debugger. The exception is stored in variable `exc` and state in `state`")
+            logger.info("Entering Python debugger. The exception is stored in variable `exc` and state in `state`")
             breakpoint()
             pass
         raise

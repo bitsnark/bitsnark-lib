@@ -89,6 +89,9 @@ class TestScriptsCommand(Command):
         parser.add_argument('--debug', help='Drop into Python debugger before testing mempoolaccept',
                             action='store_true')
         parser.add_argument('--print-script', help='Print each script', action='store_true')
+        parser.add_argument('--print-witness',
+                            help='Print the witness elements for each tx',
+                            action='store_true')
         parser.add_argument('--enable-timelocks', help='Enable testing of timelock transactions',
                             action='store_true')
         parser.add_argument('--eval', help='Evaluate script before submitting',
@@ -206,6 +209,7 @@ class TestScriptsCommand(Command):
                     prover_privkey=prover_privkey,
                     verifier_privkey=verifier_privkey,
                     evaluate=context.args.eval,
+                    print_witness=context.args.print_witness,
                 )
             except Exception as e:
                 logger.exception(e)
@@ -246,6 +250,7 @@ class TestScriptsCommand(Command):
         verifier_privkey: CKey,
         debug: bool = False,
         evaluate: bool = False,
+        print_witness: bool = False,
     ) -> Result:
         # logger.info('Script: %s', test_case.script_repr())
 
@@ -358,6 +363,13 @@ class TestScriptsCommand(Command):
         ])
 
         serialized_spending_tx = spending_tx.serialize().hex()
+
+        if print_witness:
+            logger.info(
+                'Witness elems:\n%s:',
+                '\n'.join(f"{i:03d}: {elem.hex()}" for i, elem in enumerate(full_witness_elems))
+            )
+            logger.info("Control block: %s", control_block.hex())
 
         if evaluate:
             eval_tapscript(
