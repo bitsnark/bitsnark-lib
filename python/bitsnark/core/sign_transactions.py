@@ -6,12 +6,12 @@ from typing import Literal
 from bitcointx.core import CTransaction, COutPoint, CTxIn, CTxOut
 from bitcointx.core.script import CScript
 from bitcointx.core.key import CPubKey, CKey
-from sqlalchemy import create_engine, select
+from sqlalchemy import create_engine, select, update
 from sqlalchemy.orm.session import Session
 from sqlalchemy.orm.attributes import flag_modified
 
 from bitsnark.core.parsing import parse_bignum, parse_hex_bytes, serialize_hex
-from .models import TransactionTemplate
+from .models import TransactionTemplate, Outgoing, Setups, OutgoingStatus, SetupStatus
 
 Role = Literal['prover', 'verifier']
 
@@ -25,8 +25,12 @@ class MockInput:
     tapscript: str
 
 
+#Temp solution
+IGNORED_TX_NAME = 'proof_refuted'
+
 # Mocked inputs for the very first transactions
 # These should eventually come from somewhere else
+
 HARDCODED_MOCK_INPUTS: dict[str, list[MockInput]] = {
     'locked_funds': [
         MockInput(
@@ -89,11 +93,13 @@ def main():
             parser.error("Must specify --role if --all is not set")
 
     engine = create_engine(args.db)
-    dbsession = Session(engine, autobegin=False)
+    dbsession = Session(engine, autobegin=True)
+    outgoing = []
     successes = []
     failures = []
 
-    tx_template_query = select(TransactionTemplate).order_by(TransactionTemplate.ordinal)
+    tx_template_query = (select(TransactionTemplate).order_by(TransactionTemplate.ordinal))
+
     if not args.all:
         tx_template_query = tx_template_query.filter(
             TransactionTemplate.setup_id == args.setup_id,
@@ -102,10 +108,13 @@ def main():
 
     with dbsession.begin():
         tx_templates = dbsession.execute(tx_template_query).scalars().all()
+        tx_template_map: Dict[str, TransactionTemplate] = {}
 
+        print (f"tx_template_map: {tx_template_map}")
         print(f"Processing {len(tx_templates)} transaction templates...")
 
         for tx in tx_templates:
+
             if args.all:
                 if 'verifier' in tx.agent_id:
                     role = 'verifier'
@@ -121,14 +130,35 @@ def main():
                 dbsession=dbsession,
                 tx_template=tx,
                 role=role,
+                tx_template_map=tx_template_map,
             )
             if success:
                 successes.append(tx.name)
-                print("OK!")
+                outgoing.append(
+                    Outgoing(
+                        transaction_id=tx.tx_id,
+                        template_id=tx.template_id,
+                        status=OutgoingStatus.PENDING,
+                        raw_tx=tx.object,
+                        data={})
+                )
+                print(f"OK! {tx.tx_id}")
             else:
                 failures.append(tx.name)
                 print("FAIL.")
             print("")
+    if len(failures) <= 1:
+        dbsession.bulk_save_objects(outgoing)
+
+        dbsession.execute(
+            update(Setups)
+            .where(Setups.setup_id == args.setup_id)
+            .values(status=SetupStatus.SIGNED)
+        )
+
+        dbsession.commit()
+
+    dbsession.close()
 
     print("")
     print("All done.")
@@ -145,8 +175,9 @@ def _handle_tx_template(
     dbsession: Session,
     tx_template: TransactionTemplate,
     role: Role,
+    tx_template_map: dict[int, TransactionTemplate],
 ):
-    if tx_template.name in HARDCODED_MOCK_INPUTS:
+    if tx_template.is_external:
         # assert len(tx_template.inputs) == 0  # cannot do it, this script might have been already run
         tx_inputs: list[CTxIn]  = [
             CTxIn(
@@ -173,12 +204,11 @@ def _handle_tx_template(
         spent_outputs: list[CTxOut] = []
         input_tapscripts: list[CScript] = []
         for input_index, inp in enumerate(tx_template.inputs):
-            prev_tx = dbsession.get(
-                TransactionTemplate,
-                (tx_template.agent_id, tx_template.setup_id, inp['transactionName'])
-            )
+            prev_tx = tx_template_map.get(inp['transactionName'])
             if not prev_tx:
                 raise KeyError(f"Transaction {inp['transactionName']} not found")
+
+            print(f"Processing input #{input_index} of transaction {inp['transactionName']} ...")
 
             prev_txid = prev_tx.tx_id
             if not prev_txid:
@@ -275,6 +305,7 @@ def _handle_tx_template(
     # Make sure SQLAlchemy knows that the JSON object has changed
     flag_modified(tx_template, 'object')
 
+    tx_template_map[tx_template.name] = tx_template
     return True
 
 

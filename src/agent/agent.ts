@@ -75,11 +75,13 @@ export class Agent {
             this.start(ctx, randomSetupId, {
                 txId: '000',
                 outputIndex: 0,
-                amount: ONE_BITCOIN
+                amount: ONE_BITCOIN,
+                external: true
             }, {
                 txId: '111',
                 outputIndex: 0,
-                amount: ONE_BITCOIN
+                amount: ONE_BITCOIN,
+                external: true
             });
 
         } else if (data.trim().startsWith('{') && data.trim().endsWith('}')) {

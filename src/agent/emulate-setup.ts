@@ -19,12 +19,14 @@ export async function emulateSetup(proverAgentId: string, verifierAgentId: strin
     const mockLockedFunds = {
         txId: '0000000000000000000000000000000000000000000000000000000000000000',
         outputIndex: 0,
-        amount: agentConf.payloadAmount
+        amount: agentConf.payloadAmount,
+        external: true
     };
     const mockPayload = {
         txId: '1111111111111111111111111111111111111111111111111111111111111111',
         outputIndex: 0,
-        amount: agentConf.proverStakeAmount
+        amount: agentConf.proverStakeAmount,
+        external: true
     };
 
     console.log('generating templates...');
@@ -38,10 +40,10 @@ export async function emulateSetup(proverAgentId: string, verifierAgentId: strin
         throw new Error('Invalid length of template list?');
 
     proverTemplates = mergeWots(AgentRoles.PROVER, proverTemplates, verifierTemplates);
-    await writeTemplates(proverAgentId, AgentRoles.PROVER, setupId, proverTemplates);
+    await writeTemplates(proverAgentId, setupId, proverTemplates);
 
     verifierTemplates = mergeWots(AgentRoles.VERIFIER, verifierTemplates, proverTemplates);
-    await writeTemplates(verifierAgentId, AgentRoles.VERIFIER, setupId, verifierTemplates);
+    await writeTemplates(verifierAgentId, setupId, verifierTemplates);
 
     async function generateScripts(agentId: string, role: AgentRoles, transactions: Transaction[]) {
         await generateAllScripts(agentId, setupId, role, transactions);
@@ -58,6 +60,9 @@ export async function emulateSetup(proverAgentId: string, verifierAgentId: strin
 
     proverTemplates = await addAmounts(proverAgentId, AgentRoles.PROVER, setupId);
     verifierTemplates = await addAmounts(verifierAgentId, AgentRoles.VERIFIER, setupId);
+
+    console.log('updating setup status to READY status...');
+    await writeSetupStatus(setupId, SetupStatus.READY);
 
     console.log('signing...');
 

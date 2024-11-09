@@ -514,7 +514,7 @@ export async function initializeTransactions(
         }
     }
 
-    await writeTemplates(agentId, role, setupId, transactions);
+    await writeTemplates(agentId, setupId, transactions);
 
     return transactions;
 }
@@ -535,11 +535,13 @@ async function main() {
     await initializeTransactions(agentId, AgentRoles.PROVER, setupId, 1n, 2n, {
         txId: '0000000000000000000000000000000000000000000000000000000000000000',
         outputIndex: 0,
-        amount: agentConf.payloadAmount
+        amount: agentConf.payloadAmount,
+        external: true
     }, {
         txId: '1111111111111111111111111111111111111111111111111111111111111111',
         outputIndex: 0,
-        amount: agentConf.proverStakeAmount
+        amount: agentConf.proverStakeAmount,
+        external: true
     });
     console.log('Done.');
 }

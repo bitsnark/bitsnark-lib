@@ -6,6 +6,7 @@ export async function verifySetup(agentId: string, setupId: string) {
     // read from db
     const transactions = await readTemplates(agentId, setupId);
     console.log('Loaded ', transactions.length, 'transactions');
+
     if (transactions.length < 85) {
         console.error('Not enough transactions found');
         return;

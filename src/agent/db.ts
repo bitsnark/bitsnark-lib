@@ -43,12 +43,14 @@ async function runQuery(sql: string, params: any[] = []) {
     }
 }
 
-async function runDBTransaction(queries: [string, any[]][]) {
+async function runDBTransaction(queries: [string, (string | number | boolean)[]][]) {
     const client = await getConnection();
     try {
         await client.query('BEGIN');
         for (const [sql, params] of queries) {
-            await client.query(sql, params);
+            console.log('running query:', sql, params);
+            await client.query(sql, params as any);
+            console.log('query done');
         }
         await client.query('COMMIT');
         return true;
@@ -95,16 +97,16 @@ export interface Incoming {
     blockHeight: number;
 };
 
-// export interface Templates {
-//     template_id: number;
-//     name: string;
-//     setup_id: string;
-//     agent_id: string;
-//     role: AgentRoles;
-//     is_external: boolean
-//     ordinal: number;
-//     object: any;
-// };
+export interface Templates {
+    template_id: number;
+    name: string;
+    setup_id: string;
+    agent_id: string;
+    role: AgentRoles;
+    is_external: boolean
+    ordinal: number;
+    object: any;
+};
 
 //protocolVersion could be fetched from the agent.conf
 export async function writeSetupStatus(setupId: string, status: SetupStatus) {
@@ -119,13 +121,21 @@ export async function writeSetupStatus(setupId: string, status: SetupStatus) {
 
 //for testing purposes
 export async function dev_ClearTemplates(agentId: string, setupId: string) {
-    await runQuery(
-        `delete from templates where agent_id = $1 AND setup_id = $2`,
-        [agentId, setupId]
-    );
+    //delete all outgoing, incoming and templates
+    await runDBTransaction([
+        [`delete from outgoing where template_id in (
+            select template_id from templates where agent_id = $1 AND setup_id = $2);`,
+            [agentId, setupId]],
+        [`delete from incoming where template_id in (
+            select template_id from templates where agent_id = $1 AND setup_id = $2);`,
+            [agentId, setupId]],
+        [`delete from templates where agent_id = $1 AND setup_id = $2;`,
+            [agentId, setupId]]
+    ]);
 }
 
-export async function writeTemplate(agentId: string, agentRole: AgentRoles, setupId: string, transaction: Transaction) {
+
+export async function writeTemplate(agentId: string, setupId: string, transaction: Transaction) {
     const jsonizedObject = jsonizeObject(transaction);
     const result = await runQuery(
         `INSERT INTO templates
@@ -134,17 +144,32 @@ export async function writeTemplate(agentId: string, agentRole: AgentRoles, setu
         ON CONFLICT(agent_id, setup_id , name) DO UPDATE SET
             object = $7`,
         [transaction.transactionName, setupId, agentId, transaction.role,
-        transaction.role !== agentRole, transaction.ordinal, jsonizedObject]
+        transaction?.external ?? false, transaction.ordinal, jsonizedObject]
     );
 }
 
-export async function writeTemplates(agentId: string, agentRole: AgentRoles, setupId: string, transactions: Transaction[]) {
-    for (const t of transactions) await writeTemplate(agentId, agentRole, setupId, t);
+export async function writeTemplates(agentId: string, setupId: string, transactions: Transaction[]) {
+    for (const t of transactions) await writeTemplate(agentId, setupId, t);
 }
+
 
 export async function readTemplates(agentId: string, setupId?: string): Promise<Transaction[]> {
     const result = await runQuery(`
         SELECT * FROM templates
+        WHERE
+            agent_id = $1 ` + (setupId ? ` AND setup_id = $2` : '') +
+        ` ORDER BY ordinal ASC `,
+        [agentId, setupId]
+    );
+    const results = [...result];
+    return results.map(r => unjsonizeObject(r['object']));
+}
+
+export async function readTemplatesOfOutging(agentId: string, setupId?: string): Promise<Transaction[]> {
+    const result = await runQuery(`
+        SELECT templates.*, outgoing.transaction_id FROM templates
+        INNER JOIN outgoing
+        ON templates.template_id = outgoing.template_id
         WHERE
             agent_id = $1 ` + (setupId ? ` AND setup_id = $2` : '') +
         ` ORDER BY ordinal ASC `,

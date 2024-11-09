@@ -50,7 +50,7 @@ export async function addAmounts(agentId: string, agentRole: AgentRoles, setupId
 
     transactions = transactions.map(addAmounts);
     validateTransactionFees(transactions);
-    await writeTemplates(agentId, agentRole, setupId, transactions);
+    await writeTemplates(agentId, setupId, transactions);
 
     return transactions;
 }
