@@ -21,6 +21,7 @@ from ._base import (
 from ..core.models import TransactionTemplate
 from ..core.parsing import parse_hex_bytes
 from ..core.signing import sign_input
+from ..scripteval import eval_tapscript
 
 logger = logging.getLogger(__name__)
 
@@ -89,6 +90,8 @@ class TestScriptsCommand(Command):
                             action='store_true')
         parser.add_argument('--print-script', help='Print each script', action='store_true')
         parser.add_argument('--enable-timelocks', help='Enable testing of timelock transactions',
+                            action='store_true')
+        parser.add_argument('--eval', help='Evaluate script before submitting',
                             action='store_true')
 
     def run(
@@ -202,6 +205,7 @@ class TestScriptsCommand(Command):
                     debug=context.args.debug,
                     prover_privkey=prover_privkey,
                     verifier_privkey=verifier_privkey,
+                    evaluate=context.args.eval,
                 )
             except Exception as e:
                 logger.exception(e)
@@ -240,7 +244,8 @@ class TestScriptsCommand(Command):
         change_address: str,
         prover_privkey: CKey,
         verifier_privkey: CKey,
-        debug: bool = False
+        debug: bool = False,
+        evaluate: bool = False,
     ) -> Result:
         # logger.info('Script: %s', test_case.script_repr())
 
@@ -337,12 +342,15 @@ class TestScriptsCommand(Command):
             spent_outputs=spent_outputs,
             private_key=verifier_privkey,
         )
+        full_witness_elems = [
+            *test_case.witness_elems,
+            verifier_signature,
+            prover_signature,
+        ]
         spending_tx.wit = CTxWitness(vtxinwit=[
             CTxInWitness(CScriptWitness(
                 stack=[
-                    *test_case.witness_elems,
-                    verifier_signature,
-                    prover_signature,
+                    *full_witness_elems,
                     spent_script,
                     control_block,
                 ]
@@ -350,6 +358,14 @@ class TestScriptsCommand(Command):
         ])
 
         serialized_spending_tx = spending_tx.serialize().hex()
+
+        if evaluate:
+            eval_tapscript(
+                witness_elems=full_witness_elems,
+                script=spent_script,
+                ignore_signature_errors=True,
+                debug=debug,
+            )
 
         if debug:
             breakpoint()
