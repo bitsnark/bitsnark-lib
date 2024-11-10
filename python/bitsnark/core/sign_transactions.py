@@ -30,6 +30,8 @@ class TransactionProcessingError(Exception):
     pass
 
 
+# Temporery soultion until we handle the inputs properly
+IGNORE_TRANSACTION_FAILURE ='proof_refuted'
 # Mocked inputs for the very first transactions
 # These should eventually come from somewhere else
 HARDCODED_MOCK_INPUTS: dict[str, list[MockInput]] = {
@@ -151,7 +153,10 @@ def main(argv: Sequence[str] = None):
                 )
                 print(f"OK! {tx.tx_id}")
             else:
-                raise TransactionProcessingError(f"Rollback: Failed signing {tx.name}")
+                if tx.name == IGNORE_TRANSACTION_FAILURE:
+                    print(f"FAIL! {tx.name} (ignored)")
+                else:
+                    raise TransactionProcessingError(f"Rollback: Failed signing {tx.name}")
 
             print("")
 
