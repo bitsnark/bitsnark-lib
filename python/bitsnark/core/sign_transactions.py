@@ -173,6 +173,9 @@ def _handle_tx_template(
     use_mocked_inputs: bool = True,
 ):
     if tx_template.is_external:
+        # Requierd for signing next transactions
+        tx_template.tx_id = tx_template.object['txId']
+        tx_template_map[tx_template.name] = tx_template
         print(f"Transaction {tx_template.name} is external, skipping")
         return True
 
