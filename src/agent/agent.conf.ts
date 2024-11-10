@@ -89,5 +89,8 @@ export const agentConf: AgentConf = {
     postgresKeepAlive: Boolean(process.env['POSTGRES_KEEP_ALIVE'] ?? 'true'),
     blocksUntilFinalized: getIntegerFromEnv('BLOCKS_UNTIL_FINALIZED', 0), // 6
     protocolVersion: getIntegerFromEnv('PROTOCOL_VERSION', 1),
-    useMockProgram: Boolean(process.env['USE_MOCK_PROGRAM'] ?? 'false')
+    // Quickfix until we merge the boolean parsing PR.
+    useMockProgram: new Set([
+        'true', 't', '1', 'yes', 'y', 'on'
+    ]).has((process.env['USE_MOCK_PROGRAM'] ?? 'false').toLowerCase())
 };
