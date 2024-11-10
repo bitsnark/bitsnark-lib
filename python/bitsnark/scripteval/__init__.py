@@ -35,7 +35,7 @@ import bitcointx.core.key
 import bitcointx.core.serialize
 from bitcointx.core.script import (
     CScript, SIGVERSION_BASE, SIGVERSION_WITNESS_V0,
-    MAX_SCRIPT_ELEMENT_SIZE, MAX_SCRIPT_OPCODES, FindAndDelete, DISABLED_OPCODES,
+    MAX_SCRIPT_ELEMENT_SIZE, FindAndDelete, DISABLED_OPCODES,
     SIGVERSION_Type, OP_CHECKMULTISIGVERIFY, OP_CHECKMULTISIG, OP_CHECKSIG, OP_CHECKSIGVERIFY,
     OP_1NEGATE, OP_EQUAL, OP_EQUALVERIFY,
     OP_PUSHDATA4,
@@ -50,7 +50,6 @@ from bitcointx.core.script import (
 )
 from bitcointx.core.scripteval import (
     EvalScriptError,
-    MaxOpCountError,
     MissingOpArgumentsError,
     VerifyScriptError,
     VerifyOpFailedError,
@@ -84,14 +83,17 @@ def eval_tapscript(
     *,
     witness_elems: List[bytes],
     script: CScript,
+    debug: bool = False,
+    ignore_signature_errors: bool = False,
+    verify_stack: bool = True,
+    # The rest of these options should probably not exist in the final API,
+    # but let's have them here anyway
     txTo: 'bitcointx.core.CTransaction' = bitcointx.core.CTransaction(),
     inIdx: int = 0,
     flags: Set[ScriptVerifyFlag_Type] = frozenset(),
     amount: int = 0,
     # TODO: sigversion taproot or tapscript? or base, since nothing supports taproot/tapscript?
     sigversion: SIGVERSION_Type = SIGVERSION_TAPSCRIPT,
-    ignore_signature_errors: bool = False,
-    debug: bool = False,
 ) -> None:
     """
     Evaluate tapscript, optionally ignoring signature checks
@@ -106,13 +108,14 @@ def eval_tapscript(
             amount=amount,
             sigversion=sigversion,
             ignore_signature_errors=ignore_signature_errors,
+            verify_stack=verify_stack,
         )
     except EvalScriptError as exc:
         state = exc.state
         logger.info(
             "Script evaluation failed. Stack length: %s, Altstack length: %s.",
-            len(state.stack),
-            len(state.altstack),
+            len(state.stack) if state.stack is not None else None,
+            len(state.altstack) if state.altstack is not None else None,
         )
         if debug:
             logger.info("Entering Python debugger. The exception is stored in variable `exc` and state in `state`")
@@ -132,6 +135,7 @@ def _eval_tapscript(
     # TODO: sigversion taproot or tapscript? or base, since nothing supports taproot/tapscript?
     sigversion: SIGVERSION_Type = SIGVERSION_TAPSCRIPT,
     ignore_signature_errors: bool = False,
+    verify_stack: bool = True,
 ) -> None:
     """
     Evaluate tapscript, optionally ignoring signature checks
@@ -173,8 +177,9 @@ def _eval_tapscript(
 
         if sop > OP_16:
             nOpCount[0] += 1
-            if nOpCount[0] > MAX_SCRIPT_OPCODES:
-                raise MaxOpCountError(get_eval_state())
+            # Taproot doesn't have the limit for non-push opcodes
+            # if nOpCount[0] > MAX_SCRIPT_OPCODES:
+            #     raise MaxOpCountError(get_eval_state())
 
         def check_args(n: int) -> None:
             if len(stack) < n:
@@ -505,8 +510,21 @@ def _eval_tapscript(
     if len(vfExec):
         raise EvalScriptError(
             'Unterminated IF/ELSE block',
-            ScriptEvalState(stack=stack, scriptIn=scriptIn,
+            ScriptEvalState(stack=stack, altstack=altstack, scriptIn=scriptIn,
                             txTo=txTo, inIdx=inIdx, flags=flags))
+
+    if verify_stack:
+        if len(stack) != 1:
+            raise EvalScriptError(
+                f'stack size must be exactly one after execution (got {len(stack)})',
+                ScriptEvalState(stack=stack, altstack=altstack, scriptIn=scriptIn,
+                                txTo=txTo, inIdx=inIdx, flags=flags))
+
+        if not any(stack[0]):
+            raise EvalScriptError(
+                'top stack element is false',
+                ScriptEvalState(stack=stack, altstack=altstack, scriptIn=scriptIn,
+                                txTo=txTo, inIdx=inIdx, flags=flags))
 
 
 def checksig_tapscript(
@@ -520,6 +538,7 @@ def checksig_tapscript(
     sigversion: SIGVERSION_Type = SIGVERSION_BASE,
     ignore_errors: bool = False,
 ) -> bool:
+    # TODO: make it actually work with the signature checks, not just if ignore_errors=True
     try:
         ret = _CheckSig(sig, pubkey, script, txTo, inIdx, flags, amount, sigversion)
     except (VerifyOpFailedError, ValueError) as e:
