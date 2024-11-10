@@ -26,7 +26,6 @@ async function getConnection(): Promise<Client> {
     });
 }
 
-
 async function runQuery(sql: string, params: any[] = []) {
     const client = await getConnection();
     try {
@@ -97,20 +96,21 @@ export interface Templates {
 };
 
 // DB functions
-// used for our code testing (delete setup data)
+
+// This is used for development purposes only and will be removed once every agent gets his own setup.
 export async function dev_ClearTemplates(setupId: string, agentId?: string) {
     //delete all outgoing, incoming and templates
     const params = agentId ? [setupId, agentId] : [setupId];
     await runDBTransaction([
-        [`delete from outgoing where template_id in (
-            select template_id from templates where setup_id = $1 ` +
+        [`DELETE FROM outgoing WHERE template_id IN (
+            SELECT template_id FROM templates WHERE setup_id = $1 ` +
             (agentId ? ` AND agent_id = $2` : '') + `);`,
             params],
-        [`delete from incoming where template_id in (
-            select template_id from templates where setup_id = $1 ` +
+        [`DELETE FROM incoming WHERE template_id IN (
+            SELECT template_id FROM templates WHERE setup_id = $1 ` +
             (agentId ? ` AND agent_id = $2` : '') + `);`,
             params],
-        [`delete from templates where setup_id = $1 ` +
+        [`DELETE FROM templates WHERE setup_id = $1 ` +
             (agentId ? ` AND agent_id = $2` : '') + `;`,
             params]
     ]);
@@ -177,8 +177,8 @@ export async function readExpectedIncoming() {
         INNER JOIN setups
         ON templates.setup_id = setups.setup_id
         WHERE outgoing.status in ( 'PENDING', 'PUBLISHED' )
-        and setups.status = 'SIGNED'
-        and transaction_id not in (
+        AND setups.status = 'SIGNED'
+        AND transaction_id NOT IN (
             SELECT transaction_id
             FROM incoming )`
     );

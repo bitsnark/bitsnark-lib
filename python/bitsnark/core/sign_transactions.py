@@ -56,16 +56,21 @@ HARDCODED_MOCK_INPUTS: dict[str, list[MockInput]] = {
 # Copied from agent.conf.ts
 KEYPAIRS = {
     'bitsnark_prover_1': {
-        'public': XOnlyPubKey.fromhex(os.getenv('PROVER_SCHNORR_PUBLIC', 'ae2ea39bca4b6b14567e3c38b9680f6483ceeef4ae17f8dceb5a5a0866999b75')),
-        'private': CKey.fromhex(os.getenv('PROVER_SCHNORR_PRIVATE', '415c69b837f4146019574f59c223054c8c144ac61b6ae87bc26824c0f8d034e2')),
+        'public': XOnlyPubKey.fromhex(
+            os.getenv('PROVER_SCHNORR_PUBLIC', 'ae2ea39bca4b6b14567e3c38b9680f6483ceeef4ae17f8dceb5a5a0866999b75')),
+        'private': CKey.fromhex(
+            os.getenv('PROVER_SCHNORR_PRIVATE', '415c69b837f4146019574f59c223054c8c144ac61b6ae87bc26824c0f8d034e2')),
     },
     'bitsnark_verifier_1': {
-        'public': XOnlyPubKey.fromhex(os.getenv('VERIFIER_SCHNORR_PUBLIC', '86ad52a51b65ab3aed9a64e7202a7aa1f2bd3da7a6a2dae0f5c8e28bda29de79')),
-        'private': CKey.fromhex(os.getenv('VERIFIER_SCHNORR_PRIVATE', 'd4067af1132afcb352b0edef53d8aa2a5fc713df61dee31b1d937e69ece0ebf0')),
+        'public': XOnlyPubKey.fromhex(
+            os.getenv('VERIFIER_SCHNORR_PUBLIC', '86ad52a51b65ab3aed9a64e7202a7aa1f2bd3da7a6a2dae0f5c8e28bda29de79')),
+        'private': CKey.fromhex(
+            os.getenv('VERIFIER_SCHNORR_PRIVATE', 'd4067af1132afcb352b0edef53d8aa2a5fc713df61dee31b1d937e69ece0ebf0')),
     },
 }
 for keypairs in KEYPAIRS.values():
     assert keypairs['public'] == XOnlyPubKey(keypairs['private'].pub)
+
 
 def main(argv: Sequence[str] = None):
     parser = argparse.ArgumentParser()
@@ -109,9 +114,9 @@ def main(argv: Sequence[str] = None):
 
     with dbsession.begin():
         tx_templates = dbsession.execute(tx_template_query).scalars().all()
-        tx_template_map: Dict[str, TransactionTemplate] = {}
+        tx_template_map: dict[str, TransactionTemplate] = {}
 
-        print (f"tx_template_map: {tx_template_map}")
+        print(f"tx_template_map: {tx_template_map}")
         print(f"Processing {len(tx_templates)} transaction templates...")
 
         for tx in tx_templates:
@@ -164,7 +169,6 @@ def main(argv: Sequence[str] = None):
         print(', '.join(successes))
 
 
-
 def _handle_tx_template(
     *,
     dbsession: Session,
@@ -182,7 +186,7 @@ def _handle_tx_template(
 
     if use_mocked_inputs and tx_template.name in HARDCODED_MOCK_INPUTS:
         # assert len(tx_template.inputs) == 0  # cannot do it, this script might have been already run
-        tx_inputs: list[CTxIn]  = [
+        tx_inputs: list[CTxIn] = [
             CTxIn(
                 COutPoint(
                     hash=bytes.fromhex(inp.txid)[::-1],
@@ -191,14 +195,14 @@ def _handle_tx_template(
             )
             for inp in HARDCODED_MOCK_INPUTS[tx_template.name]
         ]
-        spent_outputs: list[CTxOut]  = [
+        spent_outputs: list[CTxOut] = [
             CTxOut(
                 nValue=inp.amount,
                 scriptPubKey=CScript.fromhex(inp.script_pubkey)
             )
             for inp in HARDCODED_MOCK_INPUTS[tx_template.name]
         ]
-        input_tapscripts: list[CScript]  = [
+        input_tapscripts: list[CScript] = [
             CScript.fromhex(inp.tapscript)
             for inp in HARDCODED_MOCK_INPUTS[tx_template.name]
         ]
@@ -223,7 +227,9 @@ def _handle_tx_template(
             try:
                 prev_tx_hash = bytes.fromhex(prev_txid)[::-1]
             except ValueError:
-                print(f"Invalid txid {prev_txid} for transaction {prev_tx.name} (required by {tx_template.name} input #{input_index})")
+                print(
+                    f"Invalid txid {prev_txid} for transaction {prev_tx.name} "
+                    f"(required by {tx_template.name} input #{input_index})")
                 raise
 
             tx_inputs.append(
