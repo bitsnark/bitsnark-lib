@@ -3,6 +3,7 @@ from typing import TypedDict, Optional, ClassVar, Any
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy import Column, Integer, JSON, String, Boolean, TIMESTAMP, Enum
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.schema import FetchedValue
 import datetime
 import enum
 
@@ -57,7 +58,7 @@ class Outgoing(Base):
     status: Mapped[str] = mapped_column(Enum(OutgoingStatus), nullable=False)
     raw_tx: Mapped[dict] = mapped_column(JSON, nullable=False)
     data: Mapped[dict] = mapped_column(JSON, nullable=False)
-    updated: Mapped[datetime.datetime] = mapped_column(TIMESTAMP, nullable=False)
+    updated: Mapped[datetime.datetime] = mapped_column(TIMESTAMP, server_default=FetchedValue(), nullable=False)
 
 
 class Setups(Base):
