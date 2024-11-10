@@ -60,6 +60,7 @@ export interface FundingUtxo {
     outputIndex: number;
     amount: bigint;
     serializedTransaction?: Buffer;
+    external: boolean;
 }
 
 export interface OperatorState {

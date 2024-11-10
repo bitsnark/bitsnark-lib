@@ -32,6 +32,7 @@ interface AgentConf {
     postgresBigints: boolean;
     postgresKeepAlive: boolean;
     blocksUntilFinalized: number;
+    protocolVersion: number;
     useMockProgram: boolean;
 };
 
@@ -87,5 +88,9 @@ export const agentConf: AgentConf = {
     postgresBigints: Boolean(process.env['POSTGRES_BIGINTS'] ?? 'true'),
     postgresKeepAlive: Boolean(process.env['POSTGRES_KEEP_ALIVE'] ?? 'true'),
     blocksUntilFinalized: getIntegerFromEnv('BLOCKS_UNTIL_FINALIZED', 0), // 6
-    useMockProgram: Boolean(process.env['USE_MOCK_PROGRAM'] ?? 'false')
+    protocolVersion: getIntegerFromEnv('PROTOCOL_VERSION', 1),
+    // Quickfix until we merge the boolean parsing PR.
+    useMockProgram: new Set([
+        'true', 't', '1', 'yes', 'y', 'on'
+    ]).has((process.env['USE_MOCK_PROGRAM'] ?? 'false').toLowerCase())
 };

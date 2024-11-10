@@ -2,7 +2,7 @@ import { TransactionNames, AgentRoles, FundingUtxo, iterations, twoDigits, rando
 import { encodeWinternitz, getWinternitzPublicKeys, WOTS_NIBBLES, WotsType } from './winternitz';
 import { agentConf } from './agent.conf';
 import { calculateStateSizes } from './regs-calc';
-import { clearTransactions, writeTransactions } from './db';
+import { dev_ClearTemplates, SetupStatus, writeSetupStatus, writeTemplates } from './db';
 
 export const PROTOCOL_VERSION = 0.1;
 
@@ -514,7 +514,7 @@ export async function initializeTransactions(
         }
     }
 
-    await writeTransactions(agentId, setupId, transactions);
+    await writeTemplates(agentId, setupId, transactions);
 
     return transactions;
 }
@@ -525,18 +525,23 @@ async function main() {
 
     if (process.argv.some(s => s == '--clear')) {
         console.log('Deleting transactions...');
-        clearTransactions(agentId, setupId);
+        dev_ClearTemplates(setupId, agentId);
     }
+
+    console.log('Create / Update setup...');
+    await writeSetupStatus(setupId, SetupStatus.PENDING);
 
     console.log('Initializing transactions...');
     await initializeTransactions(agentId, AgentRoles.PROVER, setupId, 1n, 2n, {
         txId: '0000000000000000000000000000000000000000000000000000000000000000',
         outputIndex: 0,
-        amount: agentConf.payloadAmount
+        amount: agentConf.payloadAmount,
+        external: true
     }, {
         txId: '1111111111111111111111111111111111111111111111111111111111111111',
         outputIndex: 0,
-        amount: agentConf.proverStakeAmount
+        amount: agentConf.proverStakeAmount,
+        external: true
     });
     console.log('Done.');
 }
