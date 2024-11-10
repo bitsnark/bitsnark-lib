@@ -19,7 +19,7 @@ interface AgentConf {
     feeFactorPercent: number;
     winternitzSecret: string;
     tokens: { [key: string]: string };
-    keyPairs: { [key: string]: { public: string, private: string } };
+    keyPairs: { [key: string]: { schnorrPublic: string, schnorrPrivate: string } };
     bitcoinNodeNetwork: string;
     bitcoinNodeUsername: string;
     bitcoinNodePassword: string;
@@ -33,6 +33,7 @@ interface AgentConf {
     postgresKeepAlive: boolean;
     blocksUntilFinalized: number;
     protocolVersion: number;
+    useMockProgram: boolean;
 };
 
 function getIntegerFromEnv(name: string, defaultValue: number): number {
@@ -52,7 +53,10 @@ export const agentConf: AgentConf = {
     payloadAmount: BigInt(process.env['PAYLOAD_AMOUNT'] ?? ONE_BITCOIN * 10n),
     proverStakeAmount: BigInt(process.env['PROVER_STAKE_AMOUNT'] ?? ONE_BITCOIN * 2n),
     verifierPaymentAmount: BigInt(process.env['VERIFIER_PAYMENT_AMOUNT'] ?? ONE_BITCOIN),
-    symbolicOutputAmount: BigInt(process.env['SYMBOLIC_OUTPUT_AMOUNT'] ?? ONE_SATOSHI),
+    // Must set an amount that is greater than dust limit.
+    // Note that dust limit actually depends on the specific output:
+    // https://github.com/bitcoin/bitcoin/blob/6463117a29294f6ddc9fafecfd1e9023956cc41b/src/policy/policy.cpp#L26
+    symbolicOutputAmount: BigInt(process.env['SYMBOLIC_OUTPUT_AMOUNT'] ?? ONE_SATOSHI * 546n),
 
     feePerByte: BigInt(process.env['FEE_PER_BYTE'] ?? ONE_SATOSHI * 20n),
     feeFactorPercent: Number(process.env['FEE_FACTOR_PERCENT'] ?? 125),
@@ -64,12 +68,12 @@ export const agentConf: AgentConf = {
     },
     keyPairs: {
         'bitsnark_prover_1': {
-            public: process.env['PROVER_SCHNORR_PUBLIC'] ?? '02ae2ea39bca4b6b14567e3c38b9680f6483ceeef4ae17f8dceb5a5a0866999b75',
-            private: process.env['PROVER_SCHNORR_PRIVATE'] ?? '415c69b837f4146019574f59c223054c8c144ac61b6ae87bc26824c0f8d034e2'
+            schnorrPublic: process.env['PROVER_SCHNORR_PUBLIC'] ?? 'ae2ea39bca4b6b14567e3c38b9680f6483ceeef4ae17f8dceb5a5a0866999b75',
+            schnorrPrivate: process.env['PROVER_SCHNORR_PRIVATE'] ?? '415c69b837f4146019574f59c223054c8c144ac61b6ae87bc26824c0f8d034e2'
         },
         'bitsnark_verifier_1': {
-            public: process.env['VERIFIER_SCHNORR_PUBLIC'] ?? '0386ad52a51b65ab3aed9a64e7202a7aa1f2bd3da7a6a2dae0f5c8e28bda29de79',
-            private: process.env['VERIFIER_SCHNORR_PRIVATE'] ?? 'd4067af1132afcb352b0edef53d8aa2a5fc713df61dee31b1d937e69ece0ebf0'
+            schnorrPublic: process.env['VERIFIER_SCHNORR_PUBLIC'] ?? '86ad52a51b65ab3aed9a64e7202a7aa1f2bd3da7a6a2dae0f5c8e28bda29de79',
+            schnorrPrivate: process.env['VERIFIER_SCHNORR_PRIVATE'] ?? 'd4067af1132afcb352b0edef53d8aa2a5fc713df61dee31b1d937e69ece0ebf0'
         }
     },
     bitcoinNodeNetwork: process.env['BITCOIN_NODE_NETWORK'] ?? 'regtest',
@@ -84,5 +88,6 @@ export const agentConf: AgentConf = {
     postgresBigints: Boolean(process.env['POSTGRES_BIGINTS'] ?? 'true'),
     postgresKeepAlive: Boolean(process.env['POSTGRES_KEEP_ALIVE'] ?? 'true'),
     blocksUntilFinalized: getIntegerFromEnv('BLOCKS_UNTIL_FINALIZED', 0), // 6
-    protocolVersion: 1 //incremant as changing versions
+    protocolVersion: getIntegerFromEnv('PROTOCOL_VERSION', 1),
+    useMockProgram: Boolean(process.env['USE_MOCK_PROGRAM'] ?? 'false')
 };
