@@ -525,7 +525,7 @@ async function main() {
 
     if (process.argv.some(s => s == '--clear')) {
         console.log('Deleting transactions...');
-        dev_ClearTemplates(agentId, setupId);
+        dev_ClearTemplates(setupId, agentId);
     }
 
     console.log('Create / Update setup...');

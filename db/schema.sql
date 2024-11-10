@@ -36,9 +36,11 @@ CREATE TABLE public.outgoing (
     status CHARACTER VARYING NOT NULL DEFAULT 'PENDING',
     updated TIMESTAMP NOT NULL DEFAULT NOW()
 );
+
 CREATE INDEX outgoing_transaction_id_idx ON public.outgoing (transaction_id);
 CREATE INDEX outgoing_status_idx ON public.outgoing (status);
 CREATE INDEX outgoing_updated_idx ON public.outgoing (updated);
+
 
 CREATE TABLE public.incoming (
     template_id INTEGER PRIMARY KEY REFERENCES public.templates(template_id),

@@ -11,9 +11,9 @@ import { verifySetup } from "./verify-setup";
 export async function emulateSetup(proverAgentId: string, verifierAgentId: string, setupId: string) {
 
     console.log('Deleting template...');
-    await dev_ClearTemplates(proverAgentId, setupId);
+    await dev_ClearTemplates(setupId);
 
-    console.log('Createing / updating setup status...');
+    console.log('Creating or updating setup status...');
     await writeSetupStatus(setupId, SetupStatus.PENDING);
 
     const mockLockedFunds = {
@@ -60,6 +60,7 @@ export async function emulateSetup(proverAgentId: string, verifierAgentId: strin
 
     proverTemplates = await addAmounts(proverAgentId, AgentRoles.PROVER, setupId);
     verifierTemplates = await addAmounts(verifierAgentId, AgentRoles.VERIFIER, setupId);
+
 
     console.log('updating setup status to READY status...');
     await writeSetupStatus(setupId, SetupStatus.READY);

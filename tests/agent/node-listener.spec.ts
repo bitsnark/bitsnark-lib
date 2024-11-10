@@ -1,9 +1,9 @@
 import { NodeListener } from '../../src/agent/node-listener';
-import { readAwaitIncoming, writeIncomingTransaction } from '../../src/agent/db';
+import { readExpectedIncoming, writeIncomingTransaction } from '../../src/agent/db';
 const Client = require('bitcoin-core');
 
 jest.mock('../../src/agent/db', () => ({
-    readAwaitIncoming: jest.fn(),
+    readExpectedIncoming: jest.fn(),
     writeIncomingTransaction: jest.fn(),
 }));
 
@@ -82,7 +82,7 @@ describe('NodeListener', () => {
     });
 
     it('Won\'t query for raw transaction if no pending transactions were found', async () => {
-        (readAwaitIncoming as jest.Mock).mockResolvedValue([]);
+        (readExpectedIncoming as jest.Mock).mockResolvedValue([]);
 
         await nodeListener.monitorTransmitted();
 
@@ -91,7 +91,7 @@ describe('NodeListener', () => {
 
     it('Write to DB if new finalized transmitted are found', async () => {
         setupLastBlockProperties(nodeListener, 'hash', 12);
-        (readAwaitIncoming as jest.Mock).mockResolvedValue(getPendingTransactions());
+        (readExpectedIncoming as jest.Mock).mockResolvedValue(getPendingTransactions());
         clientMock.getTransaction
             .mockImplementationOnce(() => Promise.resolve(Tx1Block12))
             .mockImplementationOnce(() => Promise.resolve(Tx2Block5));
@@ -109,7 +109,7 @@ describe('NodeListener', () => {
 
     it('Ignore \'Transaction not found\' error', async () => {
         setupLastBlockProperties(nodeListener, 'hash', 12);
-        (readAwaitIncoming as jest.Mock).mockResolvedValue(getPendingTransactions());
+        (readExpectedIncoming as jest.Mock).mockResolvedValue(getPendingTransactions());
         clientMock.getTransaction
             .mockImplementationOnce(() => new Error('Transaction not found'))
             .mockImplementationOnce(() => Promise.resolve(Tx2Block5));
@@ -127,7 +127,7 @@ describe('NodeListener', () => {
 
     it('on\'t write to DB if new transmitted aren\'t finalized', async () => {
         setupLastBlockProperties(nodeListener, 'hash', 12);
-        (readAwaitIncoming as jest.Mock).mockResolvedValue(getPendingTransactions());
+        (readExpectedIncoming as jest.Mock).mockResolvedValue(getPendingTransactions());
         clientMock.getTransaction
             .mockImplementationOnce(() => Promise.resolve(Tx1Block12))
             .mockImplementationOnce(() => Promise.resolve(Tx3Block10));

@@ -4,9 +4,7 @@ import { Client, connect } from 'ts-postgres';
 import { agentConf } from './agent.conf';
 import { TxRawData } from './bitcoin-node';
 
-/// DB UTILS
-
-
+// DB utils
 function jsonizeObject(obj: any): any {
     const json = jsonStringifyCustom(obj);
     return JSON.parse(json);
@@ -32,7 +30,6 @@ async function getConnection(): Promise<Client> {
 async function runQuery(sql: string, params: any[] = []) {
     const client = await getConnection();
     try {
-        console.log('running query:', sql, params);
         const result = await client.query(sql, params);
         return result;
     } catch (e) {
@@ -48,9 +45,7 @@ async function runDBTransaction(queries: [string, (string | number | boolean)[]]
     try {
         await client.query('BEGIN');
         for (const [sql, params] of queries) {
-            console.log('running query:', sql, params);
             await client.query(sql, params as any);
-            console.log('query done');
         }
         await client.query('COMMIT');
         return true;
@@ -62,9 +57,6 @@ async function runDBTransaction(queries: [string, (string | number | boolean)[]]
         await client.end();
     }
 }
-
-
-/// NEED TO CHANGE
 
 export enum SetupStatus {
     PENDING = 'PENDING',
@@ -79,24 +71,20 @@ export enum OutgoingStatus {
     PUBLISHED = 'PUBLISHED',
     REJECTED = 'REJECTED',
 }
-
-
-// export interface Outgoing {
-//     transaction_id: string;
-//     template_id: number;
-//     raw_tx: any;
-//     data: any;
-//     status: OutgoingStatus;
-//     timestamp: string;
-// }
-
+export interface Outgoing {
+    transaction_id: string;
+    template_id: number;
+    raw_tx: any;
+    data: any;
+    status: OutgoingStatus;
+    timestamp: string;
+}
 export interface Incoming {
     txId: string;
     templateId: number;
     rawTransaction: any;
     blockHeight: number;
 };
-
 export interface Templates {
     template_id: number;
     name: string;
@@ -108,7 +96,26 @@ export interface Templates {
     object: any;
 };
 
-//protocolVersion could be fetched from the agent.conf
+// DB functions
+// used for our code testing (delete setup data)
+export async function dev_ClearTemplates(setupId: string, agentId?: string) {
+    //delete all outgoing, incoming and templates
+    const params = agentId ? [setupId, agentId] : [setupId];
+    await runDBTransaction([
+        [`delete from outgoing where template_id in (
+            select template_id from templates where setup_id = $1 ` +
+            (agentId ? ` AND agent_id = $2` : '') + `);`,
+            params],
+        [`delete from incoming where template_id in (
+            select template_id from templates where setup_id = $1 ` +
+            (agentId ? ` AND agent_id = $2` : '') + `);`,
+            params],
+        [`delete from templates where setup_id = $1 ` +
+            (agentId ? ` AND agent_id = $2` : '') + `;`,
+            params]
+    ]);
+}
+
 export async function writeSetupStatus(setupId: string, status: SetupStatus) {
     const result = await runQuery(
         `INSERT INTO setups
@@ -118,22 +125,6 @@ export async function writeSetupStatus(setupId: string, status: SetupStatus) {
         [setupId, status, agentConf.protocolVersion]
     );
 }
-
-//for testing purposes
-export async function dev_ClearTemplates(agentId: string, setupId: string) {
-    //delete all outgoing, incoming and templates
-    await runDBTransaction([
-        [`delete from outgoing where template_id in (
-            select template_id from templates where agent_id = $1 AND setup_id = $2);`,
-            [agentId, setupId]],
-        [`delete from incoming where template_id in (
-            select template_id from templates where agent_id = $1 AND setup_id = $2);`,
-            [agentId, setupId]],
-        [`delete from templates where agent_id = $1 AND setup_id = $2;`,
-            [agentId, setupId]]
-    ]);
-}
-
 
 export async function writeTemplate(agentId: string, setupId: string, transaction: Transaction) {
     const jsonizedObject = jsonizeObject(transaction);
@@ -151,7 +142,6 @@ export async function writeTemplate(agentId: string, setupId: string, transactio
 export async function writeTemplates(agentId: string, setupId: string, transactions: Transaction[]) {
     for (const t of transactions) await writeTemplate(agentId, setupId, t);
 }
-
 
 export async function readTemplates(agentId: string, setupId?: string): Promise<Transaction[]> {
     const result = await runQuery(`
@@ -179,7 +169,7 @@ export async function readTemplatesOfOutging(agentId: string, setupId?: string):
     return results.map(r => unjsonizeObject(r['object']));
 }
 
-export async function readAwaitIncoming() {
+export async function readExpectedIncoming() {
     const result = await runQuery(`
         SELECT outgoing.transaction_id, outgoing.template_id
         FROM outgoing INNER JOIN templates
@@ -195,7 +185,6 @@ export async function readAwaitIncoming() {
 
     return result.rows.map(row => ({ txId: row[0], templateId: row[1] }));
 }
-
 
 export async function writeIncomingTransaction(transmittedRaw: TxRawData, blockHeight: number, templateId: number) {
     const result = await runQuery(
@@ -225,8 +214,8 @@ export async function readIncomingTransactions(setupId: string): Promise<Incomin
     }));
 }
 
-if (__filename === process.argv[1]) {
+if (process.argv[1] == __filename) {
     (async () => {
-        console.log('clearing transactions...');
-    })();
+        await dev_ClearTemplates('test_setup');
+    })().catch(console.error);
 }

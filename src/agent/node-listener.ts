@@ -1,4 +1,4 @@
-import { readAwaitIncoming, writeIncomingTransaction } from './db';
+import { readExpectedIncoming, writeIncomingTransaction } from './db';
 import { agentConf } from './agent.conf';
 import { BitcoinNode, TxData, TxRawData } from './bitcoin-node';
 
@@ -33,7 +33,7 @@ export class NodeListener {
     }
 
     async monitorTransmitted() {
-        const pending = await readAwaitIncoming();
+        const pending = await readExpectedIncoming();
         for (const pendingTx of pending) {
             try {
                 const transmittedTx: TxData = await this.client.getTransaction(pendingTx.txId);
