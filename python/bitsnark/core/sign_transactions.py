@@ -104,72 +104,61 @@ def main():
             TransactionTemplate.agent_id == args.agent_id,
         )
 
-    try:
-        with dbsession.begin():
-            tx_templates = dbsession.execute(tx_template_query).scalars().all()
-            tx_template_map: Dict[str, TransactionTemplate] = {}
+    with dbsession.begin():
+        tx_templates = dbsession.execute(tx_template_query).scalars().all()
+        tx_template_map: Dict[str, TransactionTemplate] = {}
 
-            print (f"tx_template_map: {tx_template_map}")
-            print(f"Processing {len(tx_templates)} transaction templates...")
+        print (f"tx_template_map: {tx_template_map}")
+        print(f"Processing {len(tx_templates)} transaction templates...")
 
-            for tx in tx_templates:
+        for tx in tx_templates:
 
-                if args.all:
-                    if 'verifier' in tx.agent_id:
-                        role = 'verifier'
-                    elif 'prover' in tx.agent_id:
-                        role = 'prover'
-                    else:
-                        raise ValueError(f"Cannot determine role from agent ID {tx.agent_id}")
+            if args.all:
+                if 'verifier' in tx.agent_id:
+                    role = 'verifier'
+                elif 'prover' in tx.agent_id:
+                    role = 'prover'
                 else:
-                    role = args.role
+                    raise ValueError(f"Cannot determine role from agent ID {tx.agent_id}")
+            else:
+                role = args.role
 
-                print(f"Processing transaction #{tx.ordinal}: {tx.name}...")
-                success = _handle_tx_template(
-                    dbsession=dbsession,
-                    tx_template=tx,
-                    role=role,
-                    tx_template_map=tx_template_map,
+            print(f"Processing transaction #{tx.ordinal}: {tx.name}...")
+            success = _handle_tx_template(
+                dbsession=dbsession,
+                tx_template=tx,
+                role=role,
+                tx_template_map=tx_template_map,
+            )
+            if success:
+                successes.append(tx.name)
+                dbsession.add(
+                    Outgoing(
+                        template_id=tx.template_id,
+                        transaction_id=tx.tx_id,
+                        status=OutgoingStatus.PENDING,
+                        raw_tx=tx.object,
+                        data={})
                 )
-                if success:
-                    successes.append(tx.name)
-                    dbsession.add(
-                        Outgoing(
-                            template_id=tx.template_id,
-                            transaction_id=tx.tx_id,
-                            status=OutgoingStatus.PENDING,
-                            raw_tx=tx.object,
-                            data={})
-                    )
-                    print(f"OK! {tx.tx_id}")
-                else:
-                    failures.append(tx.name)
-                    raise TransactionProcessingError(f"Rollback: Transaction processing failed for {tx.name}")
+                print(f"OK! {tx.tx_id}")
+            else:
+                raise TransactionProcessingError(f"Rollback: Failed signing {tx.name}")
 
-                print("")
+            print("")
 
-            if len(failures) <= 1:
-                dbsession.execute(
-                    update(Setups)
-                    .where(Setups.setup_id == args.setup_id)
-                    .values(status=SetupStatus.SIGNED)
-                )
-    except TransactionProcessingError as e:
-        print(f"Error occurred: {e}")
-        dbsession.rollback()
-    except Exception as e:
-        print(f"Unexpected error occurred: {e}")
-        dbsession.rollback()
-    finally:
+        dbsession.execute(
+            update(Setups)
+            .where(Setups.setup_id == args.setup_id)
+            .values(status=SetupStatus.SIGNED)
+        )
+
         # Print the final summary
         print("")
         print("All done.")
         print("")
         print(f"Successes: {len(successes)}")
         print(', '.join(successes))
-        print("")
-        print(f"Failures:  {len(failures)}")
-        print(', '.join(failures))
+
 
 
 def _handle_tx_template(
