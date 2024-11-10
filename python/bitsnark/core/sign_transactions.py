@@ -25,9 +25,13 @@ class MockInput:
     script_pubkey: str
     tapscript: str
 
+
+class TransactionProcessingError(Exception):
+    pass
+
+
 # Mocked inputs for the very first transactions
 # These should eventually come from somewhere else
-
 HARDCODED_MOCK_INPUTS: dict[str, list[MockInput]] = {
     'locked_funds': [
         MockInput(
@@ -63,9 +67,6 @@ KEYPAIRS = {
 for keypairs in KEYPAIRS.values():
     assert keypairs['public'] == XOnlyPubKey(keypairs['private'].pub)
 
-class TransactionProcessingError(Exception):
-    pass
-
 def main(argv: Sequence[str] = None):
     parser = argparse.ArgumentParser()
     parser.add_argument('--db', default='postgresql://postgres:1234@localhost:5432/postgres')
@@ -93,7 +94,7 @@ def main(argv: Sequence[str] = None):
             parser.error("Must specify --role if --all is not set")
 
     engine = create_engine(args.db)
-    dbsession = Session(engine, autobegin=True)
+    dbsession = Session(engine)
     outgoing = []
     successes = []
     failures = []

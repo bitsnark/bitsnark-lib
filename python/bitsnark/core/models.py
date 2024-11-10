@@ -21,7 +21,6 @@ class SetupStatus(enum.Enum):
 
 Base = declarative_base()
 
-#tx_id: Mapped[Optional[str]] = mapped_column(String)
 class TransactionTemplate(Base):
     __tablename__ = 'templates'
     template_id: Mapped[int] = mapped_column(Integer,primary_key=True)
