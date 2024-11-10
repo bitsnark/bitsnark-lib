@@ -69,7 +69,13 @@ export function bigintFromBytes(buf: Buffer): bigint {
 }
 
 export function bytesFromBigint(n: bigint): Buffer {
-    return Buffer.from(n.toString(16), "hex");
+    let s = n.toString(16);
+    if (s.length % 2) {
+        // Buffer.from(n, 'hex') fails miserably if an odd-length string
+        // (e.g. '2' or '101') is passed in
+        s = '0' + s;
+    }
+    return Buffer.from(s, "hex");
 }
 
 export function bitsToBigint(bits: number[]): bigint {
