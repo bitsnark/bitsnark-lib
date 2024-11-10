@@ -1,5 +1,6 @@
 import argparse
 import os
+import sys
 from dataclasses import dataclass
 from typing import Literal, Sequence
 
@@ -30,8 +31,6 @@ class TransactionProcessingError(Exception):
     pass
 
 
-# Temporery soultion until we handle the inputs properly
-IGNORE_TRANSACTION_FAILURE ='proof_refuted'
 # Mocked inputs for the very first transactions
 # These should eventually come from somewhere else
 HARDCODED_MOCK_INPUTS: dict[str, list[MockInput]] = {
@@ -153,8 +152,10 @@ def main(argv: Sequence[str] = None):
                 )
                 print(f"OK! {tx.tx_id}")
             else:
-                if tx.name == IGNORE_TRANSACTION_FAILURE:
-                    print(f"FAIL! {tx.name} (ignored)")
+                # The script that will be used in the proof_refuted tx is undetermined at this point.
+                # This is a temporary fix until we figure out exactly what needs to be signed and when.
+                if tx.name == "proof_refuted":
+                    sys.stderr.write(f"FAIL! Hard-coded to ignore {tx.name}\n")
                 else:
                     raise TransactionProcessingError(f"Rollback: Failed signing {tx.name}")
 
