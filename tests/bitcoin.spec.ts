@@ -19,7 +19,7 @@ describe('Bitcoin', () => {
 
         values.forEach(v => ns.forEach(n => {
             it(`${v} * ${n}`, () => {
-                bitcoin.newStackItem(BigInt(v), 1);
+                bitcoin.newStackItem(v);
                 bitcoin.mul(n);
                 expect(Number(bitcoin.stack.top().value)).toBe(v * n);
                 bitcoin.OP_DROP();

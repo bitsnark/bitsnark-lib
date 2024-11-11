@@ -95,7 +95,7 @@ function generateBoilerplate(transations: Transaction[], myRole: AgentRoles, inp
 function generateProcessSelectionPath(sc: SpendingCondition): Buffer {
 
     const bitcoin = new Bitcoin();
-    bitcoin.throwOnFail = true;
+    bitcoin.throwOnFail = false;
 
     const pubKeys = sc.wotsPublicKeys!;
     const exampleWitness = sc.exampleWitness ? sc.exampleWitness : sc.wotsPublicKeys;
