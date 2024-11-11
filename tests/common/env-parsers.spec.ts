@@ -1,64 +1,84 @@
 import { describe, expect, it } from "@jest/globals";
-
-import { parseEnv, ParsedType } from '../../src/common/env-parser';
+import { parse } from '../../src/common/env-parser';
 
 describe('parseEnv', () => {
-    
-    const env = {
-        'INTEGER': '42',
-        'FLOAT': '3.14',
-        'BIGINT': '12345678901234567890',
-        'BOOLEAN_TRUE': 'true',
-        'BOOLEAN_FALSE': 'false',
-        'BOOLEAN_ONE': '1',
-        'BOOLEAN_ZERO': '0',
-        'BOOLEAN_YES': 'yes',
-        'BOOLEAN_NO': 'no',
-        'BOOLEAN_ON': 'on',
-        'BOOLEAN_OFF': 'off',
-        'BOOLEAN_Y': 'y',
-        'BOOLEAN_N': 'n',
-        'BOOLEAN_INVALID': 'invalid',
-    };
 
-    it('should parse an integer', () => {
-        expect(parseEnv(env, 'INTEGER', ParsedType.INTEGER, 0)).toEqual(42);
-        expect(parseEnv(env, 'INTEGER_NONEXISTING', ParsedType.INTEGER, 0)).toEqual(0);
+    const envVarName = 'TEST';
+
+    it('parse a string', () => {
+        const value = 'test';
+        process.env[envVarName] = value;
+        expect(parse.string(envVarName)).toEqual(value);
     });
 
-    it('should throw an error for an invalid integer', () => {
-        expect(() => parseEnv(env, 'FLOAT', ParsedType.INTEGER, 0)).toThrow('Invalid value: FLOAT: 3.14');
+    it('get default when parsing a missing string', () => {
+        delete process.env[envVarName];
+        expect(parse.string(envVarName, 'default')).toEqual('default');
     });
 
-    it('should parse a bigint', () => {
-        expect(parseEnv(env, 'BIGINT', ParsedType.BIGINT, 0n)).toEqual(12345678901234567890n);
-        expect(parseEnv(env, 'BIGINT_NONEXISTING', ParsedType.BIGINT, 0n)).toEqual(0n);
+    it('throw an error on parsing a missing string', () => {
+        delete process.env[envVarName];
+        expect(() => parse.string(envVarName)).toThrow(`Missing environment variable: '${envVarName}'`);
     });
 
-    it('should throw an error for an invalid bigint', () => {
-        expect(() => parseEnv(env, 'FLOAT', ParsedType.BIGINT, 0n)).toThrow('Invalid value: FLOAT: 3.14');
+    it('throw an error on parsing an empty string', () => {
+        const value = '';
+        process.env[envVarName] = value;
+        expect(() => parse.string(envVarName)).toThrow(
+            `Invalid string value: '${value}' for environment variable: '${envVarName}'`
+        );
     });
 
-    it('should parse a boolean', () => {
-        expect(parseEnv(env, 'BOOLEAN_TRUE', ParsedType.BOOLEAN, false)).toEqual(true);
-        expect(parseEnv(env, 'BOOLEAN_FALSE', ParsedType.BOOLEAN, true)).toEqual(false);
-        expect(parseEnv(env, 'BOOLEAN_ONE', ParsedType.BOOLEAN, false)).toEqual(true);
-        expect(parseEnv(env, 'BOOLEAN_ZERO', ParsedType.BOOLEAN, true)).toEqual(false);
-        expect(parseEnv(env, 'BOOLEAN_YES', ParsedType.BOOLEAN, false)).toEqual(true);
-        expect(parseEnv(env, 'BOOLEAN_NO', ParsedType.BOOLEAN, true)).toEqual(false);
-        expect(parseEnv(env, 'BOOLEAN_ON', ParsedType.BOOLEAN, false)).toEqual(true);
-        expect(parseEnv(env, 'BOOLEAN_OFF', ParsedType.BOOLEAN, true)).toEqual(false);
-        expect(parseEnv(env, 'BOOLEAN_Y', ParsedType.BOOLEAN, false)).toEqual(true);
-        expect(parseEnv(env, 'BOOLEAN_N', ParsedType.BOOLEAN, true)).toEqual(false);
-        expect(parseEnv(env, 'BOOLEAN_NONEXISTING', ParsedType.BOOLEAN, false)).toEqual(false);
+    it('parse an integer', () => {
+        const value = 42;
+        process.env[envVarName] = value.toString();
+        expect(parse.integer(envVarName)).toEqual(value);
     });
 
-    it('should throw an error for an invalid boolean', () => {
-        expect(() => parseEnv(env, 'BOOLEAN_INVALID', ParsedType.BOOLEAN, false)).toThrow('Invalid value: BOOLEAN_INVALID: invalid');
+    it('throw an error on parsing invalid integers', () => {
+        for (const value of ['3.14', 'invalid', '']) {
+            process.env[envVarName] = value;
+            expect(() => parse.integer(envVarName)).toThrow(
+                `Invalid integer value: '${value}' for environment variable: '${envVarName}'`
+            );
+        }
     });
 
-    it('should throw an error for an unsupported type', () => {
-        expect(() => parseEnv(env, 'INTEGER', 'unsupported', 0)).toThrow('Unsupported type: unsupported');
+    it('parse a bigint', () => {
+        const value = 12345678901234567890n;
+        process.env[envVarName] = value.toString();
+        expect(parse.bigint(envVarName)).toEqual(value);
+    });
+
+    it('throw an error on parsing invalid bigints', () => {
+        for (const value of ['3.14', 'invalid', '']) {
+            process.env[envVarName] = value;
+            expect(() => parse.bigint(envVarName)).toThrow(
+                `Invalid bigint value: '${value}' for environment variable: '${envVarName}'`
+            );
+        }
+    });
+
+    it('parse true booleans', () => {
+        for (const value of ['true', 't', '1', 'yes', 'y', 'on']) {
+            process.env[envVarName] = value;
+            expect(parse.boolean(envVarName)).toEqual(true);
+        }
+    });
+
+    it('parse false booleans', () => {
+        for (const value of ['false', 'f', '0', 'no', 'n', 'off']) {
+            process.env[envVarName] = value;
+            expect(parse.boolean(envVarName)).toEqual(false);
+        }
+    });
+
+    it('throw an error on parsing invalid booleans', () => {
+        const value = 'invalid';
+        process.env[envVarName] = value;
+        expect(() => parse.boolean(envVarName)).toThrow(
+            `Invalid boolean value: '${value}' for environment variable: '${envVarName}'`
+        );
     });
 
 });
