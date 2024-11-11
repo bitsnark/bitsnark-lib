@@ -20,7 +20,7 @@ interface AgentConf {
     feeFactorPercent: number;
     winternitzSecret: string;
     tokens: { [key: string]: string };
-    keyPairs: { [key: string]: { public: string, private: string } };
+    keyPairs: { [key: string]: { schnorrPublic: string, schnorrPrivate: string } };
     bitcoinNodeNetwork: string;
     bitcoinNodeUsername: string;
     bitcoinNodePassword: string;
@@ -33,6 +33,7 @@ interface AgentConf {
     postgresBigints: boolean;
     postgresKeepAlive: boolean;
     blocksUntilFinalized: number;
+    protocolVersion: number;
     useMockProgram: boolean;
 };
 
@@ -62,12 +63,12 @@ export const agentConf: AgentConf = {
     },
     keyPairs: {
         'bitsnark_prover_1': {
-            public: parse.string('PROVER_SCHNORR_PUBLIC', '02ae2ea39bca4b6b14567e3c38b9680f6483ceeef4ae17f8dceb5a5a0866999b75'),
-            private: parse.string('PROVER_SCHNORR_PRIVATE', '415c69b837f4146019574f59c223054c8c144ac61b6ae87bc26824c0f8d034e2')
+            schnorrPublic: parse.string('PROVER_SCHNORR_PUBLIC', '02ae2ea39bca4b6b14567e3c38b9680f6483ceeef4ae17f8dceb5a5a0866999b75'),
+            schnorrPrivate: parse.string('PROVER_SCHNORR_PRIVATE', '415c69b837f4146019574f59c223054c8c144ac61b6ae87bc26824c0f8d034e2')
         },
         'bitsnark_verifier_1': {
-            public: parse.string('VERIFIER_SCHNORR_PUBLIC', '0386ad52a51b65ab3aed9a64e7202a7aa1f2bd3da7a6a2dae0f5c8e28bda29de79'),
-            private: parse.string('VERIFIER_SCHNORR_PRIVATE', 'd4067af1132afcb352b0edef53d8aa2a5fc713df61dee31b1d937e69ece0ebf0')
+            schnorrPublic: parse.string('VERIFIER_SCHNORR_PUBLIC', '0386ad52a51b65ab3aed9a64e7202a7aa1f2bd3da7a6a2dae0f5c8e28bda29de79'),
+            schnorrPrivate: parse.string('VERIFIER_SCHNORR_PRIVATE', 'd4067af1132afcb352b0edef53d8aa2a5fc713df61dee31b1d937e69ece0ebf0')
         }
     },
     bitcoinNodeNetwork: parse.string('BITCOIN_NODE_NETWORK', 'regtest'),
@@ -82,5 +83,6 @@ export const agentConf: AgentConf = {
     postgresBigints: parse.boolean('POSTGRES_BIGINTS', true),
     postgresKeepAlive: parse.boolean('POSTGRES_KEEP_ALIVE', true),
     blocksUntilFinalized: parse.integer('BLOCKS_UNTIL_FINALIZED', 0), // 6
+    protocolVersion: parse.integer('PROTOCOL_VERSION', 1),
     useMockProgram: parse.boolean('USE_MOCK_PROGRAM', false)
 };
