@@ -251,7 +251,7 @@ export class Agent {
         if (this.role == AgentRoles.VERIFIER)
             await this.sendTransactions(ctx, i.setupId);
 
-        i.transactions = await generateAllScripts(this.agentId, i.setupId, this.role, i.transactions!);
+        i.transactions = await generateAllScripts(this.agentId, i.setupId, this.role, i.transactions!, false);
         i.transactions = await addAmounts(this.agentId, i.setupId);
 
         if (this.role == AgentRoles.PROVER)

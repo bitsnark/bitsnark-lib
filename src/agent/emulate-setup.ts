@@ -7,7 +7,6 @@ import { signTransactions } from "./sign-transactions";
 import { initializeTransactions, mergeWots, Transaction } from "./transactions-new";
 import { verifySetup } from "./verify-setup";
 
-
 export async function emulateSetup(proverAgentId: string, verifierAgentId: string, setupId: string, generateFinal: boolean) {
 
     console.log('Deleting transactions...');

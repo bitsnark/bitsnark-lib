@@ -1,4 +1,3 @@
-import { bufferToBigint160 } from "../encoding/encoding";
 import { Bitcoin, executeProgram } from "../generator/step3/bitcoin";
 import { readTransactions } from "./db";
 import { getSpendingConditionByInput, SignatureType, Transaction } from "./transactions-new";
@@ -8,6 +7,7 @@ export function emulateTransactionScripts(transactions: Transaction[]) {
 
     for (let transaction of transactions) {
 
+        // if (transaction.transactionName != 'state_01') continue;
         console.log(transaction.transactionName);
 
         for (let input of transaction.inputs) {
@@ -20,19 +20,20 @@ export function emulateTransactionScripts(transactions: Transaction[]) {
             const bitcoin = new Bitcoin();
             bitcoin.throwOnFail = true;
 
-            for (let b of sc.exampleWitness!.flat()) bitcoin.newStackItem(bufferToBigint160(b), 20);
+            for (let b of sc.exampleWitness!.flat()) bitcoin.newStackItem(b);
             // add the sigs
             if (sc.signatureType == SignatureType.BOTH) {
-                bitcoin.newStackItem(0n, 64);
-                bitcoin.newStackItem(0n, 64);
+                bitcoin.newStackItem(Buffer.from(new Array(64)));
+                bitcoin.newStackItem(Buffer.from(new Array(64)));
             } else if (sc.signatureType == SignatureType.PROVER || sc.signatureType == SignatureType.VERIFIER) {
-                bitcoin.newStackItem(0n, 64);
+                bitcoin.newStackItem(Buffer.from(new Array(64)));
             }
 
             try {
                 executeProgram(bitcoin, sc.script!, false);
             } catch (e) {
                 console.error(e);
+                executeProgram(bitcoin, sc.script!, true);
             }
         }
     }

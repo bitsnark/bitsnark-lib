@@ -1,11 +1,11 @@
 import { Bitcoin } from '../generator/step3/bitcoin';
-import { bufferToBigintBE, WOTS_NIBBLES, WotsType } from './winternitz';
-import { AgentRoles, iterations, TransactionNames } from './common';
+import { WOTS_NIBBLES, WotsType } from './winternitz';
+import { AgentRoles, array, iterations, TransactionNames } from './common';
 import { StackItem } from '../generator/step3/stack';
 import { SimpleTapTree } from './simple-taptree';
 import { agentConf } from './agent.conf';
 import { Buffer } from 'node:buffer';
-import { getTransactionByName, Input, SpendingCondition, Transaction } from './transactions-new';
+import { getOutputByInput, getSpendingConditionByInput, getTransactionByInput, getTransactionByName, Input, SpendingCondition, Transaction } from './transactions-new';
 import { readTransactions, writeTransactions } from './db';
 import { DoomsdayGenerator } from './final-step/doomsday-generator';
 
@@ -47,17 +47,19 @@ function setTaprootKey(transactions: Transaction[]) {
     };
 }
 
-function generateBoilerplate(prevTransaction: Transaction, input: Input): Buffer {
+function generateBoilerplate(transations: Transaction[], myRole: AgentRoles, input: Input): Buffer {
 
     const bitcoin = new Bitcoin();
-    bitcoin.throwOnFail = false;
 
-    const output = prevTransaction.outputs[input.outputIndex];
-    const spendingCondition = output.spendingConditions[input.spendingConditionIndex];
+    const prevTx = getTransactionByInput(transations, input);
+    const output = getOutputByInput(transations, input);
+    const spendingCondition = getSpendingConditionByInput(transations, input);
+
+    bitcoin.throwOnFail =  spendingCondition.nextRole == myRole;
 
     if (spendingCondition.signaturesPublicKeys) {
         for (const key of spendingCondition.signaturesPublicKeys) {
-            bitcoin.addWitness(0n);
+            bitcoin.addWitness(Buffer.from(new Array(64)));
             bitcoin.verifySignature(key);
         }
     }
@@ -68,14 +70,11 @@ function generateBoilerplate(prevTransaction: Transaction, input: Input): Buffer
 
     if (spendingCondition.wotsSpec) {
 
-        const keys = spendingCondition.wotsPublicKeys!
-            .map(keys => keys.map(b => bufferToBigintBE(b)));
+        const keys = spendingCondition.wotsPublicKeys!;
 
-        const witnessSIs = spendingCondition.exampleWitness ? spendingCondition.exampleWitness!
-            .map(values => values.map(v => bitcoin.addWitness(bufferToBigintBE(v)))) :
-            spendingCondition.wotsSpec!
-                .map(spec => new Array(WOTS_NIBBLES[spec]).fill(0).map(_ => bitcoin.addWitness(0n)));
-            
+        const witnessSIs = (spendingCondition.exampleWitness ? spendingCondition.exampleWitness! : spendingCondition.wotsPublicKeys!)
+            .map(values => values.map(b => bitcoin.addWitness(b)));
+
         const decoders = {
             [WotsType._256]: (dataIndex: number) =>
                 bitcoin.winternitzCheck256(witnessSIs[dataIndex], keys[dataIndex]),
@@ -96,29 +95,37 @@ function generateBoilerplate(prevTransaction: Transaction, input: Input): Buffer
 function generateProcessSelectionPath(sc: SpendingCondition): Buffer {
 
     const bitcoin = new Bitcoin();
-    bitcoin.throwOnFail = false;
+    bitcoin.throwOnFail = true;
 
     const pubKeys = sc.wotsPublicKeys!;
+    const exampleWitness = sc.exampleWitness ? sc.exampleWitness : sc.wotsPublicKeys;
 
-    const pathWitness: StackItem[][] = [];
-    for (let i = 0; i < iterations; i++) {
-        pathWitness[i] = pubKeys[i].map(_ => bitcoin.addWitness(0n));
+    if (sc.signaturesPublicKeys) {
+        for (const key of sc.signaturesPublicKeys) {
+            bitcoin.addWitness(Buffer.from(new Array(64)));
+            bitcoin.verifySignature(key);
+        }
     }
 
-    const indexNibbles: StackItem[] = pubKeys[0].map(_ => bitcoin.addWitness(0n));
+    const pathWitness: StackItem[][] = [];
+    for (let i = 0; i < exampleWitness!.length; i++) {
+        pathWitness[i] = exampleWitness![i].map(b => bitcoin.addWitness(b));
+    }
 
     const pathNibbles: StackItem[][] = [];
-    for (let i = 0; i < iterations; i++) {
-        const result = indexNibbles.map(_ => bitcoin.newStackItem(0n));
+    for (let i = 0; i < pathWitness.length; i++) {
+        const result = array(8).map(_ => bitcoin.newStackItem(0));
         pathNibbles.push(result);
         bitcoin.winternitzDecode24(
             result,
             pathWitness[i],
-            pubKeys[i].map(b => bufferToBigintBE(b))
+            pubKeys[i]
         );
+        bitcoin.drop(pathWitness[i]);
     }
 
-    bitcoin.checkSemiFinal(pathNibbles, indexNibbles);
+    bitcoin.checkSemiFinal(pathNibbles.slice(0, 6), pathNibbles[6]);
+    bitcoin.drop(pathNibbles.flat());
 
     return bitcoin.programToBinary();
 }
@@ -152,7 +159,7 @@ export async function generateAllScripts(
             if (generateFinal) {
                 taproot = ddg.generateFinalStepTaproot(transactions);
             } else {
-                const mockSTT = new SimpleTapTree(agentConf.internalPubkey, [ DEAD_SCRIPT, DEAD_SCRIPT ]);
+                const mockSTT = new SimpleTapTree(agentConf.internalPubkey, [DEAD_SCRIPT, DEAD_SCRIPT]);
                 taproot = mockSTT.getScriptPubkey();
             }
 
@@ -173,7 +180,7 @@ export async function generateAllScripts(
                 if (t.transactionName == TransactionNames.ARGUMENT && input.index == 0) {
                     script = generateProcessSelectionPath(sc);
                 } else {
-                    script = generateBoilerplate(prevT, input);
+                    script = generateBoilerplate(transactions, myRole, input);
                 }
 
                 sc.script = script;

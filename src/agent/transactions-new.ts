@@ -1,5 +1,5 @@
 import { TransactionNames, AgentRoles, FundingUtxo, iterations, twoDigits, random, array } from './common';
-import { encodeWinternitz, getWinternitzPublicKeys, WOTS_NIBBLES, WotsType } from './winternitz';
+import { bigintToBufferBE, encodeWinternitz, getWinternitzPublicKeys, WOTS_NIBBLES, WotsType } from './winternitz';
 import { agentConf } from './agent.conf';
 import { clearTransactions, writeTransactions } from './db';
 
@@ -16,7 +16,7 @@ export interface SpendingCondition {
     index?: number;
     timeoutBlocks?: number;
     signatureType: SignatureType;
-    signaturesPublicKeys?: bigint[];
+    signaturesPublicKeys?: Buffer[];
     nextRole: AgentRoles;
     wotsSpec?: WotsType[];
     wotsPublicKeys?: Buffer[][];
@@ -337,7 +337,7 @@ function makeProtocolSteps(): Transaction[] {
 
                         nextRole: AgentRoles.PROVER,
                         signatureType: SignatureType.BOTH,
-                        wotsSpec: [ WotsType._256, WotsType._256, WotsType._256, WotsType._256 ]
+                        wotsSpec: [WotsType._256, WotsType._256, WotsType._256, WotsType._256]
                     }]
                 },
                 // 3 merkle proofs of 12 hashes each, that's 4 outputs with 10, 10, 10, and 6 values
@@ -397,6 +397,25 @@ export function getTransactionByName(transactions: Transaction[], name: string):
     if (!tx)
         throw new Error('Transaction not found: ' + name);
     return tx;
+}
+
+export function getTransactionByInput(transactions: Transaction[], input: Input): Transaction {
+    const tx = transactions.find(t => t.transactionName == input.transactionName);
+    if (!tx) {
+        console.error('Transaction not found: ', input);
+        throw new Error('Transaction not found');
+    }
+    return tx;
+}
+
+export function getOutputByInput(transactions: Transaction[], input: Input): Output {
+    const tx = transactions.find(t => t.transactionName == input.transactionName);
+    if (!tx) {
+        console.error('Transaction not found: ', input);
+        throw new Error('Transaction not found');
+    }
+    if (!tx.outputs[input.outputIndex]) throw new Error('Output not found');
+    return tx.outputs[input.outputIndex];
 }
 
 export function getSpendingConditionByInput(transactions: Transaction[], input: Input): SpendingCondition {
@@ -468,23 +487,35 @@ export async function initializeTransactions(
 
     // generate wots keys
     for (const transaction of transactions) {
-        for (const [outputIndex, output] of transaction.outputs.entries()) {
-            for (const [scIndex, sc] of output.spendingConditions.entries()) {
-                if (sc.wotsSpec && sc.nextRole == role) {
-                    sc.wotsPublicKeys = sc.wotsSpec!
-                        .map((wt, dataIndex) => getWinternitzPublicKeys(
-                            wt, createUniqueDataId(setupId, transaction.transactionName, outputIndex, scIndex, dataIndex)));
+        for (let input of transaction.inputs) {
+            const output = getOutputByInput(transactions, input);
+            const sc = getSpendingConditionByInput(transactions, input);
+            const prevTx = getTransactionByInput(transactions, input);
 
-                    sc.exampleWitness = sc.wotsSpec
-                        .map((spec, dataIndex) => {
-                            const rnd = random(32) % (2n ** BigInt(3 * WOTS_NIBBLES[spec]));
-                            return encodeWinternitz(spec, rnd, createUniqueDataId(setupId, transaction.transactionName, outputIndex, scIndex, dataIndex));
-                        });
+            if (sc.wotsSpec && sc.nextRole == role) {
+                sc.wotsPublicKeys = sc.wotsSpec!
+                    .map((wt, dataIndex) => getWinternitzPublicKeys(
+                        wt, createUniqueDataId(setupId, prevTx.transactionName, input.outputIndex,
+                            input.spendingConditionIndex, dataIndex)));
 
-                    sc.exampleWitnessDebug = sc.wotsSpec
-                        .map((spec, dataIndex) => new Array(WOTS_NIBBLES[spec]).fill(0).map((_, i) =>
-                            createUniqueDataId(setupId, transaction.transactionName, outputIndex, scIndex, dataIndex) + '/' + i));
+                let values: bigint[];
+                if (transaction.transactionName == TransactionNames.ARGUMENT && input.index == 0) {
+                    values = [1n, 2n, 3n, 4n, 5n, 6n];
+                    values.push(values.reduce((p, c) => p * 10n + c, 0n));
+                } else {
+                    values = sc.wotsSpec.map(spec => random(32) % (2n ** BigInt(3 * WOTS_NIBBLES[spec])));
                 }
+
+                sc.exampleWitness = sc.wotsSpec
+                    .map((spec, dataIndex) => {
+                        return encodeWinternitz(spec, values[dataIndex], createUniqueDataId(setupId,
+                            prevTx.transactionName, input.outputIndex, input.spendingConditionIndex, dataIndex));
+                    });
+
+                sc.exampleWitnessDebug = sc.wotsSpec
+                    .map((spec, dataIndex) => new Array(WOTS_NIBBLES[spec]).fill(0).map((_, i) =>
+                        createUniqueDataId(setupId, prevTx.transactionName, input.outputIndex,
+                            input.spendingConditionIndex, dataIndex) + '/' + i));
             }
         }
     }
@@ -520,10 +551,10 @@ export async function initializeTransactions(
                 throw new Error('Invalid spending condition: ' + input.spendingConditionIndex);
             spend.signaturesPublicKeys = [];
             if (spend.signatureType == SignatureType.PROVER || spend.signatureType == SignatureType.BOTH) {
-                spend.signaturesPublicKeys.push(proverPublicKey);
+                spend.signaturesPublicKeys.push(bigintToBufferBE(proverPublicKey, 32));
             }
             if (spend.signatureType == SignatureType.VERIFIER || spend.signatureType == SignatureType.BOTH) {
-                spend.signaturesPublicKeys.push(verifierPublicKey);
+                spend.signaturesPublicKeys.push(bigintToBufferBE(verifierPublicKey, 32));
             }
         }
     }

@@ -28,36 +28,36 @@ class Mojo {
 
         for (let i = 0; i < 16; i++) {
             for (let j = 0; j < 16; j++) {
-                this.andTable[i * 16 + j] = this.bitcoin.newStackItem(BigInt(i & j));
+                this.andTable[i * 16 + j] = this.bitcoin.newStackItem(i & j);
             }
         }
         for (let i = 0; i < 16; i++) {
             for (let j = 0; j < 16; j++) {
-                this.xorTable[i * 16 + j] = this.bitcoin.newStackItem(BigInt(i ^ j));
+                this.xorTable[i * 16 + j] = this.bitcoin.newStackItem(i ^ j);
             }
         }
         for (let i = 0; i < 16; i++) {
-            this.notTable[i] = this.bitcoin.newStackItem(BigInt(i ^ 15));
+            this.notTable[i] = this.bitcoin.newStackItem(i ^ 15);
         }
         for (let i = 0; i < 32; i++) {
-            this.breakValueTable[i] = this.bitcoin.newStackItem(BigInt(i & 15));
+            this.breakValueTable[i] = this.bitcoin.newStackItem(i & 15);
         }
         for (let i = 0; i < 32; i++) {
-            this.breakCarryTable[i] = this.bitcoin.newStackItem(BigInt(i >> 4));
+            this.breakCarryTable[i] = this.bitcoin.newStackItem(i >> 4);
         }
         for (let i = 0; i < 16; i++) {
-            this.mul16Table[i] = this.bitcoin.newStackItem(BigInt(i * 16), 2);
+            this.mul16Table[i] = this.bitcoin.newStackItem(i * 16);
         }
     }
 
-    public newRegister(n: bigint): Register {
+    public newRegister(n: number): Register {
         return new Array(8).fill(0)
-            .map((_, i) => this.bitcoin.newStackItem((n >> BigInt(i * 4)) & 15n));
+            .map((_, i) => this.bitcoin.newStackItem((n >> (i * 4)) & 15));
     }
 
-    public registerToBigint(r: Register): bigint {
-        let n = 0n;
-        r.forEach((si, i) => n += si.value << BigInt(i * 4));
+    public registerToBigint(r: Register): number {
+        let n = 0;
+        r.forEach((si, i) => n += Number(si.value) << (i * 4));
         return n;
     }
 
@@ -118,7 +118,7 @@ class Mojo {
         let s = this.registerToBigint(target).toString(2);
         while (s.length < 32) s = '0' + s;
         const t = s.slice(1) + s.slice(0, 1);
-        const tn = BigInt(`0b${t}`);
+        const tn = Number(`0b${t}`);
 
         for (let i = 0; i < target.length; i++) {
             this.bitcoin.pick(target[i]);
@@ -130,7 +130,7 @@ class Mojo {
             }
             this.bitcoin.OP_DUP();
 
-            this.bitcoin.OP_0_16(16n);
+            this.bitcoin.OP_0_16(16);
             this.bitcoin.OP_GREATERTHANOREQUAL();
             this.bitcoin.OP_DUP();
             this.bitcoin.OP_TOALTSTACK();
@@ -138,14 +138,14 @@ class Mojo {
             this.bitcoin.OP_IF();
 
             // hack
-            const tv = this.bitcoin.stack.top().value;
+            const tv = Number(this.bitcoin.stack.top().value);
 
-            this.bitcoin.OP_0_16(16n);
+            this.bitcoin.OP_0_16(16);
             this.bitcoin.OP_SUB();
             this.bitcoin.OP_ENDIF();
 
             // hack
-            this.bitcoin.stack.top().value = tv % 16n;
+            this.bitcoin.stack.top().value = tv % 16;
 
             this.bitcoin.replaceWithTop(target[i]);
         }
@@ -164,7 +164,7 @@ class Mojo {
         let s = this.registerToBigint(target).toString(2);
         while (s.length < 32) s = '0' + s;
         const t = s.slice(s.length - n) + s.slice(0, s.length - n);
-        const tn = BigInt(`0b${t}`);
+        const tn = Number(`0b${t}`);
 
         if (n == 7) {
             const orig = [...target];
@@ -210,18 +210,18 @@ class Mojo {
         }
 
         const tt = this.registerToBigint(target);
-        assert((tx + ty) % (2n ** 32n) == tt);
+        assert((tx + ty) % (2 ** 32) == tt);
     }
 
     mov(target: Register, x: Register) {
         target.forEach((t, i) => this.bitcoin.mov(t, x[i]));
     }
 
-    private mov_hc(target: Register, x: bigint) {
+    private mov_hc(target: Register, x: number) {
         const xa = new Array(8).fill(0)
-            .map((_, i) => (x >> BigInt(i * 4)) & 15n);
+            .map((_, i) => (x >> (i * 4)) & 15);
         target.forEach((t, i) => {
-            this.bitcoin.DATA(BigInt(xa[i]));
+            this.bitcoin.DATA(xa[i]);
             this.bitcoin.replaceWithTop(t);
         });
     }
@@ -232,7 +232,7 @@ class Mojo {
 
     // The mixing function, G, which mixes either a column or a diagonal.
     g(state: Register[], a: number, b: number, c: number, d: number, mx: Register, my: Register) {
-        const t = this.newRegister(0n);
+        const t = this.newRegister(0);
         this.add(t, state[b], mx);
         this.add(state[a], state[a], t);
         this.xor(state[d], state[d], state[a]);
@@ -272,7 +272,7 @@ class Mojo {
             0,
             blockLen,
             flags
-        ].map(n => this.newRegister(BigInt(n)));
+        ].map(n => this.newRegister(n));
 
         assert(blockWords.length == 16);
         // block = list(block_words) ????
@@ -301,7 +301,7 @@ class Mojo {
             0x9B05688C,
             0x1F83D9AB,
             0x5BE0CD19,
-        ].map(n => this.newRegister(BigInt(n)));
+        ].map(n => this.newRegister(n));
 
         for (let i = 0; i < 8; i++) {
             this.xor(state[i], state[i], state[i + 8]);
@@ -320,17 +320,17 @@ export class BLAKE3 {
         this.mojo = new Mojo(bitcoin);
     }
 
-    public static registerToBigint(r: Register): bigint {
-        return r.reduce((p, c, i) => p += (c.value << BigInt(i * 4)), 0n);
+    public static registerToBigint(r: Register): number {
+        return r.reduce((p, c, i) => p += (Number(c.value) << (i * 4)), 0);
     }
 
-    public newRegister(n: bigint): Register {
+    public newRegister(n: number): Register {
         return this.mojo.newRegister(n);
     }
 
     hash(blockWords: Register[]): Register[] {
         const blockLen = blockWords.length * 4;
-        while (blockWords.length < BLOCK_LEN / 4) blockWords.push(this.newRegister(0n));
+        while (blockWords.length < BLOCK_LEN / 4) blockWords.push(this.newRegister(0));
         const result = this.mojo.compress(
             blockWords,
             blockLen,
@@ -344,18 +344,18 @@ export class BLAKE3 {
 
         const regs = Math.floor(si.length * 3 / 32);
 
-        const result = new Array(regs).fill(0).map(_ => this.newRegister(0n));
+        const result = new Array(regs).fill(0).map(_ => this.newRegister(0));
         const resultSi = result.flat();
 
         const values = [0, 1, 2, 3, 4, 5, 6, 7];
         const tableItem = (v: number, fromBit: number, toBit: number): StackItem =>
-            this.mojo.bitcoin.newStackItem(v & (1 << fromBit) ? BigInt(1 << toBit) : 0n);
+            this.mojo.bitcoin.newStackItem(v & (1 << fromBit) ? (1 << toBit) : 0);
         const table = [0, 1, 2].map(fb =>
             [0, 1, 2, 3].map(tb =>
                 values.map(v => tableItem(v, fb, tb))));
 
         for (let i = 0; i < resultSi.length; i++) {
-            this.mojo.bitcoin.OP_0_16(0n);
+            this.mojo.bitcoin.OP_0_16(0);
             for (let j = 0; j < 4; j++) {
                 const bit = i * 4 + j;
                 const fromItem = Math.floor(bit / 3);
@@ -386,9 +386,9 @@ function registersToHex(h2Regs: Register[]): string {
     for (const r of h2Regs) {
         const n = BLAKE3.registerToBigint(r);
         for (let i = 0; i < 4; i++)
-            h2 += ((n >> (BigInt(i) * 8n)) & 0xffn).toString(16).padStart(2, '0');
+            h2 += ((n >> (i * 8)) & 255).toString(16).padStart(2, '0');
     }
-    return  h2;
+    return h2;
 }
 
 async function test1() {
@@ -405,7 +405,7 @@ async function test1() {
     const blake3 = new BLAKE3(bitcoin);
     const blockWords: Register[] = new Array(8).fill(0)
         .map((_, i) => test1Buf.readInt32LE(i * 4))
-        .map(n => blake3.newRegister(BigInt(n)));
+        .map(n => blake3.newRegister(n));
 
     const h2Regs = blake3.hash(blockWords);
     const h2 = registersToHex(h2Regs);
@@ -430,7 +430,7 @@ async function test2() {
     const blake3 = new BLAKE3(bitcoin);
     const blockWords: Register[] = new Array(16).fill(0)
         .map((_, i) => test1Buf.readInt32LE(i * 4))
-        .map(n => blake3.newRegister(BigInt(n)));
+        .map(n => blake3.newRegister(n));
 
     const h2Regs = blake3.hash(blockWords);
     const h2 = registersToHex(h2Regs);
@@ -452,9 +452,9 @@ async function test3() {
     const blake3 = new BLAKE3(bitcoin);
 
     const nibbles: StackItem[] = [];
-    const n = BigInt('0x' + test1Hex);
+    const n = Number('0x' + test1Hex);
     for (let i = 0; i < 86; i++) {
-        nibbles.push(blake3.mojo.bitcoin.newStackItem((n >> BigInt(i * 3)) & 0x7n));
+        nibbles.push(blake3.mojo.bitcoin.newStackItem((n >> (i * 3)) & 7));
     }
     const blockWords1: Register[] = blake3.registersFrom3Nibbles(nibbles);
 
@@ -462,7 +462,7 @@ async function test3() {
 
     const blockWords2: Register[] = new Array(8).fill(0)
         .map((_, i) => test1Buf.readInt32LE(i * 4))
-        .map(n => blake3.newRegister(BigInt(n)));
+        .map(n => blake3.newRegister(n));
 
     const h2 = registersToHex(blockWords2);
 
@@ -486,9 +486,9 @@ async function test4() {
     const blake3 = new BLAKE3(bitcoin);
 
     const nibbles: StackItem[] = [];
-    let n = BigInt('0x' + test1Buf.toString('hex'));
+    let n = Number('0x' + test1Buf.toString('hex'));
     for (let i = 0; i < 172; i++) {
-        nibbles.push(blake3.mojo.bitcoin.newStackItem((n >> BigInt(i * 3)) & 0x7n));
+        nibbles.push(blake3.mojo.bitcoin.newStackItem((n >> (i * 3)) & 7));
     }
     const blockWords: Register[] = blake3.registersFrom3Nibbles(nibbles);
 
@@ -500,9 +500,9 @@ async function test4() {
     bitcoin.drop(blockWords.flat());
 
     const hashNibbles: StackItem[] = [];
-    n = BigInt('0x' + h1);
+    n = Number('0x' + h1);
     for (let i = 0; i < 86; i++) {
-        hashNibbles.push(blake3.mojo.bitcoin.newStackItem((n >> BigInt(i * 3)) & 0x7n));
+        hashNibbles.push(blake3.mojo.bitcoin.newStackItem((n >> (i * 3)) & 7));
     }
 
     const resultWords: Register[] = blake3.registersFrom3Nibbles(hashNibbles);

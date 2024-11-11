@@ -15,18 +15,18 @@ function measureOut(name: string, bitcoin: Bitcoin) {
 
 export type Register = StackItem[];
 
-const hHex = [0x6a09e667n, 0xbb67ae85n, 0x3c6ef372n, 0xa54ff53an, 0x510e527fn, 0x9b05688cn, 0x1f83d9abn, 0x5be0cd19n];
+const hHex = [0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19];
 
-const kHex = [0x428a2f98n, 0x71374491n, 0xb5c0fbcfn, 0xe9b5dba5n, 0x3956c25bn, 0x59f111f1n, 0x923f82a4n,
-    0xab1c5ed5n, 0xd807aa98n, 0x12835b01n, 0x243185ben, 0x550c7dc3n, 0x72be5d74n, 0x80deb1fen,
-    0x9bdc06a7n, 0xc19bf174n, 0xe49b69c1n, 0xefbe4786n, 0x0fc19dc6n, 0x240ca1ccn, 0x2de92c6fn,
-    0x4a7484aan, 0x5cb0a9dcn, 0x76f988dan, 0x983e5152n, 0xa831c66dn, 0xb00327c8n, 0xbf597fc7n,
-    0xc6e00bf3n, 0xd5a79147n, 0x06ca6351n, 0x14292967n, 0x27b70a85n, 0x2e1b2138n, 0x4d2c6dfcn,
-    0x53380d13n, 0x650a7354n, 0x766a0abbn, 0x81c2c92en, 0x92722c85n, 0xa2bfe8a1n, 0xa81a664bn,
-    0xc24b8b70n, 0xc76c51a3n, 0xd192e819n, 0xd6990624n, 0xf40e3585n, 0x106aa070n, 0x19a4c116n,
-    0x1e376c08n, 0x2748774cn, 0x34b0bcb5n, 0x391c0cb3n, 0x4ed8aa4an, 0x5b9cca4fn, 0x682e6ff3n,
-    0x748f82een, 0x78a5636fn, 0x84c87814n, 0x8cc70208n, 0x90befffan, 0xa4506cebn, 0xbef9a3f7n,
-    0xc67178f2n];
+const kHex = [0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4,
+    0xab1c5ed5, 0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe,
+    0x9bdc06a7, 0xc19bf174, 0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f,
+    0x4a7484aa, 0x5cb0a9dc, 0x76f988da, 0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7,
+    0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967, 0x27b70a85, 0x2e1b2138, 0x4d2c6dfc,
+    0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85, 0xa2bfe8a1, 0xa81a664b,
+    0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070, 0x19a4c116,
+    0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
+    0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7,
+    0xc67178f2];
 
 export class SHA256 {
 
@@ -50,56 +50,56 @@ export class SHA256 {
 
         this.bitcoin = bitcoin;
 
-        this.T0 = this.newRegister(0n);
-        this.T1 = this.newRegister(0n);
-        this.T2 = this.newRegister(0n);
-        this.t1 = this.newRegister(0n);
+        this.T0 = this.newRegister(0);
+        this.T1 = this.newRegister(0);
+        this.T2 = this.newRegister(0);
+        this.t1 = this.newRegister(0);
         for (let i = 0; i < 8; i++) {
-            this.hash[i] = this.newRegister(0n);
-            this.h[i] = this.newRegister(0n);
+            this.hash[i] = this.newRegister(0);
+            this.h[i] = this.newRegister(0);
         }
 
         for (let i = 0; i < 16; i++) {
             for (let j = 0; j < 16; j++) {
-                this.andTable[i * 16 + j] = this.bitcoin.newStackItem(BigInt(i & j));
+                this.andTable[i * 16 + j] = this.bitcoin.newStackItem(i & j);
             }
         }
         for (let i = 0; i < 16; i++) {
             for (let j = 0; j < 16; j++) {
-                this.xorTable[i * 16 + j] = this.bitcoin.newStackItem(BigInt(i ^ j));
+                this.xorTable[i * 16 + j] = this.bitcoin.newStackItem(i ^ j);
             }
         }
         for (let i = 0; i < 16; i++) {
-            this.notTable[i] = this.bitcoin.newStackItem(BigInt(i ^ 15));
+            this.notTable[i] = this.bitcoin.newStackItem(i ^ 15);
         }
         for (let i = 0; i < 32; i++) {
-            this.breakValueTable[i] = this.bitcoin.newStackItem(BigInt(i & 15));
+            this.breakValueTable[i] = this.bitcoin.newStackItem(i & 15);
         }
         for (let i = 0; i < 32; i++) {
-            this.breakCarryTable[i] = this.bitcoin.newStackItem(BigInt(i >> 4));
+            this.breakCarryTable[i] = this.bitcoin.newStackItem(i >> 4);
         }
         for (let i = 0; i < 16; i++) {
-            this.mul16Table[i] = this.bitcoin.newStackItem(BigInt(i * 16), 2);
+            this.mul16Table[i] = this.bitcoin.newStackItem(i * 16);
         }
     }
 
-    public hardcodeRegister(n: bigint): Register {
+    public hardcodeRegister(n: number): Register {
         return new Array(8).fill(0)
-            .map((_, i) => this.bitcoin.newStackItem((n >> BigInt(i * 4)) & 15n));
+            .map((_, i) => this.bitcoin.newStackItem((n >> (i * 4)) & 15));
     }
 
-    public hardcodeRegisters(na: bigint[]): Register[] {
+    public hardcodeRegisters(na: number[]): Register[] {
         return na.map(n => this.hardcodeRegister(n));
     }
 
-    public newRegister(n: bigint): Register {
+    public newRegister(n: number): Register {
         return new Array(8).fill(0)
-            .map((_, i) => this.bitcoin.newStackItem((n >> BigInt(i * 4)) & 15n));
+            .map((_, i) => this.bitcoin.newStackItem((n >> (i * 4)) & 15));
     }
 
-    public registerToBigint(r: Register): bigint {
-        let n = 0n;
-        r.forEach((si, i) => n += si.value << BigInt(i * 4));
+    public registerToNumber(r: Register): number {
+        let n = 0;
+        r.forEach((si, i) => n += Number(si.value) << (i * 4));
         return n;
     }
 
@@ -165,28 +165,28 @@ export class SHA256 {
                 }
 
                 this.bitcoin.OP_DUP();
-                this.bitcoin.DATA(BigInt(1 << j));
+                this.bitcoin.DATA(1 << j);
                 this.bitcoin.OP_GREATERTHANOREQUAL();
                 this.bitcoin.OP_TOALTSTACK();
 
-                const t = this.bitcoin.stack.top().value;
+                const t = Number(this.bitcoin.stack.top().value);
 
                 this.bitcoin.OP_DUP();
-                this.bitcoin.DATA(BigInt(1 << j));
+                this.bitcoin.DATA(1 << j);
                 this.bitcoin.OP_GREATERTHANOREQUAL();
                 this.bitcoin.OP_IF();
-                this.bitcoin.DATA(BigInt(1 << j));
+                this.bitcoin.DATA(1 << j);
                 this.bitcoin.OP_SUB();
                 this.bitcoin.OP_ENDIF();
 
                 // hack
-                this.bitcoin.stack.top().value = t >= (1 << j) ? t - BigInt(1 << j) : t;
+                this.bitcoin.stack.top().value = t >= (1 << j) ? t - (1 << j) : t;
             }
 
             this.bitcoin.OP_DROP();
         }
 
-        const tx = this.registerToBigint(x);
+        const tx = this.registerToNumber(x);
         let s = tx.toString(2); while (s.length < 32) s = '0' + s;
         s = s.slice(0, s.length - drop);
         const tn = this.bitcoin.altStack.slice(-32).join('');
@@ -194,10 +194,10 @@ export class SHA256 {
     }
 
     fromBitsOnAltstack_ROTR(target: Register, bits: number) {
-        
+
         const stack = this.bitcoin.stack.items;
 
-        this.mov_hc(target, 0n);
+        this.mov_hc(target, 0);
         const targetFlags: boolean[] = [];
         let sourceBit = 0;
         for (let i = 0; i < target.length; i++) {
@@ -210,11 +210,11 @@ export class SHA256 {
 
                 this.bitcoin.OP_FROMALTSTACK();
 
-                const f = this.bitcoin.stack.top().value;
-                const t = target[targetNibble].value;
+                const f = Number(this.bitcoin.stack.top().value);
+                const t = Number(target[targetNibble].value);
 
                 this.bitcoin.OP_IF();
-                this.bitcoin.DATA(BigInt(targetValue));
+                this.bitcoin.DATA(targetValue);
 
                 if (targetFlags[targetNibble]) {
                     this.bitcoin.pick(target[targetNibble]);
@@ -223,10 +223,10 @@ export class SHA256 {
                 targetFlags[targetNibble] = true;
 
                 this.bitcoin.replaceWithTop(target[targetNibble]);
-                this.bitcoin.OP_ENDIF();    
+                this.bitcoin.OP_ENDIF();
 
                 // hack
-                target[targetNibble].value = f ? t + BigInt(targetValue) : t;
+                target[targetNibble].value = f ? t + targetValue : t;
 
                 sourceBit++;
             }
@@ -234,24 +234,24 @@ export class SHA256 {
     }
 
     fromBitsOnAltstack_SHR(target: Register, bits: number) {
-        
+
         const stack = this.bitcoin.stack.items;
 
-        this.mov_hc(target, 0n);
+        this.mov_hc(target, 0);
         const targetFlag: boolean[] = [];
         for (let i = 0; i < target.length; i++) {
             for (let j = 0; j < 4; j++) {
-                
+
                 this.bitcoin.OP_FROMALTSTACK();
-                
-                const f = this.bitcoin.stack.top().value;
-                const t = target[i].value;
+
+                const f = Number(this.bitcoin.stack.top().value);
+                const t = Number(target[i].value);
 
                 this.bitcoin.OP_IF();
-                this.bitcoin.DATA(BigInt(1 << j));
+                this.bitcoin.DATA(1 << j);
                 if (targetFlag[i]) {
                     this.bitcoin.pick(target[i]);
-                    this.bitcoin.OP_ADD();    
+                    this.bitcoin.OP_ADD();
                 }
                 targetFlag[i] = true;
 
@@ -259,7 +259,7 @@ export class SHA256 {
                 this.bitcoin.OP_ENDIF();
 
                 // hack
-                target[i].value = f ? t + BigInt(1 << j) : t;
+                target[i].value = f ? t + (1 << j) : t;
             }
         }
     }
@@ -267,15 +267,15 @@ export class SHA256 {
     rotr(target: Register, x: Register, n: number) {
         measureIn('rotr', this.bitcoin);
 
-        let s = this.registerToBigint(x).toString(2);
+        let s = this.registerToNumber(x).toString(2);
         while (s.length < 32) s = '0' + s;
         const t = s.slice(s.length - n) + s.slice(0, s.length - n);
-        const tn = BigInt(`0b${t}`);
+        const tn = Number(`0b${t}`);
 
         this.toBitsOnAltstack(x, 0);
-        this.fromBitsOnAltstack_ROTR(target, n);    
+        this.fromBitsOnAltstack_ROTR(target, n);
 
-        const tt = this.registerToBigint(target);
+        const tt = this.registerToNumber(target);
         assert(tn == tt);
 
         measureOut('rotr', this.bitcoin);
@@ -284,15 +284,15 @@ export class SHA256 {
     shr(target: Register, x: Register, n: number) {
         measureIn('shr', this.bitcoin);
 
-        let s = this.registerToBigint(x).toString(2);
+        let s = this.registerToNumber(x).toString(2);
         while (s.length < 32) s = '0' + s;
         const t = new Array(n).fill('0').join('') + s.slice(0, s.length - n);
-        const tn = BigInt(`0b${t}`);
+        const tn = Number(`0b${t}`);
 
         this.toBitsOnAltstack(x, n);
-        this.fromBitsOnAltstack_SHR(target, n);    
+        this.fromBitsOnAltstack_SHR(target, n);
 
-        const tt = this.registerToBigint(target);
+        const tt = this.registerToNumber(target);
         assert(tn == tt);
 
         measureOut('shr', this.bitcoin);
@@ -302,8 +302,8 @@ export class SHA256 {
 
         measureIn('add', this.bitcoin);
 
-        const tx = this.registerToBigint(x);
-        const ty = this.registerToBigint(y);
+        const tx = this.registerToNumber(x);
+        const ty = this.registerToNumber(y);
 
         for (let i = 0; i < target.length; i++) {
             this.bitcoin.pick(x[i]);
@@ -318,15 +318,15 @@ export class SHA256 {
                 this.bitcoin.tableFetchInStack(this.breakCarryTable);
                 this.bitcoin.OP_TOALTSTACK();
                 this.bitcoin.tableFetchInStack(this.breakValueTable);
-                this.bitcoin.replaceWithTop(target[i]);    
+                this.bitcoin.replaceWithTop(target[i]);
             } else {
                 this.bitcoin.tableFetchInStack(this.breakValueTable);
-                this.bitcoin.replaceWithTop(target[i]);    
+                this.bitcoin.replaceWithTop(target[i]);
             }
         }
 
-        const tt = this.registerToBigint(target);
-        assert((tx + ty) % (2n ** 32n) == tt);
+        const tt = this.registerToNumber(target);
+        assert((tx + ty) % (2 ** 32) == tt);
 
         measureOut('add', this.bitcoin);
     }
@@ -336,9 +336,9 @@ export class SHA256 {
         measureIn('addK', this.bitcoin);
 
         const krn = new Array(11).fill(0)
-            .map((_, i) => (kHex[ki] >> BigInt(i * 4)) & 15n);
+            .map((_, i) => (kHex[ki] >> (i * 4)) & 15);
 
-        const tx = this.registerToBigint(x);
+        const tx = this.registerToNumber(x);
         const ty = kHex[ki];
 
         for (let i = 0; i < target.length; i++) {
@@ -354,28 +354,28 @@ export class SHA256 {
                 this.bitcoin.tableFetchInStack(this.breakCarryTable);
                 this.bitcoin.OP_TOALTSTACK();
                 this.bitcoin.tableFetchInStack(this.breakValueTable);
-                this.bitcoin.replaceWithTop(target[i]);    
+                this.bitcoin.replaceWithTop(target[i]);
             } else {
                 this.bitcoin.tableFetchInStack(this.breakValueTable);
-                this.bitcoin.replaceWithTop(target[i]);    
+                this.bitcoin.replaceWithTop(target[i]);
             }
         }
 
-        const tt = this.registerToBigint(target);
-        assert((tx + ty) % (2n ** 32n) == tt);
+        const tt = this.registerToNumber(target);
+        assert((tx + ty) % (2 ** 32) == tt);
 
-        measureOut('addK', this.bitcoin); 
+        measureOut('addK', this.bitcoin);
     }
 
     mov(target: Register, x: Register) {
         target.forEach((t, i) => this.bitcoin.mov(t, x[i]));
     }
 
-    mov_hc(target: Register, x: bigint) {
+    mov_hc(target: Register, x: number) {
         const xa = new Array(8).fill(0)
-            .map((_, i) => (x >> BigInt(i * 4)) & 15n);
+            .map((_, i) => (x >> (i * 4)) & 15);
         target.forEach((t, i) => {
-            this.bitcoin.DATA(BigInt(xa[i]));
+            this.bitcoin.DATA(xa[i]);
             this.bitcoin.replaceWithTop(t);
         });
     }
@@ -471,7 +471,7 @@ export class SHA256 {
                 this.mov(this.h[2], this.h[1]);
                 this.mov(this.h[1], this.h[0]);
                 this.mov(this.h[0], this.T1);
-                
+
                 this.add(this.h[0], this.h[0], this.T2);
             }
         }
@@ -486,10 +486,10 @@ export class SHA256 {
         }
         for (let i = 0; i < 8; i++) {
             this.W[i] = a[i];
-            this.W[i + 8] = this.hardcodeRegister(0n);
+            this.W[i + 8] = this.hardcodeRegister(0);
         }
-        this.mov_hc(this.W[8], 0x80000000n);
-        this.mov_hc(this.W[15], 256n);
+        this.mov_hc(this.W[8], 0x80000000);
+        this.mov_hc(this.W[15], 256);
         this.calculateHash()
         for (let i = 0; i < 8; i++) {
             this.mov(target[i], this.hash[i]);
@@ -509,8 +509,8 @@ export class SHA256 {
         for (let i = 1; i < 15; i++) {
             this.zero(this.W[i]);
         }
-        this.mov_hc(this.W[0], 0x80000000n);
-        this.mov_hc(this.W[15], 512n);
+        this.mov_hc(this.W[0], 0x80000000);
+        this.mov_hc(this.W[15], 512);
         this.calculateHash();
         for (let i = 0; i < 8; i++) {
             this.mov(target[i], this.hash[i]);
@@ -526,10 +526,10 @@ export class SHA256 {
     const h1 = hash(test1);
     const bitcoin = new Bitcoin();
     const sha256 = new SHA256(bitcoin);
-    const regs: Register[] = _256To32BE(test1).map(n => sha256.hardcodeRegister(n));
-    const h2regs = _256To32BE(0n).map(n => sha256.newRegister(0n));
+    const regs: Register[] = _256To32BE(test1).map(n => sha256.hardcodeRegister(Number(n)));
+    const h2regs = _256To32BE(0n).map(n => sha256.newRegister(0));
     sha256.sha256(h2regs, regs);
-    const h2 = _32To256BE(h2regs.map(r => sha256.registerToBigint(r)));
+    const h2 = _32To256BE(h2regs.map(r => BigInt(sha256.registerToNumber(r))));
     console.log('h1', h1);
     console.log('h2', h2);
     console.log(`max stack: ${bitcoin.maxStack}    size: ${bitcoin.programSizeInBitcoinBytes()}`);
@@ -550,13 +550,13 @@ export class SHA256 {
     const bitcoin = new Bitcoin();
     const sha256 = new SHA256(bitcoin);
 
-    const aRegs: Register[] = _256To32BE(test1).map(n => sha256.newRegister(n));
-    const bRegs: Register[] = _256To32BE(test2).map(n => sha256.newRegister(n));
+    const aRegs: Register[] = _256To32BE(test1).map(n => sha256.newRegister(Number(n)));
+    const bRegs: Register[] = _256To32BE(test2).map(n => sha256.newRegister(Number(n)));
 
-    const h2regs = _256To32BE(0n).map(n => sha256.newRegister(0n));
+    const h2regs = _256To32BE(0n).map(n => sha256.newRegister(0));
 
     sha256.sha256pair(h2regs, aRegs, bRegs);
-    const h2 = _32To256BE(h2regs.map(r => sha256.registerToBigint(r)));
+    const h2 = _32To256BE(h2regs.map(r => BigInt(sha256.registerToNumber(r))));
 
     console.log('h1', h1);
     console.log('h2', h2);

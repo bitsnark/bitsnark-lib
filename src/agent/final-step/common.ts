@@ -9,7 +9,7 @@ export function teaPot() {
 export function nibblesToBigintLS(s: StackItem[]): bigint {
     let result = 0n;
     for (let i = 0; i < s.length; i++) {
-        result += BigInt(s[i].value) << (3n * BigInt(i));
+        result += BigInt(s[i].value as number) << (3n * BigInt(i));
     }
     return result;
 }

@@ -57,7 +57,7 @@ export enum OpcodeType {
     OP_CHECKSEQUENCEVERIFY = 'OP_CHECKSEQUENCEVERIFY'
 }
 
-export function hardcode(value: bigint): OpcodeType {
+export function hardcode(value: number): OpcodeType {
     if (value < 0 || value > 16) throw new Error('Invalid hardcoded value');
     return [
         OpcodeType.OP_0,
@@ -81,6 +81,7 @@ export function hardcode(value: bigint): OpcodeType {
 }
 
 export const opcodeValues = {
+    [OpcodeType.DATA]: 0,
     [OpcodeType.OP_ROLL]: 122,
     [OpcodeType.OP_PICK]: 121,
     [OpcodeType.OP_DROP]: 117,
