@@ -301,7 +301,7 @@ function makeProtocolSteps(): Transaction[] {
 
             select.outputs = [{
                 spendingConditions: [{
-                    nextRole: AgentRoles.VERIFIER,
+                    nextRole: AgentRoles.PROVER,
                     signatureType: SignatureType.BOTH,
                     wotsSpec: array(9, WotsType._256)
                 },
@@ -487,7 +487,7 @@ export async function initializeTransactions(
 
     // generate wots keys
     for (const transaction of transactions) {
-        for (let input of transaction.inputs) {
+        for (const input of transaction.inputs) {
             const output = getOutputByInput(transactions, input);
             const sc = getSpendingConditionByInput(transactions, input);
             const prevTx = getTransactionByInput(transactions, input);
@@ -576,8 +576,8 @@ async function main() {
     const setupId = 'test_setup';
 
     if (process.argv.some(s => s == '--clear')) {
-        console.log('Deleting transactions...');
-        dev_ClearTemplates(setupId, agentId);
+        console.log('Deleting transactions for agent: ', agentId, ' setup: ', setupId);
+        await dev_ClearTemplates(setupId, agentId);
     }
 
     console.log('Create / Update setup...');

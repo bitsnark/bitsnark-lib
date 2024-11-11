@@ -131,11 +131,11 @@ function generateProcessSelectionPath(sc: SpendingCondition): Buffer {
 }
 
 export async function generateAllScripts(
-    agentId: string, 
-    setupId: string, myRole: 
-    AgentRoles, 
+    agentId: string,
+    setupId: string,
+    myRole: AgentRoles,
     transactions: Transaction[],
-    generateFinal: boolean = false
+    generateFinal: boolean
 ): Promise<Transaction[]> {
 
     for (const t of transactions.filter(t => !t.external)) {

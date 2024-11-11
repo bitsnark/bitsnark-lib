@@ -5,12 +5,12 @@ import { getSpendingConditionByInput, SignatureType, Transaction } from "./trans
 
 export function emulateTransactionScripts(transactions: Transaction[]) {
 
-    for (let transaction of transactions) {
+    for (const transaction of transactions) {
 
         // if (transaction.transactionName != 'state_01') continue;
         console.log(transaction.transactionName);
 
-        for (let input of transaction.inputs) {
+        for (const input of transaction.inputs) {
 
             console.log('input: ', input.index);
 
@@ -20,7 +20,7 @@ export function emulateTransactionScripts(transactions: Transaction[]) {
             const bitcoin = new Bitcoin();
             bitcoin.throwOnFail = true;
 
-            for (let b of sc.exampleWitness!.flat()) bitcoin.newStackItem(b);
+            for (const b of sc.exampleWitness!.flat()) bitcoin.newStackItem(b);
             // add the sigs
             if (sc.signatureType == SignatureType.BOTH) {
                 bitcoin.newStackItem(Buffer.from(new Array(64)));

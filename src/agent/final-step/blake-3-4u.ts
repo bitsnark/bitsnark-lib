@@ -167,12 +167,12 @@ class Mojo {
         const tn = Number(`0b${t}`);
 
         if (n == 7) {
-            const orig = [...target];
+            const orig = [ ...target ];
             for (let i = 0; i < target.length; i++)
                 target[i] = orig[(i + 2) % target.length];
             this.rotl1(target);
         } else if (n % 4 == 0) {
-            const orig = [...target];
+            const orig = [ ...target ];
             const nibs = n / 4;
             for (let i = 0; i < target.length; i++)
                 target[i] = orig[(i + nibs) % target.length];
