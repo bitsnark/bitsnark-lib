@@ -14,7 +14,7 @@ import { agentConf } from '../agent.conf';
 import { BLAKE3 } from './blake-3-4u';
 import { Decasector } from './decasector';
 import { combineHashes } from '../../common/taproot-common';
-import { readTransactions } from '../db';
+import { readTemplates } from '../db';
 
 export class DoomsdayGenerator {
 
@@ -315,7 +315,7 @@ export class DoomsdayGenerator {
 
 async function main() {
     const ddg = new DoomsdayGenerator();
-    const transactions = await readTransactions('bitsnark_prover_1', 'test_setup');
+    const transactions = await readTemplates('bitsnark_prover_1', 'test_setup');
     const r = ddg.generateFinalStepTaproot(transactions);
     console.log(r);
 }
