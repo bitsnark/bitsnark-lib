@@ -1,12 +1,12 @@
 import { Bitcoin } from '../generator/step3/bitcoin';
 import { WOTS_NIBBLES, WotsType } from './winternitz';
-import { AgentRoles, array, iterations, TransactionNames } from './common';
+import { AgentRoles, array, TransactionNames } from './common';
 import { StackItem } from '../generator/step3/stack';
 import { SimpleTapTree } from './simple-taptree';
 import { agentConf } from './agent.conf';
 import { Buffer } from 'node:buffer';
 import { getOutputByInput, getSpendingConditionByInput, getTransactionByInput, getTransactionByName, Input, SpendingCondition, Transaction } from './transactions-new';
-import { readTransactions, writeTransactions } from './db';
+import { readTemplates, writeTemplates } from './db';
 import { DoomsdayGenerator } from './final-step/doomsday-generator';
 
 const DEAD_SCRIPT = Buffer.from([0x6a]); // opcode fails transaction
@@ -131,8 +131,11 @@ function generateProcessSelectionPath(sc: SpendingCondition): Buffer {
 }
 
 export async function generateAllScripts(
-    agentId: string, setupId: string, myRole: AgentRoles, transactions: Transaction[],
-    generateFinal: boolean
+    agentId: string, 
+    setupId: string, myRole: 
+    AgentRoles, 
+    transactions: Transaction[],
+    generateFinal: boolean = false
 ): Promise<Transaction[]> {
 
     for (const t of transactions.filter(t => !t.external)) {
@@ -209,7 +212,7 @@ export async function generateAllScripts(
     // generate the taproot key for all outputs except in the argument tx
     setTaprootKey(transactions);
 
-    await writeTransactions(agentId, setupId, transactions);
+    await writeTemplates(agentId, setupId, transactions);
 
     return transactions;
 }
@@ -218,7 +221,7 @@ async function main() {
     const agentId = process.argv[2] ?? 'bitsnark_prover_1';
     const setupId = 'test_setup';
     const generateFinal = process.argv.some(s => s == '--final');
-    const transactions = await readTransactions(agentId, setupId);
+    const transactions = await readTemplates(agentId, setupId);
     await generateAllScripts(agentId, 'test_setup', AgentRoles.PROVER, transactions, generateFinal);
 }
 

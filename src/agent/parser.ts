@@ -1,5 +1,5 @@
 import { AgentRoles } from "./common";
-import { readTransactions } from "./db";
+import { readTemplates } from "./db";
 import { findOutputByInput, getSpendingConditionByInput } from "./transactions-new";
 import { decodeWinternitz, WOTS_NIBBLES } from "./winternitz";
 
@@ -13,7 +13,7 @@ function hashesFromBuffer(data: Buffer): Buffer[] {
 
 export async function parseTransactionData(agentId: string, setupId: string, txId: string, data: Buffer): Promise<bigint[]> {
 
-    const transactions = await readTransactions(agentId, setupId);
+    const transactions = await readTemplates(agentId, setupId);
     const template = transactions.find(t => t.txId == txId);
     if (!template) throw new Error('Template not found');
 
@@ -53,7 +53,7 @@ export async function parseTransactionData(agentId: string, setupId: string, txI
 }
 
 async function test(agentId: string, setupId: string, myRole: AgentRoles) {
-    const transactions = (await readTransactions(agentId, setupId));
+    const transactions = (await readTemplates(agentId, setupId));
 
     for (const transaction of transactions) {
 

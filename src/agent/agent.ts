@@ -72,11 +72,13 @@ export class Agent {
             this.start(ctx, randomSetupId, {
                 txId: '000',
                 outputIndex: 0,
-                amount: ONE_BITCOIN
+                amount: ONE_BITCOIN,
+                external: true
             }, {
                 txId: '111',
                 outputIndex: 0,
-                amount: ONE_BITCOIN
+                amount: ONE_BITCOIN,
+                external: true
             });
 
         } else if (data.trim().startsWith('{') && data.trim().endsWith('}')) {
@@ -251,8 +253,8 @@ export class Agent {
         if (this.role == AgentRoles.VERIFIER)
             await this.sendTransactions(ctx, i.setupId);
 
-        i.transactions = await generateAllScripts(this.agentId, i.setupId, this.role, i.transactions!, false);
-        i.transactions = await addAmounts(this.agentId, i.setupId);
+        i.transactions = await generateAllScripts(this.agentId, i.setupId, this.role, i.transactions!);
+        i.transactions = await addAmounts(this.agentId, this.role, i.setupId);
 
         if (this.role == AgentRoles.PROVER)
             this.sendSignatures(ctx, i.setupId);
