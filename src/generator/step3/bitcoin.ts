@@ -1243,7 +1243,7 @@ export class Bitcoin {
             if (op.data && op.data instanceof Buffer) {
                 total += 1 + op.data.length;
             } else if (op.data && typeof op.data == 'number') {
-                let n = op.data ?? 0;
+                const n = op.data ?? 0;
                 if (n < 127) total++;
                 else total += 2;
             } else {
@@ -1284,7 +1284,7 @@ export class Bitcoin {
         const items: { itemId: string, index: number }[] = [];
 
         const byteArray: number[] = [];
-        for (let opcode of this.opcodes) {
+        for (const opcode of this.opcodes) {
             if (opcode.op == OpcodeType.DATA) {
                 if (opcode.data && opcode.data instanceof Buffer) {
                     byteArray.push(opcode.data.length);
