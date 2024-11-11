@@ -10,8 +10,11 @@ current_branch="$(git rev-parse --abbrev-ref HEAD)"
 set -e
 git switch "$branch_to_update"
 npm run lint
+npm run compile
 npm run test
-npm run start-db || true
+docker stop postgres || true
+docker rm postgres || true
+npm run start-db
 npm run emulate-setup
 git switch "$current_branch"
 set +e
