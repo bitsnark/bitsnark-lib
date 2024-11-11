@@ -21,7 +21,7 @@ export const enum TransactionNames {
     PROOF_REFUTED = 'proof_refuted'
 }
 
-export const iterations = 19;
+export const iterations = 6;
 
 export enum ProtocolStep {
     INITIAL = 'INITIAL',
@@ -105,4 +105,13 @@ export function jsonParseCustom(json: string): any {
             return Buffer.from(value.replace('hex:', ''), 'hex');
         return value;
     });
+}
+
+export function range(start: number, end: number): number[] {
+    return new Array(end - start).fill(0).map((_, i) => i);
+}
+
+export function array<T>(count: number, f?: any): T[] {
+    if (f && typeof f == 'function') return new Array(count).fill(0).map((_, i) => f(i));
+    return new Array(count).fill(f);
 }

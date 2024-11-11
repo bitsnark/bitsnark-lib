@@ -3,7 +3,7 @@ let lastId = 0;
 
 export interface StackItem {
     id: number;
-    value: bigint;
+    value: number | Buffer;
     name?: string;
     data?: bigint;
 }
@@ -12,7 +12,7 @@ export class Stack {
     items: StackItem[] = [];
     maxLength = 0;
 
-    newItem(value: bigint): StackItem {
+    newItem(value: number | Buffer): StackItem {
         const si = { value: value, id: lastId++ };
         this.items.push(si);
         return si;

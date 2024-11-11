@@ -28,36 +28,36 @@ class Mojo {
 
         for (let i = 0; i < 16; i++) {
             for (let j = 0; j < 16; j++) {
-                this.andTable[i * 16 + j] = this.bitcoin.newStackItem(BigInt(i & j));
+                this.andTable[i * 16 + j] = this.bitcoin.newStackItem(i & j);
             }
         }
         for (let i = 0; i < 16; i++) {
             for (let j = 0; j < 16; j++) {
-                this.xorTable[i * 16 + j] = this.bitcoin.newStackItem(BigInt(i ^ j));
+                this.xorTable[i * 16 + j] = this.bitcoin.newStackItem(i ^ j);
             }
         }
         for (let i = 0; i < 16; i++) {
-            this.notTable[i] = this.bitcoin.newStackItem(BigInt(i ^ 15));
+            this.notTable[i] = this.bitcoin.newStackItem(i ^ 15);
         }
         for (let i = 0; i < 32; i++) {
-            this.breakValueTable[i] = this.bitcoin.newStackItem(BigInt(i & 15));
+            this.breakValueTable[i] = this.bitcoin.newStackItem(i & 15);
         }
         for (let i = 0; i < 32; i++) {
-            this.breakCarryTable[i] = this.bitcoin.newStackItem(BigInt(i >> 4));
+            this.breakCarryTable[i] = this.bitcoin.newStackItem(i >> 4);
         }
         for (let i = 0; i < 16; i++) {
-            this.mul16Table[i] = this.bitcoin.newStackItem(BigInt(i * 16), 2);
+            this.mul16Table[i] = this.bitcoin.newStackItem(i * 16);
         }
     }
 
-    public newRegister(n: bigint): Register {
+    public newRegister(n: number): Register {
         return new Array(8).fill(0)
-            .map((_, i) => this.bitcoin.newStackItem((n >> BigInt(i * 4)) & 15n));
+            .map((_, i) => this.bitcoin.newStackItem((n >> (i * 4)) & 15));
     }
 
-    public registerToBigint(r: Register): bigint {
-        let n = 0n;
-        r.forEach((si, i) => n += si.value << BigInt(i * 4));
+    public registerToBigint(r: Register): number {
+        let n = 0;
+        r.forEach((si, i) => n += Number(si.value) << (i * 4));
         return n;
     }
 
@@ -118,7 +118,7 @@ class Mojo {
         let s = this.registerToBigint(target).toString(2);
         while (s.length < 32) s = '0' + s;
         const t = s.slice(1) + s.slice(0, 1);
-        const tn = BigInt(`0b${t}`);
+        const tn = Number(`0b${t}`);
 
         for (let i = 0; i < target.length; i++) {
             this.bitcoin.pick(target[i]);
@@ -130,7 +130,7 @@ class Mojo {
             }
             this.bitcoin.OP_DUP();
 
-            this.bitcoin.OP_0_16(16n);
+            this.bitcoin.OP_0_16(16);
             this.bitcoin.OP_GREATERTHANOREQUAL();
             this.bitcoin.OP_DUP();
             this.bitcoin.OP_TOALTSTACK();
@@ -138,14 +138,14 @@ class Mojo {
             this.bitcoin.OP_IF();
 
             // hack
-            const tv = this.bitcoin.stack.top().value;
+            const tv = Number(this.bitcoin.stack.top().value);
 
-            this.bitcoin.OP_0_16(16n);
+            this.bitcoin.OP_0_16(16);
             this.bitcoin.OP_SUB();
             this.bitcoin.OP_ENDIF();
 
-            // hack 
-            this.bitcoin.stack.top().value = tv % 16n;
+            // hack
+            this.bitcoin.stack.top().value = tv % 16;
 
             this.bitcoin.replaceWithTop(target[i]);
         }
@@ -164,7 +164,7 @@ class Mojo {
         let s = this.registerToBigint(target).toString(2);
         while (s.length < 32) s = '0' + s;
         const t = s.slice(s.length - n) + s.slice(0, s.length - n);
-        const tn = BigInt(`0b${t}`);
+        const tn = Number(`0b${t}`);
 
         if (n == 7) {
             const orig = [ ...target ];
@@ -210,18 +210,18 @@ class Mojo {
         }
 
         const tt = this.registerToBigint(target);
-        assert((tx + ty) % (2n ** 32n) == tt);
+        assert((tx + ty) % (2 ** 32) == tt);
     }
 
     mov(target: Register, x: Register) {
         target.forEach((t, i) => this.bitcoin.mov(t, x[i]));
     }
 
-    private mov_hc(target: Register, x: bigint) {
+    private mov_hc(target: Register, x: number) {
         const xa = new Array(8).fill(0)
-            .map((_, i) => (x >> BigInt(i * 4)) & 15n);
+            .map((_, i) => (x >> (i * 4)) & 15);
         target.forEach((t, i) => {
-            this.bitcoin.DATA(BigInt(xa[i]));
+            this.bitcoin.DATA(xa[i]);
             this.bitcoin.replaceWithTop(t);
         });
     }
@@ -232,7 +232,7 @@ class Mojo {
 
     // The mixing function, G, which mixes either a column or a diagonal.
     g(state: Register[], a: number, b: number, c: number, d: number, mx: Register, my: Register) {
-        const t = this.newRegister(0n);
+        const t = this.newRegister(0);
         this.add(t, state[b], mx);
         this.add(state[a], state[a], t);
         this.xor(state[d], state[d], state[a]);
@@ -254,7 +254,7 @@ class Mojo {
         blockWords: Register[],
         blockLen: number,
         flags: number): Register[] {
-    
+
         const state = [
             0x6A09E667,
             0xBB67AE85,
@@ -272,7 +272,7 @@ class Mojo {
             0,
             blockLen,
             flags
-        ].map(n => this.newRegister(BigInt(n)));
+        ].map(n => this.newRegister(n));
 
         assert(blockWords.length == 16);
         // block = list(block_words) ????
@@ -301,7 +301,7 @@ class Mojo {
             0x9B05688C,
             0x1F83D9AB,
             0x5BE0CD19,
-        ].map(n => this.newRegister(BigInt(n)));
+        ].map(n => this.newRegister(n));
 
         for (let i = 0; i < 8; i++) {
             this.xor(state[i], state[i], state[i + 8]);
@@ -320,26 +320,80 @@ export class BLAKE3 {
         this.mojo = new Mojo(bitcoin);
     }
 
-    public registerToBigint(r: Register): bigint {
-        return r.reduce((p, c, i) => p += (c.value << BigInt(i * 4)), 0n);
+    public static registerToBigint(r: Register): number {
+        return r.reduce((p, c, i) => p += (Number(c.value) << (i * 4)), 0);
     }
 
-    public newRegister(n: bigint): Register {
+    public newRegister(n: number): Register {
         return this.mojo.newRegister(n);
     }
 
     hash(blockWords: Register[]): Register[] {
         const blockLen = blockWords.length * 4;
-        while (blockWords.length < BLOCK_LEN / 4) blockWords.push(this.newRegister(0n));
+        while (blockWords.length < BLOCK_LEN / 4) blockWords.push(this.newRegister(0));
         const result = this.mojo.compress(
             blockWords,
             blockLen,
             3 | ROOT);
         return result.slice(0, OUT_LEN / 4);
     }
+
+    registersFrom3Nibbles(si: StackItem[]): Register[] {
+
+        // if (si.length != 86) throw new Error('Invalid length');
+
+        const regs = Math.floor(si.length * 3 / 32);
+
+        const result = new Array(regs).fill(0).map(_ => this.newRegister(0));
+        const resultSi = result.flat();
+
+        const values = [0, 1, 2, 3, 4, 5, 6, 7];
+        const tableItem = (v: number, fromBit: number, toBit: number): StackItem =>
+            this.mojo.bitcoin.newStackItem(v & (1 << fromBit) ? (1 << toBit) : 0);
+        const table = [0, 1, 2].map(fb =>
+            [0, 1, 2, 3].map(tb =>
+                values.map(v => tableItem(v, fb, tb))));
+
+        for (let i = 0; i < resultSi.length; i++) {
+            this.mojo.bitcoin.OP_0_16(0);
+            for (let j = 0; j < 4; j++) {
+                const bit = i * 4 + j;
+                const fromItem = Math.floor(bit / 3);
+                const fromBit = bit - fromItem * 3;
+                this.mojo.bitcoin.pick(si[fromItem]);
+                this.mojo.bitcoin.tableFetchInStack(table[fromBit][j]);
+                this.mojo.bitcoin.OP_ADD();
+            }
+            this.mojo.bitcoin.replaceWithTop(resultSi[resultSi.length - 1 - i]);
+        }
+
+        // re-arrange the nibbles to fix for LE-BE
+        for (let i = 0; i < result.length; i++) {
+            for (let j = 0; j < result[i].length; j += 2) {
+                const t = result[i][j];
+                result[i][j] = result[i][j + 1];
+                result[i][j + 1] = t;
+            }
+        }
+
+        this.mojo.bitcoin.drop(table.flat().flat());
+        return result;
+    }
+}
+
+function registersToHex(h2Regs: Register[]): string {
+    let h2 = '';
+    for (const r of h2Regs) {
+        const n = BLAKE3.registerToBigint(r);
+        for (let i = 0; i < 4; i++)
+            h2 += ((n >> (i * 8)) & 255).toString(16).padStart(2, '0');
+    }
+    return h2;
 }
 
 async function test1() {
+
+    console.log('Testing hash for 256 bit value');
 
     const test1Hex = 'ef6d3a2e4cbe60ba5dd3b13a143adddfebd4c522d3c5618cadd9c7e72e51712a';
     const test1Buf = Buffer.from(test1Hex, 'hex');
@@ -351,22 +405,19 @@ async function test1() {
     const blake3 = new BLAKE3(bitcoin);
     const blockWords: Register[] = new Array(8).fill(0)
         .map((_, i) => test1Buf.readInt32LE(i * 4))
-        .map(n => blake3.newRegister(BigInt(n)));
+        .map(n => blake3.newRegister(n));
 
     const h2Regs = blake3.hash(blockWords);
-    let h2 = '';
-    for (const r of h2Regs) {
-        const n = blake3.registerToBigint(r);
-        for (let i = 0; i < 4; i++) 
-            h2 += ((n >> (BigInt(i) * 8n)) & 0xffn).toString(16).padStart(2, '0');
-    }
-    
+    const h2 = registersToHex(h2Regs);
+
     console.log('h2', h2);
     console.log(`max stack: ${bitcoin.maxStack}    size: ${bitcoin.programSizeInBitcoinBytes()}`);
     assert(h1 == h2);
 }
 
 async function test2() {
+
+    console.log('Testing hash for 512 bit value');
 
     const test1Hex = 'ef6d3a2e4cbe60ba5dd3b13a143adddfebd4c522d3c5618cadd9c7e72e51712a';
     const test2Hex = '60ba5dd3b13a1d9c7e72e51712a43adddfebd4c522d3c56ef6d3a2e4cbe18cad';
@@ -379,21 +430,102 @@ async function test2() {
     const blake3 = new BLAKE3(bitcoin);
     const blockWords: Register[] = new Array(16).fill(0)
         .map((_, i) => test1Buf.readInt32LE(i * 4))
-        .map(n => blake3.newRegister(BigInt(n)));
+        .map(n => blake3.newRegister(n));
 
     const h2Regs = blake3.hash(blockWords);
-    let h2 = '';
-    for (const r of h2Regs) {
-        const n = blake3.registerToBigint(r);
-        for (let i = 0; i < 4; i++) 
-            h2 += ((n >> (BigInt(i) * 8n)) & 0xffn).toString(16).padStart(2, '0');
-    }
-    
+    const h2 = registersToHex(h2Regs);
+
     console.log('h2', h2);
     console.log(`max stack: ${bitcoin.maxStack}    size: ${bitcoin.programSizeInBitcoinBytes()}`);
     // console.log(stats);
     assert(h1 == h2);
 }
 
-test1();
-test2();
+async function test3() {
+
+    console.log('Testing 3nibble to 4nibble conversion');
+
+    const test1Hex = 'ef6d3a2e4cbe60ba5dd3b13a143adddfebd4c522d3c5618cadd9c7e72e51712a';
+    const test1Buf = Buffer.from(test1Hex, 'hex');
+
+    const bitcoin = new Bitcoin();
+    const blake3 = new BLAKE3(bitcoin);
+
+    const nibbles: StackItem[] = [];
+    const n = Number('0x' + test1Hex);
+    for (let i = 0; i < 86; i++) {
+        nibbles.push(blake3.mojo.bitcoin.newStackItem((n >> (i * 3)) & 7));
+    }
+    const blockWords1: Register[] = blake3.registersFrom3Nibbles(nibbles);
+
+    const h1 = registersToHex(blockWords1);
+
+    const blockWords2: Register[] = new Array(8).fill(0)
+        .map((_, i) => test1Buf.readInt32LE(i * 4))
+        .map(n => blake3.newRegister(n));
+
+    const h2 = registersToHex(blockWords2);
+
+    console.log(`max stack: ${bitcoin.maxStack}    size: ${bitcoin.programSizeInBitcoinBytes()}`);
+
+    assert(h1 == h2);
+}
+
+async function test4() {
+
+    console.log('Testing hash of 512 bit values with 3nibble to 4nibble conversion');
+
+    const test1Hex = 'ef6d3a2e4cbe60ba5dd3b13a143adddfebd4c522d3c5618cadd9c7e72e51712a';
+    const test2Hex = '60ba5dd3b13a1d9c7e72e51712a43adddfebd4c522d3c56ef6d3a2e4cbe18cad';
+    const test1Buf = Buffer.from(test1Hex + test2Hex, 'hex');
+
+    const h1 = await blake3_wasm(test1Buf);
+    console.log('h1', h1);
+
+    const bitcoin = new Bitcoin();
+    const blake3 = new BLAKE3(bitcoin);
+
+    const nibbles: StackItem[] = [];
+    let n = Number('0x' + test1Buf.toString('hex'));
+    for (let i = 0; i < 172; i++) {
+        nibbles.push(blake3.mojo.bitcoin.newStackItem((n >> (i * 3)) & 7));
+    }
+    const blockWords: Register[] = blake3.registersFrom3Nibbles(nibbles);
+
+    bitcoin.drop(nibbles);
+
+    const h2Regs = blake3.hash(blockWords);
+    const h2 = registersToHex(h2Regs);
+
+    bitcoin.drop(blockWords.flat());
+
+    const hashNibbles: StackItem[] = [];
+    n = Number('0x' + h1);
+    for (let i = 0; i < 86; i++) {
+        hashNibbles.push(blake3.mojo.bitcoin.newStackItem((n >> (i * 3)) & 7));
+    }
+
+    const resultWords: Register[] = blake3.registersFrom3Nibbles(hashNibbles);
+
+    for (let i = 0; i < resultWords.length; i++) {
+        for (let j = 0; j < resultWords[i].length; j++) {
+            bitcoin.assertEqual(resultWords[i][j], h2Regs[i][j]);
+        }
+    }
+
+    console.log(`max stack: ${bitcoin.maxStack}    size: ${bitcoin.programSizeInBitcoinBytes()}`);
+
+    assert(bitcoin.success);
+}
+
+async function main() {
+    await test1();
+    await test2();
+    await test3();
+    await test4();
+}
+
+const scriptName = __filename;
+if (process.argv[1] == scriptName) {
+    main();
+}

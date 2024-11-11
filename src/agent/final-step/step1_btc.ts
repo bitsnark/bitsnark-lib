@@ -7,11 +7,11 @@ function getBitFromA(bitcoin: Bitcoin, a: StackItem[], bit: number): StackItem {
 
     const table: StackItem[] = [];
     for (let i = 0; i < 8; i++) {
-        table[i] = bitcoin.newStackItem(BigInt(i & (2 ** (bit % 3)) ? 1 : 0));
+        table[i] = bitcoin.newStackItem((i & (2 ** (bit % 3)) ? 1 : 0));
     }
 
     const si = a[Math.floor(bit / 3)];
-    const temp = bitcoin.newStackItem();
+    const temp = bitcoin.newStackItem(0);
     bitcoin.tableFetch(temp, table[0], si);
     bitcoin.drop(table);
     return temp;
@@ -21,11 +21,11 @@ export function _verifyAndBit(bitcoin: Bitcoin, a: StackItem[], b: StackItem[], 
 
     const bitValue = getBitFromA(bitcoin, a, bit);
 
-    const temp_b = bitcoin.newStackItem();
+    const temp_b = bitcoin.newStackItem(0);
     bitcoin.equalMany(temp_b, c, b);
 
     const zero = bitcoin.newNibbles(b.length);
-    const temp_0 = bitcoin.newStackItem();
+    const temp_0 = bitcoin.newStackItem(0);
     bitcoin.equalMany(temp_0, c, zero);
     bitcoin.drop(zero);
 

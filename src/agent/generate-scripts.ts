@@ -1,13 +1,13 @@
 import { Bitcoin } from '../generator/step3/bitcoin';
-import { bufferToBigintBE, WOTS_NIBBLES, WotsType } from './winternitz';
-import { AgentRoles, iterations, TransactionNames } from './common';
+import { WOTS_NIBBLES, WotsType } from './winternitz';
+import { AgentRoles, array, TransactionNames } from './common';
 import { StackItem } from '../generator/step3/stack';
 import { SimpleTapTree } from './simple-taptree';
 import { agentConf } from './agent.conf';
 import { Buffer } from 'node:buffer';
-import { findOutputByInput, getTransactionByName, Input, Output, Transaction } from './transactions-new';
+import { getOutputByInput, getSpendingConditionByInput, getTransactionByInput, getTransactionByName, Input, SpendingCondition, Transaction } from './transactions-new';
 import { readTemplates, writeTemplates } from './db';
-import { generateFinalStepTaproot } from './final-step/generate';
+import { DoomsdayGenerator } from './final-step/doomsday-generator';
 
 const DEAD_SCRIPT = Buffer.from([0x6a]); // opcode fails transaction
 
@@ -47,16 +47,19 @@ function setTaprootKey(transactions: Transaction[]) {
     };
 }
 
-function generateBoilerplate(setupId: string, myRole: AgentRoles, prevTransaction: Transaction, input: Input): Buffer {
+function generateBoilerplate(transations: Transaction[], myRole: AgentRoles, input: Input): Buffer {
 
     const bitcoin = new Bitcoin();
-    bitcoin.throwOnFail = false;
 
-    const output = prevTransaction.outputs[input.outputIndex];
-    const spendingCondition = output.spendingConditions[input.spendingConditionIndex];
+    const prevTx = getTransactionByInput(transations, input);
+    const output = getOutputByInput(transations, input);
+    const spendingCondition = getSpendingConditionByInput(transations, input);
+
+    bitcoin.throwOnFail =  spendingCondition.nextRole == myRole;
 
     if (spendingCondition.signaturesPublicKeys) {
         for (const key of spendingCondition.signaturesPublicKeys) {
+            bitcoin.addWitness(Buffer.from(new Array(64)));
             bitcoin.verifySignature(key);
         }
     }
@@ -67,13 +70,10 @@ function generateBoilerplate(setupId: string, myRole: AgentRoles, prevTransactio
 
     if (spendingCondition.wotsSpec) {
 
-        const keys = spendingCondition.wotsPublicKeys!
-            .map(keys => keys.map(b => bufferToBigintBE(b)));
+        const keys = spendingCondition.wotsPublicKeys!;
 
-        const witnessSIs = spendingCondition.exampleWitness ? spendingCondition.exampleWitness!
-            .map(values => values.map(v => bitcoin.addWitness(bufferToBigintBE(v)))) :
-            spendingCondition.wotsSpec!
-                .map(spec => new Array(WOTS_NIBBLES[spec]).fill(0).map(_ => bitcoin.addWitness(0n)));
+        const witnessSIs = (spendingCondition.exampleWitness ? spendingCondition.exampleWitness! : spendingCondition.wotsPublicKeys!)
+            .map(values => values.map(b => bitcoin.addWitness(b)));
 
         const decoders = {
             [WotsType._256]: (dataIndex: number) =>
@@ -83,43 +83,59 @@ function generateBoilerplate(setupId: string, myRole: AgentRoles, prevTransactio
             [WotsType._1]: (dataIndex: number) =>
                 bitcoin.winternitzCheck1(witnessSIs[dataIndex], keys[dataIndex]),
         };
-        for (const [dataIndex, spec] of spendingCondition.wotsSpec.entries()) decoders[spec](dataIndex);
+        for (const [dataIndex, spec] of spendingCondition.wotsSpec.entries()) {
+            decoders[spec](dataIndex);
+            bitcoin.drop(witnessSIs[dataIndex]);
+        }
     }
 
     return bitcoin.programToBinary();
 }
 
-function generateArgumentScript(lastSelectOutput: Output): Buffer {
+function generateProcessSelectionPath(sc: SpendingCondition): Buffer {
+
     const bitcoin = new Bitcoin();
     bitcoin.throwOnFail = false;
 
-    const pubKeys = lastSelectOutput.spendingConditions[0].wotsPublicKeys!;
+    const pubKeys = sc.wotsPublicKeys!;
+    const exampleWitness = sc.exampleWitness ? sc.exampleWitness : sc.wotsPublicKeys;
 
-    const indexNibbles: StackItem[] = pubKeys[0].map(_ => bitcoin.addWitness(0n));
+    if (sc.signaturesPublicKeys) {
+        for (const key of sc.signaturesPublicKeys) {
+            bitcoin.addWitness(Buffer.from(new Array(64)));
+            bitcoin.verifySignature(key);
+        }
+    }
 
     const pathWitness: StackItem[][] = [];
-    for (let i = 0; i < iterations; i++) {
-        pathWitness[i] = pubKeys[i + 1].map(_ => bitcoin.addWitness(0n));
+    for (let i = 0; i < exampleWitness!.length; i++) {
+        pathWitness[i] = exampleWitness![i].map(b => bitcoin.addWitness(b));
     }
 
-    const pathNibbles: StackItem[] = [];
-    for (let i = 0; i < iterations; i++) {
-        const result = bitcoin.newStackItem();
+    const pathNibbles: StackItem[][] = [];
+    for (let i = 0; i < pathWitness.length; i++) {
+        const result = array(8).map(_ => bitcoin.newStackItem(0));
         pathNibbles.push(result);
-        bitcoin.winternitzDecode1(
+        bitcoin.winternitzDecode24(
             result,
             pathWitness[i],
-            pubKeys[i + 1].map(b => bufferToBigintBE(b))
+            pubKeys[i]
         );
+        bitcoin.drop(pathWitness[i]);
     }
 
-    bitcoin.checkSemiFinal(pathNibbles, indexNibbles, iterations);
+    bitcoin.checkSemiFinal(pathNibbles.slice(0, 6), pathNibbles[6]);
+    bitcoin.drop(pathNibbles.flat());
 
     return bitcoin.programToBinary();
 }
 
 export async function generateAllScripts(
-    agentId: string, setupId: string, myRole: AgentRoles, transactions: Transaction[]
+    agentId: string,
+    setupId: string,
+    myRole: AgentRoles,
+    transactions: Transaction[],
+    generateFinal: boolean
 ): Promise<Transaction[]> {
 
     for (const t of transactions.filter(t => !t.external)) {
@@ -141,26 +157,35 @@ export async function generateAllScripts(
         }
 
         if (t.transactionName == TransactionNames.PROOF_REFUTED) {
-            const taproot = generateFinalStepTaproot(setupId, transactions);
+            const ddg = new DoomsdayGenerator();
+            let taproot;
+            if (generateFinal) {
+                taproot = ddg.generateFinalStepTaproot(transactions);
+            } else {
+                const mockSTT = new SimpleTapTree(agentConf.internalPubkey, [DEAD_SCRIPT, DEAD_SCRIPT]);
+                taproot = mockSTT.getScriptPubkey();
+            }
+
             const argument = getTransactionByName(transactions, TransactionNames.ARGUMENT);
             if (argument.outputs.length != 1)
                 throw new Error('Wrong number of outputs');
             argument.outputs[0].taprootKey = taproot;
-        } else if (t.transactionName == TransactionNames.ARGUMENT) {
-            if (t.inputs.length != 1)
-                throw new Error('Wrong number of inputs');
-            const prevOutput = findOutputByInput(transactions, t.inputs[0]);
-            if (prevOutput.spendingConditions.length < 1)
-                throw new Error('Wrong number of spending conditions');
-            const script = generateArgumentScript(prevOutput);
-            prevOutput.spendingConditions[0].script = script;
-            t.inputs[0].script = script;
         } else {
             for (const input of t.inputs) {
+
                 const prevT = getTransactionByName(transactions, input.transactionName);
                 const prevOutput = prevT.outputs[input.outputIndex];
                 const sc = prevOutput.spendingConditions[input.spendingConditionIndex];
-                const script = generateBoilerplate(setupId, myRole, prevT, input);
+
+                let script;
+
+                // the first input of the argument is different
+                if (t.transactionName == TransactionNames.ARGUMENT && input.index == 0) {
+                    script = generateProcessSelectionPath(sc);
+                } else {
+                    script = generateBoilerplate(transactions, myRole, input);
+                }
+
                 sc.script = script;
                 input.script = script;
             };
@@ -195,8 +220,9 @@ export async function generateAllScripts(
 async function main() {
     const agentId = process.argv[2] ?? 'bitsnark_prover_1';
     const setupId = 'test_setup';
+    const generateFinal = process.argv.some(s => s == '--final');
     const transactions = await readTemplates(agentId, setupId);
-    await generateAllScripts(agentId, 'test_setup', AgentRoles.PROVER, transactions);
+    await generateAllScripts(agentId, 'test_setup', AgentRoles.PROVER, transactions, generateFinal);
 }
 
 const scriptName = __filename;

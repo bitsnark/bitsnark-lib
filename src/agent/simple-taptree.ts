@@ -88,7 +88,7 @@ export class SimpleTapTree {
     public getScriptPubkey(): Buffer {
         const taproot = bitcoin.payments.p2tr({
             internalPubkey: bigintToBufferBE(this.internalPubkey, 32),
-            hash:  this.getRoot(),
+            hash: this.getRoot(),
             network: bitcoin.networks.bitcoin
         });
         return taproot.output!;
@@ -121,18 +121,22 @@ export class Compressor {
         }
     }
 
-    getRoot(): Buffer {
-        while (this.counter < 2 ** this.depth) this.addItem(Buffer.alloc(0));
+    public getRoot(): Buffer {
+        while (this.counter < 2 ** this.depth) this.addItem(DEAD_ROOT);
         this.compress();
         return this.data[0][0];
     }
 
-    public getScriptPubkey(): Buffer {
+    public static toPubKey(internalPubkey: bigint, root: Buffer): Buffer {
         const taproot = bitcoin.payments.p2tr({
-            internalPubkey: bigintToBufferBE(this.internalPubkey, 32),
-            hash:  this.getRoot(),
+            internalPubkey: bigintToBufferBE(internalPubkey, 32),
+            hash: root,
             network: bitcoin.networks.bitcoin
         });
         return taproot.output!;
+    }
+
+    public getScriptPubkey(): Buffer {
+        return Compressor.toPubKey(this.internalPubkey, this.getRoot());
     }
 }
