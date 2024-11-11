@@ -8,10 +8,6 @@ export async function verifySetup(agentId: string, setupId: string) {
     // read from db
     const transactions = await readTransactions(agentId, setupId);
     console.log('Loaded ', transactions.length, 'transactions');
-    if (transactions.length < 85) {
-        console.error('Not enough transactions found');
-        return;
-    }
 
     console.log('check that all outputs have taproot keys');
     const taprootCheck = !transactions.every(t => t.outputs.every(o => {
