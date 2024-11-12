@@ -1,5 +1,5 @@
 import { Bitcoin, executeProgram } from "../generator/step3/bitcoin";
-import { readTransactions } from "./db";
+import { readTemplates } from "./db";
 import { getSpendingConditionByInput, SignatureType, Transaction } from "./transactions-new";
 
 
@@ -42,7 +42,7 @@ export function emulateTransactionScripts(transactions: Transaction[]) {
 async function main() {
     const agentId = process.argv[2] ?? 'bitsnark_prover_1';
     const setupId = 'test_setup';
-    const transactions = await readTransactions(agentId, setupId);
+    const transactions = await readTemplates(agentId, setupId);
     emulateTransactionScripts(transactions);
 }
 
