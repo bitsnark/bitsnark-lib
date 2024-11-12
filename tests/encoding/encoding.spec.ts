@@ -11,6 +11,7 @@ import {
     hashPair,
     padHex,
     strToBigint,
+    bytesFromBigint,
 } from "../../src/encoding/encoding";
 
 describe("strToBigint", () => {
@@ -126,5 +127,18 @@ describe("_32To256BE", () => {
     it("should convert a 32-bit big-endian bigint array to a bigint", () => {
         expect(_32To256BE([0n, 0n, 0n, 0n, 0n, 0n, 0n, 123n])).toEqual(123n);
         expect(_32To256BE([0n, 0n, 0n, 0n, 0n, 0n, 28n, 2864038835n])).toEqual(123123123123n);
+    });
+});
+
+describe("bytesFromBigInt", () => {
+    it("should work", () => {
+        expect(bytesFromBigint(0x12n)).toEqual(Buffer.from("12", "hex"));
+        expect(bytesFromBigint(0x0n)).toEqual(Buffer.from("00", "hex"));
+    });
+
+    it("should not fail miserably for odd-length numbers", () => {
+        expect(bytesFromBigint(2n)).toEqual(Buffer.from("02", "hex"));
+        expect(bytesFromBigint(256n)).toEqual(Buffer.from("0100", "hex"));
+        expect(bytesFromBigint(0x123n)).toEqual(Buffer.from("0123", "hex"));
     });
 });

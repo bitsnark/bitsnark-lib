@@ -1,3 +1,4 @@
+import * as bitcoinjs from "bitcoinjs-lib";
 import { hardcode, opcodeMap, OpcodeType, opcodeValues } from "./bitcoin-opcodes";
 import { StackItem, Stack } from "./stack";
 import { createHash } from 'crypto';
@@ -11,6 +12,10 @@ interface Operation {
 export interface Template {
     buffer: Buffer;
     items: { itemId: string, index: number }[];
+}
+
+export interface ProgramToTemplateOpts {
+    validateStack?: boolean;
 }
 
 export class Bitcoin {
@@ -1268,18 +1273,21 @@ export class Bitcoin {
         return s;
     }
 
-    programToBinary(): Buffer {
-
-        return this.programToTemplate().buffer;
+    programToBinary(opts: ProgramToTemplateOpts = {}): Buffer {
+        return this.programToTemplate(opts).buffer;
     }
 
-    programToTemplate(): Template {
+    programToTemplate(opts: ProgramToTemplateOpts = {}): Template {
+        const validateStack = opts.validateStack ?? true;
 
         // program has to end with a single 1 on the stack
         if (this.stack.length() == 0) {
             this.OP_0_16(1);
-        } else if (this.stack.length() != 1 || this.stack.top().value !== 1) 
-            throw new Error('Stack must have a single 1 at EOP');
+        } else if (this.stack.length() != 1 || this.stack.top().value !== 1)  {
+            if (validateStack) {
+                throw new Error('Stack must have a single 1 at EOP');
+            }
+        }
 
         const items: { itemId: string, index: number }[] = [];
 
@@ -1293,15 +1301,10 @@ export class Bitcoin {
                 } else if (typeof opcode.data == 'number') {
                     if (opcode.data <= 16) {
                         byteArray.push(opcodeValues[hardcode(opcode.data)]);
-                    } else if (opcode.data <= 127) {
-                        byteArray.push(1);
-                        byteArray.push(opcode.data);
                     } else {
-                        let n = opcode.data;
-                        byteArray.push(2);
-                        byteArray.push(n & 0xff);
-                        n = n >> 8;
-                        byteArray.push(n);
+                        const encoded = bitcoinjs.script.number.encode(opcode.data);
+                        byteArray.push(encoded.length);
+                        byteArray.push(...encoded);
                     }
                 }
             } else {
