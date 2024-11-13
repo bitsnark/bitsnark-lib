@@ -48,6 +48,7 @@ export interface Output {
 }
 
 export interface Transaction {
+    templateId?: number;
     setupId?: string,
     protocolVersion?: number,
     role: AgentRoles;
@@ -396,6 +397,13 @@ export function getTransactionByName(transactions: Transaction[], name: string):
     const tx = transactions.find(t => t.transactionName == name);
     if (!tx)
         throw new Error('Transaction not found: ' + name);
+    return tx;
+}
+
+export function getTransactionByTemplateId(transactions: Transaction[], templateId: number): Transaction {
+    const tx = transactions.find(t => t.templateId == templateId);
+    if (!tx)
+        throw new Error('Transaction not found: ' + templateId);
     return tx;
 }
 

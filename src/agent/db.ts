@@ -62,6 +62,8 @@ export enum SetupStatus {
     READY = 'READY',
     SIGNED = 'SIGNED',
     FAILED = 'FAILED',
+    PEGOUT_SUCCESSFUL = 'PEGOUT_SUCCESSFUL',
+    PEGOUT_FAILED = 'PEGOUT_FAILED'
 }
 
 export enum OutgoingStatus {
@@ -69,6 +71,10 @@ export enum OutgoingStatus {
     READY = 'READY',
     PUBLISHED = 'PUBLISHED',
     REJECTED = 'REJECTED',
+}
+export interface Setup {
+    setup_id: string;
+    status: SetupStatus;
 }
 export interface Outgoing {
     transaction_id: string;
@@ -126,6 +132,15 @@ export async function writeSetupStatus(setupId: string, status: SetupStatus) {
     );
 }
 
+export async function readActiveSetups(): Promise<Setup[]> {
+    const result = await runQuery(
+        `SELECT * FROM setups WHERE status = $1`,
+        [SetupStatus.READY]
+    );
+    const results = [...result];
+    return results.map(row => ({ setup_id: row[0], status: row[1] }));
+}
+
 export async function writeTemplate(agentId: string, setupId: string, transaction: Transaction) {
     const jsonizedObject = jsonizeObject(transaction);
     const result = await runQuery(
@@ -152,7 +167,11 @@ export async function readTemplates(agentId: string, setupId?: string): Promise<
         [agentId, setupId]
     );
     const results = [...result];
-    return results.map(r => unjsonizeObject(r['object']));
+    return results.map(r => {
+        const obj = unjsonizeObject(r['object']);
+        obj.templateId = r['template_id'];
+        return obj;
+    });
 }
 
 export async function readTemplatesOfOutging(agentId: string, setupId?: string): Promise<Transaction[]> {
@@ -167,6 +186,23 @@ export async function readTemplatesOfOutging(agentId: string, setupId?: string):
     );
     const results = [...result];
     return results.map(r => unjsonizeObject(r['object']));
+}
+
+export async function readOutgingByTemplateId(templateId: number): Promise<Outgoing | undefined> {
+    const result = await runQuery(`
+        SELECT * FROM outgoing
+        WHERE
+            template_id = $1`,
+        [templateId]
+    );
+    const results = [...result];
+    return results[0] as Outgoing;
+}
+
+export async function writeOutgoing(templateId: number, data: any, status: OutgoingStatus) {
+    await runQuery(`UPDATE outgoing SET data = $1, status = $2 WHERE template_id = $3`,
+        [data, status, templateId]
+    );
 }
 
 export async function readExpectedIncoming() {

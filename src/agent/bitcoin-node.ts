@@ -1,8 +1,5 @@
 import { agentConf } from "./agent.conf";
-//import cannot find module 'bitcoin-core'
 const Client = require('bitcoin-core');
-
-
 
 export interface TxRawData {
     in_active_chain?: boolean;
@@ -76,7 +73,7 @@ export interface TxData {
 
 
 export class BitcoinNode {
-    public client
+    public client;
 
     constructor() {
         this.client = new Client({
@@ -85,7 +82,10 @@ export class BitcoinNode {
             password: agentConf.bitcoinNodePassword,
             host: agentConf.bitcoinNodeHost,
             port: agentConf.bitcoinNodePort
+        });
+    }
 
-        })
+    async getBlockCount() {
+        return await this.client.getBlockCount();
     }
 }
