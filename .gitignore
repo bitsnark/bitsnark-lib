@@ -17,3 +17,5 @@ venv/
 *.map
 *.js
 *.d.ts
+!modules_types/*.d.ts
+
