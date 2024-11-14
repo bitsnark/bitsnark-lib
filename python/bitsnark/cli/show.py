@@ -4,6 +4,8 @@ import os
 from bitcointx.core.script import CScript
 from bitcointx.wallet import CCoinAddress
 
+import sqlalchemy as sa
+
 from bitsnark.core.models import TransactionTemplate
 from bitsnark.core.parsing import parse_bignum, parse_hex_bytes
 from ._base import Command, add_tx_template_args, find_tx_template, Context
@@ -40,10 +42,15 @@ class ShowCommand(Command):
         print("Inputs:")
         for inp in tx_template.inputs:
             prev_tx_name = inp['transactionName']
-            prev_tx = dbsession.get(
-                TransactionTemplate,
-                (tx_template.agent_id, tx_template.setup_id, prev_tx_name)
-            )
+            prev_tx = dbsession.execute(
+                sa.select(
+                    TransactionTemplate,
+                ).filter_by(
+                    agent_id=tx_template.agent_id,
+                    setup_id=tx_template.setup_id,
+                    name=prev_tx_name,
+                )
+            ).scalar_one()
             prev_txid = prev_tx.tx_id
             prevout_index = inp['outputIndex']
             sc_index = inp['spendingConditionIndex']
