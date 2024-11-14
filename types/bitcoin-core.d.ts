@@ -7,6 +7,7 @@ declare module "bitcoin-core" {
         getTransaction(txid: string): Promise<TransactionData>;
         getBlock(blockHash: string, verbosity?: number): Promise<Block>;
         getBlockCount(): Promise<number>;
+        getBlockHash(blockHeight: number): Promise<string>;
     }
 
     export interface ClientOptions {

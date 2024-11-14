@@ -3,7 +3,9 @@ CREATE TYPE public.setup_status AS ENUM ( 'PENDING', 'READY', 'SIGNED', 'FAILED'
 CREATE TABLE public.setups (
     setup_id CHARACTER VARYING PRIMARY KEY,
     protocol_version CHARACTER VARYING NOT NULL,
-    status public.setup_status NOT NULL DEFAULT 'PENDING'
+    genesis_block_height INTEGER NOT NULL DEFAULT 0,
+    status public.setup_status NOT NULL DEFAULT 'PENDING',
+    listener_last_crawled_height INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE INDEX setups_status_idx ON public.setups (status);

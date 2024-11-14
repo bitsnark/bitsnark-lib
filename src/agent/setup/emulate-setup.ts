@@ -1,11 +1,12 @@
 import { agentConf } from '../agent.conf';
 import { addAmounts } from './amounts';
-import { dev_ClearTemplates, SetupStatus, writeSetupStatus, writeTemplates } from '../common/db';
+import { dev_ClearTemplates, SetupStatus, updateSetupsGenesisBlock, writeSetupStatus, writeTemplates } from './common/db';
 import { generateAllScripts } from './generate-scripts';
 import { signTransactions } from './sign-transactions';
 import { initializeTransactions, mergeWots, getSpendingConditionByInput, SignatureType } from '../common/transactions';
 import { verifySetup } from './verify-setup';
 import { AgentRoles } from '../common/types';
+import { BitcoinNode } from '../common/bitcoin-node';
 
 export async function emulateSetup(
     proverAgentId: string,
@@ -98,6 +99,11 @@ export async function emulateSetup(
     }
     await writeTemplates(proverAgentId, setupId, proverTemplates);
     await writeTemplates(verifierAgentId, setupId, verifierTemplates);
+
+    console.log('update listener data...');
+    const bitcoinClient = new BitcoinNode();
+    const currentTip = await bitcoinClient.getBlockCount();
+    updateSetupsGenesisBlock(setupId, currentTip);
 
     console.log('checking...');
 

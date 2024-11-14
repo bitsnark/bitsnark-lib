@@ -1,5 +1,5 @@
-import { NodeListener } from '../../src/agent/protocol-logic/node-listener';
 import { readExpectedIncoming, writeIncomingTransaction } from '../../src/agent/common/db';
+import { BitcoinNodeListener } from '../../src/agent/protocol-logic/node-listener';
 import Client from 'bitcoin-core';
 
 jest.mock('../../src/agent/common/db', () => ({
@@ -22,8 +22,8 @@ jest.mock('../../src/agent/agent.conf', () => ({
     }
 }));
 
-describe('NodeListener', () => {
-    let nodeListener: NodeListener;
+describe('BitcoinNodeListener', () => {
+    let nodeListener: BitcoinNodeListener;
     let clientMock: Client;
 
     beforeEach(() => {
@@ -34,7 +34,7 @@ describe('NodeListener', () => {
             host: 'localhost',
             port: 5432
         });
-        nodeListener = new NodeListener();
+        nodeListener = new BitcoinNodeListener();
         nodeListener.client = clientMock;
     });
 
@@ -43,12 +43,12 @@ describe('NodeListener', () => {
         nodeListener.destroy();
     });
 
-    const setupLastBlockProperties = (nodeListener: NodeListener, hash: string, height: number) => {
-        Object.defineProperty(nodeListener, 'lastBlockHash', {
+    const setupLastBlockProperties = (nodeListener: BitcoinNodeListener, hash: string, height: number) => {
+        Object.defineProperty(nodeListener, 'tipHash', {
             value: hash,
             writable: true
         });
-        Object.defineProperty(nodeListener, 'lastBlockHeight', {
+        Object.defineProperty(nodeListener, 'tipHeight', {
             value: height,
             writable: true
         });

@@ -111,6 +111,27 @@ export interface Templates {
     object: any;
 }
 
+export interface Setup {
+    setup_id: string;
+    status: SetupStatus;
+    genesisBlockHeight?: number;
+    listenerBlockHeight?: number;
+    protocol_version?: string;
+}
+
+export interface SetupPayload {
+    status?: SetupStatus;
+    genesisBlockHeight?: number;
+    listenerBlockHeight?: number;
+}
+
+export interface Pending {
+    txId: string;
+    templateId: number;
+    setupId: string;
+    listenerBlockHeight: number;
+}
+
 // DB functions
 
 // This is used for development purposes only and will be removed once every agent gets his own setup.
@@ -152,13 +173,35 @@ export async function readActiveSetups(): Promise<Setup[]> {
     return results.map((row) => ({ setup_id: row[0], status: row[1] }));
 }
 
+export async function updateSetupsGenesisBlock(setupId: string, genesisHeight: number) {
+    const result = await runQuery(
+        `UPDATE setups SET
+            genesis_block_height = $2,
+            listener_last_crawled_height = $3
+        WHERE
+            setup_id = $1`,
+        [setupId, genesisHeight, genesisHeight - 1]
+    );
+}
+
+
+export async function updatedSetupListenerLastHeight(newCrawledHeight: number, lastCrawledHeight: number) {
+    const result = await runQuery(
+        `UPDATE setups
+            SET listener_last_crawled_height = $1
+        WHERE listener_last_crawled_height = $2
+        AND status = $3::TEXT::setup_status`,
+        [newCrawledHeight, lastCrawledHeight, SetupStatus.SIGNED]
+    );
+}
+
 export async function writeTemplate(agentId: string, setupId: string, transaction: Transaction) {
     const jsonizedObject = jsonizeObject(transaction);
     const result = await runQuery(
         `INSERT INTO templates
-            (name, setup_id, agent_id, role, is_external, ordinal, object)
-        VALUES ($1, $2, $3, $4::TEXT::role, $5, $6, $7)
-        ON CONFLICT(agent_id, setup_id , name) DO UPDATE SET
+        (name, setup_id, agent_id, role, is_external, ordinal, object)
+        VALUES($1, $2, $3, $4:: TEXT:: role, $5, $6, $7)
+        ON CONFLICT(agent_id, setup_id, name) DO UPDATE SET
             object = $7`,
         [
             transaction.transactionName,
@@ -184,6 +227,7 @@ export async function readTemplates(agentId: string, setupId?: string): Promise<
             agent_id = $1 ` +
         (setupId ? ` AND setup_id = $2` : '') +
         ` ORDER BY ordinal ASC `,
+
         [agentId, setupId]
     );
     const results = [...result];
@@ -226,20 +270,27 @@ export async function writeOutgoing(templateId: number, data: any, status: Outgo
     await runQuery(`UPDATE outgoing SET data = $1, status = $2 WHERE template_id = $3`, [data, status, templateId]);
 }
 
-export async function readExpectedIncoming() {
+export async function readExpectedIncoming(): Promise<Pending[]> {
     const result = await runQuery(`
-        SELECT outgoing.transaction_id, outgoing.template_id
+        SELECT outgoing.transaction_id,
+            outgoing.template_id,
+            setups.setup_id,
+            setups.listener_last_crawled_height
         FROM outgoing INNER JOIN templates
         ON outgoing.template_id = templates.template_id
         INNER JOIN setups
         ON templates.setup_id = setups.setup_id
-        WHERE outgoing.status in ( 'PENDING', 'PUBLISHED' )
+        WHERE outgoing.status in ('PENDING', 'PUBLISHED')
         AND setups.status = 'SIGNED'
-        AND transaction_id NOT IN (
+        AND transaction_id NOT IN(
             SELECT transaction_id
-            FROM incoming )`);
+            FROM incoming )
+        ORDER BY listener_last_crawled_height,
+            setups.setup_id,
+            outgoing.template_id`);
 
-    return result.rows.map((row) => ({ txId: row[0], templateId: row[1] }));
+    return result.rows.map((row) => (
+        { txId: row[0], templateId: row[1], setupId: row[2], listenerBlockHeight: row[3] }));
 }
 
 export async function writeIncomingTransaction(
@@ -256,14 +307,14 @@ export async function writeIncomingTransaction(
     );
 }
 
+
+
 export async function readIncomingTransactions(setupId: string): Promise<Incoming[]> {
     const result = await runQuery(
-        `
-        SELECT incoming.transaction_id, template_id, block_height, raw_tx, updated
+        `SELECT incoming.transaction_id, template_id, block_height, raw_tx, updated
         FROM incoming INNER JOIN templates
         ON incoming.template_id = templates.template_id
-        WHERE templates.setup_id = $1
-    `,
+        WHERE templates.setup_id = $1`,
         [setupId]
     );
     return result.rows.map((row) => ({
@@ -276,6 +327,6 @@ export async function readIncomingTransactions(setupId: string): Promise<Incomin
 
 if (process.argv[1] == __filename) {
     (async () => {
-        await dev_ClearTemplates('test_setup');
+        // await updateSetup('test_setup', { status: SetupStatus.PENDING });
     })().catch(console.error);
 }
