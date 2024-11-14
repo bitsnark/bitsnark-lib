@@ -6,8 +6,8 @@ from typing import Literal, Sequence
 
 from bitcointx.core import CTransaction, COutPoint, CTxIn, CTxOut
 from bitcointx.core.script import CScript
+from bitcointx.core.key import CKey, XOnlyPubKey
 from sqlalchemy import create_engine, select, update
-from bitcointx.core.key import CPubKey, CKey, XOnlyPubKey
 from sqlalchemy.orm.session import Session
 from sqlalchemy.orm.attributes import flag_modified
 
@@ -101,9 +101,7 @@ def main(argv: Sequence[str] = None):
 
     engine = create_engine(args.db)
     dbsession = Session(engine)
-    outgoing = []
     successes = []
-    failures = []
 
     tx_template_query = (select(TransactionTemplate).order_by(TransactionTemplate.ordinal))
 
@@ -134,7 +132,6 @@ def main(argv: Sequence[str] = None):
 
             print(f"Processing transaction #{tx.ordinal}: {tx.name}...")
             success = _handle_tx_template(
-                dbsession=dbsession,
                 tx_template=tx,
                 role=role,
                 tx_template_map=tx_template_map,
@@ -177,7 +174,6 @@ def main(argv: Sequence[str] = None):
 
 def _handle_tx_template(
     *,
-    dbsession: Session,
     tx_template: TransactionTemplate,
     role: Role,
     tx_template_map: dict[int, TransactionTemplate],
