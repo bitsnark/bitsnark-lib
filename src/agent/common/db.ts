@@ -38,6 +38,7 @@ async function getConnection(): Promise<Client> {
 async function runQuery(sql: string, params: any[] = []) {
     const client = await getConnection();
     try {
+        console.log('Running query:', sql, params);
         const result = await client.query(sql, params);
         return result;
     } catch (e) {
@@ -120,15 +121,15 @@ export async function dev_ClearTemplates(setupId: string, agentId?: string) {
         [
             `DELETE FROM outgoing WHERE template_id IN (
             SELECT template_id FROM templates WHERE setup_id = $1 ` +
-                (agentId ? ` AND agent_id = $2` : '') +
-                `);`,
+            (agentId ? ` AND agent_id = $2` : '') +
+            `);`,
             params
         ],
         [
             `DELETE FROM incoming WHERE template_id IN (
             SELECT template_id FROM templates WHERE setup_id = $1 ` +
-                (agentId ? ` AND agent_id = $2` : '') +
-                `);`,
+            (agentId ? ` AND agent_id = $2` : '') +
+            `);`,
             params
         ],
         [`DELETE FROM templates WHERE setup_id = $1 ` + (agentId ? ` AND agent_id = $2` : '') + `;`, params]
@@ -181,8 +182,8 @@ export async function readTemplates(agentId: string, setupId?: string): Promise<
         SELECT * FROM templates
         WHERE
             agent_id = $1 ` +
-            (setupId ? ` AND setup_id = $2` : '') +
-            ` ORDER BY ordinal ASC `,
+        (setupId ? ` AND setup_id = $2` : '') +
+        ` ORDER BY ordinal ASC `,
         [agentId, setupId]
     );
     const results = [...result];
@@ -201,8 +202,8 @@ export async function readTemplatesOfOutging(agentId: string, setupId?: string):
         ON templates.template_id = outgoing.template_id
         WHERE
             agent_id = $1 ` +
-            (setupId ? ` AND setup_id = $2` : '') +
-            ` ORDER BY ordinal ASC `,
+        (setupId ? ` AND setup_id = $2` : '') +
+        ` ORDER BY ordinal ASC `,
         [agentId, setupId]
     );
     const results = [...result];

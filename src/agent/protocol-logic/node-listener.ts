@@ -1,7 +1,7 @@
 import { readExpectedIncoming, writeIncomingTransaction } from '../common/db';
 import { agentConf } from '../agent.conf';
 import { BitcoinNode } from '../common/bitcoin-node';
-import { RawTransaction, TransactionData } from 'bitcoin-core';
+import { RawTransaction } from 'bitcoin-core';
 
 const checkNodeInterval = 60000;
 
@@ -37,17 +37,13 @@ export class NodeListener {
         const pending = await readExpectedIncoming();
         for (const pendingTx of pending) {
             try {
-                const transmittedTx: TransactionData = await this.client.getTransaction(pendingTx.txId);
-                if (
-                    transmittedTx &&
-                    this.lastBlockHeight - transmittedTx.blockheight >= agentConf.blocksUntilFinalized
-                ) {
-                    const transmittedRawTx: RawTransaction = await this.client.getRawTransaction(
-                        pendingTx.txId,
-                        true,
-                        transmittedTx.blockhash
-                    );
-                    await writeIncomingTransaction(transmittedRawTx, transmittedTx.blockheight, pendingTx.templateId);
+                const transmittedTx: RawTransaction = await this.client.getRawTransaction(pendingTx.txId, true, 'temp');
+                if (transmittedTx) {
+                    const txBlockHeight = (await this.client.getBlock(transmittedTx.blockhash)).height;
+                    if (this.lastBlockHeight - txBlockHeight >= agentConf.blocksUntilFinalized) {
+                        await writeIncomingTransaction(
+                            transmittedTx, txBlockHeight, pendingTx.templateId);
+                    }
                 }
             } catch (error) {
                 continue;
@@ -63,8 +59,14 @@ export class NodeListener {
     }
 }
 
-if (require.main === module) {
-    const listener = new NodeListener();
-    listener.checkForNewBlock();
-    listener.destroy();
+
+if (process.argv[1] == __filename) {
+    (async () => {
+        const nodeListener = new NodeListener();
+        await nodeListener.checkForNewBlock();
+        nodeListener.destroy();
+
+        const client = new BitcoinNode().client;
+        await client.getRawTransaction('be71a3bb8fd7c1631a68ecc48f436cfd29f640f6b89edb7b6ecaec54957cf989', true, '').then(console.log);
+    })().catch(console.error);
 }
