@@ -408,14 +408,11 @@ export function getTransactionByInput(transactions: Transaction[], input: Input)
     return tx;
 }
 
-export function getOutputByInput(transactions: Transaction[], input: Input): Output {
-    const tx = transactions.find(t => t.transactionName == input.transactionName);
-    if (!tx) {
-        console.error('Transaction not found: ', input);
-        throw new Error('Transaction not found');
-    }
-    if (!tx.outputs[input.outputIndex]) throw new Error('Output not found');
-    return tx.outputs[input.outputIndex];
+export function findOutputByInput(transactions: Transaction[], input: Input): Output {
+    const tx = getTransactionByName(transactions, input.transactionName);
+    const output = tx.outputs[input.outputIndex];
+    if (!output) throw new Error('Output not found: ' + input.outputIndex);
+    return output;
 }
 
 export function getSpendingConditionByInput(transactions: Transaction[], input: Input): SpendingCondition {
@@ -438,13 +435,6 @@ function assertOrder(transactions: Transaction[]) {
         }
         map[t.transactionName] = t;
     }
-}
-
-export function findOutputByInput(transactions: Transaction[], input: Input): Output {
-    const tx = getTransactionByName(transactions, input.transactionName);
-    const output = tx.outputs[input.outputIndex];
-    if (!output) throw new Error('Output not found: ' + input.outputIndex);
-    return output;
 }
 
 export function createUniqueDataId(setupId: string, transactionName: string, outputIndex: number, scIndex: number, dataIndex: number) {
@@ -488,7 +478,7 @@ export async function initializeTransactions(
     // generate wots keys
     for (const transaction of transactions) {
         for (const input of transaction.inputs) {
-            const output = getOutputByInput(transactions, input);
+            const output = findOutputByInput(transactions, input);
             const sc = getSpendingConditionByInput(transactions, input);
             const prevTx = getTransactionByInput(transactions, input);
 
@@ -566,8 +556,6 @@ export async function initializeTransactions(
         o.spendingConditions.forEach((sc, index) => sc.index = index);
     }));
 
-    await writeTemplates(agentId, setupId, transactions);
-
     return transactions;
 }
 
@@ -584,7 +572,7 @@ async function main() {
     await writeSetupStatus(setupId, SetupStatus.PENDING);
 
     console.log('Initializing transactions...');
-    await initializeTransactions(agentId, AgentRoles.PROVER, setupId, 1n, 2n, {
+    const transactions = await initializeTransactions(agentId, AgentRoles.PROVER, setupId, 1n, 2n, {
         txId: '0000000000000000000000000000000000000000000000000000000000000000',
         outputIndex: 0,
         amount: agentConf.payloadAmount,
@@ -595,10 +583,11 @@ async function main() {
         amount: agentConf.proverStakeAmount,
         external: true
     });
+
+    await writeTemplates(agentId, setupId, transactions);
     console.log('Done.');
 }
 
-const scriptName = __filename;
-if (process.argv[1] == scriptName) {
-    main().catch(console.error);
+if (require.main === module) {
+    main().catch((error) => { throw error; });
 }
