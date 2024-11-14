@@ -1,9 +1,9 @@
 import { readTemplates } from "./db";
 import { TransactionNames } from "./common";
 import { getSpendingConditionByInput, SignatureType } from "./transactions-new";
+import { validateTransactionFees } from "./amounts";
 
 export async function verifySetup(agentId: string, setupId: string) {
-    // read from db
     const transactions = await readTemplates(agentId, setupId);
     console.log('Loaded ', transactions.length, 'transactions');
 
@@ -16,6 +16,7 @@ export async function verifySetup(agentId: string, setupId: string) {
     else console.log('Success');
 
     console.log('check that all outputs have amounts');
+    validateTransactionFees(transactions);
     const amountCheck = transactions
         .filter(t => t.transactionName != TransactionNames.CHALLENGE)
         .every(t => t.outputs.every(o => {
@@ -26,26 +27,30 @@ export async function verifySetup(agentId: string, setupId: string) {
     else console.log('Success');
 
     console.log('check that all inputs have signatures');
-    const sigCheck = transactions
-        .every(t => t.inputs.every(input => {
+    for (const transaction of transactions) {
+        if (transaction.external || transaction.transactionName == TransactionNames.PROOF_REFUTED) {
+            console.warn(`Not checking signatures for ${transaction.transactionName}`);
+            continue;
+        }
 
-            if (t.external ||
-                t.transactionName == TransactionNames.PROOF_REFUTED) return true;
-
+        for (const input of transaction.inputs) {
             const sc = getSpendingConditionByInput(transactions, input);
-            if ((sc.signatureType == SignatureType.PROVER ||
-                sc.signatureType == SignatureType.BOTH) && !input.proverSignature) {
-                console.error(`Missing prover signature for ${t.transactionName} input ${input.index}`);
-                return false;
-            } else if ((sc.signatureType == SignatureType.VERIFIER ||
-                sc.signatureType == SignatureType.BOTH) && !input.verifierSignature) {
-                console.error(`Missing verifier signature for ${t.transactionName} input ${input.index}`);
-                return false;
+            const proverRequired = (
+                sc.signatureType === SignatureType.PROVER || sc.signatureType === SignatureType.BOTH);
+            const verifierRequired = (
+                sc.signatureType === SignatureType.VERIFIER || sc.signatureType === SignatureType.BOTH);
+            if (!input.proverSignature && proverRequired) {
+                console.error(`Missing proverSignature for ${transaction.transactionName} input ${input.index}`);
+                console.warn(input.proverSignature);
             }
-            return true;
-        }));
-    if (!sigCheck) console.log('Fail');
-    else console.log('Success');
+            if (!input.verifierSignature && verifierRequired) {
+                console.error(`Missing verifierSignature for ${transaction.transactionName} input ${input.index}`);
+                console.warn(input.verifierSignature);
+            }
+        }
+    }
+
+    console.log('Success');
 
     transactions.forEach(t => {
         let total = 0;
@@ -54,7 +59,6 @@ export async function verifySetup(agentId: string, setupId: string) {
     });
 
 }
-
 
 const scriptName = __filename;
 if (process.argv[1] == scriptName) {
