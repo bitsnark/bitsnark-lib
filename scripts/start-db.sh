@@ -4,6 +4,7 @@ source ./scripts/docker-utils.sh
 
 CONTAINER_NAME="postgres"
 
+# returns 1 if container exsists but not removed
 prompt_delete_container $CONTAINER_NAME
 
 # Run the PostgreSQL container and apply the schema

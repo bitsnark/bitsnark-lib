@@ -4,6 +4,7 @@ source ./scripts/docker-utils.sh
 
 CONTAINER_NAME="bitcoin-node"
 
+# returns 1 if container exsists but not removed
 prompt_delete_container $CONTAINER_NAME
 
 echo "Starting the Bitcoin node in regtest mode..."
