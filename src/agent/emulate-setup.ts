@@ -89,8 +89,7 @@ export async function emulateSetup(proverAgentId: string, verifierAgentId: strin
     console.log('done.');
 }
 
-const scriptName = __filename;
-if (process.argv[1] == scriptName) {
+if (require.main === module) {
     const generateFinal = process.argv.some(s => s == '--final');
-    emulateSetup('bitsnark_prover_1', 'bitsnark_verifier_1', 'test_setup', generateFinal).catch(console.error);
+    emulateSetup('bitsnark_prover_1', 'bitsnark_verifier_1', 'test_setup', generateFinal).catch((error) => { throw error; });
 }
