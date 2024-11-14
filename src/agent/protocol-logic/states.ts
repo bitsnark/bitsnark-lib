@@ -26,6 +26,6 @@ export function calculateStates(proof: bigint[], selectionPath: number[]): Buffe
     return states;
 }
 
-export function makeArgument(proof: bigint[], selectionPath: number[]) {
+export function makeArgument(proof: bigint[], selectionPath: number[]): Buffer[][] {
 
 }

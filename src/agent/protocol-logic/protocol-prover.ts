@@ -1,10 +1,11 @@
+import { agentConf } from "../agent.conf";
 import { BitcoinNode, TxRawData } from "../bitcoin-node";
 import { AgentRoles, iterations, TransactionNames, twoDigits } from "../common";
-import { Incoming, OutgoingStatus, readIncomingTransactions, readOutgingByTemplateId, readTemplates, SetupStatus, writeOutgoing, writeSetupStatus } from "../db";
+import { Incoming, OutgoingStatus, readActiveSetups, readIncomingTransactions, readOutgingByTemplateId, readTemplates, SetupStatus, writeOutgoing, writeSetupStatus } from "../db";
 import { createUniqueDataId, getTransactionByName, SpendingCondition, Transaction } from "../transactions-new";
 import { encodeWinternitz256 } from "../winternitz";
 import { parseTransactionData } from "./parser";
-import { calculateStates } from "./states";
+import { calculateStates, makeArgument } from "./states";
 
 export class ProtocolProver {
 
@@ -37,23 +38,21 @@ export class ProtocolProver {
         }
 
         // pair them
-        let pairs = incoming.map(it => {
+        const pairs = incoming.map(it => {
             const template = this.templates.find(t => t.templateId === it.templateId);
             if (!template)
                 throw new Error('Missing template for incoming transaction: ' + it.templateId);
             return { incoming: it, template };
-        });
-
-        // order logically
-        pairs = pairs.sort((p1, p2) => p1.template.ordinal! - p2.template.ordinal!);
+        })
+            // order logically
+            .sort((p1, p2) => p1.template.ordinal! - p2.template.ordinal!);
 
         let selectionPath: number[] = [];
         let proof: bigint[] = [];
 
         // examine each one
-        for (let i = 0; i < pairs.length; i++) {
-            const pair = pairs[i];
-            const lastFlag = i + 1 >= pairs.length;
+        for (const pair of pairs) {
+            const lastFlag = pair === pairs[pairs.length - 1];
 
             switch (pair.template.transactionName) {
                 case TransactionNames.PROOF:
@@ -111,10 +110,10 @@ export class ProtocolProver {
                 const selection = this.parseSelection(pair.incoming, pair.template);
                 selectionPath.push(selection);
                 if (lastFlag) {
-                    if (selectionPath.length < iterations)
-                        this.sendState(proof, selectionPath);
+                    if (selectionPath.length + 1 < iterations)
+                        await this.sendState(proof, selectionPath);
                     else
-                        this.sendArgument();
+                        await this.sendArgument(proof, selectionPath);
                 }
             }
             if (pair.template.transactionName.startsWith(TransactionNames.SELECT_UNCONTESTED)) {
@@ -125,30 +124,22 @@ export class ProtocolProver {
         }
     }
 
-    async sendProof(proof: bigint[]) {
-        const template = getTransactionByName(this.templates, TransactionNames.PROOF);
-        // find the pre-signed message
-        const presigned = await readOutgingByTemplateId(template.templateId!);
-        if (!presigned)
-            throw new Error('Outgoing transaction not found: ' + template.templateId);
-        const data = proof.map((n, dataIndex) => encodeWinternitz256(n, createUniqueDataId(this.setupId, TransactionNames.PROOF, 0, 0, dataIndex))).flat();
-        await writeOutgoing(
-            presigned.template_id,
-            [ data ],
-            OutgoingStatus.READY);
-    }
-
-    async sendTransactionNoData(name: string) {
+    async sendTransaction(name: string, data?: Buffer[][]) {
         const template = getTransactionByName(this.templates, name);
         // find the pre-signed message
         const presigned = await readOutgingByTemplateId(template.templateId!);
         if (!presigned)
             throw new Error('Outgoing transaction not found: ' + template.templateId);
-        await writeOutgoing(presigned.template_id, [], OutgoingStatus.READY);
+        await writeOutgoing(presigned.template_id, data, OutgoingStatus.READY);
+    }
+
+    async sendProof(proof: bigint[]) {
+        const data = proof.map((n, dataIndex) => encodeWinternitz256(n, createUniqueDataId(this.setupId, TransactionNames.PROOF, 0, 0, dataIndex))).flat();
+        await this.sendTransaction(TransactionNames.PROOF, [data]);
     }
 
     async sendProofUncontested() {
-        await this.sendTransactionNoData(TransactionNames.PROOF_UNCONTESTED);
+        await this.sendTransaction(TransactionNames.PROOF_UNCONTESTED);
     }
 
     parseProof(incoming: Incoming, template: Transaction): bigint[] {
@@ -162,16 +153,16 @@ export class ProtocolProver {
     }
 
     async sendArgument(proof: bigint[], selectionPath: number[]) {
-
-
+        const argumentData = makeArgument(proof, selectionPath);
+        await this.sendTransaction(TransactionNames.ARGUMENT, argumentData);
     }
 
     async sendArgumentUncontested() {
-        await this.sendTransactionNoData(TransactionNames.ARGUMENT_UNCONTESTED);
+        await this.sendTransaction(TransactionNames.ARGUMENT_UNCONTESTED);
     }
 
     async sendStateUncontested(iteration: number) {
-        await this.sendTransactionNoData(TransactionNames.STATE_UNCONTESTED + '_' + twoDigits(iteration));
+        await this.sendTransaction(TransactionNames.STATE_UNCONTESTED + '_' + twoDigits(iteration));
     }
 
     parseSelection(incoming: Incoming, template: Transaction): number {
@@ -182,13 +173,8 @@ export class ProtocolProver {
 
     async sendState(proof: bigint[], selectionPath: number[]) {
         const iteration = selectionPath.length;
-        const template = getTransactionByName(this.templates, TransactionNames.STATE + '_' + twoDigits(iteration));
-        // find the pre-signed message
-        const presigned = await readOutgingByTemplateId(template.templateId!);
-        if (!presigned)
-            throw new Error('Outgoing transaction not found: ' + template.templateId);
         const states = calculateStates(proof, selectionPath);
-        await writeOutgoing(presigned.template_id, [ states ], OutgoingStatus.READY);
+        await this.sendTransaction(TransactionNames.STATE + '_' + twoDigits(iteration), [states]);
     }
 
     async getCurrentBlockHeight(): Promise<number> {
@@ -209,4 +195,30 @@ export class ProtocolProver {
         }
         return null;
     }
+}
+
+export async function main(agentId: string) {
+
+    const setups = await readActiveSetups();
+    const doit = async () => {
+        for (const setup of setups) {
+            const protocol = new ProtocolProver(agentId, setup.setup_id);
+            try {
+                await protocol.process();
+            } catch (e) {
+                console.error(e);
+            }
+        }
+    }
+
+    do {
+        doit();
+        await new Promise(r => setTimeout(r, agentConf.protocolIntervalMs));
+    } while (true);
+}
+
+const scriptName = __filename;
+if (process.argv[1] == scriptName) {
+    const agentId = process.argv[2] ?? 'bitsnark_prover_1';
+    main(agentId).catch(console.error);
 }

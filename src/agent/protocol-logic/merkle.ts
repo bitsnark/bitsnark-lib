@@ -37,7 +37,32 @@ export function makeMerkleProof(na: bigint[], leafIndex: number) {
     return proof;
 }
 
+export function makeFatMerkleProof(na: bigint[], leafIndex: number) {
+    let layer = na.map(n => bigintToBufferBE(n, 256));
+    const proof: Buffer[] = [layer[leafIndex]];
+    while (layer.length > 1) {
+        const sibling = leafIndex % 2 == 0 ? layer[leafIndex + 1] ?? Buffer.from([]) : layer[leafIndex - 1];
+        proof.push(sibling);
+        layer = hashLayer(layer);
+        leafIndex = leafIndex >> 1;
+    }
+    proof.push(layer[0]);
+    return proof;
+}
+
 export function verifyMerkleProof(proof: Buffer[], leafIndex: number): boolean {
+    proof = proof.map(b => b);
+    while (proof.length > 2) {
+        const a = proof.shift()!;
+        const b = proof.shift()!;
+        const h = (leafIndex & 1) == 0 ? hashPair(a, b) : hashPair(b, a);
+        proof.unshift(h);
+        leafIndex = leafIndex >> 1;
+    }
+    return proof[0] == proof[1];
+}
+
+export function verifyFatMerkleProof(proof: Buffer[], leafIndex: number): boolean {
     proof = proof.map(b => b);
     while (proof.length > 2) {
         const a = proof.shift()!;
