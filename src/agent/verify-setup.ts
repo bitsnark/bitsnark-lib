@@ -35,11 +35,11 @@ export async function verifySetup(agentId: string, setupId: string) {
             const sc = getSpendingConditionByInput(transactions, input);
             if ((sc.signatureType == SignatureType.PROVER ||
                 sc.signatureType == SignatureType.BOTH) && !input.proverSignature) {
-                console.log('Missing signature', t, input);
+                console.error(`Missing prover signature for ${t.transactionName} input ${input.index}`);
                 return false;
             } else if ((sc.signatureType == SignatureType.VERIFIER ||
-                sc.signatureType == SignatureType.BOTH) && !input.proverSignature) {
-                console.log('Missing signature', t, input);
+                sc.signatureType == SignatureType.BOTH) && !input.verifierSignature) {
+                console.error(`Missing verifier signature for ${t.transactionName} input ${input.index}`);
                 return false;
             }
             return true;
