@@ -211,6 +211,7 @@ export async function main(agentId: string) {
         }
     }
 
+/*eslint no-constant-condition: "off"*/
     do {
         doit();
         await new Promise(r => setTimeout(r, agentConf.protocolIntervalMs));
