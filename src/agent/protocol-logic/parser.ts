@@ -67,6 +67,7 @@ export function parseTransactionData(transactions: Transaction[], template: Tran
     return result;
 }
 
+// TODO: Expand and fix this test.
 // async function test(agentId: string, setupId: string, myRole: AgentRoles) {
 //     const transactions = (await readTemplates(agentId, setupId));
 

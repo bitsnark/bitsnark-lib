@@ -1,4 +1,5 @@
 import { agentConf } from "./agent.conf";
+// Cannot import without a default export - a wrapper is in a coming PR.
 const Client = require('bitcoin-core');
 
 export interface TxRawData {
