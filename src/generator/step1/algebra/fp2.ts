@@ -1,11 +1,10 @@
-import { Fp } from "./fp";
-import { Register } from "../../common/register";
-import { step1_vm as vm } from "../vm/vm";
+import { Fp } from './fp';
+import { Register } from '../../common/register';
+import { step1_vm as vm } from '../vm/vm';
 
 const _2__3 = Fp.hardcoded(2n ** 3n);
 
 export class Fp2 {
-
     // xi + y
 
     x: Fp;
@@ -56,9 +55,7 @@ export class Fp2 {
     // http://eprint.iacr.org/2006/471.pdf
     mul(a: Fp | Fp2): Fp2 {
         if (a instanceof Fp) {
-            return new Fp2(
-                this.x.mul(a),
-                this.y.mul(a))
+            return new Fp2(this.x.mul(a), this.y.mul(a));
         }
         let tx = this.x.mul(a.y);
         let t = a.x.mul(this.y);
@@ -90,15 +87,11 @@ export class Fp2 {
     }
 
     if(flag: Register, other: Fp2): Fp2 {
-        return new Fp2(
-            this.x.if(flag, other.x),
-            this.y.if(flag, other.y));
+        return new Fp2(this.x.if(flag, other.x), this.y.if(flag, other.y));
     }
 
     ifBit(r: Register, bit: number, other: Fp2): Fp2 {
-        return new Fp2(
-            this.x.ifBit(r, bit, other.x),
-            this.y.ifBit(r, bit, other.y));
+        return new Fp2(this.x.ifBit(r, bit, other.x), this.y.ifBit(r, bit, other.y));
     }
 
     neg(): Fp2 {

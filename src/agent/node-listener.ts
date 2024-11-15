@@ -16,7 +16,7 @@ export class NodeListener {
 
     async setMonitorSchedule() {
         this.scheduler = setInterval(() => {
-            this.checkForNewBlock().catch(error => console.error(error));
+            this.checkForNewBlock().catch((error) => console.error(error));
         }, checkNodeInterval);
 
         await this.checkForNewBlock();
@@ -37,16 +37,21 @@ export class NodeListener {
         for (const pendingTx of pending) {
             try {
                 const transmittedTx: TxData = await this.client.getTransaction(pendingTx.txId);
-                if (transmittedTx &&
-                    this.lastBlockHeight - transmittedTx.blockheight >= agentConf.blocksUntilFinalized) {
+                if (
+                    transmittedTx &&
+                    this.lastBlockHeight - transmittedTx.blockheight >= agentConf.blocksUntilFinalized
+                ) {
+                    const transmittedRawTx: TxRawData = await this.client.getRawTransaction(
+                        pendingTx.txId,
+                        true,
+                        transmittedTx.blockhash
+                    );
 
-                    const transmittedRawTx: TxRawData =
-                        await this.client.getRawTransaction(pendingTx.txId, true, transmittedTx.blockhash)
-
-                    await writeIncomingTransaction(
-                        transmittedRawTx, transmittedTx.blockheight, pendingTx.templateId);
+                    await writeIncomingTransaction(transmittedRawTx, transmittedTx.blockheight, pendingTx.templateId);
                 }
-            } catch (error) { continue }
+            } catch (error) {
+                continue;
+            }
         }
     }
 

@@ -1,11 +1,9 @@
 import { proof, vKey } from './constants';
 import groth16Verify, { Key, Proof as Step1_Proof } from './verifier';
-import { Runner } from "./vm/runner";
-import { step1_vm } from "./vm/vm";
-
+import { Runner } from './vm/runner';
+import { step1_vm } from './vm/vm';
 
 function leslie() {
-
     groth16Verify(Key.fromSnarkjs(vKey), Step1_Proof.fromSnarkjs(proof));
     // step1_vm.optimizeRegs();
     if (!step1_vm.success?.value) throw new Error('Failed.');
@@ -14,7 +12,6 @@ function leslie() {
     runner.execute();
 
     function step(instruction: number, iteration: number) {
-
         console.log(`${iteration} ${instruction}`);
 
         const param1 = runner.instructions[instruction].param1;
@@ -27,7 +24,12 @@ function leslie() {
             }
         }
         const param2 = runner.instructions[instruction].param2;
-        if (param2 && param2 != param1 && !runner.registers[param2!]?.hardcoded && !runner.registers[param2!]?.witness) {
+        if (
+            param2 &&
+            param2 != param1 &&
+            !runner.registers[param2!]?.hardcoded &&
+            !runner.registers[param2!]?.witness
+        ) {
             for (let i = instruction - 1; i > 0; i--) {
                 if (runner.instructions[i].target == param2) {
                     step(i, iteration + 1);
@@ -37,7 +39,7 @@ function leslie() {
         }
     }
 
-    step(runner.instructions.length-1, 0);
+    step(runner.instructions.length - 1, 0);
 }
 
 leslie();

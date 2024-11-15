@@ -6,11 +6,9 @@ import { Runner } from '../../generator/step1/vm/runner';
 import { calculateMerkleRoot } from './merkle';
 
 export function calculateStates(proof: bigint[], selectionPath: number[]): Buffer[] {
-
     step1_vm.reset();
     groth16Verify(Key.fromSnarkjs(vKey), Step1_Proof.fromSnarkjs(proof));
-    if (!step1_vm.success?.value)
-        throw new Error('Failed.');
+    if (!step1_vm.success?.value) throw new Error('Failed.');
     const program = step1_vm.instructions;
     const runner = Runner.load(step1_vm.save());
     const decasector = new Decasector(program.length);

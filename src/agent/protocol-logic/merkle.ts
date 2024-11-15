@@ -1,6 +1,6 @@
-import assert from "assert";
-import { createHash } from "crypto";
-import { bigintToBufferBE } from "../winternitz";
+import assert from 'assert';
+import { createHash } from 'crypto';
+import { bigintToBufferBE } from '../winternitz';
 
 export function hashPair(inputA: Buffer, inputB: Buffer): Buffer {
     const b = Buffer.concat([inputA, inputB]);
@@ -17,7 +17,7 @@ function hashLayer(na: Buffer[]): Buffer[] {
 }
 
 export function calculateMerkleRoot(na: bigint[]): Buffer {
-    let layer = na.map(n => bigintToBufferBE(n, 256));
+    let layer = na.map((n) => bigintToBufferBE(n, 256));
     while (layer.length > 1) {
         layer = hashLayer(layer);
     }
@@ -25,10 +25,10 @@ export function calculateMerkleRoot(na: bigint[]): Buffer {
 }
 
 export function makeMerkleProof(na: bigint[], leafIndex: number) {
-    let layer = na.map(n => bigintToBufferBE(n, 256));
+    let layer = na.map((n) => bigintToBufferBE(n, 256));
     const proof: Buffer[] = [layer[leafIndex]];
     while (layer.length > 1) {
-        const sibling = leafIndex % 2 == 0 ? layer[leafIndex + 1] ?? Buffer.from([]) : layer[leafIndex - 1];
+        const sibling = leafIndex % 2 == 0 ? (layer[leafIndex + 1] ?? Buffer.from([])) : layer[leafIndex - 1];
         proof.push(sibling);
         layer = hashLayer(layer);
         leafIndex = leafIndex >> 1;
@@ -38,10 +38,10 @@ export function makeMerkleProof(na: bigint[], leafIndex: number) {
 }
 
 export function makeFatMerkleProof(na: bigint[], leafIndex: number) {
-    let layer = na.map(n => bigintToBufferBE(n, 256));
+    let layer = na.map((n) => bigintToBufferBE(n, 256));
     const proof: Buffer[] = [layer[leafIndex]];
     while (layer.length > 1) {
-        const sibling = leafIndex % 2 == 0 ? layer[leafIndex + 1] ?? Buffer.from([]) : layer[leafIndex - 1];
+        const sibling = leafIndex % 2 == 0 ? (layer[leafIndex + 1] ?? Buffer.from([])) : layer[leafIndex - 1];
         proof.push(sibling);
         layer = hashLayer(layer);
         leafIndex = leafIndex >> 1;
@@ -51,7 +51,7 @@ export function makeFatMerkleProof(na: bigint[], leafIndex: number) {
 }
 
 export function verifyMerkleProof(proof: Buffer[], leafIndex: number): boolean {
-    proof = proof.map(b => b);
+    proof = proof.map((b) => b);
     while (proof.length > 2) {
         const a = proof.shift()!;
         const b = proof.shift()!;
@@ -63,7 +63,7 @@ export function verifyMerkleProof(proof: Buffer[], leafIndex: number): boolean {
 }
 
 export function verifyFatMerkleProof(proof: Buffer[], leafIndex: number): boolean {
-    proof = proof.map(b => b);
+    proof = proof.map((b) => b);
     while (proof.length > 2) {
         const a = proof.shift()!;
         const b = proof.shift()!;

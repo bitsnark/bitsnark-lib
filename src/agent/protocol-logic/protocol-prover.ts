@@ -1,14 +1,23 @@
-import { agentConf } from "../agent.conf";
-import { BitcoinNode, TxRawData } from "../bitcoin-node";
-import { AgentRoles, iterations, TransactionNames, twoDigits } from "../common";
-import { Incoming, OutgoingStatus, readActiveSetups, readIncomingTransactions, readOutgingByTemplateId, readTemplates, SetupStatus, writeOutgoing, writeSetupStatus } from "../db";
-import { createUniqueDataId, getTransactionByName, SpendingCondition, Transaction } from "../transactions-new";
-import { encodeWinternitz256 } from "../winternitz";
-import { parseTransactionData } from "./parser";
-import { calculateStates, makeArgument } from "./states";
+import { agentConf } from '../agent.conf';
+import { BitcoinNode, TxRawData } from '../bitcoin-node';
+import { AgentRoles, iterations, TransactionNames, twoDigits } from '../common';
+import {
+    Incoming,
+    OutgoingStatus,
+    readActiveSetups,
+    readIncomingTransactions,
+    readOutgingByTemplateId,
+    readTemplates,
+    SetupStatus,
+    writeOutgoing,
+    writeSetupStatus
+} from '../db';
+import { createUniqueDataId, getTransactionByName, SpendingCondition, Transaction } from '../transactions-new';
+import { encodeWinternitz256 } from '../winternitz';
+import { parseTransactionData } from './parser';
+import { calculateStates, makeArgument } from './states';
 
 export class ProtocolProver {
-
     agentId: string;
     setupId: string;
     bitcoinClient: BitcoinNode;
@@ -25,7 +34,6 @@ export class ProtocolProver {
     }
 
     public async process() {
-
         if (!this.templates) {
             this.templates = await readTemplates(this.agentId, this.setupId);
         }
@@ -38,12 +46,12 @@ export class ProtocolProver {
         }
 
         // pair them
-        const pairs = incoming.map(it => {
-            const template = this.templates.find(t => t.templateId === it.templateId);
-            if (!template)
-                throw new Error('Missing template for incoming transaction: ' + it.templateId);
-            return { incoming: it, template };
-        })
+        const pairs = incoming
+            .map((it) => {
+                const template = this.templates.find((t) => t.templateId === it.templateId);
+                if (!template) throw new Error('Missing template for incoming transaction: ' + it.templateId);
+                return { incoming: it, template };
+            })
             // order logically
             .sort((p1, p2) => p1.template.ordinal! - p2.template.ordinal!);
 
@@ -59,8 +67,7 @@ export class ProtocolProver {
                     if (lastFlag) {
                         // did the timeout expire?
                         const timeoutSc = await this.checkTimeout(pair.incoming, pair.template);
-                        if (timeoutSc)
-                            await this.sendProofUncontested();
+                        if (timeoutSc) await this.sendProofUncontested();
                     } else {
                         // let's get the proof so we can run the verifier on it
                         proof = this.parseProof(pair.incoming, pair.template);
@@ -83,8 +90,7 @@ export class ProtocolProver {
                     if (lastFlag) {
                         // did the timeout expire?
                         const timeoutSc = await this.checkTimeout(pair.incoming, pair.template);
-                        if (timeoutSc)
-                            await this.sendArgumentUncontested();
+                        if (timeoutSc) await this.sendArgumentUncontested();
                     }
                     break;
                 case TransactionNames.ARGUMENT_UNCONTESTED:
@@ -97,8 +103,7 @@ export class ProtocolProver {
                 if (lastFlag) {
                     // did the timeout expire?
                     const timeoutSc = await this.checkTimeout(pair.incoming, pair.template);
-                    if (timeoutSc)
-                        await this.sendStateUncontested(selectionPath.length);
+                    if (timeoutSc) await this.sendStateUncontested(selectionPath.length);
                 }
             }
             if (pair.template.transactionName.startsWith(TransactionNames.STATE_UNCONTESTED)) {
@@ -110,10 +115,8 @@ export class ProtocolProver {
                 const selection = this.parseSelection(pair.incoming, pair.template);
                 selectionPath.push(selection);
                 if (lastFlag) {
-                    if (selectionPath.length + 1 < iterations)
-                        await this.sendState(proof, selectionPath);
-                    else
-                        await this.sendArgument(proof, selectionPath);
+                    if (selectionPath.length + 1 < iterations) await this.sendState(proof, selectionPath);
+                    else await this.sendArgument(proof, selectionPath);
                 }
             }
             if (pair.template.transactionName.startsWith(TransactionNames.SELECT_UNCONTESTED)) {
@@ -128,13 +131,16 @@ export class ProtocolProver {
         const template = getTransactionByName(this.templates, name);
         // find the pre-signed message
         const presigned = await readOutgingByTemplateId(template.templateId!);
-        if (!presigned)
-            throw new Error('Outgoing transaction not found: ' + template.templateId);
+        if (!presigned) throw new Error('Outgoing transaction not found: ' + template.templateId);
         await writeOutgoing(presigned.template_id, data, OutgoingStatus.READY);
     }
 
     async sendProof(proof: bigint[]) {
-        const data = proof.map((n, dataIndex) => encodeWinternitz256(n, createUniqueDataId(this.setupId, TransactionNames.PROOF, 0, 0, dataIndex))).flat();
+        const data = proof
+            .map((n, dataIndex) =>
+                encodeWinternitz256(n, createUniqueDataId(this.setupId, TransactionNames.PROOF, 0, 0, dataIndex))
+            )
+            .flat();
         await this.sendTransaction(TransactionNames.PROOF, [data]);
     }
 
@@ -144,7 +150,11 @@ export class ProtocolProver {
 
     parseProof(incoming: Incoming, template: Transaction): bigint[] {
         const rawTx = incoming.rawTransaction as TxRawData;
-        const proof = parseTransactionData(this.templates, template, rawTx.vin[0].txinwitness!.map(s => Buffer.from(s, 'hex')));
+        const proof = parseTransactionData(
+            this.templates,
+            template,
+            rawTx.vin[0].txinwitness!.map((s) => Buffer.from(s, 'hex'))
+        );
         return proof;
     }
 
@@ -167,7 +177,11 @@ export class ProtocolProver {
 
     parseSelection(incoming: Incoming, template: Transaction): number {
         const rawTx = incoming.rawTransaction as TxRawData;
-        const data = parseTransactionData(this.templates, template, rawTx.vin[0].txinwitness!.map(s => Buffer.from(s, 'hex')));
+        const data = parseTransactionData(
+            this.templates,
+            template,
+            rawTx.vin[0].txinwitness!.map((s) => Buffer.from(s, 'hex'))
+        );
         return Number(data[0]);
     }
 
@@ -198,7 +212,6 @@ export class ProtocolProver {
 }
 
 export async function main(agentId: string) {
-
     const setups = await readActiveSetups();
     const doit = async () => {
         for (const setup of setups) {
@@ -209,12 +222,12 @@ export async function main(agentId: string) {
                 console.error(e);
             }
         }
-    }
+    };
 
     do {
         doit();
-        await new Promise(r => setTimeout(r, agentConf.protocolIntervalMs));
-    /*eslint no-constant-condition: "off"*/
+        await new Promise((r) => setTimeout(r, agentConf.protocolIntervalMs));
+        /*eslint no-constant-condition: "off"*/
     } while (true);
 }
 

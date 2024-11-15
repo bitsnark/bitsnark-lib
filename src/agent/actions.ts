@@ -1,4 +1,4 @@
-import { FundingUtxo } from "./common";
+import { FundingUtxo } from './common';
 import * as bitcoinlib from 'bitcoinjs-lib';
 
 // TODO:
@@ -16,8 +16,7 @@ export function createPayloadTx(_dontKnowWhatGoesHere?: any): FundingUtxo {
 }
 
 // TODO:
-export function sendPayloadTx(setupId: string, payload: FundingUtxo) {
-}
+export function sendPayloadTx(setupId: string, payload: FundingUtxo) {}
 
 // TODO:
 export function sendProverStake(_dontKnowWhatGoesHere?: any): FundingUtxo {

@@ -1,5 +1,5 @@
-import { findOutputByInput, Transaction } from "../transactions-new";
-import { decodeWinternitz, WOTS_NIBBLES } from "../winternitz";
+import { findOutputByInput, Transaction } from '../transactions-new';
+import { decodeWinternitz, WOTS_NIBBLES } from '../winternitz';
 
 function hashesFromBuffer(data: Buffer): Buffer[] {
     const result: Buffer[] = [];
@@ -33,14 +33,12 @@ export interface ArgumentData {
 }
 
 export function parseTransactionData(transactions: Transaction[], template: Transaction, data: Buffer[]): bigint[] {
-
     const result: bigint[] = [];
-    const hashes = data.map(item => hashesFromBuffer(item)).flat();
+    const hashes = data.map((item) => hashesFromBuffer(item)).flat();
     let hashesIndex = 0;
     let resultIndex = 0;
 
     for (let inputIndex = 0; inputIndex < template.inputs.length; inputIndex++) {
-
         const input = template.inputs[inputIndex];
         const output = findOutputByInput(transactions, input);
         if (!output) throw new Error('Output not found');
@@ -50,16 +48,13 @@ export function parseTransactionData(transactions: Transaction[], template: Tran
         if (!sc.wotsPublicKeys) throw new Error('Missing public keys');
 
         for (let i = 0; i < sc.wotsSpec.length; i++) {
-
             const spec = sc.wotsSpec[i];
             const keys = sc.wotsPublicKeys[i];
             const nibbleCount = WOTS_NIBBLES[spec];
-            if (keys.length != nibbleCount)
-                throw new Error('Wrong number of keys');
+            if (keys.length != nibbleCount) throw new Error('Wrong number of keys');
             // remove later
-            if (sc.exampleWitness![i].length != nibbleCount)
-                throw new Error('Wrong number of Values');
-            result[resultIndex++] = decodeWinternitz(spec, hashes.slice(hashesIndex, hashesIndex + nibbleCount), keys)
+            if (sc.exampleWitness![i].length != nibbleCount) throw new Error('Wrong number of Values');
+            result[resultIndex++] = decodeWinternitz(spec, hashes.slice(hashesIndex, hashesIndex + nibbleCount), keys);
             hashesIndex += nibbleCount;
         }
     }

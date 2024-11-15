@@ -1,13 +1,13 @@
-import { FundingUtxo } from "./common";
-import { Transaction } from "./transactions-new";
+import { FundingUtxo } from './common';
+import { Transaction } from './transactions-new';
 
 type MessageType = 'start' | 'join' | 'transactions' | 'signatures' | 'done' | 'error';
 
 function _assign(target: any, from: any) {
     if (!from) return;
     Object.keys(target)
-        .filter(k => k != 'messageType' && from[k])
-        .forEach(k => target[k] = from[k]);
+        .filter((k) => k != 'messageType' && from[k])
+        .forEach((k) => (target[k] = from[k]));
 }
 
 export class StartMessage {
@@ -52,7 +52,7 @@ export class TransactionsMessage {
 class Signed {
     transactionName: string = '';
     txId: string = '';
-    signatures: string = ''
+    signatures: string = '';
 }
 
 export class SignaturesMessage {
@@ -91,13 +91,13 @@ export class ErrorMessage {
 }
 
 const typeToClass = {
-    'start': StartMessage,
-    'join': JoinMessage,
-    'transactions': TransactionsMessage,
-    'signatures': SignaturesMessage,
-    'done': DoneMessage,
-    'error': ErrorMessage
-}
+    start: StartMessage,
+    join: JoinMessage,
+    transactions: TransactionsMessage,
+    signatures: SignaturesMessage,
+    done: DoneMessage,
+    error: ErrorMessage
+};
 
 export type Message = StartMessage | TransactionsMessage | SignaturesMessage | DoneMessage | ErrorMessage;
 
@@ -105,14 +105,13 @@ export function fromJson(json: string): Message {
     const obj = JSON.parse(json, (key, value) => {
         if (typeof value === 'string' && value.startsWith('0x') && value.endsWith('n'))
             return BigInt(value.replace('n', ''));
-        if (typeof value === 'string' && value.startsWith('hex:'))
-            return Buffer.from(value.replace('hex:', ''), 'hex');
+        if (typeof value === 'string' && value.startsWith('hex:')) return Buffer.from(value.replace('hex:', ''), 'hex');
         return value;
     });
     const t = (typeToClass as any)[obj.messageType];
     if (!t) throw new Error('Invalid message type');
     const m = new t();
-    Object.keys(m).forEach(k => {
+    Object.keys(m).forEach((k) => {
         m[k] = obj[k];
     });
     return m;
@@ -120,8 +119,8 @@ export function fromJson(json: string): Message {
 
 export function toJson(message: Message): string {
     const json = JSON.stringify(message, (key, value) => {
-        if (typeof value === "bigint") return `0x${value.toString(16)}n`;
-        if (value?.type == "Buffer" && value.data) {
+        if (typeof value === 'bigint') return `0x${value.toString(16)}n`;
+        if (value?.type == 'Buffer' && value.data) {
             return 'hex:' + Buffer.from(value.data).toString('hex');
         }
         return value;

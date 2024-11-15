@@ -1,6 +1,6 @@
-import { Register } from "../../src/generator/common/register";
-import { step2_vm, step2_vm as vm } from "../../src/generator/step2/vm/vm";
-import { verifyMerkleProof } from "../../src/generator/step2/merkle"
+import { Register } from '../../src/generator/common/register';
+import { step2_vm, step2_vm as vm } from '../../src/generator/step2/vm/vm';
+import { verifyMerkleProof } from '../../src/generator/step2/merkle';
 import { makeMerkleProof, verifyMerkleProof as verifyMerkleProofReference } from '../../src/encoding/merkle';
 import { _256To32BE, _32To256BE } from '../../src/encoding/encoding';
 
@@ -20,8 +20,7 @@ const testProof: bigint[][] = [
     [0xc5ffe10bn, 0x5d57d0cen, 0x796fb761n, 0x76839472n, 0x97823bfen, 0xa51aed82n, 0x2ebe617bn, 0xb530b396n]
 ];
 
-describe("SHA256 tests", function () {
-
+describe('SHA256 tests', function () {
     let target: Register[];
 
     beforeEach(() => {
@@ -33,14 +32,13 @@ describe("SHA256 tests", function () {
     });
 
     it('Merkle proof positive', () => {
-
         const merkleProof = makeMerkleProof(testMerkleTreeLeaves.map(_32To256BE), 3);
         expect(verifyMerkleProofReference(merkleProof, 3)).toBe(true);
         expect(merkleProof.length).toBe(testProof.length);
         for (let i = 0; i < merkleProof.length; i++) {
             expect(_256To32BE(merkleProof[i])).toEqual(testProof[i]);
         }
-        const witness = merkleProof.map(n => _256To32BE(n).map(n => step2_vm.addWitness(n)));
+        const witness = merkleProof.map((n) => _256To32BE(n).map((n) => step2_vm.addWitness(n)));
         step2_vm.startProgram();
         verifyMerkleProof(witness, 3);
 
@@ -48,13 +46,12 @@ describe("SHA256 tests", function () {
     });
 
     it('Merkle proof negative', () => {
-
         const merkleProof = makeMerkleProof(testMerkleTreeLeaves.map(_32To256BE), 3);
 
         // break it!
         merkleProof[2]++;
 
-        const witness = merkleProof.map(n => _256To32BE(n).map(n => step2_vm.addWitness(n)));
+        const witness = merkleProof.map((n) => _256To32BE(n).map((n) => step2_vm.addWitness(n)));
 
         step2_vm.startProgram();
         verifyMerkleProof(witness, 3);

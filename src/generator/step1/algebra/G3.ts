@@ -1,39 +1,38 @@
-import { EC, ECPoint } from "./ec";
-import { Fp } from "./fp";
-import { Fp12t } from "./fp12t";
-import { Fp2 } from "./fp2";
-import { Fp6 } from "./fp6";
-import { G1Point } from "./G1";
-import { G2Point } from "./G2";
+import { EC, ECPoint } from './ec';
+import { Fp } from './fp';
+import { Fp12t } from './fp12t';
+import { Fp2 } from './fp2';
+import { Fp6 } from './fp6';
+import { G1Point } from './G1';
+import { G2Point } from './G2';
 
 export const curveOrder = 21888242871839275222246405745257275088548364400416034343698204186575808495617n;
 const u = 4965661367192848881n;
 const sixuPlus2NAF = [
-    0, 0, 0, 1, 0, 1, 0, -1, 0, 0, 1, -1, 0, 0, 1, 0,
-    0, 1, 1, 0, -1, 0, 0, 1, 0, -1, 0, 0, 0, 0, 1, 1,
-    1, 0, 0, -1, 0, 0, 1, 0, 0, 0, 0, 0, -1, 0, 0, 1,
-    1, 0, 0, -1, 0, 0, 0, 1, 1, 0, -1, 0, 0, 1, 0, 1, 1];
+    0, 0, 0, 1, 0, 1, 0, -1, 0, 0, 1, -1, 0, 0, 1, 0, 0, 1, 1, 0, -1, 0, 0, 1, 0, -1, 0, 0, 0, 0, 1, 1, 1, 0, 0, -1, 0,
+    0, 1, 0, 0, 0, 0, 0, -1, 0, 0, 1, 1, 0, 0, -1, 0, 0, 0, 1, 1, 0, -1, 0, 0, 1, 0, 1, 1
+];
 
 // xiToPMinus1Over3 is ξ^((p-1)/3) where ξ = i+9.
 const xiToPMinus1Over3 = Fp2.hardcoded(
     10307601595873709700152284273816112264069230130616436755625194854815875713954n,
-    21575463638280843010398324269430826099269044274347216827212613867836435027261n);
+    21575463638280843010398324269430826099269044274347216827212613867836435027261n
+);
 
 // xiToPMinus1Over2 is ξ^((p-1)/2) where ξ = i+9.
 const xiToPMinus1Over2 = Fp2.hardcoded(
     3505843767911556378687030309984248845540243509899259641013678093033130930403n,
-    2821565182194536844548159561693502659359617185244120367078079554186484126554n);
+    2821565182194536844548159561693502659359617185244120367078079554186484126554n
+);
 
 // xiToPSquaredMinus1Over3 is ξ^((p²-1)/3) where ξ = i+9.
-const xiToPSquaredMinus1Over3 = Fp.hardcoded(
-    21888242871839275220042445260109153167277707414472061641714758635765020556616n);
+const xiToPSquaredMinus1Over3 =
+    Fp.hardcoded(21888242871839275220042445260109153167277707414472061641714758635765020556616n);
 
-export class G3Point extends ECPoint<Fp12t> {
-}
+export class G3Point extends ECPoint<Fp12t> {}
 
 // group over elliptic curve over polynomial field over finite field
 export class G3 extends EC<Fp12t> {
-
     fiveZeros: Fp[];
     nine: Fp;
 
@@ -85,8 +84,7 @@ export class G3 extends EC<Fp12t> {
 
     // See the mixed addition algorithm from "Faster Computation of the
     // Tate Pairing", http://arxiv.org/pdf/0904.0854v3.pdf
-    static lineFunctionAdd(r: G2Point, p: G2Point, q: G1Point, r2: Fp2): { a: Fp2, b: Fp2, c: Fp2, rOut: G2Point } {
-
+    static lineFunctionAdd(r: G2Point, p: G2Point, q: G1Point, r2: Fp2): { a: Fp2; b: Fp2; c: Fp2; rOut: G2Point } {
         const B = p.x.mul(r.t);
         let D = p.y.add(r.z);
         D = D.mul(D);
@@ -143,7 +141,7 @@ export class G3 extends EC<Fp12t> {
 
     // See the doubling algorithm for a=0 from "Faster Computation of the
     // Tate Pairing", http://arxiv.org/pdf/0904.0854v3.pdf
-    static lineFunctionDouble(r: G2Point, q: G1Point): { a: Fp2, b: Fp2, c: Fp2, rOut: G2Point } {
+    static lineFunctionDouble(r: G2Point, q: G1Point): { a: Fp2; b: Fp2; c: Fp2; rOut: G2Point } {
         let a, c;
         const rOut: G2Point = new G2Point(r.curve);
 
@@ -196,7 +194,6 @@ export class G3 extends EC<Fp12t> {
     }
 
     miller(q: G2Point, p: G1Point): Fp12t {
-
         let ret = Fp12t.one();
         const aAffine = q.toAffine();
         const bAffine = p.toAffine();
@@ -268,7 +265,7 @@ export class G3 extends EC<Fp12t> {
         r2 = minusQ2.y.mul(minusQ2.y);
         ({ a, b, c, rOut } = G3.lineFunctionAdd(r, minusQ2, bAffine, r2));
         G3.mulLine(ret, a, b, c);
-        r = rOut
+        r = rOut;
 
         return ret;
     }
@@ -277,7 +274,6 @@ export class G3 extends EC<Fp12t> {
     // GF(p¹²) to obtain an element of GT (steps 13-15 of algorithm 1 from
     // http://cryptojedi.org/papers/dclxvi-20100714.pdf)
     finalExponentiation(_in: Fp12t): Fp12t {
-
         // This is the p^6-Frobenius
         let t1 = new Fp12t(_in.x.neg(), _in.y);
 

@@ -1,4 +1,3 @@
-
 export enum ProtocolStep {
     INITIAL = 'INITIAL',
     CHALLENGE = 'CHALLENGE',
@@ -14,16 +13,9 @@ const stepToNum = {
     [ProtocolStep.STEP1]: 2,
     [ProtocolStep.TRANSITION]: 3,
     [ProtocolStep.STEP2]: 4,
-    [ProtocolStep.FINAL]: 5,
+    [ProtocolStep.FINAL]: 5
 };
-
-
-
 
 export function getEncodingIndexForPat(step: ProtocolStep, iteration: number, registerIndex: number): number {
     return stepToNum[step] * 1000000 + iteration * 256 * 256 + registerIndex * 256;
 }
-
-
-
-

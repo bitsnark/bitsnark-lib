@@ -1,6 +1,9 @@
-import { createHash } from "crypto";
+import { createHash } from 'crypto';
 
-export interface Key { prvt: bigint, pblc: bigint }
+export interface Key {
+    prvt: bigint;
+    pblc: bigint;
+}
 
 export function strToBigint(s: string): bigint {
     let n = 0n;
@@ -16,13 +19,13 @@ export function bigintToBufferBE(n: bigint, bytes: number): Buffer {
 }
 
 export function bufferToBigints256BE(buffer: Buffer): bigint[] {
-    if (buffer.length % 32 !== 0) throw new Error("invalid size");
+    if (buffer.length % 32 !== 0) throw new Error('invalid size');
     return bufferToBigintsBE(buffer, 32);
 }
 
 export function bufferToBigintsBE(buffer: Buffer, size: number): bigint[] {
     const output: bigint[] = [];
-    for (let i = 0; i < buffer.length;) {
+    for (let i = 0; i < buffer.length; ) {
         let n = 0n;
         for (let j = 0; j < size; j++) {
             n = (n << 8n) + BigInt(buffer[i++]);
@@ -33,7 +36,7 @@ export function bufferToBigintsBE(buffer: Buffer, size: number): bigint[] {
 }
 
 export function padHex(s: string, bytes: number): string {
-    return s.padStart(bytes * 2, "0");
+    return s.padStart(bytes * 2, '0');
 }
 
 export function cat(buffers: Buffer[]): Buffer {
@@ -52,20 +55,18 @@ export function hash(input: bigint, times: number = 1): bigint {
 
 export function hashPair(inputA: bigint, inputB: bigint): bigint {
     const s = padHex(inputA.toString(16), 32) + padHex(inputB.toString(16), 32);
-    return BigInt('0x' + createHash('sha256')
-        .update(s, 'hex')
-        .digest('hex'));
+    return BigInt('0x' + createHash('sha256').update(s, 'hex').digest('hex'));
 }
 
 export function taggedHash(tag: string, msg: Buffer): Buffer {
-    const tagHash = createHash("sha256").update(tag, "utf-8").digest();
-    return createHash("sha256")
+    const tagHash = createHash('sha256').update(tag, 'utf-8').digest();
+    return createHash('sha256')
         .update(Buffer.concat([tagHash, tagHash, msg]))
         .digest();
 }
 
 export function bigintFromBytes(buf: Buffer): bigint {
-    return BigInt("0x" + buf.toString("hex"));
+    return BigInt('0x' + buf.toString('hex'));
 }
 
 export function bytesFromBigint(n: bigint): Buffer {
@@ -75,7 +76,7 @@ export function bytesFromBigint(n: bigint): Buffer {
         // (e.g. '2' or '101') is passed in
         s = '0' + s;
     }
-    return Buffer.from(s, "hex");
+    return Buffer.from(s, 'hex');
 }
 
 export function bitsToBigint(bits: number[]): bigint {
@@ -113,7 +114,7 @@ export function _256To32BE(n: bigint): bigint[] {
 }
 
 export function _32To256LE(na: bigint[]): bigint {
-    if (na.length !== 8) throw new Error("invalid size");
+    if (na.length !== 8) throw new Error('invalid size');
 
     let n = 0n;
     for (let i = 0; i < 8; i++) {
@@ -123,7 +124,7 @@ export function _32To256LE(na: bigint[]): bigint {
 }
 
 export function _32To256BE(na: bigint[]): bigint {
-    if (na.length !== 8) throw new Error("invalid size");
+    if (na.length !== 8) throw new Error('invalid size');
 
     let n = 0n;
     for (let i = 0; i < 8; i++) {

@@ -1,7 +1,6 @@
-
 export function modInverse(a: bigint, m: bigint): bigint {
     // validate inputs
-    a = (a % m + m) % m;
+    a = ((a % m) + m) % m;
     if (!a || m < 2) {
         // NaN, but we can't fail
         return 1n;
@@ -23,18 +22,15 @@ export function modInverse(a: bigint, m: bigint): bigint {
     for (let i = s.length - 2; i >= 0; --i) {
         [x, y] = [y, x - y * (s[i].a / s[i].b)];
     }
-    return (y % m + m) % m;
+    return ((y % m) + m) % m;
 }
 
 export function mod(a: bigint, m: bigint) {
-    return (a % m + m) % m;
+    return ((a % m) + m) % m;
 }
 
 export function multiplyComplex(a: bigint[], b: bigint[], m: bigint): bigint[] {
-    return [
-        mod(a[0] * b[0] - a[1] * b[1], m),
-        mod(a[0] * b[1] + a[1] * b[0], m)
-    ];
+    return [mod(a[0] * b[0] - a[1] * b[1], m), mod(a[0] * b[1] + a[1] * b[0], m)];
 }
 
 export function divideComplex(a: bigint[], b: bigint[], m: bigint): bigint[] {
@@ -45,19 +41,17 @@ export function divideComplex(a: bigint[], b: bigint[], m: bigint): bigint[] {
     const conjugateB = [b[0], mod(-b[1], m)];
     const numerator = multiplyComplex(a, conjugateB, m);
     const modulusSquared = mod(b[0] * b[0] + b[1] * b[1], m);
-    return [
-        mod(numerator[0] * modInverse(modulusSquared, m), m),
-        mod(numerator[1] * modInverse(modulusSquared, m), m)
-    ];
+    return [mod(numerator[0] * modInverse(modulusSquared, m), m), mod(numerator[1] * modInverse(modulusSquared, m), m)];
 }
 
 export function modPow(base: bigint, expo: bigint, p: bigint): bigint {
-    let x = base % p, res = expo & 1n ? x : 1n
+    let x = base % p,
+        res = expo & 1n ? x : 1n;
     do {
-        x = x ** 2n % p
-        if (expo & 2n) res = res * x % p
-    } while (expo != 2n)
-    return res
+        x = x ** 2n % p;
+        if (expo & 2n) res = (res * x) % p;
+    } while (expo != 2n);
+    return res;
 }
 
 export function polyDeg(p: bigint[]): number {
@@ -67,13 +61,13 @@ export function polyDeg(p: bigint[]): number {
 }
 
 function polyCat(a: bigint[], b: bigint[]): bigint[] {
-    const r = a.map(n => n);
+    const r = a.map((n) => n);
     r.push(...b);
     return r;
 }
 
 function polyComplete(a: bigint[], degree: number): bigint[] {
-    const r = a.map(n => n);
+    const r = a.map((n) => n);
     while (r.length < degree) r.push(0n);
     return r;
 }
@@ -81,7 +75,7 @@ function polyComplete(a: bigint[], degree: number): bigint[] {
 export function polyRoundedDiv(a: bigint[], b: bigint[], prime: bigint): bigint[] {
     const dega = polyDeg(a);
     const degb = polyDeg(b);
-    const temp = a.map(n => n);
+    const temp = a.map((n) => n);
     const o = a.map(() => 0n);
     for (let i = dega - degb; i >= 0; i--) {
         o[i] = (o[i] + temp[degb + i] * modInverse(b[degb], prime)) % prime;
@@ -89,38 +83,38 @@ export function polyRoundedDiv(a: bigint[], b: bigint[], prime: bigint): bigint[
             temp[c + i] = (prime + temp[c + i] - o[c]) % prime;
         }
     }
-    while(o[o.length-1] === 0n) o.pop();
+    while (o[o.length - 1] === 0n) o.pop();
     return o;
 }
 
 export function polyInv(coeffs: bigint[], modulus_coeffs: bigint[], degree: number, prime: bigint): bigint[] {
     coeffs = polyComplete(coeffs, degree);
     modulus_coeffs = polyComplete(modulus_coeffs, degree);
-    let lm = polyComplete([ 1n ], degree + 1);
-    let hm = polyComplete([ 0n ], degree + 1);
-    let low = polyCat(coeffs, [ 0n ]);
-    let high = polyCat(modulus_coeffs, [ 1n ]);
+    let lm = polyComplete([1n], degree + 1);
+    let hm = polyComplete([0n], degree + 1);
+    let low = polyCat(coeffs, [0n]);
+    let high = polyCat(modulus_coeffs, [1n]);
     let count = 0;
     while (polyDeg(low) > 0) {
         let r = polyRoundedDiv(high, low, prime);
         r = polyComplete(r, degree + 1);
-        const nm = hm.map(n => n);
-        const _new = high.map(n => n);
+        const nm = hm.map((n) => n);
+        const _new = high.map((n) => n);
         //assert len(lm) == len(hm) == len(low) == len(high) == len(nm) == len(new) == self.degree + 1
         for (let i = 0; i < degree + 1; i++) {
             for (let j = 0; j < degree + 1 - i; j++) {
-                nm[i + j] = (prime + nm[i + j] - (lm[i] * r[j]) % prime) % prime;
-                _new[i + j] = (prime + _new[i + j] - (low[i] * r[j]) % prime) % prime;
+                nm[i + j] = (prime + nm[i + j] - ((lm[i] * r[j]) % prime)) % prime;
+                _new[i + j] = (prime + _new[i + j] - ((low[i] * r[j]) % prime)) % prime;
             }
         }
         hm = lm;
         lm = nm;
         high = low;
         low = _new;
-        count++; 
+        count++;
     }
     lm.length = degree;
-    lm = lm.map(n => (n * modInverse(low[0], prime)) % prime);
+    lm = lm.map((n) => (n * modInverse(low[0], prime)) % prime);
     return lm;
 }
 

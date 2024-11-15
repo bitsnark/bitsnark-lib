@@ -1,4 +1,4 @@
-import { StackItem } from "../../generator/step3/stack";
+import { StackItem } from '../../generator/step3/stack';
 
 export const prime_bigint = 21888242871839275222246405745257275088696311157297823662689037894645226208583n;
 
@@ -20,7 +20,6 @@ export function bigintToNibblesLS(n: bigint, c?: number): number[] {
         result.push(Number(n & 0x7n));
         n = n >> 3n;
     }
-    if (n > 0)
-        teaPot();
+    if (n > 0) teaPot();
     return result;
 }

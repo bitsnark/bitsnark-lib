@@ -1,6 +1,4 @@
-
 export class Decasector {
-
     total: number;
     iterations: number;
     sc: number[][] = [];
@@ -26,7 +24,7 @@ export class Decasector {
     }
 
     public getStateCommitmentsForRow(row: number) {
-        return [ this.sc[row], this.sc[row + 1] ];
+        return [this.sc[row], this.sc[row + 1]];
     }
 
     public getRowsForSelectionPath(selectionPath: number[]): number[] {
@@ -38,7 +36,7 @@ export class Decasector {
             for (let i = 1; i <= 9; i++) {
                 rows[i] = left + i * d;
             }
-        }
+        };
         _sc();
         for (const selection of selectionPath) {
             left = rows[selection];
@@ -54,7 +52,7 @@ if (process.argv[1] == scriptName) {
     try {
         const d = new Decasector(1000000);
         console.log();
-    } catch (e) { 
+    } catch (e) {
         console.error(e);
     }
 }
