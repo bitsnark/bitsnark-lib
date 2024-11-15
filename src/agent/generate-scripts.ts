@@ -5,7 +5,7 @@ import { StackItem } from '../generator/step3/stack';
 import { SimpleTapTree } from './simple-taptree';
 import { agentConf } from './agent.conf';
 import { Buffer } from 'node:buffer';
-import { getOutputByInput, getSpendingConditionByInput, getTransactionByInput, getTransactionByName, Input, SpendingCondition, Transaction } from './transactions-new';
+import { findOutputByInput, getSpendingConditionByInput, getTransactionByInput, getTransactionByName, Input, SpendingCondition, Transaction } from './transactions-new';
 import { readTemplates, writeTemplates } from './db';
 import { DoomsdayGenerator } from './final-step/doomsday-generator';
 
@@ -52,7 +52,7 @@ function generateBoilerplate(transations: Transaction[], myRole: AgentRoles, inp
     const bitcoin = new Bitcoin();
 
     const prevTx = getTransactionByInput(transations, input);
-    const output = getOutputByInput(transations, input);
+    const output = findOutputByInput(transations, input);
     const spendingCondition = getSpendingConditionByInput(transations, input);
 
     bitcoin.throwOnFail =  spendingCondition.nextRole == myRole;
@@ -212,8 +212,6 @@ export async function generateAllScripts(
     // generate the taproot key for all outputs except in the argument tx
     setTaprootKey(transactions);
 
-    await writeTemplates(agentId, setupId, transactions);
-
     return transactions;
 }
 
@@ -221,11 +219,11 @@ async function main() {
     const agentId = process.argv[2] ?? 'bitsnark_prover_1';
     const setupId = 'test_setup';
     const generateFinal = process.argv.some(s => s == '--final');
-    const transactions = await readTemplates(agentId, setupId);
-    await generateAllScripts(agentId, 'test_setup', AgentRoles.PROVER, transactions, generateFinal);
+    const bareTransactions = await readTemplates(agentId, setupId);
+    const transactions = await generateAllScripts(agentId, setupId, AgentRoles.PROVER, bareTransactions, generateFinal);
+    await writeTemplates(agentId, setupId, transactions);
 }
 
-const scriptName = __filename;
-if (process.argv[1] == scriptName) {
-    main().catch(console.error);
+if (require.main === module) {
+    main().catch((error) => { throw error; });
 }

@@ -254,7 +254,7 @@ export class Agent {
             await this.sendTransactions(ctx, i.setupId);
 
         i.transactions = await generateAllScripts(this.agentId, i.setupId, this.role, i.transactions!, false);
-        i.transactions = await addAmounts(this.agentId, this.role, i.setupId);
+        i.transactions = await addAmounts(this.agentId, this.role, i.setupId, i.transactions!);
 
         if (this.role == AgentRoles.PROVER)
             this.sendSignatures(ctx, i.setupId);

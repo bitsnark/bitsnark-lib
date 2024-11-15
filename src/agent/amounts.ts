@@ -24,9 +24,9 @@ function calculateTransactionFee(transaction: Transaction): bigint {
     return factoredFee + 1n;
 }
 
-export async function addAmounts(agentId: string, agentRole: AgentRoles, setupId: string): Promise<Transaction[]> {
-
-    let transactions = await readTemplates(agentId, setupId);
+export async function addAmounts(
+    agentId: string, agentRole: AgentRoles, setupId: string, transactions: Transaction[]
+): Promise<Transaction[]> {
 
     function addAmounts(transaction: Transaction): Transaction {
         if (externallyFundedTxs.includes(transaction.transactionName)) return transaction;
@@ -50,7 +50,6 @@ export async function addAmounts(agentId: string, agentRole: AgentRoles, setupId
 
     transactions = transactions.map(addAmounts);
     validateTransactionFees(transactions);
-    await writeTemplates(agentId, setupId, transactions);
 
     return transactions;
 }
@@ -94,15 +93,16 @@ export function validateTransactionFees(transactions: Transaction[]) {
     }
 }
 
-
 async function main() {
     const agentId = process.argv[2] ?? 'bitsnark_prover_1';
     const role = process.argv[2] === 'bitsnark_prover_1' || !process.argv[2] ? AgentRoles.PROVER : AgentRoles.VERIFIER;
     const setupId = 'test_setup';
-    await addAmounts(agentId, role, setupId);
+    await writeTemplates(
+        agentId, setupId, await addAmounts(
+            agentId, role, setupId, await readTemplates(
+                agentId, setupId)));
 }
 
-const scriptName = __filename;
-if (process.argv[1] == scriptName) {
-    main().catch(console.error);
+if (require.main === module) {
+    main().catch((error) => { throw error; });
 }

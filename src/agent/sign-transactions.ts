@@ -1,15 +1,14 @@
 import { Transaction } from "./transactions-new";
 import { execFileSync } from 'node:child_process';
-import { readTemplates, writeTemplates } from "./db";
+import { readTemplates } from "./db";
 import { AgentRoles, TransactionNames } from "./common";
 
 export async function signTransactions(
     role: AgentRoles,
     agentId: string,
     setupId: string,
-    transactions: Transaction[]): Promise<Transaction[]> {
-
-    await writeTemplates(agentId, setupId, transactions);
+    transactions: Transaction[]
+): Promise<Transaction[]> {
 
     // On macOS, "System Integrety Protection" clears the DYLD_FALLBACK_LIBRARY_PATH,
     // which leaves the Python executable unable to find the secp256k1 library installed by Homebrew.
@@ -37,7 +36,10 @@ export async function signTransactions(
 
     transactions = await readTemplates(agentId, setupId);
     for (const transaction of transactions) {
-        if (transaction.transactionName == TransactionNames.PROOF_REFUTED) continue;
+        if (transaction.transactionName == TransactionNames.PROOF_REFUTED) {
+            console.warn('Manually skipping script generation for transaction', transaction.transactionName);
+            continue;
+        }
         if (!transaction.txId)
             throw new Error('Missing txId');
         if (role == AgentRoles.PROVER && !transaction.inputs.every(i => i.proverSignature))
@@ -56,7 +58,6 @@ async function main() {
     signTransactions(AgentRoles.PROVER, agentId, setupId, transactions).catch(console.error);
 }
 
-const scriptName = __filename;
-if (process.argv[1] == scriptName) {
-    main().catch(console.error);
+if (require.main === module) {
+    main().catch((error) => { throw error; });
 }

@@ -35,8 +35,6 @@ export function verifyMessage(message: string, signature: string, publicKey: str
     return secp256k1.verifySchnorr(msgHash, publicKeyBuffer, signatureBuffer);
 }
 
-
-
 if (__filename === process.argv[1]) {
     // Generate new keypair and sign and verify a message
     const keypair = generateSchnorrKeypair();
