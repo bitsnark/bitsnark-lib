@@ -37,7 +37,7 @@ export class Decasector {
             const d = (right - left) / 10;
             for (let i = 1; i <= 9; i++) {
                 rows[i] = left + i * d;
-            }    
+            }
         }
         _sc();
         for (const selection of selectionPath) {

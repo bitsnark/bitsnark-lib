@@ -86,6 +86,5 @@ export const agentConf: AgentConf = {
     blocksUntilFinalized: parse.integer('BLOCKS_UNTIL_FINALIZED', 0), // 6
     protocolVersion: parse.integer('PROTOCOL_VERSION', 1),
     useMockProgram: parse.boolean('USE_MOCK_PROGRAM', false),
-
-    protocolIntervalMs: 30000
+    protocolIntervalMs: parse.integer('PROTOCOL_INTERVAL_MS', 30000)
 };
