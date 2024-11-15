@@ -70,7 +70,6 @@
   },
   "exclude": [
     "node_modules",
-    "modules_types",
     "dist",
     "analysis",
     "jest.config.ts"
