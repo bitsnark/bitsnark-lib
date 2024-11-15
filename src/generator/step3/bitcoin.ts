@@ -1373,11 +1373,9 @@ export class Bitcoin {
 
         if (validateStack == true) {
             // program has to end with a single 1 on the stack
-            if (this.stack.length() == 0) {
-                this.OP_0_16(1);
-            } else if (this.stack.length() != 1 || this.stack.top().value !== 1) {
-                throw new Error('Stack must have a single 1 at EOP');
-            }
+            while (this.stack.length() > 0)
+                this.drop(this.stack.top());
+            this.OP_0_16(1);
         }
 
         const items: { itemId: string, index: number }[] = [];
