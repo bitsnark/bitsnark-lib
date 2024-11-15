@@ -3,7 +3,6 @@ import groth16Verify, { Key, Proof as Step1_Proof } from '../generator/step1/ver
 import { step1_vm, VM as Step1_vm } from '../generator/step1/vm/vm';
 
 export function getRegsAt(vm: Step1_vm, left: number, point: number, right: number): number[] {
-
     const map: any = {};
     for (let i = left; i <= point; i++) {
         if (!step1_vm.instructions[i]) break;
@@ -25,15 +24,12 @@ export function getRegsAt(vm: Step1_vm, left: number, point: number, right: numb
 }
 
 function getStateSizes(vm: Step1_vm, left: number, right: number, iteration: number, result: number[]): number {
-
     if (left + 1 >= right) {
         return iteration;
     }
 
     const middle = Math.round((left + right) / 2);
-    result[iteration] = Math.max(
-        result[iteration] ?? 0,
-        getRegsAt(vm, left, middle, right).length);
+    result[iteration] = Math.max(result[iteration] ?? 0, getRegsAt(vm, left, middle, right).length);
 
     getStateSizes(vm, left, middle, iteration + 1, result);
     getStateSizes(vm, middle, right, iteration + 1, result);
@@ -41,7 +37,6 @@ function getStateSizes(vm: Step1_vm, left: number, right: number, iteration: num
 }
 
 function getLines(vm: Step1_vm, left: number, right: number, iteration: number, result: number[][][]) {
-
     if (left + 1 >= right) {
         return;
     }
@@ -66,7 +61,6 @@ export function calculateStateSizes(): number[] {
 
 const scriptName = __filename;
 if (process.argv[1] == scriptName) {
-
     step1_vm.reset();
     groth16Verify(Key.fromSnarkjs(vKey), Step1_Proof.fromSnarkjs(proof));
     if (!step1_vm.success?.value) throw new Error('Failed.');

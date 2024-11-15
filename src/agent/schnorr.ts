@@ -11,7 +11,7 @@ function generateSchnorrKeypair() {
     const publicKey = secp256k1.xOnlyPointFromScalar(privateKey);
 
     if (!publicKey) {
-        throw new Error("Failed to generate public key.");
+        throw new Error('Failed to generate public key.');
     }
 
     return {

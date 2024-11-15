@@ -1,19 +1,6 @@
-import { hasEvenY, lift_x, pointAdd, pointMul } from "../common/point";
-import {
-    G,
-    SECP256K1_ORDER,
-    combineHashes,
-    getHash,
-    taprootVersion,
-} from "../common/taproot-common";
-import {
-    bigintFromBytes,
-    bigintToBufferBE,
-    bytesFromBigint,
-    cat,
-    padHex,
-    taggedHash,
-} from "../encoding/encoding";
+import { hasEvenY, lift_x, pointAdd, pointMul } from '../common/point';
+import { G, SECP256K1_ORDER, combineHashes, getHash, taprootVersion } from '../common/taproot-common';
+import { bigintFromBytes, bigintToBufferBE, bytesFromBigint, cat, padHex, taggedHash } from '../encoding/encoding';
 
 import * as bitcoin from 'bitcoinjs-lib';
 import * as ecc from 'tiny-secp256k1';
@@ -32,7 +19,6 @@ function taprootTweakPubkey(pubkey: bigint, h: Buffer): any[] {
 }
 
 export class SimpleTapTree {
-
     internalPubkey: bigint;
     scripts: Buffer[];
 
@@ -43,7 +29,7 @@ export class SimpleTapTree {
 
     getRoot(): Buffer {
         if (this.scripts.length == 0) return DEAD_ROOT;
-        let temp = this.scripts.map(b => getHash(b));
+        let temp = this.scripts.map((b) => getHash(b));
         while (temp.length > 1) {
             const other: Buffer[] = [];
             while (temp.length > 0) {
@@ -58,7 +44,7 @@ export class SimpleTapTree {
 
     getProof(index: number): Buffer {
         const buffers: Buffer[] = [];
-        let temp = this.scripts.map(b => getHash(b));
+        let temp = this.scripts.map((b) => getHash(b));
         while (temp.length > 1) {
             const other: Buffer[] = [];
             const siblingIndex = index ^ 1;
@@ -81,7 +67,7 @@ export class SimpleTapTree {
         const [parity, _] = taprootTweakPubkey(this.internalPubkey, h);
         const P = lift_x(this.internalPubkey);
         const versionBuf = Buffer.from([taprootVersion | Number(parity)]);
-        const keyBuf = Buffer.from(padHex(P.x.toString(16), 32), "hex");
+        const keyBuf = Buffer.from(padHex(P.x.toString(16), 32), 'hex');
         return Buffer.concat([versionBuf, keyBuf, proof]);
     }
 
@@ -96,11 +82,13 @@ export class SimpleTapTree {
 }
 
 export class Compressor {
-
     data: Buffer[][];
     counter: number = 0;
 
-    constructor(private depth: number, private internalPubkey: bigint) {
+    constructor(
+        private depth: number,
+        private internalPubkey: bigint
+    ) {
         this.data = new Array(depth).fill(null).map(() => []);
         this.internalPubkey = internalPubkey;
     }

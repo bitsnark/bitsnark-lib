@@ -1,13 +1,12 @@
-import { Bitcoin } from "@src/generator/step3/bitcoin";
-import { StackItem } from "@src/generator/step3/stack";
-import { BtcArithmetic } from "./btc-arithmetic";
-import { bigintToNibblesLS, prime_bigint } from "./common";
+import { Bitcoin } from '@src/generator/step3/bitcoin';
+import { StackItem } from '@src/generator/step3/stack';
+import { BtcArithmetic } from './btc-arithmetic';
+import { bigintToNibblesLS, prime_bigint } from './common';
 
 function getBitFromA(bitcoin: Bitcoin, a: StackItem[], bit: number): StackItem {
-
     const table: StackItem[] = [];
     for (let i = 0; i < 8; i++) {
-        table[i] = bitcoin.newStackItem((i & (2 ** (bit % 3)) ? 1 : 0));
+        table[i] = bitcoin.newStackItem(i & (2 ** (bit % 3)) ? 1 : 0);
     }
 
     const si = a[Math.floor(bit / 3)];
@@ -17,8 +16,14 @@ function getBitFromA(bitcoin: Bitcoin, a: StackItem[], bit: number): StackItem {
     return temp;
 }
 
-export function _verifyAndBit(bitcoin: Bitcoin, a: StackItem[], b: StackItem[], c: StackItem[], bit: number, notFlag: boolean) {
-
+export function _verifyAndBit(
+    bitcoin: Bitcoin,
+    a: StackItem[],
+    b: StackItem[],
+    c: StackItem[],
+    bit: number,
+    notFlag: boolean
+) {
     const bitValue = getBitFromA(bitcoin, a, bit);
 
     const temp_b = bitcoin.newStackItem(0);
@@ -44,7 +49,7 @@ export function _verifyAndBit(bitcoin: Bitcoin, a: StackItem[], b: StackItem[], 
     bitcoin.OP_BOOLOR();
     bitcoin.OP_VERIFY();
 
-    bitcoin.drop([ bitValue, temp_0, temp_b ]);
+    bitcoin.drop([bitValue, temp_0, temp_b]);
 }
 
 export function verifyAndBit(bitcoin: Bitcoin, a: StackItem[], b: StackItem[], c: StackItem[], bit: number) {

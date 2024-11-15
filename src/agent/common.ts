@@ -1,8 +1,8 @@
-import { SavedVm } from "../generator/common/saved-vm";
-import groth16Verify, { Key, Proof } from "../generator/step1/verifier";
-import { step1_vm } from "../generator/step1/vm/vm";
-import { proof } from "./proof";
-import { verificationKey } from "./verification-key";
+import { SavedVm } from '../generator/common/saved-vm';
+import groth16Verify, { Key, Proof } from '../generator/step1/verifier';
+import { step1_vm } from '../generator/step1/vm/vm';
+import { proof } from './proof';
+import { verificationKey } from './verification-key';
 import { InstrCode as Step1_InstrCode } from '../../src/generator/step1/vm/types';
 
 export const enum TransactionNames {
@@ -30,7 +30,7 @@ export enum ProtocolStep {
     TRANSITION = 'TRANSITION',
     STEP2 = 'STEP2',
     FINAL = 'FINAL'
-};
+}
 
 export enum AgentRoles {
     PROVER = 'PROVER',
@@ -40,7 +40,7 @@ export enum AgentRoles {
 export interface TransactionInfo {
     setupId: string;
     desc: string;
-    txId?: string,
+    txId?: string;
     taprootAddress: Buffer;
     scripts: Buffer[];
     controlBlocks: Buffer[];
@@ -51,8 +51,8 @@ export interface TransactionInfo {
 }
 
 export interface ScriptAndKeys {
-    script: Buffer,
-    wotsPublicKeys: bigint[]
+    script: Buffer;
+    wotsPublicKeys: bigint[];
 }
 
 export interface FundingUtxo {
@@ -76,7 +76,7 @@ export function getSavedStep1(): SavedVm<Step1_InstrCode> {
     return step1_vm.save();
 }
 
-export const twoDigits = (n: number) => n < 10 ? `0${n}` : `${n}`;
+export const twoDigits = (n: number) => (n < 10 ? `0${n}` : `${n}`);
 
 export function random(bytes: number): bigint {
     let n = 0n;
@@ -89,8 +89,8 @@ export function random(bytes: number): bigint {
 
 export function jsonStringifyCustom(obj: any): string {
     return JSON.stringify(obj, (key, value) => {
-        if (typeof value === "bigint") return `0x${value.toString(16)}n`;
-        if (value?.type == "Buffer" && value.data) {
+        if (typeof value === 'bigint') return `0x${value.toString(16)}n`;
+        if (value?.type == 'Buffer' && value.data) {
             return 'hex:' + Buffer.from(value.data).toString('hex');
         }
         return value;
@@ -101,8 +101,7 @@ export function jsonParseCustom(json: string): any {
     return JSON.parse(json, (key, value) => {
         if (typeof value === 'string' && value.startsWith('0x') && value.endsWith('n'))
             return BigInt(value.replace('n', ''));
-        if (typeof value === 'string' && value.startsWith('hex:'))
-            return Buffer.from(value.replace('hex:', ''), 'hex');
+        if (typeof value === 'string' && value.startsWith('hex:')) return Buffer.from(value.replace('hex:', ''), 'hex');
         return value;
     });
 }

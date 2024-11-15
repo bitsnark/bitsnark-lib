@@ -1,4 +1,3 @@
-
 import { Context, NarrowedContext, Telegraf } from 'telegraf';
 import { channelPost, message } from 'telegraf/filters';
 import { agentConf } from './agent.conf';
@@ -20,7 +19,7 @@ export class SimpleContext {
         if (text.length < 10 * 1024) {
             await this.ctx.reply(text);
         } else {
-            await this.ctx.sendDocument({ 
+            await this.ctx.sendDocument({
                 source: Buffer.from(text, 'ascii'),
                 filename: `${data.constructor.name}.txt`
             });
@@ -57,13 +56,12 @@ export class TelegramBot {
                     console.log('!!! text !!!', text);
                     this.client.messageReceived(text, new SimpleContext(ctx));
                 } else if (file) {
-                    ctx.telegram.getFileLink(file.file_id)
-                        .then(url => {
-                            axios({ url: url.toString(), responseType: 'text' }).then(response => {
-                                console.log('!!! file !!!', response.data.length);
-                                this.client.messageReceived(response.data, new SimpleContext(ctx));
-                            });
+                    ctx.telegram.getFileLink(file.file_id).then((url) => {
+                        axios({ url: url.toString(), responseType: 'text' }).then((response) => {
+                            console.log('!!! file !!!', response.data.length);
+                            this.client.messageReceived(response.data, new SimpleContext(ctx));
                         });
+                    });
                 }
             } catch (e) {
                 console.error(e);

@@ -1,4 +1,4 @@
-import { padHex } from "../encoding/encoding";
+import { padHex } from '../encoding/encoding';
 import { spawn } from 'child_process';
 import path from 'path';
 
@@ -22,13 +22,9 @@ type PyCallResult = PyCallSuccess | PyCallError;
 // TODO: this doesn't need to be exported
 export async function runPythonScript(moduleName: string, inputData: any): Promise<any> {
     return new Promise((resolve, reject) => {
-        const pythonProcess = spawn(
-            PYTHON_EXECUTABLE,
-            ['-m', moduleName],
-            {
-                cwd: PYTHON_ROOT_DIR,
-            }
-        );
+        const pythonProcess = spawn(PYTHON_EXECUTABLE, ['-m', moduleName], {
+            cwd: PYTHON_ROOT_DIR
+        });
 
         pythonProcess.on('error', (error) => {
             reject(error);
@@ -76,9 +72,9 @@ export async function runPythonScript(moduleName: string, inputData: any): Promi
 }
 
 export interface PresignedTransaction {
-    txid: string,
-    executionSignature: string
-    transaction: Buffer,
+    txid: string;
+    executionSignature: string;
+    transaction: Buffer;
 }
 
 export interface CreatePresignedTransactionParams {
@@ -105,7 +101,7 @@ export async function createPresignedTransaction({
     schnorrPrivateKey,
     outputValue,
     executionScript,
-    outputScriptPubKey,
+    outputScriptPubKey
 }: CreatePresignedTransactionParams): Promise<PresignedTransaction> {
     const params = {
         inputs: inputs.map(({ txid, vout, spentOutput }) => ({
@@ -113,13 +109,13 @@ export async function createPresignedTransaction({
             vout,
             spentOutput: {
                 scriptPubKey: spentOutput.scriptPubKey.toString('hex'),
-                value: spentOutput.value.toString(16),  // serialize bigint as hex
-            },
+                value: spentOutput.value.toString(16) // serialize bigint as hex
+            }
         })),
         schnorrPrivateKey: padHex(schnorrPrivateKey.toString(16), 32),
         outputValue: outputValue.toString(16), // serialize bigint as hex
         executionScript: executionScript.toString('hex'),
-        outputScriptPubKey: outputScriptPubKey.toString('hex'),
+        outputScriptPubKey: outputScriptPubKey.toString('hex')
     };
     const result = await runPythonScript('bitsnark.scripts.create_presigned_transaction', params);
     return {
@@ -127,4 +123,3 @@ export async function createPresignedTransaction({
         transaction: Buffer.from(result.transaction, 'hex')
     };
 }
-

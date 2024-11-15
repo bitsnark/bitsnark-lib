@@ -1,9 +1,9 @@
-import { Fp } from "./algebra/fp";
-import { Fp2 } from "./algebra/fp2";
-import { G1, G1Point } from "./algebra/G1";
-import { G2, G2Point } from "./algebra/G2";
-import { G3 } from "./algebra/G3";
-import { step1_vm, step1_vm as vm } from "./vm/vm";
+import { Fp } from './algebra/fp';
+import { Fp2 } from './algebra/fp2';
+import { G1, G1Point } from './algebra/G1';
+import { G2, G2Point } from './algebra/G2';
+import { G3 } from './algebra/G3';
+import { step1_vm, step1_vm as vm } from './vm/vm';
 
 const g1 = new G1();
 const g2 = new G2();
@@ -16,16 +16,19 @@ export class Proof {
 
     constructor() {
         this.pi_a = g1.makePoint(Fp.zero(), Fp.zero());
-        this.pi_b = g2.makePoint(Fp2.zero(), Fp2.zero())
+        this.pi_b = g2.makePoint(Fp2.zero(), Fp2.zero());
         this.pi_c = g1.makePoint(Fp.zero(), Fp.zero());
     }
 
     static fromWitness(_witness: bigint[]): Proof {
         let i = 0;
         const t = new Proof();
-        const witness = _witness.map(n => vm.addWitness(n));
+        const witness = _witness.map((n) => vm.addWitness(n));
         t.pi_a = g1.makePoint(new Fp(witness[i++]), new Fp(witness[i++]));
-        t.pi_b = g2.makePoint(new Fp2(new Fp(witness[i++]), new Fp(witness[i++])), new Fp2(new Fp(witness[i++]), new Fp(witness[i++])));
+        t.pi_b = g2.makePoint(
+            new Fp2(new Fp(witness[i++]), new Fp(witness[i++])),
+            new Fp2(new Fp(witness[i++]), new Fp(witness[i++]))
+        );
         t.pi_c = g1.makePoint(new Fp(witness[i++]), new Fp(witness[i++]));
 
         return t;
@@ -33,11 +36,16 @@ export class Proof {
 
     static fromSnarkjs(snarkjsProof: any): Proof {
         let t = [
-            snarkjsProof.pi_a[0], snarkjsProof.pi_a[1],
-            snarkjsProof.pi_b[0][1], snarkjsProof.pi_b[0][0], snarkjsProof.pi_b[1][1], snarkjsProof.pi_b[1][0],
-            snarkjsProof.pi_c[0], snarkjsProof.pi_c[1],
+            snarkjsProof.pi_a[0],
+            snarkjsProof.pi_a[1],
+            snarkjsProof.pi_b[0][1],
+            snarkjsProof.pi_b[0][0],
+            snarkjsProof.pi_b[1][1],
+            snarkjsProof.pi_b[1][0],
+            snarkjsProof.pi_c[0],
+            snarkjsProof.pi_c[1]
         ];
-        t = t.map(s => BigInt(s));
+        t = t.map((s) => BigInt(s));
 
         return Proof.fromWitness(t);
     }
@@ -88,25 +96,17 @@ export class Key {
 
         const vk_x = g1.makePoint(toFp(obj.vk_x[0]), toFp(obj.vk_x[1]));
 
-        return new Key(
-            alpha,
-            beta,
-            gamma,
-            delta,
-            ic,
-            vk_x
-        );
+        return new Key(alpha, beta, gamma, delta, ic, vk_x);
     }
 }
 
 export default function groth16Verify(key: Key, proof: Proof) {
-
     step1_vm.startProgram();
 
     proof.validate();
 
     const vg1: G1Point[] = [proof.pi_a, key.alpha.neg(), key.vk_x.neg(), proof.pi_c.neg()];
-    const vg2: G2Point[] = [proof.pi_b, key.beta,        key.gamma,      key.delta];
+    const vg2: G2Point[] = [proof.pi_b, key.beta, key.gamma, key.delta];
 
-    g3.pairingCheck(vg1, vg2)
+    g3.pairingCheck(vg1, vg2);
 }

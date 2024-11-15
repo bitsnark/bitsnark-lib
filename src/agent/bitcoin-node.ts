@@ -1,4 +1,4 @@
-import { agentConf } from "./agent.conf";
+import { agentConf } from './agent.conf';
 // Cannot import without a default export - a wrapper is in a coming PR.
 const Client = require('bitcoin-core');
 
@@ -55,11 +55,11 @@ export interface TxData {
     time: number;
     timereceived: number;
     comment?: string;
-    bip125Replaceable: "yes" | "no" | "unknown";
+    bip125Replaceable: 'yes' | 'no' | 'unknown';
     details: Array<{
         involvesWatchonly: boolean;
         address: string;
-        category: "send" | "receive" | "generate" | "immature" | "orphan";
+        category: 'send' | 'receive' | 'generate' | 'immature' | 'orphan';
         amount: number;
         label?: string;
         vout: number;
@@ -69,9 +69,7 @@ export interface TxData {
     hex: string;
     decoded?: any; // The structure of 'decoded' can be complex, so 'any' is used here. You can define it more precisely if needed.
     setupId?: string; // Optional field
-
 }
-
 
 export class BitcoinNode {
     public client;

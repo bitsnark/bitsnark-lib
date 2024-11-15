@@ -1,12 +1,13 @@
-import { afterEach, describe, expect, it } from "@jest/globals";
+import { afterEach, describe, expect, it } from '@jest/globals';
 
 import * as fs from 'fs';
 
 describe('AgentConfig', () => {
-
-    it("should use environment variables from .env.test when provided", () => {
+    it('should use environment variables from .env.test when provided', () => {
         // Create a .env.test file, which precedes .env.local and .env
-        fs.writeFileSync('.env.test', `
+        fs.writeFileSync(
+            '.env.test',
+            `
             INTERNAL_PUBKEY=2
             WOTS_SECRET=wots_secret
             TELEGRAM_TOKEN_PROVER=telegram_token_prover
@@ -15,7 +16,8 @@ describe('AgentConfig', () => {
             PROVER_SCHNORR_PRIVATE=prover_schnorr_private
             VERIFIER_SCHNORR_PUBLIC=verifier_schnorr_public
             VERIFIER_SCHNORR_PRIVATE=verifier_schnorr_private
-        `);
+        `
+        );
 
         import('../../src/agent/agent.conf').then((conf) => {
             const agentConf = conf.agentConf;

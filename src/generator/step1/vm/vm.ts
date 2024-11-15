@@ -1,12 +1,11 @@
-import { modInverse } from "../../common/math-utils";
-import { prime_bigint } from "../../common/prime";
-import { Register } from "../../common/register";
-import { SavedVm } from "../../common/saved-vm";
-import { regOptimizer } from "./reg-optimizer";
-import { Instruction, InstrCode } from "./types";
+import { modInverse } from '../../common/math-utils';
+import { prime_bigint } from '../../common/prime';
+import { Register } from '../../common/register';
+import { SavedVm } from '../../common/saved-vm';
+import { regOptimizer } from './reg-optimizer';
+import { Instruction, InstrCode } from './types';
 
 export class VM {
-
     zero: Register;
     one: Register;
 
@@ -25,7 +24,7 @@ export class VM {
     }
 
     public reset() {
-        this.registers = this.registers.filter(r => r.hardcoded);
+        this.registers = this.registers.filter((r) => r.hardcoded);
         this.instrCounter = 0;
         this.success = undefined;
         this.instructions = [];
@@ -65,12 +64,10 @@ export class VM {
     }
 
     public hardcode(value: bigint): Register {
-
         let t = this.hardcodedCache[value.toString(16)];
         if (t) return t;
 
-        if (this.instructions.length > 0 || this.witness.length > 0) 
-            throw new Error('Hardcoded first please');
+        if (this.instructions.length > 0 || this.witness.length > 0) throw new Error('Hardcoded first please');
         if (value < 0 || value >= 2n ** 256n) throw new Error('Invalid value');
 
         this.hardcoded.push(value);
@@ -82,10 +79,9 @@ export class VM {
     }
 
     public addWitness(value: bigint): Register {
-
         if (this.instructions.length > 0) throw new Error('Witness second please');
         if (value < 0 || value >= 2n ** 256n) throw new Error('Invalid value');
-        
+
         this.witness.push(value);
         const t = this.newRegister();
         t.witness = true;
@@ -103,7 +99,7 @@ export class VM {
 
     addMod(target: Register, a: Register, b: Register) {
         this.pushInstruction(InstrCode.ADDMOD, target, a, b);
-        const v = (a.value % prime_bigint + b.value % prime_bigint) % prime_bigint;
+        const v = ((a.value % prime_bigint) + (b.value % prime_bigint)) % prime_bigint;
         this.setRegister(target, v);
     }
 
@@ -221,18 +217,18 @@ export class VM {
 
     public save(): SavedVm<InstrCode> {
         return {
-            hardcoded: this.hardcoded.map(r => r.toString(16)),
-            witness: this.witness.map(r => r.toString(16)),
+            hardcoded: this.hardcoded.map((r) => r.toString(16)),
+            witness: this.witness.map((r) => r.toString(16)),
             registers: this.registers.length,
             programLength: this.instructions.length,
             successIndex: this.success?.index ?? 0,
-            program: this.instructions.map(instr => ({
+            program: this.instructions.map((instr) => ({
                 name: instr.name,
                 target: instr.target,
                 param1: instr.param1,
                 param2: instr.param2,
-                bit: instr.bit,
-            })),
+                bit: instr.bit
+            }))
         };
     }
 

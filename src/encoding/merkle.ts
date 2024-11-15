@@ -1,5 +1,5 @@
-import assert from "assert";
-import { hashPair } from "../../src/encoding/encoding";
+import assert from 'assert';
+import { hashPair } from '../../src/encoding/encoding';
 
 function hashLayer(na: bigint[]): bigint[] {
     const newNa: bigint[] = [];
@@ -18,9 +18,9 @@ export function calculateMerkleRoot(na: bigint[]): bigint {
 }
 
 export function makeMerkleProof(na: bigint[], leafIndex: number) {
-    const proof: bigint[] = [ na[leafIndex] ];
+    const proof: bigint[] = [na[leafIndex]];
     while (na.length > 1) {
-        const sibling = leafIndex % 2 == 0 ? na[leafIndex + 1] ?? 0n : na[leafIndex - 1];
+        const sibling = leafIndex % 2 == 0 ? (na[leafIndex + 1] ?? 0n) : na[leafIndex - 1];
         proof.push(sibling);
         na = hashLayer(na);
         leafIndex = leafIndex >> 1;
@@ -30,7 +30,7 @@ export function makeMerkleProof(na: bigint[], leafIndex: number) {
 }
 
 export function verifyMerkleProof(proof: bigint[], leafIndex: number): boolean {
-    proof = proof.map(n => n);
+    proof = proof.map((n) => n);
     while (proof.length > 2) {
         const a = proof.shift()!;
         const b = proof.shift()!;
@@ -51,5 +51,5 @@ function test(test1: bigint[], leafIndex: number) {
     assert(flag);
 }
 
-test([ 0n, 1n, 2n, 3n, 4n, 5n ], 3);
-test([ 0n, 1n, 2n, 3n, 4n, 5n, 6n ], 5);
+test([0n, 1n, 2n, 3n, 4n, 5n], 3);
+test([0n, 1n, 2n, 3n, 4n, 5n, 6n], 5);

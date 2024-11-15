@@ -1,4 +1,4 @@
-import { Register } from "../../common/register";
+import { Register } from '../../common/register';
 
 export enum InstrCode {
     ADD = 'ADD',
@@ -19,21 +19,21 @@ export enum InstrCode {
 }
 
 export const instrParamOptions = {
-    [InstrCode.ADD]: [ true, true, true ],
-    [InstrCode.ADDOF]: [ true, true, true ],
-    [InstrCode.SUB]: [ true, true, true ],
-    [InstrCode.SUBOF]: [ true, true, true ],
-    [InstrCode.MOV]: [ true, false, true ],
-    [InstrCode.EQUAL]: [ true, true, true ],
-    [InstrCode.ANDBIT]: [ true, true, true ],
-    [InstrCode.ANDNOTBIT]: [ true, true, true ],
-    [InstrCode.SHR]: [ true, false, true ],
-    [InstrCode.ROTR]: [ true, false, true ],
-    [InstrCode.AND]: [ true, true, true ],
-    [InstrCode.XOR]: [ true, true, true ],
-    [InstrCode.OR]: [ true, true, true ],
-    [InstrCode.NOT]: [ true, false, true ],
-    [InstrCode.ASSERTONE]: [ true, false, true ],
+    [InstrCode.ADD]: [true, true, true],
+    [InstrCode.ADDOF]: [true, true, true],
+    [InstrCode.SUB]: [true, true, true],
+    [InstrCode.SUBOF]: [true, true, true],
+    [InstrCode.MOV]: [true, false, true],
+    [InstrCode.EQUAL]: [true, true, true],
+    [InstrCode.ANDBIT]: [true, true, true],
+    [InstrCode.ANDNOTBIT]: [true, true, true],
+    [InstrCode.SHR]: [true, false, true],
+    [InstrCode.ROTR]: [true, false, true],
+    [InstrCode.AND]: [true, true, true],
+    [InstrCode.XOR]: [true, true, true],
+    [InstrCode.OR]: [true, true, true],
+    [InstrCode.NOT]: [true, false, true],
+    [InstrCode.ASSERTONE]: [true, false, true]
 };
 
 export interface Instruction {

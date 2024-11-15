@@ -70,7 +70,7 @@ export enum OutgoingStatus {
     PENDING = 'PENDING',
     READY = 'READY',
     PUBLISHED = 'PUBLISHED',
-    REJECTED = 'REJECTED',
+    REJECTED = 'REJECTED'
 }
 export interface Setup {
     setup_id: string;
@@ -89,17 +89,17 @@ export interface Incoming {
     templateId: number;
     rawTransaction: any;
     blockHeight: number;
-};
+}
 export interface Templates {
     template_id: number;
     name: string;
     setup_id: string;
     agent_id: string;
     role: AgentRoles;
-    is_external: boolean
+    is_external: boolean;
     ordinal: number;
     object: any;
-};
+}
 
 // DB functions
 
@@ -108,17 +108,21 @@ export async function dev_ClearTemplates(setupId: string, agentId?: string) {
     //delete all outgoing, incoming and templates
     const params = agentId ? [setupId, agentId] : [setupId];
     await runDBTransaction([
-        [`DELETE FROM outgoing WHERE template_id IN (
+        [
+            `DELETE FROM outgoing WHERE template_id IN (
             SELECT template_id FROM templates WHERE setup_id = $1 ` +
-            (agentId ? ` AND agent_id = $2` : '') + `);`,
-            params],
-        [`DELETE FROM incoming WHERE template_id IN (
+                (agentId ? ` AND agent_id = $2` : '') +
+                `);`,
+            params
+        ],
+        [
+            `DELETE FROM incoming WHERE template_id IN (
             SELECT template_id FROM templates WHERE setup_id = $1 ` +
-            (agentId ? ` AND agent_id = $2` : '') + `);`,
-            params],
-        [`DELETE FROM templates WHERE setup_id = $1 ` +
-            (agentId ? ` AND agent_id = $2` : '') + `;`,
-            params]
+                (agentId ? ` AND agent_id = $2` : '') +
+                `);`,
+            params
+        ],
+        [`DELETE FROM templates WHERE setup_id = $1 ` + (agentId ? ` AND agent_id = $2` : '') + `;`, params]
     ]);
 }
 
@@ -133,12 +137,9 @@ export async function writeSetupStatus(setupId: string, status: SetupStatus) {
 }
 
 export async function readActiveSetups(): Promise<Setup[]> {
-    const result = await runQuery(
-        `SELECT * FROM setups WHERE status = $1`,
-        [SetupStatus.READY]
-    );
+    const result = await runQuery(`SELECT * FROM setups WHERE status = $1`, [SetupStatus.READY]);
     const results = [...result];
-    return results.map(row => ({ setup_id: row[0], status: row[1] }));
+    return results.map((row) => ({ setup_id: row[0], status: row[1] }));
 }
 
 export async function writeTemplate(agentId: string, setupId: string, transaction: Transaction) {
@@ -149,8 +150,15 @@ export async function writeTemplate(agentId: string, setupId: string, transactio
         VALUES ($1, $2, $3, $4::TEXT::role, $5, $6, $7)
         ON CONFLICT(agent_id, setup_id , name) DO UPDATE SET
             object = $7`,
-        [transaction.transactionName, setupId, agentId, transaction.role,
-        transaction?.external ?? false, transaction.ordinal, jsonizedObject]
+        [
+            transaction.transactionName,
+            setupId,
+            agentId,
+            transaction.role,
+            transaction?.external ?? false,
+            transaction.ordinal,
+            jsonizedObject
+        ]
     );
 }
 
@@ -159,15 +167,17 @@ export async function writeTemplates(agentId: string, setupId: string, transacti
 }
 
 export async function readTemplates(agentId: string, setupId?: string): Promise<Transaction[]> {
-    const result = await runQuery(`
+    const result = await runQuery(
+        `
         SELECT * FROM templates
         WHERE
-            agent_id = $1 ` + (setupId ? ` AND setup_id = $2` : '') +
-        ` ORDER BY ordinal ASC `,
+            agent_id = $1 ` +
+            (setupId ? ` AND setup_id = $2` : '') +
+            ` ORDER BY ordinal ASC `,
         [agentId, setupId]
     );
     const results = [...result];
-    return results.map(r => {
+    return results.map((r) => {
         const obj = unjsonizeObject(r['object']);
         obj.templateId = r['template_id'];
         return obj;
@@ -175,21 +185,24 @@ export async function readTemplates(agentId: string, setupId?: string): Promise<
 }
 
 export async function readTemplatesOfOutging(agentId: string, setupId?: string): Promise<Transaction[]> {
-    const result = await runQuery(`
+    const result = await runQuery(
+        `
         SELECT templates.*, outgoing.transaction_id FROM templates
         INNER JOIN outgoing
         ON templates.template_id = outgoing.template_id
         WHERE
-            agent_id = $1 ` + (setupId ? ` AND setup_id = $2` : '') +
-        ` ORDER BY ordinal ASC `,
+            agent_id = $1 ` +
+            (setupId ? ` AND setup_id = $2` : '') +
+            ` ORDER BY ordinal ASC `,
         [agentId, setupId]
     );
     const results = [...result];
-    return results.map(r => unjsonizeObject(r['object']));
+    return results.map((r) => unjsonizeObject(r['object']));
 }
 
 export async function readOutgingByTemplateId(templateId: number): Promise<Outgoing | undefined> {
-    const result = await runQuery(`
+    const result = await runQuery(
+        `
         SELECT * FROM outgoing
         WHERE
             template_id = $1`,
@@ -200,9 +213,7 @@ export async function readOutgingByTemplateId(templateId: number): Promise<Outgo
 }
 
 export async function writeOutgoing(templateId: number, data: any, status: OutgoingStatus) {
-    await runQuery(`UPDATE outgoing SET data = $1, status = $2 WHERE template_id = $3`,
-        [data, status, templateId]
-    );
+    await runQuery(`UPDATE outgoing SET data = $1, status = $2 WHERE template_id = $3`, [data, status, templateId]);
 }
 
 export async function readExpectedIncoming() {
@@ -216,10 +227,9 @@ export async function readExpectedIncoming() {
         AND setups.status = 'SIGNED'
         AND transaction_id NOT IN (
             SELECT transaction_id
-            FROM incoming )`
-    );
+            FROM incoming )`);
 
-    return result.rows.map(row => ({ txId: row[0], templateId: row[1] }));
+    return result.rows.map((row) => ({ txId: row[0], templateId: row[1] }));
 }
 
 export async function writeIncomingTransaction(transmittedRaw: TxRawData, blockHeight: number, templateId: number) {
@@ -228,21 +238,21 @@ export async function writeIncomingTransaction(transmittedRaw: TxRawData, blockH
 	        transaction_id, template_id, raw_tx, block_height)
         VALUES ($1, $2, $3, $4)
         ON CONFLICT(transaction_id) DO NOTHING`,
-        [transmittedRaw.txid,
-            templateId,
-        jsonizeObject(transmittedRaw),
-            blockHeight]
+        [transmittedRaw.txid, templateId, jsonizeObject(transmittedRaw), blockHeight]
     );
 }
 
 export async function readIncomingTransactions(setupId: string): Promise<Incoming[]> {
-    const result = await runQuery(`
+    const result = await runQuery(
+        `
         SELECT incoming.transaction_id, template_id, block_height, raw_tx, updated
         FROM incoming INNER JOIN templates
         ON incoming.template_id = templates.template_id
         WHERE templates.setup_id = $1
-    `, [setupId]);
-    return result.rows.map(row => ({
+    `,
+        [setupId]
+    );
+    return result.rows.map((row) => ({
         txId: row[0],
         templateId: row[1],
         blockHeight: row[2],

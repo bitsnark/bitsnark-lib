@@ -1,4 +1,3 @@
-
 import groth16Verify, { Key, Proof as Step1_Proof } from './verifier';
 import { step1_vm } from './vm/vm';
 import { InstrCode as Step1_InstrCode } from './vm/types';

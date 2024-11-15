@@ -1,18 +1,16 @@
-import { Register } from "../../common/register";
-import { SavedVm } from "../../common/saved-vm";
-import { Instruction, InstrCode } from "./types";
+import { Register } from '../../common/register';
+import { SavedVm } from '../../common/saved-vm';
+import { Instruction, InstrCode } from './types';
 
 export class Runner {
-
     registers: Register[] = [];
-    witness: bigint[] = []
-    hardcoded: bigint[] = []
+    witness: bigint[] = [];
+    hardcoded: bigint[] = [];
     instructions: Instruction[] = [];
     current: number = 0;
     successIndex: number = 0;
 
-    private constructor() {
-    }
+    private constructor() {}
 
     private hardcode(value: bigint): Register {
         const r = {
@@ -42,16 +40,18 @@ export class Runner {
         const runner = new Runner();
         runner.hardcoded = obj.hardcoded.map((ns: string) => BigInt('0x' + ns));
         runner.witness = obj.witness.map((ns: string) => BigInt('0x' + ns));
-        runner.instructions = obj.program.map(inst => ({
+        runner.instructions = obj.program.map((inst) => ({
             name: inst.name,
             target: inst.target,
             param1: inst.param1!,
             param2: inst.param2,
             bit: Number(inst.bit ?? '0'),
-            toString: function () { return `${this.name} ${this.target} ${this.param1} ${this.param2} ${this.bit}`; }
+            toString: function () {
+                return `${this.name} ${this.target} ${this.param1} ${this.param2} ${this.bit}`;
+            }
         }));
-        runner.hardcoded.forEach(n => runner.hardcode(n));
-        runner.witness.forEach(n => runner.addWitness(n));
+        runner.hardcoded.forEach((n) => runner.hardcode(n));
+        runner.witness.forEach((n) => runner.addWitness(n));
         runner.successIndex = obj.successIndex;
         return runner;
     }
@@ -74,8 +74,7 @@ export class Runner {
             this.registers[instr.target] = target;
         }
         const param1 = this.registers[instr.param1!];
-        if (!param1)
-            throw new Error(`Invalid param1 line: ${this.current}, instr: ${instr}`);
+        if (!param1) throw new Error(`Invalid param1 line: ${this.current}, instr: ${instr}`);
         const param2 = this.registers[instr.param2!];
         switch (instr.name) {
             case InstrCode.ADD:
@@ -88,7 +87,10 @@ export class Runner {
                 break;
             case InstrCode.SUB:
                 if (!param2) throw new Error(`Invalid param2 line: ${this.current}`);
-                target.value = param1.value >= param2.value ? param1.value - param2.value : param1.value + 0x0100000000n - param2.value;
+                target.value =
+                    param1.value >= param2.value
+                        ? param1.value - param2.value
+                        : param1.value + 0x0100000000n - param2.value;
                 break;
             case InstrCode.SUBOF:
                 if (!param2) throw new Error(`Invalid param2 line: ${this.current}`);
@@ -143,7 +145,7 @@ export class Runner {
     }
 
     public getRegisterValuesNoHardcoded(): bigint[] {
-        return this.registers.filter(r => !r.hardcoded).map(r => r.value);
+        return this.registers.filter((r) => !r.hardcoded).map((r) => r.value);
     }
 
     public getInstruction(line: number): Instruction {

@@ -1,4 +1,4 @@
-import { bigintToBufferBE, hash } from "./encoding";
+import { bigintToBufferBE, hash } from './encoding';
 
 const winternitzSecret = 0x92654528273736353535555533553553874383876346n;
 
@@ -137,5 +137,3 @@ export function decodeWinternitz256(input: bigint[], chunkIndex: number): bigint
     });
     return n;
 }
-
-

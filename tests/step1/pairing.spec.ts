@@ -1,7 +1,7 @@
-import { afterEach, beforeEach, describe, expect, it } from "@jest/globals";
+import { afterEach, beforeEach, describe, expect, it } from '@jest/globals';
 
-import { G1, G1Point } from "../../src/generator/step1/algebra/G1";
-import { G2, G2Point } from "../../src/generator/step1/algebra/G2";
+import { G1, G1Point } from '../../src/generator/step1/algebra/G1';
+import { G2, G2Point } from '../../src/generator/step1/algebra/G2';
 import { step1_vm as vm } from '../../src/generator/step1/vm/vm';
 import { curveOrder, G3 } from '../../src/generator/step1/algebra/G3';
 import { Fp12t } from '../../src/generator/step1/algebra/fp12t';
@@ -11,7 +11,6 @@ const _37 = vm.hardcode(37n);
 const _999 = vm.hardcode(999n);
 
 describe('Pairing', () => {
-
     let gen1: G1Point;
     let gen2: G2Point;
 

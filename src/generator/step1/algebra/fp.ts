@@ -1,9 +1,8 @@
-import { prime_bigint } from "../../common/prime";
-import { Register } from "../../common/register";
-import { step1_vm as vm } from "../vm/vm";
+import { prime_bigint } from '../../common/prime';
+import { Register } from '../../common/register';
+import { step1_vm as vm } from '../vm/vm';
 
 export class Fp {
-
     register: Register;
 
     constructor(r?: Register) {

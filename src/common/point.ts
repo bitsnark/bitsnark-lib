@@ -29,15 +29,15 @@ export function modPow(x: bigint, y: bigint, p: bigint): bigint {
 }
 
 export function lift_x(x: bigint): Point {
-    if (x > p) throw new Error("x > p");
+    if (x > p) throw new Error('x > p');
     const y_sq = (modPow(x, 3n, p) + 7n) % p;
     const y = modPow(y_sq, (p + 1n) / 4n, p);
-    if (modPow(y, 2n, p) !== y_sq) throw new Error("NaN");
+    if (modPow(y, 2n, p) !== y_sq) throw new Error('NaN');
     return { x: x, y: (y & 1n) === 0n ? y : p - y };
 }
 
 export function hasEvenY(P: Point | null): boolean {
-    if (P == null) throw new Error("P is null");
+    if (P == null) throw new Error('P is null');
     return P.y % 2n === 0n;
 }
 
