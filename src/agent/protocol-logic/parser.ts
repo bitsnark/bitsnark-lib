@@ -1,6 +1,4 @@
-import { AgentRoles, TransactionNames } from "../common";
-import { readTemplates } from "../db";
-import { findOutputByInput, getSpendingConditionByInput, getTransactionByName, Transaction } from "../transactions-new";
+import { findOutputByInput, Transaction } from "../transactions-new";
 import { decodeWinternitz, WOTS_NIBBLES } from "../winternitz";
 
 function hashesFromBuffer(data: Buffer): Buffer[] {

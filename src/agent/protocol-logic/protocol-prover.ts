@@ -47,7 +47,7 @@ export class ProtocolProver {
             // order logically
             .sort((p1, p2) => p1.template.ordinal! - p2.template.ordinal!);
 
-        let selectionPath: number[] = [];
+        const selectionPath: number[] = [];
         let proof: bigint[] = [];
 
         // examine each one

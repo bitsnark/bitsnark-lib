@@ -34,7 +34,7 @@ export class Decasector {
         let left = 0;
         let right = this.total;
         const _sc = () => {
-            let d = (right - left) / 10;
+            const d = (right - left) / 10;
             for (let i = 1; i <= 9; i++) {
                 rows[i] = left + i * d;
             }    
