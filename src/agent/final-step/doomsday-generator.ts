@@ -259,8 +259,8 @@ export class DoomsdayGenerator {
         let template: Template | undefined = undefined;
 
         const started = Date.now();
-        const total = 0;
-        const max = 0;
+        let total = 0;
+        let max = 0;
 
         console.log(`Generating refute merkle proof taproot for ${this.program.length} instructions`);
         for (let index = 1; index < this.program.length; index++) {
@@ -290,9 +290,9 @@ export class DoomsdayGenerator {
             const afterRootKeys = scAfter.wotsPublicKeys![stateCommitmentIndexAfter];
 
             // now let's get the merkle proofs keys, there are 3 proofs, each with 12 hashes, each with 90 keys
-
             const merkleProofKeysAll: Buffer[][] = [];
             const argument = getTransactionByName(transactions, TransactionNames.ARGUMENT);
+            
             // We need all of the inputs except the first two, which are the path and the a, b, c, d values
             for (let i = 2; i < argument.inputs.length; i++) {
                 const input = argument.inputs[i];
@@ -314,19 +314,20 @@ export class DoomsdayGenerator {
                 merkleProofKeys[2].push(afterRootKeys);
             }
 
+            if (!template)
+                template = await this.createRefuteHashTemplate();
+
             // here's the script to refute one hash
-
             const refuteHash = async (leftKeys: Buffer[], rightKeys: Buffer[], resultKeys: Buffer[]): Promise<Buffer> => {
-                if (!template)
-                    template = await this.createRefuteHashTemplate();
-
-                return this.renderTemplateWithKeys(template, [leftKeys, rightKeys, resultKeys]);
+                return this.renderTemplateWithKeys(template!, [leftKeys, rightKeys, resultKeys]);
             }
 
             // now there are 3 * 6 possible refutations
             for (let i = 0; i < merkleProofKeys.length; i++) {
                 for (let j = 0; j < 12; j += 2) {
                     const script = await refuteHash(merkleProofKeys[i][j], merkleProofKeys[i][j + 1], merkleProofKeys[i][j + 2]);
+                    total += script.length;
+                    max = Math.max(max, script.length);        
                     compressor.addItem(script);
                 }
             }
