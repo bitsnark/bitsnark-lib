@@ -1,6 +1,6 @@
-import * as bitcoinjs from 'bitcoinjs-lib';
-import { hardcode, opcodeMap, OpcodeType, opcodeValues } from './bitcoin-opcodes';
-import { StackItem, Stack } from './stack';
+import * as bitcoinjs from "bitcoinjs-lib";
+import { hardcode, opcodeMap, OpcodeType, opcodeValues } from "./bitcoin-opcodes";
+import { StackItem, Stack } from "./stack";
 import { createHash } from 'crypto';
 
 interface Operation {
@@ -11,7 +11,7 @@ interface Operation {
 
 export interface Template {
     buffer: Buffer;
-    items: { itemId: string; index: number }[];
+    items: { itemId: string, index: number }[];
 }
 
 export interface ProgramToTemplateOpts {
@@ -19,6 +19,7 @@ export interface ProgramToTemplateOpts {
 }
 
 export class Bitcoin {
+
     opcodes: Operation[] = [];
     stack: Stack = new Stack();
     altStack: (number | Buffer)[] = [];
@@ -28,7 +29,8 @@ export class Bitcoin {
     public maxStack = 0;
     public throwOnFail = false;
 
-    constructor() {}
+    constructor() {
+    }
 
     reset() {
         this.opcodes = [];
@@ -38,15 +40,17 @@ export class Bitcoin {
 
     fail(msg?: string) {
         this.success = false;
-        if (this.throwOnFail) throw new Error('Failed: ' + msg);
+        if (this.throwOnFail)
+            throw new Error('Failed: ' + msg);
     }
 
     /// BASIC ///
 
     newStackItem(value: number | Buffer): StackItem {
-        if (typeof value == 'number' && (value < 0 || value > 65535)) throw new Error('Invalid value');
+        if (typeof value == 'number' && (value < 0 || value > 65535))
+            throw new Error('Invalid value');
         const si = this.DATA(value);
-        this.maxStack = Math.max(this.maxStack, this.stack.items.length);
+        this.maxStack = Math.max(this.maxStack, this.stack.items.length + this.altStack.length);
         // console.log('Stack: ', this.stack.items.length);
         if (this.throwOnFail) {
             if (this.stack.items.length + this.altStack.length > 1000)
@@ -91,7 +95,8 @@ export class Bitcoin {
 
     private getRelativeStackPosition(si: StackItem): number {
         const index = this.stack.findIndex(si);
-        if (index < 0) throw new Error('Invalid relative position');
+        if (index < 0)
+            throw new Error('Invalid relative position');
         return this.stack.length() - index - 1;
     }
 
@@ -119,7 +124,8 @@ export class Bitcoin {
     /// NATIVE OPERATIONS ///
 
     DATA(data: number | Buffer, templateItemId?: string): StackItem {
-        if (typeof data == 'number' && (data < 0 || data > 2 ** 16 - 1)) throw new Error('Invalid number');
+        if (typeof data == 'number' && (data < 0 || data > (2 ** 16 - 1)))
+            throw new Error('Invalid number');
         this.opcodes.push({ op: OpcodeType.DATA, data, templateItemId });
         return this.stack.newItem(data);
     }
@@ -366,9 +372,7 @@ export class Bitcoin {
         this.opcodes.push({ op: OpcodeType.OP_SHA256 });
         const si = this.stack.items.pop()!;
         if (si.value instanceof Buffer) {
-            const h = createHash('sha256')
-                .update(si.value as Buffer)
-                .digest();
+            const h = createHash('sha256').update(si.value as Buffer).digest();
             this.stack.newItem(h);
         } else {
             throw new Error('Expecting a buffer');
@@ -379,9 +383,7 @@ export class Bitcoin {
         this.opcodes.push({ op: OpcodeType.OP_HASH160 });
         const si = this.stack.items.pop()!;
         if (si.value instanceof Buffer) {
-            const h1 = createHash('sha256')
-                .update(si.value as Buffer)
-                .digest();
+            const h1 = createHash('sha256').update(si.value as Buffer).digest();
             const h2 = createHash('ripemd160').update(h1).digest();
             this.stack.newItem(h2);
         } else {
@@ -402,6 +404,7 @@ export class Bitcoin {
     // on-stack operations
 
     mul(n: number) {
+
         if (n < 2 || n > 256) throw new Error('n should be between 2 and 256');
 
         // get bits
@@ -453,7 +456,7 @@ export class Bitcoin {
     drop(si: StackItem | StackItem[]) {
         if (Array.isArray(si)) {
             si = si.sort((a, b) => this.getRelativeStackPosition(a) - this.getRelativeStackPosition(b));
-            si.forEach((tsi) => this.drop(tsi));
+            si.forEach(tsi => this.drop(tsi));
         } else {
             const rel = this.getRelativeStackPosition(si);
             if (rel == 0) {
@@ -542,7 +545,7 @@ export class Bitcoin {
             this.OP_ADD();
         }
         this.DATA(l);
-        this.OP_NUMEQUAL();
+        this.OP_NUMEQUAL()
         this.replaceWithTop(target);
     }
 
@@ -584,19 +587,19 @@ export class Bitcoin {
     assertZero(a: StackItem) {
         this.pick(a);
         this.OP_0_16(0);
-        this.OP_NUMEQUALVERIFY();
+        this.OP_NUMEQUALVERIFY()
     }
 
     assertOne(a: StackItem) {
         this.pick(a);
         this.OP_0_16(1);
-        this.OP_NUMEQUALVERIFY();
+        this.OP_NUMEQUALVERIFY()
     }
 
     assertEqual(a: StackItem, b: StackItem) {
         this.pick(a);
         this.pick(b);
-        this.OP_NUMEQUALVERIFY();
+        this.OP_NUMEQUALVERIFY()
     }
 
     setIfElse(target: StackItem, v: StackItem, t: StackItem, f: StackItem) {
@@ -641,6 +644,7 @@ export class Bitcoin {
     }
 
     verifyNotEqualMany(a: StackItem[], b: StackItem[]) {
+
         if (a.length != b.length) throw new Error('Wrong length');
         for (let i = 0; i < Math.max(a.length, b.length); i++) {
             if (a[i]) this.pick(a[i]);
@@ -686,6 +690,7 @@ export class Bitcoin {
     }
 
     assertEqualMany(a: StackItem[], b: StackItem[], c: StackItem[]) {
+
         this.assertZeroMany(c.slice(1));
 
         this.OP_0_16(1);
@@ -702,6 +707,7 @@ export class Bitcoin {
     }
 
     assertOrMany(a: StackItem[], b: StackItem[], c: StackItem[]) {
+
         this.assertZeroMany(c.slice(1));
 
         this.OP_0_16(0);
@@ -718,6 +724,7 @@ export class Bitcoin {
     }
 
     assertAndMany(a: StackItem[], b: StackItem[], c: StackItem[]) {
+
         this.assertZeroMany(c.slice(1));
 
         this.OP_0_16(1);
@@ -734,6 +741,7 @@ export class Bitcoin {
     }
 
     assertNotMany(a: StackItem[], c: StackItem[]) {
+
         this.assertZeroMany(c.slice(1));
 
         this.OP_0_16(0);
@@ -747,6 +755,7 @@ export class Bitcoin {
     }
 
     assertOneMany(a: StackItem[]) {
+
         this.assertZeroMany(a.slice(1));
         this.pick(a[0]);
         this.OP_0_16(1);
@@ -755,10 +764,10 @@ export class Bitcoin {
 
     /***  Witness decoding ***/
 
-    winternitzDecodeNibble(target: StackItem, witness: StackItem, publicKey: Buffer) {
+    winternitzDecodeNibble(target: StackItem, witness: StackItem, publicKey: Buffer, iterations: number = 8) {
         const pk = this.hardcode(publicKey);
         this.pick(witness); // witness
-        for (let i = 0; i < 8; i++) {
+        for (let i = 0; i < iterations; i++) {
             this.OP_HASH160(); // hash
             this.OP_DUP(); // hash hash
             this.pick(pk); // hash hash pk
@@ -860,6 +869,7 @@ export class Bitcoin {
     }
 
     winternitzCheck32(witness: StackItem[], publicKeys: Buffer[]) {
+
         const checksum = this.newStackItem(0);
         const temp = this.newStackItem(0);
         const checksumNibbles: StackItem[] = this.newNibbles(3);
@@ -904,6 +914,7 @@ export class Bitcoin {
     }
 
     winternitzDecode32(target: StackItem[], witness: StackItem[], publicKeys: Buffer[]) {
+
         const totalNibbles = 14;
         const checksum = this.newStackItem(0);
 
@@ -973,11 +984,7 @@ export class Bitcoin {
         }
 
         for (let i = 0; i < 2; i++) {
-            this.winternitzDecodeNibble(
-                checksumNibbles[i],
-                witness[totalNibbles - 2 + i],
-                publicKeys[totalNibbles - 2 + i]
-            );
+            this.winternitzDecodeNibble(checksumNibbles[i], witness[totalNibbles - 2 + i], publicKeys[totalNibbles - 2 + i]);
         }
 
         this.DATA(7);
@@ -1015,11 +1022,7 @@ export class Bitcoin {
         }
 
         for (let i = 0; i < 2; i++) {
-            this.winternitzDecodeNibble(
-                checksumNibbles[i],
-                witness[totalNibbles - 2 + i],
-                publicKeys[totalNibbles - 2 + i]
-            );
+            this.winternitzDecodeNibble(checksumNibbles[i], witness[totalNibbles - 2 + i], publicKeys[totalNibbles - 2 + i]);
         }
 
         this.DATA(7);
@@ -1057,11 +1060,7 @@ export class Bitcoin {
         }
 
         for (let i = 0; i < 4; i++) {
-            this.winternitzDecodeNibble(
-                checksumNibbles[i],
-                witness[totalNibbles - 4 + i],
-                publicKeys[totalNibbles - 4 + i]
-            );
+            this.winternitzDecodeNibble(checksumNibbles[i], witness[totalNibbles - 4 + i], publicKeys[totalNibbles - 4 + i]);
         }
 
         this.DATA(7);
@@ -1099,6 +1098,7 @@ export class Bitcoin {
     }
 
     winternitzDecode256(target: StackItem[], witness: StackItem[], publicKeys: Buffer[]) {
+
         const totalNibbles = 90;
         const checksumNibbles: StackItem[] = [];
         for (let i = 0; i < 4; i++) checksumNibbles.push(this.newStackItem(0));
@@ -1113,11 +1113,7 @@ export class Bitcoin {
         }
 
         for (let i = 0; i < 4; i++) {
-            this.winternitzDecodeNibble(
-                checksumNibbles[i],
-                witness[totalNibbles - 4 + i],
-                publicKeys[totalNibbles - 4 + i]
-            );
+            this.winternitzDecodeNibble(checksumNibbles[i], witness[totalNibbles - 4 + i], publicKeys[totalNibbles - 4 + i]);
         }
 
         this.DATA(7);
@@ -1141,6 +1137,97 @@ export class Bitcoin {
         this.mul(8);
 
         this.DATA(7);
+        this.pick(checksumNibbles[0]);
+        this.OP_SUB();
+        this.OP_ADD();
+
+        this.pick(checksum);
+        this.OP_EQUAL();
+        this.OP_VERIFY();
+
+        this.drop(checksum);
+        this.drop(checksumNibbles);
+    }
+
+    winternitzCheck256_4(witness: StackItem[], publicKeys: Buffer[]) {
+        const totalNibbles = 67;
+        const temp = this.newStackItem(0);
+        const checksumNibbles: StackItem[] = [];
+        for (let i = 0; i < 3; i++) checksumNibbles.push(this.newStackItem(0));
+        const checksum = this.newStackItem(0);
+
+        for (let i = 0; i < totalNibbles - 3; i++) {
+            this.winternitzDecodeNibble(temp, witness[i], publicKeys[i], 16);
+            this.pick(checksum);
+            this.pick(temp);
+            this.OP_ADD();
+            this.replaceWithTop(checksum);
+        }
+
+        for (let i = 0; i < 3; i++) {
+            this.winternitzDecodeNibble(checksumNibbles[i], witness[totalNibbles - 3 + i], publicKeys[totalNibbles - 3 + i], 16);
+        }
+
+        this.DATA(15);
+        this.pick(checksumNibbles[2]);
+        this.OP_SUB();
+
+        this.mul(16);
+
+        this.DATA(15);
+        this.pick(checksumNibbles[1]);
+        this.OP_SUB();
+        this.OP_ADD();
+
+        this.mul(16);
+
+        this.DATA(15);
+        this.pick(checksumNibbles[0]);
+        this.OP_SUB();
+        this.OP_ADD();
+
+        this.pick(checksum);
+        this.OP_EQUAL();
+        this.OP_VERIFY();
+
+        this.drop(checksum);
+        this.drop(temp);
+        this.drop(checksumNibbles);
+    }
+
+    winternitzDecode256_4(target: StackItem[], witness: StackItem[], publicKeys: Buffer[]) {
+
+        const totalNibbles = 67;
+        const checksumNibbles: StackItem[] = [];
+        for (let i = 0; i < 3; i++) checksumNibbles.push(this.newStackItem(0));
+        const checksum = this.newStackItem(0);
+
+        for (let i = 0; i < totalNibbles - 3; i++) {
+            this.winternitzDecodeNibble(target[i], witness[i], publicKeys[i], 16);
+            this.pick(checksum);
+            this.pick(target[i]);
+            this.OP_ADD();
+            this.replaceWithTop(checksum);
+        }
+
+        for (let i = 0; i < 3; i++) {
+            this.winternitzDecodeNibble(checksumNibbles[i], witness[totalNibbles - 3 + i], publicKeys[totalNibbles - 3 + i], 16);
+        }
+
+        this.DATA(15);
+        this.pick(checksumNibbles[2]);
+        this.OP_SUB();
+
+        this.mul(16);
+
+        this.DATA(15);
+        this.pick(checksumNibbles[1]);
+        this.OP_SUB();
+        this.OP_ADD();
+
+        this.mul(16);
+
+        this.DATA(15);
         this.pick(checksumNibbles[0]);
         this.OP_SUB();
         this.OP_ADD();
@@ -1199,6 +1286,7 @@ export class Bitcoin {
     }
 
     checkSemiFinal(pathNibbles: StackItem[][], indexNibbles: StackItem[]) {
+
         const temp = this.newStackItem(0);
         for (let i = 0; i < pathNibbles.length; i++) {
             this.pick(pathNibbles[i][1]);
@@ -1247,7 +1335,7 @@ export class Bitcoin {
 
     programSizeInBitcoinBytes(): number {
         let total = 0;
-        this.opcodes.forEach((op) => {
+        this.opcodes.forEach(op => {
             if (op.data && op.data instanceof Buffer) {
                 total += 1 + op.data.length;
             } else if (op.data && typeof op.data == 'number') {
@@ -1262,8 +1350,9 @@ export class Bitcoin {
     }
 
     programToString(): string {
+
         let s = '';
-        this.opcodes.forEach((op) => {
+        this.opcodes.forEach(op => {
             if (op.data && op.data instanceof Buffer) {
                 s += `<0x${op.data.toString('hex')}>\n`;
             } else if (op.data && typeof op.data == 'number') {
@@ -1275,23 +1364,23 @@ export class Bitcoin {
         return s;
     }
 
-    programToBinary(opts: ProgramToTemplateOpts = {}): Buffer {
-        return this.programToTemplate(opts).buffer;
+    programToBinary(): Buffer {
+        return this.programToTemplate({ validateStack: true }).buffer;
     }
 
     programToTemplate(opts: ProgramToTemplateOpts = {}): Template {
         const validateStack = opts.validateStack ?? true;
 
-        // program has to end with a single 1 on the stack
-        if (this.stack.length() == 0) {
-            this.OP_0_16(1);
-        } else if (this.stack.length() != 1 || this.stack.top().value !== 1) {
-            if (validateStack) {
+        if (validateStack == true) {
+            // program has to end with a single 1 on the stack
+            if (this.stack.length() == 0) {
+                this.OP_0_16(1);
+            } else if (this.stack.length() != 1 || this.stack.top().value !== 1) {
                 throw new Error('Stack must have a single 1 at EOP');
             }
         }
 
-        const items: { itemId: string; index: number }[] = [];
+        const items: { itemId: string, index: number }[] = [];
 
         const byteArray: number[] = [];
         for (const opcode of this.opcodes) {
@@ -1319,19 +1408,20 @@ export class Bitcoin {
 }
 
 export function executeProgram(bitcoin: Bitcoin, script: Buffer, printFlag: boolean): boolean {
+
     let inIf = false;
     let inElse = false;
     let doIf = false;
     let doElse = false;
 
-    const print = printFlag ? console.log : () => {};
+    const print = printFlag ? console.log : () => { };
 
     for (let i = 0; i < script.length; i++) {
+
         const opcode = opcodeMap[script[i]];
 
         if (opcode == OpcodeType.OP_IF) {
-            inIf = true;
-            inElse = false;
+            inIf = true; inElse = false;
             doIf = bitcoin.stack.top().value != 0;
             doElse = !doIf;
 
@@ -1341,8 +1431,7 @@ export function executeProgram(bitcoin: Bitcoin, script: Buffer, printFlag: bool
             continue;
         }
         if (opcode == OpcodeType.OP_ELSE) {
-            inIf = false;
-            inElse = true;
+            inIf = false; inElse = true;
 
             bitcoin.OP_ELSE();
             print(opcode);
@@ -1350,8 +1439,7 @@ export function executeProgram(bitcoin: Bitcoin, script: Buffer, printFlag: bool
             continue;
         }
         if (opcode == OpcodeType.OP_ENDIF) {
-            inIf = false;
-            inElse = false;
+            inIf = false; inElse = false;
 
             bitcoin.OP_ENDIF();
             print(opcode);
@@ -1388,3 +1476,4 @@ export function executeProgram(bitcoin: Bitcoin, script: Buffer, printFlag: bool
     if (bitcoin.stack.length() != 1) throw new Error('Stack size must be 1');
     return bitcoin.success;
 }
+
