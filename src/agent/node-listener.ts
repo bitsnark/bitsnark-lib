@@ -8,10 +8,10 @@ export class NodeListener {
     private scheduler: NodeJS.Timeout | null = null;
     private lastBlockHeight: number = 0;
     private lastBlockHash: string = '';
-    public client
+    public client;
 
     constructor() {
-        this.client = new BitcoinNode().client
+        this.client = new BitcoinNode().client;
     }
 
     async setMonitorSchedule() {
