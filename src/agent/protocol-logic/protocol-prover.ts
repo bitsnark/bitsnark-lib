@@ -1,5 +1,6 @@
+import { RawTransaction } from 'bitcoin-core';
 import { agentConf } from '../agent.conf';
-import { BitcoinNode, TxRawData } from '../bitcoin-node';
+import { BitcoinNode } from '../bitcoin-node';
 import { AgentRoles, iterations, TransactionNames, twoDigits } from '../common';
 import {
     Incoming,
@@ -149,7 +150,7 @@ export class ProtocolProver {
     }
 
     parseProof(incoming: Incoming, template: Transaction): bigint[] {
-        const rawTx = incoming.rawTransaction as TxRawData;
+        const rawTx = incoming.rawTransaction as RawTransaction;
         const proof = parseTransactionData(
             this.templates,
             template,
@@ -176,7 +177,7 @@ export class ProtocolProver {
     }
 
     parseSelection(incoming: Incoming, template: Transaction): number {
-        const rawTx = incoming.rawTransaction as TxRawData;
+        const rawTx = incoming.rawTransaction as RawTransaction;
         const data = parseTransactionData(
             this.templates,
             template,

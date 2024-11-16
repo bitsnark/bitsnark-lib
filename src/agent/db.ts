@@ -2,7 +2,7 @@ import { AgentRoles, jsonParseCustom, jsonStringifyCustom } from './common';
 import { Transaction } from './transactions-new';
 import { Client, connect } from 'ts-postgres';
 import { agentConf } from './agent.conf';
-import { TxRawData } from './bitcoin-node';
+import { RawTransaction } from 'bitcoin-core';
 
 // DB utils
 function jsonizeObject(obj: any): any {
@@ -232,7 +232,11 @@ export async function readExpectedIncoming() {
     return result.rows.map((row) => ({ txId: row[0], templateId: row[1] }));
 }
 
-export async function writeIncomingTransaction(transmittedRaw: TxRawData, blockHeight: number, templateId: number) {
+export async function writeIncomingTransaction(
+    transmittedRaw: RawTransaction,
+    blockHeight: number,
+    templateId: number
+) {
     const result = await runQuery(
         `INSERT INTO incoming(
 	        transaction_id, template_id, raw_tx, block_height)

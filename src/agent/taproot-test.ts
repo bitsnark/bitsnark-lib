@@ -1,11 +1,12 @@
 // from: https://dev.to/eunovo/a-guide-to-creating-taproot-scripts-with-bitcoinjs-lib-4oph
 
 import { initEccLib, networks, payments } from 'bitcoinjs-lib';
-import { ECPairFactory, ECPairAPI, TinySecp256k1Interface } from 'ecpair';
+import { TinySecp256k1Interface } from 'bitcoinjs-lib/src/types';
+import { ECPairFactory, ECPairAPI } from 'ecpair';
 import { Taptree } from 'bitcoinjs-lib/src/types';
+import * as tinysecp from 'tiny-secp256k1';
 
-const tinysecp: TinySecp256k1Interface = require('tiny-secp256k1');
-initEccLib(tinysecp as any);
+initEccLib(tinysecp as TinySecp256k1Interface);
 const ECPair: ECPairAPI = ECPairFactory(tinysecp);
 const network = networks.testnet;
 
@@ -29,7 +30,6 @@ function start_taptree() {
     ];
 
     const internalPubkey = toXOnly(keypair.publicKey);
-
     const script_p2tr = payments.p2tr({
         internalPubkey,
         scriptTree,
