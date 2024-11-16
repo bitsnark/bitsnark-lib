@@ -1,4 +1,3 @@
-
 import { execSync } from 'child_process';
 import { Agent } from '../../src/agent/agent';
 import { AgentRoles } from '../../src/agent/common';
@@ -143,8 +142,6 @@ describe('E2E Test - SETUP via Telegram', () => {
 
 });
 
-
-
 //update db with final transactions
 
 //execute first transaction
@@ -152,9 +149,3 @@ describe('E2E Test - SETUP via Telegram', () => {
 //execute second transaction
 
 //execute third transaction
-
-
-
-
-
-
