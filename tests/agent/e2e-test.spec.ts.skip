@@ -1,0 +1,160 @@
+
+import { execSync } from 'child_process';
+import { Agent } from '../../src/agent/agent';
+import { AgentRoles } from '../../src/agent/common';
+import { NodeListener } from '../../src/agent/node-listener';
+import { StartMessage } from '../../src/agent/messages';
+
+const maxWaitTime = 600000;
+const pollInterval = 100;
+
+let proverAgent: Agent | undefined
+let verifierAgent: Agent | undefined
+let setupId: string;
+const proverBitcoinListener = new NodeListener();
+const verifierBitcoinListener = new NodeListener();
+
+
+function findContiner(name: string): boolean {
+    const result = execSync(`docker ps --filter "name=${name}" --format "{{.Names}}"`).toString().trim();
+    return result === name;
+}
+
+async function spyCalled(spayFunc: jest.SpyInstance, callMaxWaitTime = maxWaitTime) {
+    const startTime = Date.now();
+    while ((Date.now() - startTime) < callMaxWaitTime) {
+        if (spayFunc.mock.calls.length > 0) {
+            //return argument of first call
+            return spayFunc.mock.calls[0];
+        }
+        await new Promise(resolve => setTimeout(resolve, pollInterval));
+    }
+    return [];
+}
+
+describe('E2E Test - SETUP via Telegram', () => {
+    beforeAll(async () => {
+        proverAgent = new Agent('bitsnark_prover_1', AgentRoles.PROVER);
+        verifierAgent = new Agent('bitsnark_verifier_1', AgentRoles.VERIFIER);
+        proverAgent.launch();
+        verifierAgent.launch();
+    }, 60000);
+
+    it('Should have bitcoin-node container running', () => {
+        expect(findContiner('bitcoin-node')).toBe(true);
+    });
+
+    it('Should have db container running', () => {
+        expect(findContiner('postgres')).toBe(true);
+    });
+
+    it('Should use verifier to send /start command which invokes prover start message', async () => {
+        if (!proverAgent || !verifierAgent) return;
+        const startSpy = jest.spyOn(proverAgent, 'start');
+        await verifierAgent.startSetup();
+        await spyCalled(startSpy);
+        await expect(startSpy).toHaveBeenCalled();
+    }, 60000);
+
+    it('Should recive the start message by verifier and send a join message', async () => {
+        if (!proverAgent || !verifierAgent) return;
+        const onstartSpy = jest.spyOn(verifierAgent, 'on_start');
+        const args = await spyCalled(onstartSpy, 60000);
+        await expect(onstartSpy).toHaveBeenCalled();
+        expect(onstartSpy).toHaveBeenCalled();
+        const message: StartMessage = args[1]; //will fail if on_start params are changed
+        expect(verifierAgent.instances.get(message.setupId)).toBeDefined();
+        setupId = message.setupId;
+    }, 60000);
+
+    it('Should recive join message by prover and send transactions', async () => {
+        if (!proverAgent || !verifierAgent) return;
+        const onjoinSpy = jest.spyOn(proverAgent, 'on_join');
+        await spyCalled(onjoinSpy, 120000);
+        await expect(onjoinSpy).toHaveBeenCalled();
+    }, 120000);
+
+    it('Should recive the transacrions by verifier and send transactions', async () => {
+        if (!proverAgent || !verifierAgent) return;
+        const ontransactionsSpy = jest.spyOn(verifierAgent, 'on_transactions');
+        await spyCalled(ontransactionsSpy, 120000);
+        await expect(ontransactionsSpy).toHaveBeenCalled();
+    }, 120000);
+
+    it('Should recive transactions by prover and send signitures', async () => {
+        if (!proverAgent || !verifierAgent) return;
+        const ontransactionsSpy = jest.spyOn(proverAgent, 'on_transactions');
+        await spyCalled(ontransactionsSpy, 120000);
+        await expect(ontransactionsSpy).toHaveBeenCalled();
+    }, 120000);
+
+    it('Should recive the signitures by verifier and send signitures', async () => {
+        if (!proverAgent || !verifierAgent) return;
+        const onsigSpy = jest.spyOn(verifierAgent, 'on_signatures');
+        await spyCalled(onsigSpy, 120000);
+        await expect(onsigSpy).toHaveBeenCalled();
+    }, 120000);
+
+    it('Should recive the signitures by prover and send done', async () => {
+        if (!proverAgent || !verifierAgent) return;
+        const onsigSpy = jest.spyOn(proverAgent, 'on_signatures');
+        await spyCalled(onsigSpy, 120000);
+        await expect(onsigSpy).toHaveBeenCalled();
+    }, 120000);
+
+    it('Should recive the done message by verifier and send done message', async () => {
+        if (!proverAgent || !verifierAgent) return;
+        const ondoneSpy = jest.spyOn(verifierAgent, 'on_done');
+        await spyCalled(ondoneSpy, 60000);
+        await expect(ondoneSpy).toHaveBeenCalled();
+    }, 60000);
+
+    it('Should recive the done message by prover', async () => {
+        if (!proverAgent || !verifierAgent) return;
+        const ondoneSpy = jest.spyOn(proverAgent, 'on_done',);
+        await spyCalled(ondoneSpy, 60000);
+    }, 60000);
+
+    it('Should look for a new block in the provers node listener', async () => {
+        const newBlockSpy = jest.spyOn(proverBitcoinListener, 'checkForNewBlock');
+        await proverBitcoinListener.setMonitorSchedule();
+        await spyCalled(newBlockSpy, 30000);
+        await expect(newBlockSpy).toHaveBeenCalled();
+    }, 30000);
+
+    it('Should look for a new block in the verifiers node listener', async () => {
+        const newBlockSpy = jest.spyOn(verifierBitcoinListener, 'checkForNewBlock');
+        await verifierBitcoinListener.setMonitorSchedule();
+        await spyCalled(newBlockSpy, 30000);
+        await expect(newBlockSpy).toHaveBeenCalled();
+    }, 30000);
+
+    afterAll(async () => {
+        if (proverAgent?.bot?.stop) {
+            await proverAgent.bot.stop();
+        }
+        proverAgent = undefined;
+
+        if (verifierAgent?.bot?.stop) {
+            await verifierAgent.bot.stop();
+        }
+        verifierAgent = undefined;
+    });
+
+});
+
+
+
+//update db with final transactions
+
+//execute first transaction
+
+//execute second transaction
+
+//execute third transaction
+
+
+
+
+
+

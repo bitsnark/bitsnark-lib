@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-source ./scripts/docker-utils.sh
+. ./scripts/docker-utils.sh
 
 CONTAINER_NAME="bitcoin-node"
 
