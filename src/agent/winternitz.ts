@@ -1,7 +1,7 @@
-import { createHash } from "node:crypto";
-import { agentConf } from "./agent.conf";
-import assert from "node:assert";
-import { Bitcoin } from "../generator/step3/bitcoin";
+import { createHash } from 'node:crypto';
+import { agentConf } from './agent.conf';
+import assert from 'node:assert';
+import { Bitcoin } from '../generator/step3/bitcoin';
 
 export const winternitzHashSizeInBytes = 20;
 
@@ -27,7 +27,6 @@ export const WOTS_BITS: any = {
 };
 
 function hash(input: Buffer, times: number = 1): Buffer {
-
     let t = input;
     for (let i = 0; i < times; i++) {
         const h1 = createHash('sha256').update(t).digest();
@@ -41,14 +40,11 @@ function unhash(prehash: Buffer, publicKey: Buffer): number {
         prehash = hash(prehash);
         if (prehash.equals(publicKey)) return i;
     }
-    throw new Error("Invalid prehash or key");
+    throw new Error('Invalid prehash or key');
 }
 
 function getWinternitzPrivateKey(unique: string): Buffer {
-    return createHash('ripemd160')
-        .update(agentConf.winternitzSecret, 'ascii')
-        .update(unique)
-        .digest();
+    return createHash('ripemd160').update(agentConf.winternitzSecret, 'ascii').update(unique).digest();
 }
 
 function getWinternitzPublicKey(unique: string, bitsPerNibble: number): Buffer {
@@ -256,8 +252,7 @@ export function bigintToBufferBE(n: bigint, bits: number): Buffer {
 }
 
 function test_1() {
-
-    const keys = getWinternitzPublicKeys(WotsType._1, '')
+    const keys = getWinternitzPublicKeys(WotsType._1, '');
     const test1 = 1n;
     const encoded = encodeWinternitz1(test1, '');
     const decoded = decodeWinternitz1(encoded, keys);
@@ -267,13 +262,16 @@ function test_1() {
         const bitcoin = new Bitcoin();
         bitcoin.throwOnFail = true;
 
-        const witness = encoded.map(b => bitcoin.newStackItem(b));
+        const witness = encoded.map((b) => bitcoin.newStackItem(b));
 
         bitcoin.winternitzCheck1(witness, keys);
         if (!bitcoin.success) throw new Error('Bitcoin script failed');
 
         console.log('winternitz 1 check');
-        console.log('data: ', encoded.reduce<number>((p, c) => p + c.length, 0));
+        console.log(
+            'data: ',
+            encoded.reduce<number>((p, c) => p + c.length, 0)
+        );
         console.log('script: ', bitcoin.programSizeInBitcoinBytes());
     }
 
@@ -281,7 +279,7 @@ function test_1() {
         const bitcoin = new Bitcoin();
         bitcoin.throwOnFail = true;
 
-        const witness = encoded.map(b => bitcoin.newStackItem(b));
+        const witness = encoded.map((b) => bitcoin.newStackItem(b));
         const target = bitcoin.newStackItem(0);
 
         bitcoin.winternitzDecode1(target, witness, keys);
@@ -290,7 +288,10 @@ function test_1() {
         const btcDecoded = target.value;
 
         console.log('winternitz 1 decode');
-        console.log('data: ', encoded.reduce<number>((p, c) => p + c.length, 0));
+        console.log(
+            'data: ',
+            encoded.reduce<number>((p, c) => p + c.length, 0)
+        );
         console.log('script: ', bitcoin.programSizeInBitcoinBytes());
 
         assert(test1 == BigInt(btcDecoded as number));
@@ -298,8 +299,7 @@ function test_1() {
 }
 
 function test_24() {
-
-    const keys = getWinternitzPublicKeys(WotsType._24, '')
+    const keys = getWinternitzPublicKeys(WotsType._24, '');
     const test1 = 234987n;
     const encoded = encodeWinternitz24(test1, '');
     const decoded = decodeWinternitz24(encoded, keys);
@@ -309,13 +309,16 @@ function test_24() {
         const bitcoin = new Bitcoin();
         bitcoin.throwOnFail = true;
 
-        const witness = encoded.map(b => bitcoin.newStackItem(b));
+        const witness = encoded.map((b) => bitcoin.newStackItem(b));
 
         bitcoin.winternitzCheck24(witness, keys);
         if (!bitcoin.success) throw new Error('Bitcoin script failed');
 
         console.log('winternitz 24 check');
-        console.log('data: ', encoded.reduce<number>((p, c) => p + c.length, 0));
+        console.log(
+            'data: ',
+            encoded.reduce<number>((p, c) => p + c.length, 0)
+        );
         console.log('script: ', bitcoin.programSizeInBitcoinBytes());
     }
 
@@ -323,16 +326,19 @@ function test_24() {
         const bitcoin = new Bitcoin();
         bitcoin.throwOnFail = true;
 
-        const witness = encoded.map(b => bitcoin.newStackItem(b));
-        const target = witness.map(_ => bitcoin.newStackItem(0));
+        const witness = encoded.map((b) => bitcoin.newStackItem(b));
+        const target = witness.map((_) => bitcoin.newStackItem(0));
 
         bitcoin.winternitzDecode24(target, witness, keys);
         if (!bitcoin.success) throw new Error('Bitcoin script failed');
 
-        const btcDecoded = fromNibbles(target.map(si => Number(si.value)));
+        const btcDecoded = fromNibbles(target.map((si) => Number(si.value)));
 
         console.log('winternitz 24 decode');
-        console.log('data: ', encoded.reduce<number>((p, c) => p + c.length, 0));
+        console.log(
+            'data: ',
+            encoded.reduce<number>((p, c) => p + c.length, 0)
+        );
         console.log('script: ', bitcoin.programSizeInBitcoinBytes());
 
         assert(test1 == btcDecoded);
@@ -340,8 +346,7 @@ function test_24() {
 }
 
 function test_256() {
-
-    const keys = getWinternitzPublicKeys(WotsType._256, '')
+    const keys = getWinternitzPublicKeys(WotsType._256, '');
     const test1 = 13298712394871234987n;
     const encoded = encodeWinternitz256(test1, '');
     const decoded = decodeWinternitz256(encoded, keys);
@@ -351,13 +356,16 @@ function test_256() {
         const bitcoin = new Bitcoin();
         bitcoin.throwOnFail = true;
 
-        const witness = encoded.map(b => bitcoin.newStackItem(b));
+        const witness = encoded.map((b) => bitcoin.newStackItem(b));
 
         bitcoin.winternitzCheck256(witness, keys);
         if (!bitcoin.success) throw new Error('Bitcoin script failed');
 
         console.log('winternitz 256 check');
-        console.log('data: ', encoded.reduce<number>((p, c) => p + c.length, 0));
+        console.log(
+            'data: ',
+            encoded.reduce<number>((p, c) => p + c.length, 0)
+        );
         console.log('script: ', bitcoin.programSizeInBitcoinBytes());
     }
 
@@ -365,26 +373,27 @@ function test_256() {
         const bitcoin = new Bitcoin();
         bitcoin.throwOnFail = true;
 
-        const witness = encoded.map(b => bitcoin.newStackItem(b));
-        const target = witness.map(_ => bitcoin.newStackItem(0));
+        const witness = encoded.map((b) => bitcoin.newStackItem(b));
+        const target = witness.map((_) => bitcoin.newStackItem(0));
 
         bitcoin.winternitzDecode256(target, witness, keys);
         if (!bitcoin.success) throw new Error('Bitcoin script failed');
 
-        const btcDecoded = fromNibbles(target.map(si => Number(si.value)));
+        const btcDecoded = fromNibbles(target.map((si) => Number(si.value)));
 
         console.log('winternitz 256 decode');
-        console.log('data: ', encoded.reduce<number>((p, c) => p + c.length, 0));
+        console.log(
+            'data: ',
+            encoded.reduce<number>((p, c) => p + c.length, 0)
+        );
         console.log('script: ', bitcoin.programSizeInBitcoinBytes());
 
         assert(test1 == btcDecoded);
     }
-
 }
 
 function test_256_4() {
-
-    const keys = getWinternitzPublicKeys(WotsType._256_4, '')
+    const keys = getWinternitzPublicKeys(WotsType._256_4, '');
     const test1 = 13298712394871234987n;
     const encoded = encodeWinternitz256_4(test1, '');
     const decoded = decodeWinternitz256_4(encoded, keys);
@@ -394,13 +403,16 @@ function test_256_4() {
         const bitcoin = new Bitcoin();
         bitcoin.throwOnFail = true;
 
-        const witness = encoded.map(b => bitcoin.newStackItem(b));
+        const witness = encoded.map((b) => bitcoin.newStackItem(b));
 
         bitcoin.winternitzCheck256_4(witness, keys);
         if (!bitcoin.success) throw new Error('Bitcoin script failed');
 
         console.log('winternitz 256_4 check');
-        console.log('data: ', encoded.reduce<number>((p, c) => p + c.length, 0));
+        console.log(
+            'data: ',
+            encoded.reduce<number>((p, c) => p + c.length, 0)
+        );
         console.log('script: ', bitcoin.programSizeInBitcoinBytes());
     }
 
@@ -408,21 +420,23 @@ function test_256_4() {
         const bitcoin = new Bitcoin();
         bitcoin.throwOnFail = true;
 
-        const witness = encoded.map(b => bitcoin.newStackItem(b));
-        const target = witness.map(_ => bitcoin.newStackItem(0));
+        const witness = encoded.map((b) => bitcoin.newStackItem(b));
+        const target = witness.map((_) => bitcoin.newStackItem(0));
 
         bitcoin.winternitzDecode256_4(target, witness, keys);
         if (!bitcoin.success) throw new Error('Bitcoin script failed');
 
-        const btcDecoded = fromNibbles_4(target.map(si => Number(si.value)));
+        const btcDecoded = fromNibbles_4(target.map((si) => Number(si.value)));
 
         console.log('winternitz 256_4 decode');
-        console.log('data: ', encoded.reduce<number>((p, c) => p + c.length, 0));
+        console.log(
+            'data: ',
+            encoded.reduce<number>((p, c) => p + c.length, 0)
+        );
         console.log('script: ', bitcoin.programSizeInBitcoinBytes());
 
         assert(test1 == btcDecoded);
     }
-
 }
 
 const scriptName = __filename;
@@ -432,5 +446,3 @@ if (process.argv[1] == scriptName) {
     test_256();
     test_256_4();
 }
-
-

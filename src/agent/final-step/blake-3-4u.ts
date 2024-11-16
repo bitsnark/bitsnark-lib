@@ -1,8 +1,8 @@
-import assert from "assert";
-import { Bitcoin } from "../../generator/step3/bitcoin";
-import { StackItem } from "../../generator/step3/stack";
+import assert from 'assert';
+import { Bitcoin } from '../../generator/step3/bitcoin';
+import { StackItem } from '../../generator/step3/stack';
 import { blake3 as blake3_wasm } from 'hash-wasm';
-import { array } from "../common";
+import { array } from '../common';
 
 const OUT_LEN = 32;
 const BLOCK_LEN = 64;
@@ -13,7 +13,6 @@ const MSG_PERMUTATION = [2, 6, 3, 10, 7, 0, 4, 13, 1, 11, 12, 5, 9, 14, 15, 8];
 export type Register = StackItem[];
 
 export class BLAKE3 {
-
     bitcoin: Bitcoin;
 
     andTable: StackItem[] = [];
@@ -53,34 +52,32 @@ export class BLAKE3 {
     }
 
     public newRegister(n: number): Register {
-        return new Array(8).fill(0)
-            .map((_, i) => this.bitcoin.newStackItem((n >> (i * 4)) & 15));
+        return new Array(8).fill(0).map((_, i) => this.bitcoin.newStackItem((n >> (i * 4)) & 15));
     }
 
     public registerToBigint(r: Register): bigint {
         let n = 0n;
-        for (let i = 0; i < r.length; i++)
-            n += BigInt(r[i].value as number) << BigInt(i * 4);
+        for (let i = 0; i < r.length; i++) n += BigInt(r[i].value as number) << BigInt(i * 4);
         return n;
     }
 
     round(state: Register[], m: Register[]) {
         // Mix the columns.
-        this.g(state, 0, 4, 8, 12, m[0], m[1])
-        this.g(state, 1, 5, 9, 13, m[2], m[3])
-        this.g(state, 2, 6, 10, 14, m[4], m[5])
-        this.g(state, 3, 7, 11, 15, m[6], m[7])
+        this.g(state, 0, 4, 8, 12, m[0], m[1]);
+        this.g(state, 1, 5, 9, 13, m[2], m[3]);
+        this.g(state, 2, 6, 10, 14, m[4], m[5]);
+        this.g(state, 3, 7, 11, 15, m[6], m[7]);
         // Mix the diagonals.
-        this.g(state, 0, 5, 10, 15, m[8], m[9])
-        this.g(state, 1, 6, 11, 12, m[10], m[11])
-        this.g(state, 2, 7, 8, 13, m[12], m[13])
-        this.g(state, 3, 4, 9, 14, m[14], m[15])
+        this.g(state, 0, 5, 10, 15, m[8], m[9]);
+        this.g(state, 1, 6, 11, 12, m[10], m[11]);
+        this.g(state, 2, 7, 8, 13, m[12], m[13]);
+        this.g(state, 3, 4, 9, 14, m[14], m[15]);
     }
 
     permute(m: Register[]) {
         const original = [...m];
         for (let i = 0; i < 16; i++) {
-            m[i] = original[MSG_PERMUTATION[i]]
+            m[i] = original[MSG_PERMUTATION[i]];
         }
     }
 
@@ -115,7 +112,6 @@ export class BLAKE3 {
     }
 
     private rotl1(target: Register) {
-
         const stack = this.bitcoin.stack.items;
 
         let s = this.registerToBigint(target).toString(2);
@@ -163,7 +159,6 @@ export class BLAKE3 {
     }
 
     private rotr(target: Register, n: number) {
-
         let s = this.registerToBigint(target).toString(2);
         while (s.length < 32) s = '0' + s;
         const t = s.slice(s.length - n) + s.slice(0, s.length - n);
@@ -171,14 +166,12 @@ export class BLAKE3 {
 
         if (n == 7) {
             const orig = [...target];
-            for (let i = 0; i < target.length; i++)
-                target[i] = orig[(i + 2) % target.length];
+            for (let i = 0; i < target.length; i++) target[i] = orig[(i + 2) % target.length];
             this.rotl1(target);
         } else if (n % 4 == 0) {
             const orig = [...target];
             const nibs = n / 4;
-            for (let i = 0; i < target.length; i++)
-                target[i] = orig[(i + nibs) % target.length];
+            for (let i = 0; i < target.length; i++) target[i] = orig[(i + nibs) % target.length];
         } else {
             throw new Error('Invalid rotl');
         }
@@ -188,7 +181,6 @@ export class BLAKE3 {
     }
 
     add(target: Register, x: Register, y: Register) {
-
         const tx = this.registerToBigint(x);
         const ty = this.registerToBigint(y);
 
@@ -213,7 +205,7 @@ export class BLAKE3 {
         }
 
         const tt = this.registerToBigint(target);
-        assert((tx + ty) % (2n ** 32n) == tt);
+        assert((tx + ty) % 2n ** 32n == tt);
     }
 
     mov(target: Register, x: Register) {
@@ -221,8 +213,7 @@ export class BLAKE3 {
     }
 
     private mov_hc(target: Register, x: number) {
-        const xa = new Array(8).fill(0)
-            .map((_, i) => (x >> (i * 4)) & 15);
+        const xa = new Array(8).fill(0).map((_, i) => (x >> (i * 4)) & 15);
         target.forEach((t, i) => {
             this.bitcoin.DATA(xa[i]);
             this.bitcoin.replaceWithTop(t);
@@ -230,7 +221,7 @@ export class BLAKE3 {
     }
 
     zero(target: Register) {
-        target.forEach(si => this.bitcoin.setBit_0(si));
+        target.forEach((si) => this.bitcoin.setBit_0(si));
     }
 
     // The mixing function, G, which mixes either a column or a diagonal.
@@ -243,7 +234,7 @@ export class BLAKE3 {
         this.add(state[c], state[c], state[d]);
         this.xor(state[b], state[b], state[c]);
         this.rotr(state[b], 12);
-        this.add(t, state[b], my)
+        this.add(t, state[b], my);
         this.add(state[a], state[a], t);
         this.xor(state[d], state[d], state[a]);
         this.rotr(state[d], 8);
@@ -253,58 +244,47 @@ export class BLAKE3 {
         this.bitcoin.drop(t);
     }
 
-    compress(
-        blockWords: Register[],
-        blockLen: number,
-        flags: number): Register[] {
-
+    compress(blockWords: Register[], blockLen: number, flags: number): Register[] {
         const state = [
-            0x6A09E667,
-            0xBB67AE85,
-            0x3C6EF372,
-            0xA54FF53A,
-            0x510E527F,
-            0x9B05688C,
-            0x1F83D9AB,
-            0x5BE0CD19,
-            0x6A09E667,
-            0xBB67AE85,
-            0x3C6EF372,
-            0xA54FF53A,
+            0x6a09e667,
+            0xbb67ae85,
+            0x3c6ef372,
+            0xa54ff53a,
+            0x510e527f,
+            0x9b05688c,
+            0x1f83d9ab,
+            0x5be0cd19,
+            0x6a09e667,
+            0xbb67ae85,
+            0x3c6ef372,
+            0xa54ff53a,
             0,
             0,
             blockLen,
             flags
-        ].map(n => this.newRegister(n));
+        ].map((n) => this.newRegister(n));
 
         assert(blockWords.length == 16);
         // block = list(block_words) ????
         const block = [...blockWords];
 
-        this.round(state, block)  // round 1
-        this.permute(block)
-        this.round(state, block)  // round 2
-        this.permute(block)
-        this.round(state, block)  // round 3
-        this.permute(block)
-        this.round(state, block)  // round 4
-        this.permute(block)
-        this.round(state, block)  // round 5
-        this.permute(block)
-        this.round(state, block)  // round 6
-        this.permute(block)
-        this.round(state, block)  // round 7
+        this.round(state, block); // round 1
+        this.permute(block);
+        this.round(state, block); // round 2
+        this.permute(block);
+        this.round(state, block); // round 3
+        this.permute(block);
+        this.round(state, block); // round 4
+        this.permute(block);
+        this.round(state, block); // round 5
+        this.permute(block);
+        this.round(state, block); // round 6
+        this.permute(block);
+        this.round(state, block); // round 7
 
         const initialChainingValues = [
-            0x6A09E667,
-            0xBB67AE85,
-            0x3C6EF372,
-            0xA54FF53A,
-            0x510E527F,
-            0x9B05688C,
-            0x1F83D9AB,
-            0x5BE0CD19,
-        ].map(n => this.newRegister(n));
+            0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19
+        ].map((n) => this.newRegister(n));
 
         for (let i = 0; i < 8; i++) {
             this.xor(state[i], state[i], state[i + 8]);
@@ -315,22 +295,19 @@ export class BLAKE3 {
     }
 
     public static registerToBigint(r: Register): number {
-        return r.reduce((p, c, i) => p += (Number(c.value) << (i * 4)), 0);
+        return r.reduce((p, c, i) => (p += Number(c.value) << (i * 4)), 0);
     }
 
     hash(blockWords: Register[]): Register[] {
         const blockLen = blockWords.length * 4;
         while (blockWords.length < BLOCK_LEN / 4) blockWords.push(this.newRegister(0));
-        const result = this.compress(
-            blockWords,
-            blockLen,
-            3 | ROOT);
+        const result = this.compress(blockWords, blockLen, 3 | ROOT);
         return result.slice(0, OUT_LEN / 4);
     }
 
     nibblesToRegisters(si: StackItem[]): Register[] {
         const regs: Register[] = array(Math.ceil(si.length / 8), () => []);
-        si.forEach((tsi, i) => regs[Math.floor(i / 8)][i % 8] = tsi)
+        si.forEach((tsi, i) => (regs[Math.floor(i / 8)][i % 8] = tsi));
         return regs;
     }
 
@@ -348,14 +325,12 @@ function registersToHex(h2Regs: Register[]): string {
     let h2 = '';
     for (const r of h2Regs) {
         const n = BLAKE3.registerToBigint(r);
-        for (let i = 0; i < 4; i++)
-            h2 += ((n >> (i * 8)) & 255).toString(16).padStart(2, '0');
+        for (let i = 0; i < 4; i++) h2 += ((n >> (i * 8)) & 255).toString(16).padStart(2, '0');
     }
     return h2;
 }
 
 async function test1() {
-
     console.log('Testing hash for 256 bit value');
 
     const test1Hex = 'ef6d3a2e4cbe60ba5dd3b13a143adddfebd4c522d3c5618cadd9c7e72e51712a';
@@ -368,9 +343,10 @@ async function test1() {
     const blake3 = new BLAKE3(bitcoin);
     blake3.initializeTables();
 
-    const blockWords: Register[] = new Array(8).fill(0)
+    const blockWords: Register[] = new Array(8)
+        .fill(0)
         .map((_, i) => test1Buf.readInt32LE(i * 4))
-        .map(n => blake3.newRegister(n));
+        .map((n) => blake3.newRegister(n));
 
     const h2Regs = blake3.hash(blockWords);
     const h2 = registersToHex(h2Regs);
@@ -381,7 +357,6 @@ async function test1() {
 }
 
 async function test2() {
-
     console.log('Testing hash for 512 bit value');
 
     const test1Hex = 'ef6d3a2e4cbe60ba5dd3b13a143adddfebd4c522d3c5618cadd9c7e72e51712a';
@@ -395,9 +370,10 @@ async function test2() {
     const blake3 = new BLAKE3(bitcoin);
     blake3.initializeTables();
 
-    const blockWords: Register[] = new Array(16).fill(0)
+    const blockWords: Register[] = new Array(16)
+        .fill(0)
         .map((_, i) => test1Buf.readInt32LE(i * 4))
-        .map(n => blake3.newRegister(n));
+        .map((n) => blake3.newRegister(n));
 
     const h2Regs = blake3.hash(blockWords);
     const h2 = registersToHex(h2Regs);
@@ -409,7 +385,6 @@ async function test2() {
 }
 
 async function test4() {
-
     console.log('Testing hash of 512 bit values with nibble conversion');
 
     const test1Hex = 'ef6d3a2e4cbe60ba5dd3b13a143adddfebd4c522d3c5618cadd9c7e72e51712a';

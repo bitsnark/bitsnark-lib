@@ -91,7 +91,8 @@ function generateBoilerplate(transations: Transaction[], myRole: AgentRoles, inp
 
         const decoders = {
             [WotsType._256]: (dataIndex: number) => bitcoin.winternitzCheck256(witnessSIs[dataIndex], keys[dataIndex]),
-            [WotsType._256_4]: (dataIndex: number) => bitcoin.winternitzCheck256_4(witnessSIs[dataIndex], keys[dataIndex]),
+            [WotsType._256_4]: (dataIndex: number) =>
+                bitcoin.winternitzCheck256_4(witnessSIs[dataIndex], keys[dataIndex]),
             [WotsType._24]: (dataIndex: number) => bitcoin.winternitzCheck24(witnessSIs[dataIndex], keys[dataIndex]),
             [WotsType._1]: (dataIndex: number) => bitcoin.winternitzCheck1(witnessSIs[dataIndex], keys[dataIndex])
         };
