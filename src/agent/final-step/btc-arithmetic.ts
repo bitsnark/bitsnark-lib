@@ -1,9 +1,8 @@
 import { Bitcoin } from '../../generator/step3/bitcoin';
-import { StackItem } from "../../generator/step3/stack";
-import { nibblesToBigintLS, teaPot } from "./common";
+import { StackItem } from '../../generator/step3/stack';
+import { nibblesToBigintLS, teaPot } from './common';
 
 export class BtcArithmetic {
-
     bitcoin: Bitcoin;
     table: StackItem[] = [];
     tableRow: StackItem[] = [];
@@ -23,13 +22,11 @@ export class BtcArithmetic {
         }
     }
     public initializeMulTables() {
-
         for (let i = 0; i < 8; i++) {
             this.tableRow[i] = this.bitcoin.hardcode(i * 8);
         }
         for (let i = 0; i < 8; i++) {
-            for (let j = 0; j < 8; j++)
-                this.table[i * 8 + j] = this.bitcoin.hardcode(i * j);
+            for (let j = 0; j < 8; j++) this.table[i * 8 + j] = this.bitcoin.hardcode(i * j);
         }
     }
 
@@ -70,14 +67,12 @@ export class BtcArithmetic {
     }
 
     public add(a: StackItem[], b: StackItem[]): StackItem[] {
-
         const result = this.bitcoin.newNibblesFast(Math.max(a.length, b.length) + 1);
 
         const stack = this.bitcoin.stack.items;
 
         const l = Math.max(a.length, b.length);
         for (let i = 0; i < l; i++) {
-
             if (i == 0) {
                 this.bitcoin.OP_0_16(0); // 0
             } else {
@@ -101,16 +96,13 @@ export class BtcArithmetic {
         this.bitcoin.OP_FROMALTSTACK();
         this.bitcoin.replaceWithTop(result[l]); //
 
-        if (nibblesToBigintLS(a) + nibblesToBigintLS(b) != nibblesToBigintLS(result))
-            teaPot();
+        if (nibblesToBigintLS(a) + nibblesToBigintLS(b) != nibblesToBigintLS(result)) teaPot();
 
         return result;
     }
 
     public subtractFromA(a: StackItem[], b: StackItem[]) {
-
-        if (a.length < b.length)
-            teaPot();
+        if (a.length < b.length) teaPot();
 
         const savedA = nibblesToBigintLS(a);
         const savedB = nibblesToBigintLS(b);
@@ -138,7 +130,7 @@ export class BtcArithmetic {
             const flag = stack[stack.length - 1].value;
 
             this.bitcoin.OP_IF(); // a[i]-borrow-b[i]
-            this.bitcoin.OP_0_16(8); // a[i]-borrow-b[i] 8 
+            this.bitcoin.OP_0_16(8); // a[i]-borrow-b[i] 8
             this.bitcoin.OP_ADD(); // a[i]-borrow-b[i]+8
             this.bitcoin.OP_0_16(1); // a[i]-borrow-b[i]+8 1
             this.bitcoin.OP_ELSE(); // a[i]-borrow-b[i]
@@ -154,14 +146,11 @@ export class BtcArithmetic {
             this.bitcoin.replaceWithTop(a[i]); //
         }
 
-        if (savedA - savedB != nibblesToBigintLS(a))
-            teaPot();
+        if (savedA - savedB != nibblesToBigintLS(a)) teaPot();
     }
 
     public naiiveMult(a: StackItem[], b: StackItem[]): StackItem[] {
-
-        if (a.length != b.length)
-            teaPot();
+        if (a.length != b.length) teaPot();
 
         const result = this.bitcoin.newNibblesFast(a.length + b.length);
 
@@ -170,7 +159,7 @@ export class BtcArithmetic {
             this.bitcoin.OP_TOALTSTACK();
 
             for (let j = 0; j < b.length; j++) {
-                this.nibbleMult(a[i], b[j])
+                this.nibbleMult(a[i], b[j]);
                 this.bitcoin.OP_FROMALTSTACK();
                 this.bitcoin.OP_ADD();
                 this.bitcoin.pick(result[i + j]);
@@ -185,16 +174,13 @@ export class BtcArithmetic {
             this.bitcoin.replaceWithTop(result[i + b.length]);
         }
 
-        if (nibblesToBigintLS(a) * nibblesToBigintLS(b) != nibblesToBigintLS(result))
-            teaPot();
+        if (nibblesToBigintLS(a) * nibblesToBigintLS(b) != nibblesToBigintLS(result)) teaPot();
 
         return result;
     }
 
     public karatsubaMult(a: StackItem[], b: StackItem[], maxDepth: number): StackItem[] {
-
-        if (a.length != b.length)
-            teaPot();
+        if (a.length != b.length) teaPot();
 
         if (maxDepth == 0) return this.naiiveMult(a, b);
 
@@ -258,8 +244,7 @@ export class BtcArithmetic {
         }
 
         const c = nibblesToBigintLS(result);
-        if (origA * origB != c)
-            teaPot();
+        if (origA * origB != c) teaPot();
 
         return result;
     }

@@ -1,14 +1,18 @@
-import { agentConf } from "./agent.conf";
-import { addAmounts, validateTransactionFees } from "./amounts";
-import { AgentRoles } from "./common";
-import { dev_ClearTemplates, SetupStatus, writeSetupStatus, writeTemplates } from "./db";
-import { generateAllScripts } from "./generate-scripts";
-import { signTransactions } from "./sign-transactions";
-import { initializeTransactions, mergeWots, Transaction } from "./transactions-new";
-import { verifySetup } from "./verify-setup";
+import { agentConf } from './agent.conf';
+import { addAmounts } from './amounts';
+import { AgentRoles } from './common';
+import { dev_ClearTemplates, SetupStatus, writeSetupStatus, writeTemplates } from './db';
+import { generateAllScripts } from './generate-scripts';
+import { signTransactions } from './sign-transactions';
+import { initializeTransactions, mergeWots, getSpendingConditionByInput, SignatureType } from './transactions-new';
+import { verifySetup } from './verify-setup';
 
-export async function emulateSetup(proverAgentId: string, verifierAgentId: string, setupId: string, generateFinal: boolean) {
-
+export async function emulateSetup(
+    proverAgentId: string,
+    verifierAgentId: string,
+    setupId: string,
+    generateFinal: boolean
+) {
     console.log('Deleting template...');
     await dev_ClearTemplates(setupId);
 
@@ -36,50 +40,76 @@ export async function emulateSetup(proverAgentId: string, verifierAgentId: strin
         setupId,
         BigInt('0x' + agentConf.keyPairs[proverAgentId].schnorrPublic),
         BigInt('0x' + agentConf.keyPairs[verifierAgentId].schnorrPublic),
-        mockLockedFunds, mockPayload);
+        mockLockedFunds,
+        mockPayload
+    );
     let verifierTemplates = await initializeTransactions(
         verifierAgentId,
         AgentRoles.VERIFIER,
         setupId,
         BigInt('0x' + agentConf.keyPairs[proverAgentId].schnorrPublic),
         BigInt('0x' + agentConf.keyPairs[verifierAgentId].schnorrPublic),
-        mockLockedFunds, mockPayload);
+        mockLockedFunds,
+        mockPayload
+    );
 
     console.log('merging templates...');
 
-    if (proverTemplates.length != verifierTemplates.length)
-        throw new Error('Invalid length of template list?');
+    if (proverTemplates.length != verifierTemplates.length) throw new Error('Invalid length of template list?');
 
     proverTemplates = mergeWots(AgentRoles.PROVER, proverTemplates, verifierTemplates);
-    await writeTemplates(proverAgentId, setupId, proverTemplates);
-
     verifierTemplates = mergeWots(AgentRoles.VERIFIER, verifierTemplates, proverTemplates);
-    await writeTemplates(verifierAgentId, setupId, verifierTemplates);
-
-    async function generateScripts(agentId: string, role: AgentRoles, transactions: Transaction[]) {
-        await generateAllScripts(agentId, setupId, role, transactions, generateFinal);
-        transactions = await addAmounts(agentId, AgentRoles.VERIFIER, setupId);
-        validateTransactionFees(transactions);
-    }
 
     console.log('generating scripts...');
 
-    await generateScripts(proverAgentId, AgentRoles.PROVER, proverTemplates);
-    await generateScripts(verifierAgentId, AgentRoles.VERIFIER, verifierTemplates);
+    proverTemplates = await generateAllScripts(
+        proverAgentId,
+        setupId,
+        AgentRoles.PROVER,
+        proverTemplates,
+        generateFinal
+    );
+    verifierTemplates = await generateAllScripts(
+        verifierAgentId,
+        setupId,
+        AgentRoles.VERIFIER,
+        verifierTemplates,
+        generateFinal
+    );
 
     console.log('adding amounts...');
 
-    proverTemplates = await addAmounts(proverAgentId, AgentRoles.PROVER, setupId);
-    verifierTemplates = await addAmounts(verifierAgentId, AgentRoles.VERIFIER, setupId);
+    proverTemplates = await addAmounts(proverAgentId, AgentRoles.PROVER, setupId, proverTemplates);
+    verifierTemplates = await addAmounts(verifierAgentId, AgentRoles.VERIFIER, setupId, verifierTemplates);
 
+    console.log('writing templates and setting setup status to READY...');
 
-    console.log('updating setup status to READY status...');
+    await writeTemplates(proverAgentId, setupId, proverTemplates);
+    await writeTemplates(verifierAgentId, setupId, verifierTemplates);
     await writeSetupStatus(setupId, SetupStatus.READY);
 
-    console.log('signing...');
+    console.log('signing - this will create outgoing and overwrite templates...');
+    // FIXME: It shouldn't really overwrite templates.
 
     proverTemplates = await signTransactions(AgentRoles.PROVER, proverAgentId, setupId, proverTemplates);
     verifierTemplates = await signTransactions(AgentRoles.VERIFIER, verifierAgentId, setupId, verifierTemplates);
+
+    console.log('merging signatures...');
+    for (const [templateIdx, proverTemplate] of proverTemplates.entries()) {
+        if (verifierTemplates[templateIdx].transactionName != proverTemplate.transactionName) {
+            throw new Error('Template mismatch');
+        }
+        for (const [inputIdx, proverInput] of proverTemplate.inputs.entries()) {
+            const spendingCondition = getSpendingConditionByInput(proverTemplates, proverInput);
+            if (spendingCondition.signatureType == SignatureType.BOTH) {
+                const verifierInput = verifierTemplates[templateIdx].inputs[inputIdx];
+                proverInput.verifierSignature = verifierInput.verifierSignature;
+                verifierInput.proverSignature = proverInput.proverSignature;
+            }
+        }
+    }
+    await writeTemplates(proverAgentId, setupId, proverTemplates);
+    await writeTemplates(verifierAgentId, setupId, verifierTemplates);
 
     console.log('checking...');
 
@@ -89,8 +119,9 @@ export async function emulateSetup(proverAgentId: string, verifierAgentId: strin
     console.log('done.');
 }
 
-const scriptName = __filename;
-if (process.argv[1] == scriptName) {
-    const generateFinal = process.argv.some(s => s == '--final');
-    emulateSetup('bitsnark_prover_1', 'bitsnark_verifier_1', 'test_setup', generateFinal).catch(console.error);
+if (require.main === module) {
+    const generateFinal = process.argv.some((s) => s == '--final');
+    emulateSetup('bitsnark_prover_1', 'bitsnark_verifier_1', 'test_setup', generateFinal).catch((error) => {
+        throw error;
+    });
 }

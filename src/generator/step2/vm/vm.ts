@@ -1,10 +1,9 @@
-import { prime_bigint } from "../../common/prime";
-import { Register } from "../../common/register";
-import { SavedVm } from "../../common/saved-vm";
-import { Instruction, InstrCode, _256 } from "./types";
+import { prime_bigint } from '../../common/prime';
+import { Register } from '../../common/register';
+import { SavedVm } from '../../common/saved-vm';
+import { Instruction, InstrCode, _256 } from './types';
 
 export class VM {
-
     hardcoded: bigint[] = [];
     witness: bigint[] = [];
     instructions: Instruction[] = [];
@@ -30,7 +29,7 @@ export class VM {
     }
 
     reset() {
-        this.registers = this.registers.filter(r => r.hardcoded);
+        this.registers = this.registers.filter((r) => r.hardcoded);
         this.instrCounter = 0;
         this.success = undefined;
         this.instructions = [];
@@ -39,9 +38,9 @@ export class VM {
 
     _256ToN(ra: _256): bigint {
         const pad = (s: string) => {
-            while(s.length < 8) s = '0' + s;
+            while (s.length < 8) s = '0' + s;
             return s;
-        }
+        };
         let s = '';
         for (let i = 0; i < 8; i++) {
             s = pad(ra[i].value.toString(16)) + s;
@@ -50,17 +49,15 @@ export class VM {
     }
 
     startProgram() {
-        if (this.success) 
-            throw new Error('Already started');
+        if (this.success) throw new Error('Already started');
         this.success = this.newRegister();
         this.mov(this.success, this.one);
     }
-    
+
     /// *** BASIC OPERATIONS ***
 
     private pushInstruction(name: InstrCode, target: Register, param1?: Register, param2?: Register, bit?: number) {
-        if (!this.success) 
-            throw new Error('Program not in running state');
+        if (!this.success) throw new Error('Program not in running state');
         this.instructions.push({ name, target: target.index, param1: param1?.index, param2: param2?.index, bit });
         this.instrCounter++;
         if (this.instrCounter % 1000000 == 0) {
@@ -82,18 +79,18 @@ export class VM {
     /// *** BASIC INSTRUCTIONS *** ///
 
     public newRegister(makeZero?: boolean): Register {
-        let r = this.pool.pop()
+        let r = this.pool.pop();
         if (!r) {
             r = { value: 0n, index: this.registers.length, hardcoded: false, witness: false };
             r.index = this.registers.length;
-            this.registers[r.index] = r;    
+            this.registers[r.index] = r;
         }
         if (makeZero) this.mov(r, this.zero);
         return r;
     }
 
     public freeRegister(r: Register | Register[]) {
-        if (Array.isArray(r)) r.forEach(tr => this.freeRegister(tr));
+        if (Array.isArray(r)) r.forEach((tr) => this.freeRegister(tr));
         else this.pool.push(r);
     }
 
@@ -104,11 +101,10 @@ export class VM {
     }
 
     public freeTemp256(ra: _256) {
-        ra.forEach(r => this.freeRegister(r));
+        ra.forEach((r) => this.freeRegister(r));
     }
 
     public hardcode(value: bigint): Register {
-
         let t = this.hardcodedCache[value.toString(16)];
         if (t) return t;
 
@@ -124,10 +120,9 @@ export class VM {
     }
 
     public addWitness(value: bigint): Register {
-
         if (this.instructions.length > 0) throw new Error('Witness second please');
         if (value < 0 || value >= 2n ** 32n) throw new Error('Invalid value');
-        
+
         this.witness.push(value);
         const t = this.newRegister();
         t.witness = true;
@@ -184,13 +179,13 @@ export class VM {
     }
 
     rotr(target: Register, a: Register, n: Register) {
-        this.pushInstruction(InstrCode.ROTR, target, a, n)
-        this.setRegister(target, a.value >> n.value | a.value << (32n - n.value))
+        this.pushInstruction(InstrCode.ROTR, target, a, n);
+        this.setRegister(target, (a.value >> n.value) | (a.value << (32n - n.value)));
     }
 
     shr(target: Register, a: Register, n: Register) {
-        this.pushInstruction(InstrCode.SHR, target, a, n)
-        this.setRegister(target, a.value >> n.value)
+        this.pushInstruction(InstrCode.SHR, target, a, n);
+        this.setRegister(target, a.value >> n.value);
     }
 
     or(target: Register, a: Register, b: Register) {
@@ -221,12 +216,12 @@ export class VM {
     //**** complex instructions ******/
 
     initHardcoded(hardcoded: bigint[]): Register[] {
-        return hardcoded.map(n => this.hardcode(n));
+        return hardcoded.map((n) => this.hardcode(n));
     }
 
     assertEq(a: Register, b: Register) {
         const temp = this.newRegister();
-        this.equal(temp, a, b)
+        this.equal(temp, a, b);
         this.assertOne(temp);
         this.freeRegister(temp);
     }
@@ -369,7 +364,7 @@ export class VM {
     }
 
     private checkUpperZero(a: _256) {
-        for (let i = 1; i<8; i++) {
+        for (let i = 1; i < 8; i++) {
             this.assertEq(a[i], this.zero);
         }
     }
@@ -423,18 +418,18 @@ export class VM {
 
     public save(): SavedVm<InstrCode> {
         return {
-            hardcoded: this.hardcoded.map(r => r.toString(16)),
-            witness: this.witness.map(r => r.toString(16)),
+            hardcoded: this.hardcoded.map((r) => r.toString(16)),
+            witness: this.witness.map((r) => r.toString(16)),
             registers: this.registers.length,
             programLength: this.instructions.length,
             successIndex: this.success?.index ?? 0,
-            program: this.instructions.map(instr => ({
+            program: this.instructions.map((instr) => ({
                 name: instr.name,
                 target: instr.target,
                 param1: instr.param1,
                 param2: instr.param2,
                 data: instr.bit
-            })),
+            }))
         };
     }
 

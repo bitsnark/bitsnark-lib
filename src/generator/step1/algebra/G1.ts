@@ -1,12 +1,10 @@
-import { EC, ECPoint } from "./ec";
-import { Fp } from "./fp";
+import { EC, ECPoint } from './ec';
+import { Fp } from './fp';
 
-export class G1Point extends ECPoint<Fp> {
-}
+export class G1Point extends ECPoint<Fp> {}
 
 // group over elliptic curve over finite field
 export class G1 extends EC<Fp> {
-
     generator: G1Point;
 
     constructor() {

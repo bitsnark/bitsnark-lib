@@ -4,7 +4,7 @@ import Client from 'bitcoin-core';
 
 jest.mock('../../src/agent/db', () => ({
     readExpectedIncoming: jest.fn(),
-    writeIncomingTransaction: jest.fn(),
+    writeIncomingTransaction: jest.fn()
 }));
 
 jest.mock('bitcoin-core', () => {
@@ -12,13 +12,13 @@ jest.mock('bitcoin-core', () => {
         getBestBlockHash: jest.fn(),
         getBlock: jest.fn(),
         getRawTransaction: jest.fn(),
-        getTransaction: jest.fn(),
+        getTransaction: jest.fn()
     }));
 });
 
 jest.mock('../../src/agent/agent.conf', () => ({
     agentConf: {
-        blocksUntilFinalized: 6,
+        blocksUntilFinalized: 6
     }
 }));
 
@@ -40,17 +40,16 @@ describe('NodeListener', () => {
     const setupLastBlockProperties = (nodeListener: NodeListener, hash: string, height: number) => {
         Object.defineProperty(nodeListener, 'lastBlockHash', {
             value: hash,
-            writable: true,
+            writable: true
         });
         Object.defineProperty(nodeListener, 'lastBlockHeight', {
             value: height,
-            writable: true,
+            writable: true
         });
     };
 
     const tx1 = { templateId: 1, txId: 'txId1' };
     const tx2 = { templateId: 2, txId: 'txId2' };
-
 
     function getPendingTransactions() {
         return [tx1, tx2];
@@ -72,7 +71,7 @@ describe('NodeListener', () => {
         expect(monitorTransmittedSpy).toHaveBeenCalled();
     });
 
-    it('<Doesn\'t monitor transmitted if no new block is detected', async () => {
+    it("<Doesn't monitor transmitted if no new block is detected", async () => {
         const monitorTransmittedSpy = jest.spyOn(nodeListener, 'monitorTransmitted').mockResolvedValue(undefined);
         (clientMock.getBestBlockHash as jest.Mock).mockResolvedValue('');
 
@@ -81,7 +80,7 @@ describe('NodeListener', () => {
         expect(monitorTransmittedSpy).not.toHaveBeenCalled();
     });
 
-    it('Won\'t query for raw transaction if no pending transactions were found', async () => {
+    it("Won't query for raw transaction if no pending transactions were found", async () => {
         (readExpectedIncoming as jest.Mock).mockResolvedValue([]);
 
         await nodeListener.monitorTransmitted();
@@ -107,7 +106,7 @@ describe('NodeListener', () => {
         expect(writeIncomingTransaction).toHaveBeenCalledWith(Raw2Block5, Tx2Block5.blockheight, tx2.templateId);
     });
 
-    it('Ignore \'Transaction not found\' error', async () => {
+    it("Ignore 'Transaction not found' error", async () => {
         setupLastBlockProperties(nodeListener, 'hash', 12);
         (readExpectedIncoming as jest.Mock).mockResolvedValue(getPendingTransactions());
         (clientMock.getTransaction as jest.Mock)
@@ -125,7 +124,7 @@ describe('NodeListener', () => {
         expect(writeIncomingTransaction).toHaveBeenCalledWith(Raw2Block5, Tx2Block5.blockheight, tx2.templateId);
     });
 
-    it('on\'t write to DB if new transmitted aren\'t finalized', async () => {
+    it("on't write to DB if new transmitted aren't finalized", async () => {
         setupLastBlockProperties(nodeListener, 'hash', 12);
         (readExpectedIncoming as jest.Mock).mockResolvedValue(getPendingTransactions());
         (clientMock.getTransaction as jest.Mock)
@@ -136,6 +135,5 @@ describe('NodeListener', () => {
 
         expect(clientMock.getRawTransaction).not.toHaveBeenCalled();
         expect(writeIncomingTransaction).not.toHaveBeenCalled();
-
     });
 });

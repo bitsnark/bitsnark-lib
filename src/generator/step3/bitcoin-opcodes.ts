@@ -140,6 +140,6 @@ export const opcodeValues = {
 };
 
 export const opcodeMap: OpcodeType[] = [];
-Object.keys(opcodeValues).forEach(k => {
+Object.keys(opcodeValues).forEach((k) => {
     opcodeMap[(opcodeValues as any)[k]] = k as OpcodeType;
 });

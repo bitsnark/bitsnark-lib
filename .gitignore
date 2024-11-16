@@ -1,6 +1,5 @@
 .DS_Store
 .nfs*
-.prettierrc
 .pytest-cache/
 __pycache__/
 node_modules/

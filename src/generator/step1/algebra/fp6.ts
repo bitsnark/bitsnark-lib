@@ -1,26 +1,28 @@
-import { step1_vm as vm } from "../vm/vm";
-import { Register } from "../../common/register";
-import { Fp2 } from "./fp2";
-import { Fp } from "./fp";
+import { step1_vm as vm } from '../vm/vm';
+import { Register } from '../../common/register';
+import { Fp2 } from './fp2';
+import { Fp } from './fp';
 
 // xiTo2PMinus2Over3 is ξ^((2p-2)/3) where ξ = i+9.
 const xiTo2PMinus2Over3 = Fp2.hardcoded(
     19937756971775647987995932169929341994314640652964949448313374472400716661030n,
-    2581911344467009335267311115468803099551665605076196740867805258568234346338n);
+    2581911344467009335267311115468803099551665605076196740867805258568234346338n
+);
 
 // xiToPMinus1Over3 is ξ^((p-1)/3) where ξ = i+9.
 const xiToPMinus1Over3 = Fp2.hardcoded(
     10307601595873709700152284273816112264069230130616436755625194854815875713954n,
-    21575463638280843010398324269430826099269044274347216827212613867836435027261n);
+    21575463638280843010398324269430826099269044274347216827212613867836435027261n
+);
 
 // xiTo2PSquaredMinus2Over3 is ξ^((2p²-2)/3) where ξ = i+9 (a cubic root of unity, mod p).
 const xiTo2PSquaredMinus2Over3 = Fp.hardcoded(2203960485148121921418603742825762020974279258880205651966n);
 
 // xiToPSquaredMinus1Over3 is ξ^((p²-1)/3) where ξ = i+9.
-const xiToPSquaredMinus1Over3 = Fp.hardcoded(21888242871839275220042445260109153167277707414472061641714758635765020556616n);
+const xiToPSquaredMinus1Over3 =
+    Fp.hardcoded(21888242871839275220042445260109153167277707414472061641714758635765020556616n);
 
 export class Fp6 {
-
     x: Fp2;
     y: Fp2;
     z: Fp2;
@@ -73,7 +75,6 @@ export class Fp6 {
     // Section 4, Karatsuba method.
     // http://eprint.iacr.org/2006/471.pdf
     mul(a: Fp | Fp2 | Fp6): Fp6 {
-
         if (a instanceof Fp || a instanceof Fp2) {
             return new Fp6(this.x.mul(a), this.y.mul(a), this.z.mul(a));
         }
@@ -148,17 +149,11 @@ export class Fp6 {
     }
 
     if(flag: Register, other: Fp6): Fp6 {
-        return new Fp6(
-            this.x.if(flag, other.x),
-            this.y.if(flag, other.y),
-            this.z.if(flag, other.z));
+        return new Fp6(this.x.if(flag, other.x), this.y.if(flag, other.y), this.z.if(flag, other.z));
     }
 
     ifBit(r: Register, bit: number, other: Fp6): Fp6 {
-        return new Fp6(
-            this.x.ifBit(r, bit, other.x),
-            this.y.ifBit(r, bit, other.y),
-            this.z.ifBit(r, bit, other.z));
+        return new Fp6(this.x.ifBit(r, bit, other.x), this.y.ifBit(r, bit, other.y), this.z.ifBit(r, bit, other.z));
     }
 
     neg(): Fp6 {
@@ -197,9 +192,8 @@ export class Fp6 {
         this.y.assertZero();
         this.z.assertOne();
     }
-    
-    toString(): string {
 
+    toString(): string {
         return `[${this.x.toString()}, ${this.y.toString()}, ${this.z.toString()}]`;
     }
 }

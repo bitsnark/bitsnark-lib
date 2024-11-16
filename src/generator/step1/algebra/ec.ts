@@ -1,5 +1,5 @@
-import { Register } from "../../common/register";
-import { step1_vm as vm } from "../vm/vm";
+import { Register } from '../../common/register';
+import { step1_vm as vm } from '../vm/vm';
 
 interface Member<T> {
     zero(): T;
@@ -14,10 +14,9 @@ interface Member<T> {
     inv(): T;
     neg(): T;
     getRegisters(): Register[];
-};
+}
 
 export class ECPoint<T extends Member<T>> {
-
     curve: EC<T>;
     x: T;
     y: T;
@@ -33,7 +32,7 @@ export class ECPoint<T extends Member<T>> {
     }
 
     getRegisters(): Register[] {
-        return [this.x, this.y, this.z, this.t ].map(t => t.getRegisters()).flat();
+        return [this.x, this.y, this.z, this.t].map((t) => t.getRegisters()).flat();
     }
 
     neg(): ECPoint<T> {
@@ -41,7 +40,6 @@ export class ECPoint<T extends Member<T>> {
     }
 
     double(): ECPoint<T> {
-
         // xsqr = x^2
         const xsqr = this.x.mul(this.x);
         // m1 = 3*x^2 + a
@@ -68,15 +66,13 @@ export class ECPoint<T extends Member<T>> {
     }
 
     add(b: ECPoint<T>): ECPoint<T> {
-
-
         // case where this == b
 
         const tempEqual = this.double();
 
         // case where this != a
 
-        const tempNotEqual =  new ECPoint<T>(this.curve);
+        const tempNotEqual = new ECPoint<T>(this.curve);
         vm.ignoreFailure(() => {
             // m1 = y2 - y1
             const m1 = b.y.sub(this.y);
@@ -113,7 +109,7 @@ export class ECPoint<T extends Member<T>> {
         for (let bit = 0; bit < 256; bit++) {
             if (!a.hardcoded) {
                 result = result.add(agg).ifBit(na, bit, result);
-            } else if (na.value & 2n ** BigInt(bit)) {
+            } else if (na.value & (2n ** BigInt(bit))) {
                 result = result.add(agg);
             }
             if (bit < 255) agg = agg.double();
@@ -134,31 +130,31 @@ export class ECPoint<T extends Member<T>> {
     }
 
     line(p2: ECPoint<T>, t: ECPoint<T>): T {
-
         const sameX = this.x.eq(p2.x);
         const diffX = vm.newRegister();
         vm.not(diffX, sameX);
         const sameY = this.y.eq(p2.y);
         const diffY = vm.newRegister();
         vm.not(diffY, sameY);
-    
+
         const p1x_2 = this.x.mul(this.x);
-    
+
         let resultSameY;
         let resultDiffX;
-    
+
         vm.ignoreFailureInExactlyOne(
             // x1 != x2
             () => {
                 const mDiffX = p2.y.sub(this.y).div(p2.x.sub(this.x));
                 resultDiffX = mDiffX.mul(t.x.sub(this.x)).sub(t.y.sub(this.y));
-            }, 
+            },
             // x1 == x2 && y1 == y2
             () => {
                 const mSameX = p1x_2.add(p1x_2).add(p1x_2).div(this.y.add(this.y));
                 resultSameY = mSameX.mul(t.x.sub(this.x)).sub(t.y.sub(this.y));
-            });
-    
+            }
+        );
+
         let result = t.x.sub(this.x);
         result = resultSameY!.if(sameY, result);
         result = resultDiffX!.if(diffX, result);
@@ -178,7 +174,6 @@ export class ECPoint<T extends Member<T>> {
 }
 
 export abstract class EC<T extends Member<T>> {
-
     ec_a: T;
     ec_b: T;
 

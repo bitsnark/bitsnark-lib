@@ -11,7 +11,7 @@ function generateSchnorrKeypair() {
     const publicKey = secp256k1.xOnlyPointFromScalar(privateKey);
 
     if (!publicKey) {
-        throw new Error("Failed to generate public key.");
+        throw new Error('Failed to generate public key.');
     }
 
     return {
@@ -34,8 +34,6 @@ export function verifyMessage(message: string, signature: string, publicKey: str
     console.log('Public key:', publicKeyBuffer, publicKeyBuffer.length);
     return secp256k1.verifySchnorr(msgHash, publicKeyBuffer, signatureBuffer);
 }
-
-
 
 if (__filename === process.argv[1]) {
     // Generate new keypair and sign and verify a message

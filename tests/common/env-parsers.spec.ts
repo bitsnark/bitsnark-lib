@@ -1,8 +1,7 @@
-import { describe, expect, it } from "@jest/globals";
+import { describe, expect, it } from '@jest/globals';
 import { parse } from '../../src/common/env-parser';
 
 describe('parseEnv', () => {
-
     const envVarName = 'TEST';
 
     it('parse a string', () => {
@@ -80,5 +79,4 @@ describe('parseEnv', () => {
             `Invalid boolean value: '${value}' for environment variable: '${envVarName}'`
         );
     });
-
 });

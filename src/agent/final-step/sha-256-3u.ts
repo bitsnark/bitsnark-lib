@@ -1,30 +1,29 @@
-import assert from "assert";
-import { Bitcoin } from "../../generator/step3/bitcoin";
-import { StackItem } from "../../generator/step3/stack";
+import assert from 'assert';
+import { Bitcoin } from '../../generator/step3/bitcoin';
+import { StackItem } from '../../generator/step3/stack';
 import { _256To32BE, _32To256BE, hash, hashPair } from '../../../src/encoding/encoding';
-import { bigintToNibblesLS } from "../../agent/final-step/common";
+import { bigintToNibblesLS } from '../../agent/final-step/common';
 
 export type Register = StackItem[];
 
 const hHex = [0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19];
 
-const kHex = [0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4,
-    0xab1c5ed5, 0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe,
-    0x9bdc06a7, 0xc19bf174, 0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f,
-    0x4a7484aa, 0x5cb0a9dc, 0x76f988da, 0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7,
-    0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967, 0x27b70a85, 0x2e1b2138, 0x4d2c6dfc,
-    0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85, 0xa2bfe8a1, 0xa81a664b,
-    0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070, 0x19a4c116,
-    0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
-    0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7,
-    0xc67178f2];
+const kHex = [
+    0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5, 0xd807aa98,
+    0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174, 0xe49b69c1, 0xefbe4786,
+    0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da, 0x983e5152, 0xa831c66d, 0xb00327c8,
+    0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967, 0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13,
+    0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85, 0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819,
+    0xd6990624, 0xf40e3585, 0x106aa070, 0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a,
+    0x5b9cca4f, 0x682e6ff3, 0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7,
+    0xc67178f2
+];
 
 function posMod(x: number, m: number): number {
     return (x + m) % m;
 }
 
 export class SHA256 {
-
     bitcoin: Bitcoin;
 
     W: Register[] = [];
@@ -42,7 +41,6 @@ export class SHA256 {
     breakCarryTable: StackItem[] = [];
 
     constructor(bitcoin: Bitcoin) {
-
         this.bitcoin = bitcoin;
 
         this.T0 = this.newRegister(0);
@@ -79,22 +77,20 @@ export class SHA256 {
     }
 
     public hardcodeRegister(n: number): Register {
-        return new Array(11).fill(0)
-            .map((_, i) => this.bitcoin.newStackItem((n >> (i * 3)) & 7));
+        return new Array(11).fill(0).map((_, i) => this.bitcoin.newStackItem((n >> (i * 3)) & 7));
     }
 
     public hardcodeRegisters(na: number[]): Register[] {
-        return na.map(n => this.hardcodeRegister(n));
+        return na.map((n) => this.hardcodeRegister(n));
     }
 
     public newRegister(n: number): Register {
-        return new Array(11).fill(0)
-            .map((_, i) => this.bitcoin.newStackItem((n >> (i * 3)) & 7));
+        return new Array(11).fill(0).map((_, i) => this.bitcoin.newStackItem((n >> (i * 3)) & 7));
     }
 
     public registerToNumber(r: Register): number {
         let n = 0;
-        r.forEach((si, i) => n += Number(si.value) << (i * 3));
+        r.forEach((si, i) => (n += Number(si.value) << (i * 3)));
         return n;
     }
 
@@ -121,7 +117,6 @@ export class SHA256 {
     }
 
     not(target: Register, x: Register) {
-
         for (let i = 0; i < target.length; i++) {
             this.bitcoin.pick(x[i]);
             this.bitcoin.tableFetchInStack(this.notTable);
@@ -141,15 +136,12 @@ export class SHA256 {
     }
 
     toBitsOnAltstack(x: Register) {
-
         const stack = this.bitcoin.stack.items;
 
         for (let i = 10; i >= 0; i--) {
-
             this.bitcoin.pick(x[i]);
 
             for (let j = 2; j >= 0; j--) {
-
                 this.bitcoin.OP_DUP();
                 this.bitcoin.DATA(1 << j);
                 this.bitcoin.OP_GREATERTHANOREQUAL();
@@ -166,20 +158,20 @@ export class SHA256 {
                 this.bitcoin.OP_ENDIF();
 
                 // hack
-                this.bitcoin.stack.top().value = t >= (1 << j) ? t - (1 << j) : t;
+                this.bitcoin.stack.top().value = t >= 1 << j ? t - (1 << j) : t;
             }
 
             this.bitcoin.OP_DROP();
         }
 
         const tx = this.registerToNumber(x);
-        let s = tx.toString(2); while (s.length < 33) s = '0' + s;
+        let s = tx.toString(2);
+        while (s.length < 33) s = '0' + s;
         const tn = this.bitcoin.altStack.slice(-33).join('');
         assert(s == tn);
     }
 
     fromBitsOnAltstack_ROTR(target: Register, bits: number) {
-
         const stack = this.bitcoin.stack.items;
 
         this.mov_hc(target, 0);
@@ -213,7 +205,6 @@ export class SHA256 {
     }
 
     fromBitsOnAltstack_SHR(target: Register, bits: number) {
-
         const stack = this.bitcoin.stack.items;
 
         for (let i = 0; i < bits; i++) {
@@ -225,7 +216,6 @@ export class SHA256 {
         let sourceBit = 0;
         for (let i = 0; i < target.length; i++) {
             for (let j = 0; j < 3; j++) {
-
                 this.bitcoin.OP_FROMALTSTACK();
 
                 const f = Number(this.bitcoin.stack.top().value);
@@ -248,7 +238,6 @@ export class SHA256 {
     }
 
     rotr(target: Register, x: Register, n: number) {
-
         let s = this.registerToNumber(x).toString(2);
         while (s.length < 32) s = '0' + s;
         const t = s.slice(s.length - n) + s.slice(0, s.length - n);
@@ -275,7 +264,6 @@ export class SHA256 {
     }
 
     add(target: Register, x: Register, y: Register) {
-
         const tx = this.registerToNumber(x);
         const ty = this.registerToNumber(y);
 
@@ -302,13 +290,11 @@ export class SHA256 {
         }
 
         const tt = this.registerToNumber(target);
-        assert((tx + ty) % (2 ** 32) == tt);
+        assert((tx + ty) % 2 ** 32 == tt);
     }
 
     addK(target: Register, x: Register, ki: number) {
-
-        const krn = new Array(11).fill(0)
-            .map((_, i) => (kHex[ki] >> (i * 3)) & 7);
+        const krn = new Array(11).fill(0).map((_, i) => (kHex[ki] >> (i * 3)) & 7);
 
         const tx = this.registerToNumber(x);
         const ty = kHex[ki];
@@ -336,7 +322,7 @@ export class SHA256 {
         }
 
         const tt = this.registerToNumber(target);
-        assert((tx + ty) % (2 ** 32) == tt);
+        assert((tx + ty) % 2 ** 32 == tt);
     }
 
     mov(target: Register, x: Register) {
@@ -352,7 +338,7 @@ export class SHA256 {
     }
 
     zero(target: Register) {
-        target.forEach(si => this.bitcoin.setBit_0(si));
+        target.forEach((si) => this.bitcoin.setBit_0(si));
     }
 
     ch(target: Register, x: Register, y: Register, z: Register) {
@@ -458,7 +444,7 @@ export class SHA256 {
         }
         this.mov_hc(this.W[8], 0x80000000);
         this.mov_hc(this.W[15], 256);
-        this.calculateHash()
+        this.calculateHash();
         for (let i = 0; i < 8; i++) {
             this.mov(target[i], this.hash[i]);
             this.bitcoin.drop(this.W[i + 8]);
@@ -473,7 +459,7 @@ export class SHA256 {
             this.W[i] = a[i];
             this.W[i + 8] = b[i];
         }
-        this.calculateHash()
+        this.calculateHash();
         for (let i = 1; i < 15; i++) {
             this.zero(this.W[i]);
         }
@@ -486,18 +472,16 @@ export class SHA256 {
     }
 }
 
-
-
 {
     const test1 = 123456789012345678901234567890n;
 
     const h1 = hash(test1);
     const bitcoin = new Bitcoin();
     const sha256 = new SHA256(bitcoin);
-    const regs: Register[] = _256To32BE(test1).map(n => sha256.hardcodeRegister(Number(n)));
-    const h2regs = _256To32BE(0n).map(n => sha256.newRegister(0));
+    const regs: Register[] = _256To32BE(test1).map((n) => sha256.hardcodeRegister(Number(n)));
+    const h2regs = _256To32BE(0n).map((n) => sha256.newRegister(0));
     sha256.sha256(h2regs, regs);
-    const h2 = _32To256BE(h2regs.map(r => BigInt(sha256.registerToNumber(r))));
+    const h2 = _32To256BE(h2regs.map((r) => BigInt(sha256.registerToNumber(r))));
     console.log('h1', h1);
     console.log('h2', h2);
     assert(h1 == h2);
@@ -506,7 +490,6 @@ export class SHA256 {
 }
 
 {
-
     const test1 = 123456789012345678901234567890n;
     const test2 = 98765432109876543210987654321n;
 
@@ -515,13 +498,13 @@ export class SHA256 {
     const bitcoin = new Bitcoin();
     const sha256 = new SHA256(bitcoin);
 
-    const aRegs: Register[] = _256To32BE(test1).map(n => sha256.newRegister(Number(n)));
-    const bRegs: Register[] = _256To32BE(test2).map(n => sha256.newRegister(Number(n)));
+    const aRegs: Register[] = _256To32BE(test1).map((n) => sha256.newRegister(Number(n)));
+    const bRegs: Register[] = _256To32BE(test2).map((n) => sha256.newRegister(Number(n)));
 
-    const h2regs = _256To32BE(0n).map(n => sha256.newRegister(0));
+    const h2regs = _256To32BE(0n).map((n) => sha256.newRegister(0));
 
     sha256.sha256pair(h2regs, aRegs, bRegs);
-    const h2 = _32To256BE(h2regs.map(r => BigInt(sha256.registerToNumber(r))));
+    const h2 = _32To256BE(h2regs.map((r) => BigInt(sha256.registerToNumber(r))));
 
     console.log('h1', h1);
     console.log('h2', h2);

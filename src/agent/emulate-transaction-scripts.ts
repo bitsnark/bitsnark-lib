@@ -1,17 +1,13 @@
-import { Bitcoin, executeProgram } from "../generator/step3/bitcoin";
-import { readTemplates } from "./db";
-import { getSpendingConditionByInput, SignatureType, Transaction } from "./transactions-new";
-
+import { Bitcoin, executeProgram } from '../generator/step3/bitcoin';
+import { readTemplates } from './db';
+import { getSpendingConditionByInput, SignatureType, Transaction } from './transactions-new';
 
 export function emulateTransactionScripts(transactions: Transaction[]) {
-
     for (const transaction of transactions) {
-
         // if (transaction.transactionName != 'state_01') continue;
         console.log(transaction.transactionName);
 
         for (const input of transaction.inputs) {
-
             console.log('input: ', input.index);
 
             const sc = getSpendingConditionByInput(transactions, input);

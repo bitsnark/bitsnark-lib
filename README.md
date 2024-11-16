@@ -45,7 +45,7 @@ The diagram below shows a condensed version of the transactions flow in the BitS
 ![BitSNARK Transactions Flow](/analysis/transactions.collapsed.svg)
 
 Most transactions are simple boxes, but
-Transactions that input funds into the protocol are drawn as ovals, transactions that output funds are marked with a folded corner, and the rest are simple boxes. Transactions publishable by the prover are green, ones publishable by the verifier are blue, and the `Locked Funds` transaction is magenta. Dashed lines are timelocked to a pre-specified number of blocks, and gray lines are outputs that only carry a symbolic amount of satoshis (just above the dust limit) either used to make transactions mutually exclusive or to accommodate the per-input size limitations of Bitcoin transactions. For simplicity's sake, the entire dissection process is collapsed into a single node marked with a triple octagon, but below you can find a full version of the diagram with all the steps expanded (it currently takes us 5 dissections to identify one out of about half a million operations in our zk-SNARK verification program).
+UTXOs that input funds into the protocol are drawn as ovals, transactions that output funds are marked with a folded corner, and protocl transactions are simple boxes. Transactions publishable by the prover are green, ones publishable by the verifier are blue, and the `Locked Funds` transaction is magenta. Dashed lines are timelocked to a pre-specified number of blocks, and gray lines are outputs that only carry a symbolic amount of satoshis (just above the dust limit) either used to make transactions mutually exclusive or to accommodate the per-input size limitations of Bitcoin transactions. For simplicity's sake, the entire dissection process is collapsed into a single node marked with a triple octagon, but below you can find a full version of the diagram with all the steps expanded (it currently takes us 5 dissections to identify one out of about half a million operations in our zk-SNARK verification program).
 
 <details>
 <summary>Expand here for a full Diagram with all the steps</summary>
@@ -91,6 +91,28 @@ In reality, it is entirely possible for the two parties to add inputs and output
 
 Currently, the demo generates JSONs describing the transactions, with their scripts, without generating binary transactions or transmitting them to the Bitcoin network.
 
+### Requirements
+
+You will need:
+- Node.js v20.0.0 or later
+- Python 3.8 or later
+- libsecp256k1
+
+The last can be installed on Ubuntu with:
+
+```sh
+sudo apt-get install libsecp256k1-0
+```
+
+Or on MacOS with:
+
+```sh
+brew install libsecp256k1
+```
+
+For development and testing, you will also need:
+- Docker (for running a local postgres database server and a local regtest Bitcoin network)
+
 ### Initial Setup
 
 ```sh
@@ -111,9 +133,7 @@ The following requires docker for running a local postgres database server.
 
 ```sh
 npm run start-db
-npm run generate-tx
-npm run generate-scripts
-npm run add-amounts
+npm run emulate-setup
 ```
 
 ### Running the Agents

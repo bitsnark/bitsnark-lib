@@ -1,4 +1,3 @@
-
 let lastId = 0;
 
 export interface StackItem {
@@ -19,7 +18,7 @@ export class Stack {
     }
 
     findIndex(si: StackItem): number {
-        return this.items.findIndex(t => t.id === si.id);
+        return this.items.findIndex((t) => t.id === si.id);
     }
 
     push(si: StackItem) {

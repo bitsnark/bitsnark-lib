@@ -1,6 +1,6 @@
-import { Register } from "../../common/register";
-import { InstrCode, Instruction } from "./types";
-import { VM } from "./vm";
+import { Register } from '../../common/register';
+import { InstrCode, Instruction } from './types';
+import { VM } from './vm';
 
 interface RichReg {
     value: bigint;
@@ -17,8 +17,7 @@ function isOverlap(r1: RichReg, r2: RichReg): boolean {
 }
 
 function isNotInSieve(ref: RichReg, sieve: boolean[]): boolean {
-    for (let i = ref.first!; i <= ref.last!; i++)
-        if (sieve[i]) return false;
+    for (let i = ref.first!; i <= ref.last!; i++) if (sieve[i]) return false;
     return true;
 }
 
@@ -32,9 +31,8 @@ function check(regs: Register[], instructions: Instruction[]) {
         if (r.index != i) throw new Error('Check failed 0');
         if (r.hardcoded || r.witness) ra[r.index] = true;
     });
-    instructions.forEach(instr => {
-        if (!ra[instr.param1])
-            throw new Error('Check failed 1');
+    instructions.forEach((instr) => {
+        if (!ra[instr.param1]) throw new Error('Check failed 1');
         switch (instr.name) {
             case InstrCode.ADDMOD:
             case InstrCode.ANDBIT:
@@ -45,15 +43,13 @@ function check(regs: Register[], instructions: Instruction[]) {
             case InstrCode.AND:
             case InstrCode.SUBMOD:
             case InstrCode.DIVMOD:
-                if (!ra[instr.param2 ?? -1])
-                    throw new Error('Check failed 2');
+                if (!ra[instr.param2 ?? -1]) throw new Error('Check failed 2');
         }
         ra[instr.target] = true;
     });
 }
 
 export function regOptimizer(vm: VM) {
-
     check(vm.registers, vm.instructions);
 
     const regArray: RichReg[] = vm.registers;
@@ -62,7 +58,7 @@ export function regOptimizer(vm: VM) {
 
     function mapReg(i: number, line: number) {
         const r = regArray[i];
-        r.first = r.witness ? 0 : (r.first || 0 > 0 ? r.first : line);
+        r.first = r.witness ? 0 : r.first || 0 > 0 ? r.first : line;
         r.last = line;
         r.interval = r.last! - r.first!;
     }
@@ -78,8 +74,8 @@ export function regOptimizer(vm: VM) {
 
     console.log('Register optimization starting');
 
-    const hardcoded = regArray.filter(r => r.hardcoded);
-    const dynamic = regArray.filter(r => !r.hardcoded);
+    const hardcoded = regArray.filter((r) => r.hardcoded);
+    const dynamic = regArray.filter((r) => !r.hardcoded);
 
     console.log('total: ', regArray.length, ' hardcoded: ', hardcoded.length);
 
@@ -89,8 +85,8 @@ export function regOptimizer(vm: VM) {
     // let sorted = Object.values(dynamic)
     //     .sort((a, b) => b.interval! - a.interval!);
 
-    const witnes = dynamic.filter(r => r.witness);
-    const others = dynamic.filter(r => !r.witness).sort((a, b) => Math.random() - 0.5);
+    const witnes = dynamic.filter((r) => r.witness);
+    const others = dynamic.filter((r) => !r.witness).sort((a, b) => Math.random() - 0.5);
     let sorted = [...witnes, ...others];
     const roots = [];
 
@@ -144,7 +140,7 @@ export function regOptimizer(vm: VM) {
         remap[i] = i;
         r.index = i;
     });
-    roots.forEach(group => {
+    roots.forEach((group) => {
         const r = {
             value: 0n,
             hardcoded: false,
@@ -153,12 +149,12 @@ export function regOptimizer(vm: VM) {
         };
         newRegs.push(r);
         r.index = newRegs.length - 1;
-        group.forEach(tr => {
+        group.forEach((tr) => {
             remap[tr.index] = r.index;
         });
     });
 
-    vm.instructions.forEach(instr => {
+    vm.instructions.forEach((instr) => {
         instr.target = remap[instr.target];
         instr.param1 = remap[instr.param1];
         instr.param2 = remap[instr.param2 ?? 0];

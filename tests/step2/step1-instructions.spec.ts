@@ -1,6 +1,6 @@
-import { step2_vm as vm } from "../../src/generator/step2/vm/vm";
-import { Register } from "../../src/generator/common/register";
-import { prime_bigint } from "../../src/generator/common/prime";
+import { step2_vm as vm } from '../../src/generator/step2/vm/vm';
+import { Register } from '../../src/generator/common/register';
+import { prime_bigint } from '../../src/generator/common/prime';
 
 function nTo_256(n: bigint): Register[] {
     const ra: Register[] = [];
@@ -11,8 +11,7 @@ function nTo_256(n: bigint): Register[] {
     return ra;
 }
 
-describe("step 1 instructions in step 2 VM", function () {
-
+describe('step 1 instructions in step 2 VM', function () {
     const prime_minus_one = nTo_256(prime_bigint - 1n);
     const prime_half = nTo_256(prime_bigint / 2n);
     const two = nTo_256(2n);
@@ -27,7 +26,6 @@ describe("step 1 instructions in step 2 VM", function () {
     const prime_minus_two = nTo_256(prime_bigint - 2n);
 
     describe('step1_addMod', () => {
-
         beforeEach(() => {
             vm.reset();
             vm.startProgram();
@@ -40,7 +38,8 @@ describe("step 1 instructions in step 2 VM", function () {
 
         it('2', () => {
             vm.step1_addMod(million, two_million, three_million);
-            expect(vm.getSuccess()).toBe(true); vm.reset();
+            expect(vm.getSuccess()).toBe(true);
+            vm.reset();
         });
 
         it('3', () => {
@@ -48,14 +47,13 @@ describe("step 1 instructions in step 2 VM", function () {
             expect(vm.getSuccess()).toBe(true);
         });
 
-        it("negative", () => {
+        it('negative', () => {
             vm.step1_addMod(million, million, million);
             expect(vm.getSuccess()).toBe(false);
         });
     });
 
     describe('step1_mulMod', () => {
-
         beforeEach(() => {
             vm.reset();
             vm.startProgram();
@@ -76,10 +74,9 @@ describe("step 1 instructions in step 2 VM", function () {
             expect(vm.getSuccess()).toBe(true);
         });
 
-        it("negative", async () => {
+        it('negative', async () => {
             vm.step1_mulMod(million, million, million);
             expect(vm.getSuccess()).toBe(false);
         });
     });
-
 });

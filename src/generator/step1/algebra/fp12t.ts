@@ -1,19 +1,20 @@
-import { Register } from "../../common/register";
-import { step1_vm as vm } from "../vm/vm";
-import { Fp } from "./fp";
-import { Fp2 } from "./fp2";
-import { Fp6 } from "./fp6";
+import { Register } from '../../common/register';
+import { step1_vm as vm } from '../vm/vm';
+import { Fp } from './fp';
+import { Fp2 } from './fp2';
+import { Fp6 } from './fp6';
 
 // xiToPMinus1Over6 is ξ^((p-1)/6) where ξ = i+9.
 const xiToPMinus1Over6 = Fp2.hardcoded(
     16469823323077808223889137241176536799009286646108169935659301613961712198316n,
-    8376118865763821496583973867626364092589906065868298776909617916018768340080n);
-    
+    8376118865763821496583973867626364092589906065868298776909617916018768340080n
+);
+
 // xiToPSquaredMinus1Over6 is ξ^((1p²-1)/6) where ξ = i+9 (a cubic root of -1, mod p).
-const xiToPSquaredMinus1Over6 = Fp.hardcoded(21888242871839275220042445260109153167277707414472061641714758635765020556617n);
+const xiToPSquaredMinus1Over6 =
+    Fp.hardcoded(21888242871839275220042445260109153167277707414472061641714758635765020556617n);
 
 export class Fp12t {
-
     x: Fp6;
     y: Fp6;
 
@@ -120,19 +121,19 @@ export class Fp12t {
     // Frobenius computes (xω+y)^p = x^p ω·ξ^((p-1)/6) + y^p
     frobenius(): Fp12t {
         const r = this.zero();
-	    r.x = this.x.frobenius();
+        r.x = this.x.frobenius();
         r.y = this.y.frobenius();
         r.x = r.x.mul(xiToPMinus1Over6);
-	    return r;
+        return r;
     }
 
     // FrobeniusP2 computes (xω+y)^p² = x^p² ω·ξ^((p²-1)/6) + y^p²
     frobeniusP2(): Fp12t {
         const r = this.zero();
         r.x = this.x.frobeniusP2();
-	    r.x = r.x.mul(xiToPSquaredMinus1Over6)
-	    r.y = this.y.frobeniusP2();
-	    return r;
+        r.x = r.x.mul(xiToPSquaredMinus1Over6);
+        r.y = this.y.frobeniusP2();
+        return r;
     }
 
     assertOne() {
