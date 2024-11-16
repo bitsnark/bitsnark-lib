@@ -1385,7 +1385,9 @@ export class Bitcoin {
         if (opts.validateStack == true) {
             // program has to end with a single 1 on the stack
             while (this.stack.length() > 1) this.drop(this.stack.top());
-            if (this.stack.top().value != 1) {
+            if (this.stack.length() == 0) {
+                this.OP_0_16(1);
+            } else if (this.stack.top().value !== 1) {
                 this.drop(this.stack.top());
                 this.OP_0_16(1);
             }
