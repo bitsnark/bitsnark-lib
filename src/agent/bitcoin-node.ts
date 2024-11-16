@@ -1,4 +1,4 @@
-import { agentConf } from "./agent.conf";
+import { agentConf } from './agent.conf';
 import Client from 'bitcoin-core';
 
 export class BitcoinNode {

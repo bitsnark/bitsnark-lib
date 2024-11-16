@@ -27,7 +27,13 @@ describe('NodeListener', () => {
     let clientMock: Client;
 
     beforeEach(() => {
-        clientMock = new Client({ network: 'regtest', username: 'user', password: 'pass', host: 'localhost', port: 5432 });
+        clientMock = new Client({
+            network: 'regtest',
+            username: 'user',
+            password: 'pass',
+            host: 'localhost',
+            port: 5432
+        });
         nodeListener = new NodeListener();
         nodeListener.client = clientMock;
     });
@@ -95,8 +101,7 @@ describe('NodeListener', () => {
             .mockImplementationOnce(() => Promise.resolve(Tx1Block12))
             .mockImplementationOnce(() => Promise.resolve(Tx2Block5));
 
-        (clientMock.getRawTransaction as jest.Mock)
-            .mockImplementationOnce(() => Promise.resolve(Raw2Block5));
+        (clientMock.getRawTransaction as jest.Mock).mockImplementationOnce(() => Promise.resolve(Raw2Block5));
 
         await nodeListener.monitorTransmitted();
 
@@ -113,8 +118,7 @@ describe('NodeListener', () => {
             .mockImplementationOnce(() => new Error('Transaction not found'))
             .mockImplementationOnce(() => Promise.resolve(Tx2Block5));
 
-        (clientMock.getRawTransaction as jest.Mock)
-            .mockImplementationOnce(() => Promise.resolve(Raw2Block5));
+        (clientMock.getRawTransaction as jest.Mock).mockImplementationOnce(() => Promise.resolve(Raw2Block5));
 
         await nodeListener.monitorTransmitted();
 

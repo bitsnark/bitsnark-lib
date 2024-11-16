@@ -67,5 +67,4 @@ if (require.main === module) {
     const listener = new NodeListener();
     listener.checkForNewBlock();
     listener.destroy();
-
 }

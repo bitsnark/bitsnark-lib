@@ -1,12 +1,10 @@
 // from: https://dev.to/eunovo/a-guide-to-creating-taproot-scripts-with-bitcoinjs-lib-4oph
 
-
 import { initEccLib, networks, payments } from 'bitcoinjs-lib';
 import { TinySecp256k1Interface } from 'bitcoinjs-lib/src/types';
 import { ECPairFactory, ECPairAPI } from 'ecpair';
 import { Taptree } from 'bitcoinjs-lib/src/types';
 import * as tinysecp from 'tiny-secp256k1';
-
 
 initEccLib(tinysecp as TinySecp256k1Interface);
 const ECPair: ECPairAPI = ECPairFactory(tinysecp);
