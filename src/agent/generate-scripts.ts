@@ -91,6 +91,7 @@ function generateBoilerplate(transations: Transaction[], myRole: AgentRoles, inp
 
         const decoders = {
             [WotsType._256]: (dataIndex: number) => bitcoin.winternitzCheck256(witnessSIs[dataIndex], keys[dataIndex]),
+            [WotsType._256_4]: (dataIndex: number) => bitcoin.winternitzCheck256_4(witnessSIs[dataIndex], keys[dataIndex]),
             [WotsType._24]: (dataIndex: number) => bitcoin.winternitzCheck24(witnessSIs[dataIndex], keys[dataIndex]),
             [WotsType._1]: (dataIndex: number) => bitcoin.winternitzCheck1(witnessSIs[dataIndex], keys[dataIndex])
         };
@@ -137,8 +138,6 @@ function generateProcessSelectionPath(sc: SpendingCondition): Buffer {
 }
 
 export async function generateAllScripts(
-    agentId: string,
-    setupId: string,
     myRole: AgentRoles,
     transactions: Transaction[],
     generateFinal: boolean
@@ -163,7 +162,7 @@ export async function generateAllScripts(
             const ddg = new DoomsdayGenerator();
             let taproot;
             if (generateFinal) {
-                taproot = ddg.generateFinalStepTaproot(transactions);
+                taproot = await ddg.generateFinalStepTaproot(transactions);
             } else {
                 const mockSTT = new SimpleTapTree(agentConf.internalPubkey, [DEAD_SCRIPT, DEAD_SCRIPT]);
                 taproot = mockSTT.getScriptPubkey();
@@ -218,7 +217,7 @@ async function main() {
     const setupId = 'test_setup';
     const generateFinal = process.argv.some((s) => s == '--final');
     const bareTransactions = await readTemplates(agentId, setupId);
-    const transactions = await generateAllScripts(agentId, setupId, AgentRoles.PROVER, bareTransactions, generateFinal);
+    const transactions = await generateAllScripts(AgentRoles.PROVER, bareTransactions, generateFinal);
     await writeTemplates(agentId, setupId, transactions);
 }
 

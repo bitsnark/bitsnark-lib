@@ -1364,18 +1364,21 @@ export class Bitcoin {
         return s;
     }
 
-    programToBinary(): Buffer {
-        return this.programToTemplate({ validateStack: true }).buffer;
+    programToBinary(opts?: ProgramToTemplateOpts): Buffer {
+        return this.programToTemplate(opts ?? { validateStack: true }).buffer;
     }
 
-    programToTemplate(opts: ProgramToTemplateOpts = {}): Template {
-        const validateStack = opts.validateStack ?? true;
+    programToTemplate(opts?: ProgramToTemplateOpts): Template {
+        opts = opts ?? { validateStack: true };
 
-        if (validateStack == true) {
+        if (opts.validateStack == true) {
             // program has to end with a single 1 on the stack
-            while (this.stack.length() > 0)
+            while (this.stack.length() > 1)
                 this.drop(this.stack.top());
-            this.OP_0_16(1);
+            if (this.stack.top().value != 1) {
+                this.drop(this.stack.top());
+                this.OP_0_16(1);
+            }
         }
 
         const items: { itemId: string, index: number }[] = [];
