@@ -13,8 +13,4 @@ venv/
 .env.local
 .env.test
 
-*.map
-*.js
-*.d.ts
-!modules_types/*.d.ts
 
