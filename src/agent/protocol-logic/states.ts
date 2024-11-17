@@ -1,8 +1,8 @@
-import groth16Verify, { Key, Proof as Step1_Proof } from '../../generator/step1/verifier';
-import { step1_vm } from '../../generator/step1/vm/vm';
+import groth16Verify, { Key, Proof as Step1_Proof } from '../../generator/ec_vm/verifier';
+import { step1_vm } from '../../generator/ec_vm/vm/vm';
 import { Decasector } from '../final-step/decasector';
-import { vKey } from '../../generator/step1/constants';
-import { Runner } from '../../generator/step1/vm/runner';
+import { vKey } from '../../generator/ec_vm/constants';
+import { Runner } from '../../generator/ec_vm/vm/runner';
 import { calculateMerkleRoot } from './merkle';
 
 export function calculateStates(proof: bigint[], selectionPath: number[]): Buffer[] {

@@ -1,7 +1,7 @@
-import { Bitcoin } from '../generator/step3/bitcoin';
+import { Bitcoin } from '../generator/btc_vm/bitcoin';
 import { WOTS_NIBBLES, WotsType } from './winternitz';
 import { AgentRoles, array, TransactionNames } from './common';
-import { StackItem } from '../generator/step3/stack';
+import { StackItem } from '../generator/btc_vm/stack';
 import { SimpleTapTree } from './simple-taptree';
 import { agentConf } from './agent.conf';
 import { Buffer } from 'node:buffer';

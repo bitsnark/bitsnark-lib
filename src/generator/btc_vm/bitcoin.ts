@@ -1332,9 +1332,9 @@ export class Bitcoin {
         this.drop(index);
     }
 
-    verifyIndex(keys: Buffer[], indexWitness: StackItem[], indexNibbles: number[]) {
-        const tempIndex = this.newNibbles(90);
-        this.winternitzDecode256(tempIndex, indexWitness, keys);
+    verifyIndex(indexWitness: StackItem[], keys: Buffer[], indexNibbles: number[]) {
+        const tempIndex = this.newNibbles(8);
+        this.winternitzDecode24(tempIndex, indexWitness, keys);
         for (let i = 0; i < indexNibbles.length; i++) {
             this.DATA(indexNibbles[i], `indexNibbles_${i}`);
             this.pick(tempIndex[i]);

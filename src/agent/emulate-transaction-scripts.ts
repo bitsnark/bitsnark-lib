@@ -1,4 +1,4 @@
-import { Bitcoin, executeProgram } from '../generator/step3/bitcoin';
+import { Bitcoin, executeProgram } from '../generator/btc_vm/bitcoin';
 import { readTemplates } from './db';
 import { getSpendingConditionByInput, SignatureType, Transaction } from './transactions-new';
 

@@ -1,20 +1,21 @@
-import groth16Verify, { Key, Proof as Step1_Proof } from '../../generator/step1/verifier';
-import { InstrCode, Instruction } from '../../generator/step1/vm/types';
-import { proof, vKey } from '../../generator/step1/constants';
-import { Bitcoin, Template } from '../../generator/step3/bitcoin';
+import groth16Verify, { Key, Proof as Step1_Proof } from '../../generator/ec_vm/verifier';
+import { InstrCode, Instruction } from '../../generator/ec_vm/vm/types';
+import { proof, vKey } from '../../generator/ec_vm/constants';
+import { Bitcoin, Template } from '../../generator/btc_vm/bitcoin';
 import { getSpendingConditionByInput, getTransactionByName, Transaction } from '../transactions-new';
 import { bigintToNibblesLS } from './common';
 import { array, TransactionNames, twoDigits } from '../common';
 import {
     bigintToBufferBE,
     bufferToBigintBE,
+    encodeWinternitz24,
     encodeWinternitz256_4,
     getWinternitzPublicKeys,
     WOTS_NIBBLES,
     WotsType
 } from '../winternitz';
-import { step1_vm } from '../../generator/step1/vm/vm';
-import { StackItem } from '../../generator/step3/stack';
+import { step1_vm } from '../../generator/ec_vm/vm/vm';
+import { StackItem } from '../../generator/btc_vm/stack';
 import {
     verifyAddMod,
     verifyAnd,
@@ -39,7 +40,6 @@ import { readTemplates } from '../db';
 import { blake3 as blake3_wasm } from 'hash-wasm';
 
 export class DoomsdayGenerator {
-    cache: any = {};
     program: Instruction[];
     decasector: Decasector;
 
@@ -122,17 +122,11 @@ export class DoomsdayGenerator {
         }
     }
 
-    private paramWitness(bitcoin: Bitcoin): StackItem[] {
-        return new Array(90).fill(0).map((_) => bitcoin.newStackItem(0));
-    }
-
-    private param(bitcoin: Bitcoin): StackItem[] {
-        return new Array(86).fill(0).map((_) => bitcoin.newStackItem(0));
-    }
-
     private generateRefuteInstructionTaproot(transactions: Transaction[]): Buffer {
         const lastSelect = getTransactionByName(transactions, `select_${twoDigits(this.decasector.iterations - 1)}`);
         const semiFinal = getTransactionByName(transactions, TransactionNames.ARGUMENT);
+
+        const cache: any = {};
 
         const started = Date.now();
         let total = 0;
@@ -154,59 +148,62 @@ export class DoomsdayGenerator {
 
             const cacheKey = `${line.name}/${line.bit ?? 0}`;
             let final = null;
-            if (this.cache[cacheKey]) {
-                const template: Template = this.cache[cacheKey];
+            if (cache[cacheKey]) {
+                const template: Template = cache[cacheKey];
                 final = this.renderTemplateWithIndex(template, index);
             } else {
                 const bitcoin = new Bitcoin();
+                bitcoin.throwOnFail = false;
                 const stack = bitcoin.stack.items;
 
-                const indexWitness = bigintToNibblesLS(BigInt(index), WOTS_NIBBLES[WotsType._24]).map((n) =>
-                    bitcoin.addWitness(n)
-                );
+                const indexWitness = encodeWinternitz24(BigInt(index), '').map((b) => bitcoin.addWitness(b));
 
-                const w_a = this.paramWitness(bitcoin);
-                const w_b = this.paramWitness(bitcoin);
-                const w_c = this.paramWitness(bitcoin);
+                const w_a = encodeWinternitz256_4(0n, '').map((b) => bitcoin.addWitness(b));
+                const w_b = encodeWinternitz256_4(0n, '').map((b) => bitcoin.addWitness(b));
+                const w_c = encodeWinternitz256_4(0n, '').map((b) => bitcoin.addWitness(b));
                 let w_d: StackItem[] | undefined;
                 if (line.name == InstrCode.MULMOD || line.name == InstrCode.DIVMOD) {
-                    w_d = this.paramWitness(bitcoin);
+                    w_d = encodeWinternitz256_4(0n, '').map((b) => bitcoin.addWitness(b));
                 }
 
                 // first output is the index
                 bitcoin.verifyIndex(
-                    lastSelect.outputs[0].spendingConditions[0].wotsPublicKeys![0],
                     indexWitness,
+                    lastSelect.outputs[0].spendingConditions[0].wotsPublicKeys![0],
                     bigintToNibblesLS(BigInt(index), 8)
                 );
                 bitcoin.drop(indexWitness);
 
                 // a is the first element of the merkle proof in the second output
-                const a = this.param(bitcoin);
-                bitcoin.winternitzDecode256(a, w_a, lastSelect.outputs[1].spendingConditions[0].wotsPublicKeys![0]);
+                const a = bigintToNibblesLS(0n, 86).map((b) => bitcoin.addWitness(b));
+                bitcoin.winternitzDecode256_4(a, w_a, lastSelect.outputs[1].spendingConditions[0].wotsPublicKeys![0]);
                 bitcoin.drop(w_a);
 
                 // b is the second element of the merkle proof in the second output
-                const b = this.param(bitcoin);
-                bitcoin.winternitzDecode256(b, w_b, lastSelect.outputs[1].spendingConditions[0].wotsPublicKeys![1]);
+                const b = bigintToNibblesLS(0n, 86).map((b) => bitcoin.addWitness(b));
+                bitcoin.winternitzDecode256_4(b, w_b, lastSelect.outputs[1].spendingConditions[0].wotsPublicKeys![1]);
                 bitcoin.drop(w_b);
 
                 // c is the third element of the merkle proof in the second output
-                const c = this.param(bitcoin);
-                bitcoin.winternitzDecode256(c, w_c, lastSelect.outputs[1].spendingConditions[0].wotsPublicKeys![2]);
+                const c = bigintToNibblesLS(0n, 86).map((b) => bitcoin.addWitness(b));
+                bitcoin.winternitzDecode256_4(c, w_c, lastSelect.outputs[1].spendingConditions[0].wotsPublicKeys![2]);
                 bitcoin.drop(w_c);
 
                 // d is the fourth element second output
                 let d: StackItem[];
                 if (w_d) {
-                    d = this.param(bitcoin);
-                    bitcoin.winternitzDecode256(d, w_d, lastSelect.outputs[1].spendingConditions[0].wotsPublicKeys![3]);
+                    d = bigintToNibblesLS(0n, 86).map((b) => bitcoin.addWitness(b));
+                    bitcoin.winternitzDecode256_4(
+                        d,
+                        w_d,
+                        lastSelect.outputs[1].spendingConditions[0].wotsPublicKeys![3]
+                    );
                     bitcoin.drop(w_d);
                 }
 
                 this.checkLine(bitcoin, line, a, b, c, d!);
                 const template = bitcoin.programToTemplate();
-                this.cache[cacheKey] = template;
+                cache[cacheKey] = template;
                 final = template.buffer;
             }
 
@@ -288,7 +285,7 @@ export class DoomsdayGenerator {
 
         console.log(`Generating refute merkle proof taproot for ${this.program.length} instructions`);
         for (let index = 1; index < this.program.length; index++) {
-            if (index && index % 10 == 0) {
+            if (index && index % 100 == 0) {
                 const todo = ((this.program.length - index) * (Date.now() - started)) / index;
                 const m = Math.floor(todo / 60000);
                 const s = Math.floor((todo - m * 60000) / 1000);

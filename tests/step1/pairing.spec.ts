@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it } from '@jest/globals';
 
-import { G1, G1Point } from '../../src/generator/step1/algebra/G1';
-import { G2, G2Point } from '../../src/generator/step1/algebra/G2';
-import { step1_vm as vm } from '../../src/generator/step1/vm/vm';
-import { curveOrder, G3 } from '../../src/generator/step1/algebra/G3';
-import { Fp12t } from '../../src/generator/step1/algebra/fp12t';
+import { G1, G1Point } from '../../src/generator/ec_vm/algebra/G1';
+import { G2, G2Point } from '../../src/generator/ec_vm/algebra/G2';
+import { step1_vm as vm } from '../../src/generator/ec_vm/vm/vm';
+import { curveOrder, G3 } from '../../src/generator/ec_vm/algebra/G3';
+import { Fp12t } from '../../src/generator/ec_vm/algebra/fp12t';
 
 const _27 = vm.hardcode(27n);
 const _37 = vm.hardcode(37n);

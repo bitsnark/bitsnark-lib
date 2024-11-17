@@ -1,4 +1,4 @@
-import { Bitcoin } from '../src/generator/step3/bitcoin';
+import { Bitcoin } from '../src/generator/btc_vm/bitcoin';
 
 describe('Bitcoin', () => {
     let bitcoin: Bitcoin;
