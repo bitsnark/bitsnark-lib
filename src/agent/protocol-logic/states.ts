@@ -4,6 +4,7 @@ import { Decasector } from '../final-step/decasector';
 import { vKey } from '../../generator/step1/constants';
 import { Runner } from '../../generator/step1/vm/runner';
 import { FatMerkleProof } from './fat-merkle';
+import { encodeWinternitz256 } from '../winternitz';
 
 export async function calculateStates(proof: bigint[], selectionPath: number[]): Promise<Buffer[]> {
     step1_vm.reset();
@@ -21,7 +22,7 @@ export async function calculateStates(proof: bigint[], selectionPath: number[]):
         states.push(root);
     }
 
-    return states
+    return states.map(s => encodeWinternitz256)
 }
 
 export async function findErrorState(proof: bigint[], states: Buffer[], selectionPath: number[]): Promise<number> {
