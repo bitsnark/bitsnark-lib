@@ -3,9 +3,9 @@ import { step1_vm } from '../../generator/ec_vm/vm/vm';
 import { Decasector } from '../final-step/decasector';
 import { vKey } from '../../generator/ec_vm/constants';
 import { Runner } from '../../generator/ec_vm/vm/runner';
-import { calculateMerkleRoot } from './merkle';
+import { FatMerkleProof } from './fat-merkle';
 
-export function calculateStates(proof: bigint[], selectionPath: number[]): Buffer[] {
+export async function calculateStates(proof: bigint[], selectionPath: number[]): Promise<Buffer[]> {
     step1_vm.reset();
     groth16Verify(Key.fromSnarkjs(vKey), Step1_Proof.fromSnarkjs(proof));
     if (!step1_vm.success?.value) throw new Error('Failed.');
@@ -17,7 +17,7 @@ export function calculateStates(proof: bigint[], selectionPath: number[]): Buffe
     for (const row of rows) {
         runner.execute(row);
         const regs = runner.getRegisterValues();
-        const root = calculateMerkleRoot(regs);
+        const root = await FatMerkleProof.calculateRoot(regs);
         states.push(root);
     }
 
