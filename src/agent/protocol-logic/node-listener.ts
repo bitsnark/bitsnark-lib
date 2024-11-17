@@ -51,7 +51,7 @@ export class BitcoinNodeListener {
 
         this.lastCrawledHeight = pending[0].listenerBlockHeight
 
-        while (this.lastCrawledHeight <= this.tipHeight - agentConf.blocksUntilFinalized && pending.length > 0) {
+        while (this.lastCrawledHeight < this.tipHeight - agentConf.blocksUntilFinalized && pending.length > 0) {
             const pendingTxIdsSet = new Set(
                 pending.filter((tx) => tx.listenerBlockHeight === this.lastCrawledHeight)
                     .map((tx) => tx.txId));
@@ -96,6 +96,7 @@ export class BitcoinNodeListener {
 if (process.argv[1] == __filename) {
     (async () => {
         const nodeListener = new BitcoinNodeListener();
+
         await nodeListener.checkForNewBlock();
         nodeListener.destroy();
 

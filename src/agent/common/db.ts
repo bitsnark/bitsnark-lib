@@ -185,7 +185,7 @@ export async function updateSetupsGenesisBlock(setupId: string, genesisHeight: n
 }
 
 
-export async function updatedSetupListenerLastHeight(newCrawledHeight: number, lastCrawledHeight: number) {
+export async function updatedSetupListenerLastHeight(lastCrawledHeight: number, newCrawledHeight: number) {
     const result = await runQuery(
         `UPDATE setups
             SET listener_last_crawled_height = $1
@@ -276,16 +276,18 @@ export async function readExpectedIncoming(): Promise<Pending[]> {
             outgoing.template_id,
             setups.setup_id,
             setups.listener_last_crawled_height
-        FROM outgoing INNER JOIN templates
-        ON outgoing.template_id = templates.template_id
+        FROM outgoing
+        INNER JOIN templates
+            ON outgoing.template_id = templates.template_id
         INNER JOIN setups
-        ON templates.setup_id = setups.setup_id
+            ON templates.setup_id = setups.setup_id
         WHERE outgoing.status in ('PENDING', 'PUBLISHED')
-        AND setups.status = 'SIGNED'
-        AND transaction_id NOT IN(
+            AND setups.status = 'SIGNED'
+            AND transaction_id NOT IN(
             SELECT transaction_id
-            FROM incoming )
-        ORDER BY listener_last_crawled_height,
+                FROM incoming )
+        ORDER BY
+            listener_last_crawled_height,
             setups.setup_id,
             outgoing.template_id`);
 
@@ -302,7 +304,7 @@ export async function writeIncomingTransaction(
         `INSERT INTO incoming(
 	        transaction_id, template_id, raw_tx, block_height)
         VALUES ($1, $2, $3, $4)
-        ON CONFLICT(transaction_id) DO NOTHING`,
+        ON CONFLICT DO NOTHING`,
         [transmittedRaw.txid, templateId, jsonizeObject(transmittedRaw), blockHeight]
     );
 }
