@@ -4,14 +4,12 @@ import { proof, vKey } from '../../generator/ec_vm/constants';
 import { Bitcoin, Template } from '../../generator/btc_vm/bitcoin';
 import { getSpendingConditionByInput, getTransactionByName, Transaction } from '../transactions-new';
 import { bigintToNibblesLS } from './common';
-import { array, TransactionNames, twoDigits } from '../common';
+import { TransactionNames, twoDigits } from '../common';
 import {
-    bigintToBufferBE,
     bufferToBigintBE,
     encodeWinternitz24,
     encodeWinternitz256_4,
     getWinternitzPublicKeys,
-    WOTS_NIBBLES,
     WotsType
 } from '../winternitz';
 import { step1_vm } from '../../generator/ec_vm/vm/vm';
