@@ -1,7 +1,7 @@
 import { RawTransaction } from 'bitcoin-core';
 import { agentConf } from '../agent.conf';
 import { BitcoinNode } from '../bitcoin-node';
-import { AgentRoles, iterations, TransactionNames, twoDigits } from '../common';
+import { AgentRoles, TransactionNames, twoDigits } from '../common';
 import {
     Incoming,
     OutgoingStatus,
@@ -14,24 +14,24 @@ import {
     writeSetupStatus
 } from '../db';
 import { createUniqueDataId, getTransactionByName, SpendingCondition, Transaction } from '../transactions-new';
-import { encodeWinternitz256 } from '../winternitz';
 import { parseTransactionData } from './parser';
-import { calculateStates, makeArgument } from './states';
+import { step1_vm } from '../../generator/step1/vm/vm';
+import { vKey } from '../../generator/step1/constants';
+import groth16Verify, { Key, Proof as Step1_Proof } from '../../generator/step1/verifier';
+import { findErrorState } from './states';
+import { encodeWinternitz24 } from '../winternitz';
 
-export class ProtocolProver {
+export class ProtocolVerifier {
     agentId: string;
     setupId: string;
     bitcoinClient: BitcoinNode;
     templates: Transaction[] = [];
+    states: any;
 
     constructor(agentId: string, setupId: string) {
         this.agentId = agentId;
         this.setupId = setupId;
         this.bitcoinClient = new BitcoinNode();
-    }
-
-    public async pegOut(proof: bigint[]) {
-        await this.sendProof(proof);
     }
 
     public async process() {
@@ -58,6 +58,7 @@ export class ProtocolProver {
 
         const selectionPath: number[] = [];
         let proof: bigint[] = [];
+        const states: Buffer[][] = [];
 
         // examine each one
         for (const pair of pairs) {
@@ -65,67 +66,89 @@ export class ProtocolProver {
 
             switch (pair.template.transactionName) {
                 case TransactionNames.PROOF:
-                    if (lastFlag) {
-                        // did the timeout expire?
-                        const timeoutSc = await this.checkTimeout(pair.incoming, pair.template);
-                        if (timeoutSc) await this.sendProofUncontested();
-                    } else {
-                        // let's get the proof so we can run the verifier on it
-                        proof = this.parseProof(pair.incoming, pair.template);
+                    proof = this.parseProof(pair.incoming, pair.template);
+                    if (lastFlag && !this.checkProof(proof)) {
+                        this.sendChallenge();
                     }
                     break;
                 case TransactionNames.PROOF_UNCONTESTED:
-                    // we won, mark it
+                    // we lost, mark it
                     await this.updateSetupStatus(SetupStatus.PEGOUT_SUCCESSFUL);
                     break;
                 case TransactionNames.CHALLENGE:
                     if (lastFlag) {
-                        // send the first state iteration
+                        const timeoutSc = await this.checkTimeout(pair.incoming, pair.template);
+                        if (timeoutSc) await this.sendChallengeUncontested();
                     }
                     break;
                 case TransactionNames.CHALLENGE_UNCONTESTED:
-                    // we lost, mark it
+                    // we won, mark it
                     await this.updateSetupStatus(SetupStatus.PEGOUT_FAILED);
                     break;
                 case TransactionNames.ARGUMENT:
                     if (lastFlag) {
-                        // did the timeout expire?
-                        const timeoutSc = await this.checkTimeout(pair.incoming, pair.template);
-                        if (timeoutSc) await this.sendArgumentUncontested();
+                        this.refuteArgument(proof, states, selectionPath, pair.incoming, pair.template);
                     }
                     break;
                 case TransactionNames.ARGUMENT_UNCONTESTED:
-                    // we won, mark it
+                    // we lost, mark it
                     await this.updateSetupStatus(SetupStatus.PEGOUT_SUCCESSFUL);
                     break;
             }
 
             if (pair.template.transactionName.startsWith(TransactionNames.STATE)) {
-                if (lastFlag) {
-                    // did the timeout expire?
-                    const timeoutSc = await this.checkTimeout(pair.incoming, pair.template);
-                    if (timeoutSc) await this.sendStateUncontested(selectionPath.length);
-                }
+                const state = this.parseState(pair.incoming, pair.template);
+                this.states.push(state);
+                await this.sendSelect(proof, states, selectionPath);
             }
             if (pair.template.transactionName.startsWith(TransactionNames.STATE_UNCONTESTED)) {
-                // we won, mark it
+                // we lost, mark it
                 await this.updateSetupStatus(SetupStatus.PEGOUT_SUCCESSFUL);
                 break;
             }
             if (pair.template.transactionName.startsWith(TransactionNames.SELECT)) {
                 const selection = this.parseSelection(pair.incoming, pair.template);
                 selectionPath.push(selection);
+
                 if (lastFlag) {
-                    if (selectionPath.length + 1 < iterations) await this.sendState(proof, selectionPath);
-                    else await this.sendArgument(proof, selectionPath);
+                    const timeoutSc = await this.checkTimeout(pair.incoming, pair.template);
+                    if (timeoutSc) await this.sendSelectUncontested(selectionPath.length);
                 }
             }
             if (pair.template.transactionName.startsWith(TransactionNames.SELECT_UNCONTESTED)) {
-                // we lost, mark it
+                // we won, mark it
                 await this.updateSetupStatus(SetupStatus.PEGOUT_FAILED);
                 break;
             }
         }
+    }
+
+    private checkProof(proof: bigint[]): boolean {
+        step1_vm.reset();
+        groth16Verify(Key.fromSnarkjs(vKey), Step1_Proof.fromSnarkjs(proof));
+        return step1_vm.success?.value === 1n;
+    }
+
+    private async refuteArgument(proof: bigint[], states: Buffer<ArrayBufferLike>[][], selectionPath: number[], incoming: Incoming, template: Transaction) {
+        throw new Error('Method not implemented.');
+    }
+
+    private parseState(incoming: Incoming, template: Transaction) {
+        const rawTx = incoming.rawTransaction as RawTransaction;
+        const state = parseTransactionData(
+            this.templates,
+            template,
+            rawTx.vin[0].txinwitness!.map(s => Buffer.from(s, 'hex'))
+        );
+        return state;
+    }
+
+    private async sendSelect(proof: bigint[], states: Buffer<ArrayBufferLike>[][], selectionPath: number[]) {
+        const iteration = selectionPath.length;
+        const txName = TransactionNames.SELECT + '_' + twoDigits(iteration);
+        const selection = await findErrorState(proof, states[states.length - 1], selectionPath);
+        const selectionWi = encodeWinternitz24(BigInt(selection), createUniqueDataId(this.setupId, txName, 0, 0, 0));
+        this.sendTransaction(txName, [selectionWi]);
     }
 
     private async sendTransaction(name: string, data?: Buffer[][]) {
@@ -134,19 +157,6 @@ export class ProtocolProver {
         const presigned = await readOutgingByTemplateId(template.templateId!);
         if (!presigned) throw new Error('Outgoing transaction not found: ' + template.templateId);
         await writeOutgoing(presigned.template_id, data, OutgoingStatus.READY);
-    }
-
-    private async sendProof(proof: bigint[]) {
-        const data = proof
-            .map((n, dataIndex) =>
-                encodeWinternitz256(n, createUniqueDataId(this.setupId, TransactionNames.PROOF, 0, 0, dataIndex))
-            )
-            .flat();
-        await this.sendTransaction(TransactionNames.PROOF, [data]);
-    }
-
-    private async sendProofUncontested() {
-        await this.sendTransaction(TransactionNames.PROOF_UNCONTESTED);
     }
 
     private parseProof(incoming: Incoming, template: Transaction): bigint[] {
@@ -159,23 +169,6 @@ export class ProtocolProver {
         return proof;
     }
 
-    private async updateSetupStatus(status: SetupStatus) {
-        await writeSetupStatus(this.setupId, status);
-    }
-
-    private async sendArgument(proof: bigint[], selectionPath: number[]) {
-        const argumentData = makeArgument(proof, selectionPath);
-        await this.sendTransaction(TransactionNames.ARGUMENT, argumentData);
-    }
-
-    private async sendArgumentUncontested() {
-        await this.sendTransaction(TransactionNames.ARGUMENT_UNCONTESTED);
-    }
-
-    private async sendStateUncontested(iteration: number) {
-        await this.sendTransaction(TransactionNames.STATE_UNCONTESTED + '_' + twoDigits(iteration));
-    }
-
     private parseSelection(incoming: Incoming, template: Transaction): number {
         const rawTx = incoming.rawTransaction as RawTransaction;
         const data = parseTransactionData(
@@ -186,10 +179,20 @@ export class ProtocolProver {
         return Number(data[0]);
     }
 
-    private async sendState(proof: bigint[], selectionPath: number[]) {
-        const iteration = selectionPath.length;
-        const states = await calculateStates(proof, selectionPath);
-        await this.sendTransaction(TransactionNames.STATE + '_' + twoDigits(iteration), [states]);
+    private async updateSetupStatus(status: SetupStatus) {
+        await writeSetupStatus(this.setupId, status);
+    }
+
+    private async sendChallenge() {
+        await this.sendTransaction(TransactionNames.CHALLENGE);
+    }
+
+    private async sendChallengeUncontested() {
+        await this.sendTransaction(TransactionNames.CHALLENGE_UNCONTESTED);
+    }
+
+    private async sendSelectUncontested(iteration: number) {
+        await this.sendTransaction(TransactionNames.SELECT_UNCONTESTED + '_' + twoDigits(iteration));
     }
 
     private async getCurrentBlockHeight(): Promise<number> {
@@ -216,7 +219,7 @@ export async function main(agentId: string) {
     const setups = await readActiveSetups();
     const doit = async () => {
         for (const setup of setups) {
-            const protocol = new ProtocolProver(agentId, setup.setup_id);
+            const protocol = new ProtocolVerifier(agentId, setup.setup_id);
             try {
                 await protocol.process();
             } catch (e) {

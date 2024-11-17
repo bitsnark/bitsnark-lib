@@ -21,7 +21,12 @@ export async function calculateStates(proof: bigint[], selectionPath: number[]):
         states.push(root);
     }
 
-    return states;
+    return states
+}
+
+export async function findErrorState(proof: bigint[], states: Buffer[], selectionPath: number[]): Promise<number> {
+    const myStates = await calculateStates(proof, selectionPath);
+    return myStates.findIndex((b, i) => b.compare(states[i]) != 0);
 }
 
 export function makeArgument(proof: bigint[], selectionPath: number[]): Buffer[][] {
