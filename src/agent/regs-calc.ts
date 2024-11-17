@@ -1,6 +1,6 @@
-import { proof, vKey } from '../generator/step1/constants';
-import groth16Verify, { Key, Proof as Step1_Proof } from '../generator/step1/verifier';
-import { step1_vm, VM as Step1_vm } from '../generator/step1/vm/vm';
+import { proof, vKey } from '../generator/ec_vm/constants';
+import groth16Verify, { Key, Proof as Step1_Proof } from '../generator/ec_vm/verifier';
+import { step1_vm, VM as Step1_vm } from '../generator/ec_vm/vm/vm';
 
 export function getRegsAt(vm: Step1_vm, left: number, point: number, right: number): number[] {
     const map: any = {};

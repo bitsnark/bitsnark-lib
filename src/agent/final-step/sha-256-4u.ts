@@ -1,6 +1,6 @@
 import assert from 'assert';
-import { Bitcoin } from '../../generator/step3/bitcoin';
-import { StackItem } from '../../generator/step3/stack';
+import { Bitcoin } from '../../generator/btc_vm/bitcoin';
+import { StackItem } from '../../generator/btc_vm/stack';
 import { _256To32BE, _32To256BE, hash, hashPair } from '../../../src/encoding/encoding';
 
 let stats: any = {};
