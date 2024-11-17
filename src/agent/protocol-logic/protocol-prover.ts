@@ -188,7 +188,7 @@ export class ProtocolProver {
 
     async sendState(proof: bigint[], selectionPath: number[]) {
         const iteration = selectionPath.length;
-        const states = calculateStates(proof, selectionPath);
+        const states = await calculateStates(proof, selectionPath);
         await this.sendTransaction(TransactionNames.STATE + '_' + twoDigits(iteration), [states]);
     }
 

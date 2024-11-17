@@ -52,6 +52,10 @@ export class FatMerkleProof {
         this.leafIndex = leafIndex;
     }
 
+    public static async calculateRoot(regs: bigint[]): Promise<Buffer> {
+        return await calculateMerkleRoot(regs);
+    }
+
     public static async fromRegs(regs: bigint[], leafIndex: number): Promise<FatMerkleProof> {
         return new FatMerkleProof(await makeFatMerkleProof(regs, leafIndex), leafIndex);
     }
