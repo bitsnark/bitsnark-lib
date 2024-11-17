@@ -33,7 +33,7 @@
     "start-db": "./scripts/start-db.sh",
     "start-prover": "./python/run-in-venv.sh ts-node ./src/agent/agent.ts bitsnark_prover_1",
     "start-verifier": "./python/run-in-venv.sh ts-node ./src/agent/agent.ts bitsnark_verifier_1",
-    "start-node": "./scripts/start-node.sh",
+    "start-regtest": "./scripts/start-regtest.sh",
     "stop-node": "docker stop bitcoin-node",
     "emulate-setup": "./python/run-in-venv.sh ts-node ./src/agent/emulate-setup.ts"
   },
