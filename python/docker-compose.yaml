@@ -1,4 +1,21 @@
   services:
+    postgres:
+      image: postgres:17
+      environment:
+        POSTGRES_PASSWORD: testpostgres
+
+      volumes:
+        - ../db/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
+      ports:
+        # Expose a different port, and disable connections outside of localhost
+        - 127.0.0.1:5433:5432
+      healthcheck:
+        test: ["CMD-SHELL", "pg_isready -U postgres -d postgres -h postgres"]
+        interval: 1s
+        timeout: 30s
+        start_period: 1s
+        retries: 10
+
     bitcoind:
       environment:
         USERID: ${USERID:-1000}

@@ -11,6 +11,7 @@ from sqlalchemy import create_engine, select, update
 from sqlalchemy.orm.session import Session
 from sqlalchemy.orm.attributes import flag_modified
 
+from bitsnark.conf import POSTGRES_URL
 from bitsnark.core.parsing import parse_bignum, parse_hex_bytes, serialize_hex
 from .models import TransactionTemplate, Outgoing, Setups, OutgoingStatus, SetupStatus
 from .signing import sign_input
@@ -75,7 +76,7 @@ for keypairs in KEYPAIRS.values():
 
 def main(argv: Sequence[str] = None):
     parser = argparse.ArgumentParser()
-    parser.add_argument('--db', default='postgresql://postgres:1234@localhost:5432/postgres')
+    parser.add_argument('--db', default=POSTGRES_URL)
     parser.add_argument('--all', action='store_true',
                         help='Process all transaction templates (get role from agent id)')
     parser.add_argument('--setup-id', required=False,

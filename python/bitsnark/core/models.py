@@ -2,9 +2,8 @@ from __future__ import annotations
 import datetime
 import enum
 from typing import TypedDict, Optional, ClassVar, Any
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, declarative_base
 from sqlalchemy import Column, Integer, JSON, String, Boolean, TIMESTAMP, Enum
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.schema import FetchedValue
 
 
