@@ -14,9 +14,10 @@ import {
     writeSetupStatus
 } from '../db';
 import { createUniqueDataId, getTransactionByName, SpendingCondition, Transaction } from '../transactions-new';
-import { encodeWinternitz256 } from '../winternitz';
+import { bufferToBigintBE, encodeWinternitz256 } from '../winternitz';
 import { parseTransactionData } from './parser';
-import { calculateStates, makeArgument } from './states';
+import { calculateStates } from './states';
+import { makeArgument } from './argument';
 
 export class ProtocolProver {
     agentId: string;
@@ -56,6 +57,7 @@ export class ProtocolProver {
             // order logically
             .sort((p1, p2) => p1.template.ordinal! - p2.template.ordinal!);
 
+        const selectionPathUnparsed: Buffer[][] = [];
         const selectionPath: number[] = [];
         let proof: bigint[] = [];
 
@@ -113,11 +115,13 @@ export class ProtocolProver {
                 break;
             }
             if (pair.template.transactionName.startsWith(TransactionNames.SELECT)) {
+                const rawTx = pair.incoming.rawTransaction as RawTransaction;
+                selectionPathUnparsed.push(rawTx.vin[0].txinwitness!.map((s) => Buffer.from(s, 'hex')));
                 const selection = this.parseSelection(pair.incoming, pair.template);
                 selectionPath.push(selection);
                 if (lastFlag) {
                     if (selectionPath.length + 1 < iterations) await this.sendState(proof, selectionPath);
-                    else await this.sendArgument(proof, selectionPath);
+                    else await this.sendArgument(proof, selectionPath, selectionPathUnparsed);
                 }
             }
             if (pair.template.transactionName.startsWith(TransactionNames.SELECT_UNCONTESTED)) {
@@ -163,8 +167,8 @@ export class ProtocolProver {
         await writeSetupStatus(this.setupId, status);
     }
 
-    private async sendArgument(proof: bigint[], selectionPath: number[]) {
-        const argumentData = makeArgument(proof, selectionPath);
+    private async sendArgument(proof: bigint[], selectionPath: number[], selectionPathUnparsed: Buffer[][]) {
+        const argumentData = await makeArgument(proof, selectionPath, selectionPathUnparsed);
         await this.sendTransaction(TransactionNames.ARGUMENT, argumentData);
     }
 
@@ -189,7 +193,12 @@ export class ProtocolProver {
     private async sendState(proof: bigint[], selectionPath: number[]) {
         const iteration = selectionPath.length;
         const states = await calculateStates(proof, selectionPath);
-        await this.sendTransaction(TransactionNames.STATE + '_' + twoDigits(iteration), [states]);
+        const txName = TransactionNames.STATE + '_' + twoDigits(iteration);
+        const statesWi =
+            states.map((s, dataIndex) =>
+                encodeWinternitz256(bufferToBigintBE(s), createUniqueDataId(this.setupId, txName, 0, 0, dataIndex)))
+                .flat();
+        await this.sendTransaction(txName, [statesWi]);
     }
 
     private async getCurrentBlockHeight(): Promise<number> {

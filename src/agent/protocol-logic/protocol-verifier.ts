@@ -20,6 +20,7 @@ import { vKey } from '../../generator/step1/constants';
 import groth16Verify, { Key, Proof as Step1_Proof } from '../../generator/step1/verifier';
 import { findErrorState } from './states';
 import { encodeWinternitz24 } from '../winternitz';
+import { refuteArgument } from './refute';
 
 export class ProtocolVerifier {
     agentId: string;
@@ -130,7 +131,7 @@ export class ProtocolVerifier {
     }
 
     private async refuteArgument(proof: bigint[], states: Buffer<ArrayBufferLike>[][], selectionPath: number[], incoming: Incoming, template: Transaction) {
-        throw new Error('Method not implemented.');
+        await refuteArgument();
     }
 
     private parseState(incoming: Incoming, template: Transaction) {
@@ -237,6 +238,6 @@ export async function main(agentId: string) {
 
 const scriptName = __filename;
 if (process.argv[1] == scriptName) {
-    const agentId = process.argv[2] ?? 'bitsnark_prover_1';
+    const agentId = process.argv[2] ?? 'bitsnark_verifier_1';
     main(agentId).catch(console.error);
 }
