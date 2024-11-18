@@ -2,7 +2,7 @@ import logging
 import pytest
 from sqlalchemy import create_engine, Engine
 from sqlalchemy.orm import Session
-
+from bitcointx import ChainParams
 
 from bitsnark.btc.rpc import BitcoinRPC
 from .utils.docker_compose import start_stop_docker_compose
@@ -11,6 +11,12 @@ from .utils.npm import NPMCommandRunner
 from .constants import POSTGRES_URL, BITCOIN_RPC_URL
 
 logger = logging.getLogger(__name__)
+
+
+@pytest.fixture(autouse=True)
+def use_regtest_bitcointx():
+    with ChainParams('bitcoin/regtest'):
+        yield
 
 
 @pytest.fixture()

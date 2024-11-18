@@ -41,7 +41,7 @@ class TransactionTemplate(Base):
         return (
             f"<TransactionTemplate(name={self.name}, agent_id={self.agent_id}, "
             f"setup_id={self.setup_id}, template_id={self.template_id}, ordinal={self.ordinal}, "
-            f"role={self.role}, is_exteranl={self.is_external}, object=...)>")
+            f"role={self.role}, is_external={self.is_external}, object=...)>")
 
     @property
     def inputs(self) -> list[TxInJson]:
