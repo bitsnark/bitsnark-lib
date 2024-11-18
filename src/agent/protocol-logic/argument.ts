@@ -7,19 +7,10 @@ import { bufferToBigintBE, encodeWinternitz24, encodeWinternitz256_4 } from '../
 import { createUniqueDataId } from '../transactions-new';
 import { TransactionNames } from '../common';
 import { InstrCode, Instruction } from '../../generator/ec_vm/vm/types';
+import { prime_bigint } from '../final-step/verify-mulmod';
 
-function calculateD(a: bigint, b: bigint, c: bigint): bigint {
-    return 0n;
-}
-
-function chunk<T>(a: T[], n: number): T[][] {
-    const r: T[][] = [];
-    while (a.length > 0) {
-        const c = a.slice(0, n);
-        r.push(c);
-        a = a.slice(n);
-    }
-    return r;
+function calculateD(a: bigint, b: bigint): bigint {
+    return (a * b) / prime_bigint;
 }
 
 function makeIndexWitness(
@@ -47,8 +38,7 @@ function makeAbcdWitness(
     const aValue = beforeRegs[instr.param1];
     const bValue = beforeRegs[instr.param2!];
     const cValue = afterRegs[instr.target];
-    const dValue =
-        instr.name == InstrCode.MULMOD || instr.name == InstrCode.DIVMOD ? calculateD(aValue, bValue, cValue) : 0n;
+    const dValue = instr.name == InstrCode.MULMOD || instr.name == InstrCode.DIVMOD ? calculateD(aValue, bValue) : 0n;
 
     return [aValue, bValue, cValue, dValue]
         .map((n, dataIndex) =>

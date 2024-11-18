@@ -2,7 +2,7 @@ import { proof, vKey } from '../generator/ec_vm/constants';
 import groth16Verify, { Key, Proof as Step1_Proof } from '../generator/ec_vm/verifier';
 import { step1_vm, VM as Step1_vm } from '../generator/ec_vm/vm/vm';
 
-export function getRegsAt(vm: Step1_vm, left: number, point: number, right: number): number[] {
+export function getRegsAt(left: number, point: number, right: number): number[] {
     const map: any = {};
     for (let i = left; i <= point; i++) {
         if (!step1_vm.instructions[i]) break;
@@ -29,7 +29,7 @@ function getStateSizes(vm: Step1_vm, left: number, right: number, iteration: num
     }
 
     const middle = Math.round((left + right) / 2);
-    result[iteration] = Math.max(result[iteration] ?? 0, getRegsAt(vm, left, middle, right).length);
+    result[iteration] = Math.max(result[iteration] ?? 0, getRegsAt(left, middle, right).length);
 
     getStateSizes(vm, left, middle, iteration + 1, result);
     getStateSizes(vm, middle, right, iteration + 1, result);
@@ -68,8 +68,4 @@ if (process.argv[1] == scriptName) {
     const counts: number[] = [];
     getStateSizes(step1_vm, 0, step1_vm.instructions.length - 1, 0, counts);
     console.log(counts);
-
-    const lines: number[][][] = [];
-    getLines(step1_vm, 0, step1_vm.instructions.length - 1, 0, lines);
-    console.log(lines.length, lines[lines.length - 1]);
 }

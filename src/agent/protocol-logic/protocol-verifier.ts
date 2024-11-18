@@ -1,7 +1,7 @@
 import { RawTransaction } from 'bitcoin-core';
 import { agentConf } from '../agent.conf';
 import { BitcoinNode } from '../bitcoin-node';
-import { AgentRoles, TransactionNames, twoDigits } from '../common';
+import { AgentRoles, last, TransactionNames, twoDigits } from '../common';
 import {
     Incoming,
     OutgoingStatus,
@@ -15,9 +15,9 @@ import {
 } from '../db';
 import { createUniqueDataId, getTransactionByName, SpendingCondition, Transaction } from '../transactions-new';
 import { parseTransactionData } from './parser';
-import { step1_vm } from '../../generator/step1/vm/vm';
-import { vKey } from '../../generator/step1/constants';
-import groth16Verify, { Key, Proof as Step1_Proof } from '../../generator/step1/verifier';
+import { step1_vm } from '../../generator/ec_vm/vm/vm';
+import { vKey } from '../../generator/ec_vm/constants';
+import groth16Verify, { Key, Proof as Step1_Proof } from '../../generator/ec_vm/verifier';
 import { findErrorState } from './states';
 import { encodeWinternitz24 } from '../winternitz';
 import { refuteArgument } from './refute';
@@ -101,22 +101,18 @@ export class ProtocolVerifier {
                 const state = this.parseState(pair.incoming, pair.template);
                 this.states.push(state);
                 await this.sendSelect(proof, states, selectionPath);
-            }
-            if (pair.template.transactionName.startsWith(TransactionNames.STATE_UNCONTESTED)) {
+            } else if (pair.template.transactionName.startsWith(TransactionNames.STATE_UNCONTESTED)) {
                 // we lost, mark it
                 await this.updateSetupStatus(SetupStatus.PEGOUT_SUCCESSFUL);
                 break;
-            }
-            if (pair.template.transactionName.startsWith(TransactionNames.SELECT)) {
+            } else if (pair.template.transactionName.startsWith(TransactionNames.SELECT)) {
                 const selection = this.parseSelection(pair.incoming, pair.template);
                 selectionPath.push(selection);
-
                 if (lastFlag) {
                     const timeoutSc = await this.checkTimeout(pair.incoming, pair.template);
                     if (timeoutSc) await this.sendSelectUncontested(selectionPath.length);
                 }
-            }
-            if (pair.template.transactionName.startsWith(TransactionNames.SELECT_UNCONTESTED)) {
+            } else if (pair.template.transactionName.startsWith(TransactionNames.SELECT_UNCONTESTED)) {
                 // we won, mark it
                 await this.updateSetupStatus(SetupStatus.PEGOUT_FAILED);
                 break;
@@ -132,7 +128,7 @@ export class ProtocolVerifier {
 
     private async refuteArgument(
         proof: bigint[],
-        states: Buffer<ArrayBufferLike>[][],
+        states: Buffer[][],
         selectionPath: number[],
         incoming: Incoming,
         template: Transaction
@@ -150,10 +146,10 @@ export class ProtocolVerifier {
         return state;
     }
 
-    private async sendSelect(proof: bigint[], states: Buffer<ArrayBufferLike>[][], selectionPath: number[]) {
+    private async sendSelect(proof: bigint[], states: Buffer[][], selectionPath: number[]) {
         const iteration = selectionPath.length;
         const txName = TransactionNames.SELECT + '_' + twoDigits(iteration);
-        const selection = await findErrorState(proof, states[states.length - 1], selectionPath);
+        const selection = await findErrorState(proof, last(states), selectionPath);
         const selectionWi = encodeWinternitz24(BigInt(selection), createUniqueDataId(this.setupId, txName, 0, 0, 0));
         this.sendTransaction(txName, [selectionWi]);
     }

@@ -1,4 +1,3 @@
-import { calculateMerkleRoot } from '../../../encoding/merkle';
 import { modInverse } from '../../common/math-utils';
 import { prime_bigint } from '../../common/prime';
 import { Register } from '../../common/register';
@@ -144,10 +143,6 @@ export class Runner {
 
     public getRegisterValues(): bigint[] {
         return this.registers.map((r) => r.value);
-    }
-
-    public getStateRoot(): bigint {
-        return calculateMerkleRoot(this.getRegisterValues());
     }
 
     public getInstruction(line: number): Instruction {

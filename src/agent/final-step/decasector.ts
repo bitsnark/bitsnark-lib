@@ -27,23 +27,27 @@ export class Decasector {
         return [this.sc[row], this.sc[row + 1]];
     }
 
-    public getRowsForSelectionPath(selectionPath: number[]): number[] {
+    public getLinesForSelectionPath(selectionPath: number[]): number[] {
         const rows: number[] = [];
-        let left = 0;
-        let right = this.total;
-        const _sc = () => {
-            const d = (right - left) / 10;
-            for (let i = 1; i <= 9; i++) {
-                rows[i] = left + i * d;
-            }
-        };
-        _sc();
-        for (const selection of selectionPath) {
-            left = rows[selection];
-            right = rows[selection + 1];
-            _sc();
+        const { left, right } = this.getRangeForSelectionPath(selectionPath);
+        const d = (right - left) / 10;
+        for (let i = 1; i <= 9; i++) {
+            rows[i] = left + i * d;
         }
         return rows;
+    }
+
+    public getRangeForSelectionPath(selectionPath: number[]): { left: number; right: number } {
+        let left = 0;
+        let right = this.total;
+        for (const selection of selectionPath) {
+            const d = (right - left) / 10;
+            const tl = left + selection * d;
+            const tr = left + (selection + 1) * d;
+            left = tl;
+            right = tr;
+        }
+        return { left, right };
     }
 }
 
