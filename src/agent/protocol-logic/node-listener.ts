@@ -1,21 +1,29 @@
-import { readExpectedIncoming, updatedSetupListenerLastHeight, writeIncomingTransaction } from '../common/db';
+import { Transaction } from '../common/transactions';
 import { agentConf } from '../agent.conf';
 import { BitcoinNode } from '../common/bitcoin-node';
 import { RawTransaction } from 'bitcoin-core';
+import { Pending, readExpectedIncoming, writeIncomingTransaction } from '../common/db';
+
 const checkNodeInterval = 60000;
+export interface expectByInputs {
+    setupId: string;
+    name: string;
+    templateId: number;
+    vins: { outputTxid: string; outputIndex: number; vin: number }[];
+}
 
 export class BitcoinNodeListener {
+    private agentId: string;
     private scheduler: NodeJS.Timeout | null = null;
-    private lastCrawledHeight: number = 0;
     private tipHeight: number = 0;
     private tipHash: string = '';
     private isCrawling: boolean = false;
     public client;
 
-    constructor() {
+    constructor(agentId: string) {
         this.client = new BitcoinNode().client;
+        this.agentId = agentId;
     }
-
 
     async setMonitorSchedule() {
         this.scheduler = setInterval(async () => {
@@ -45,44 +53,80 @@ export class BitcoinNodeListener {
         }
     }
 
-    async monitorTransmitted() {
-        let pending = await readExpectedIncoming();
+    async monitorTransmitted(): Promise<void> {
+        const setupsTemplates = await readExpectedIncoming(this.agentId);
+        const pending = setupsTemplates.filter((tx) => tx.incomingTxId !== null);
         if (pending.length === 0) return;
 
-        this.lastCrawledHeight = pending[0].listenerBlockHeight
+        let blockHeight = pending[0].listenerBlockHeight + 1
 
-        while (this.lastCrawledHeight < this.tipHeight - agentConf.blocksUntilFinalized && pending.length > 0) {
-            const pendingTxIdsSet = new Set(
-                pending.filter((tx) => tx.listenerBlockHeight === this.lastCrawledHeight)
-                    .map((tx) => tx.txId));
+        while (blockHeight <= this.tipHeight - agentConf.blocksUntilFinalized) {
+            console.log('Crawling:', blockHeight);
 
-            const blockHeight = this.lastCrawledHeight + 1;
             const blockHash = blockHeight === this.tipHeight ? this.tipHash : await this.client.getBlockHash(blockHeight);
 
-            const blockTxs = (await this.client.getBlock(blockHash)).tx;
-            const transmittedTxIds = blockTxs.filter((tx) => pendingTxIdsSet.has(tx));
+            for (const pendingTx of pending) {
+                try {
+                    let transmittedTx: RawTransaction | undefined;
+                    if (!pendingTx.object.mulableTxid)
+                        transmittedTx = await this.client.getRawTransaction(pendingTx.txId, true, blockHash);
+                    else
+                        transmittedTx = await this.getTransactionByInputs(
+                            pendingTx.object,
+                            setupsTemplates.filter((tx) => tx.setupId === pendingTx.setupId),
+                            blockHash);
 
-            for (const txId of transmittedTxIds) {
-                const transmittedTx: RawTransaction = await this.client.getRawTransaction(txId, true, blockHash);
-                await writeIncomingTransaction(transmittedTx, blockHeight, pending.find((tx) => tx.txId === txId)!.templateId);
+                    if (transmittedTx)
+                        await writeIncomingTransaction(transmittedTx, blockHeight, pendingTx.templateId);
+
+                }
+                catch (error) {
+                    console.error(error);
+                    continue;
+                }
+                blockHeight++;
             }
 
-            updatedSetupListenerLastHeight(this.lastCrawledHeight, blockHeight);
+            //fix to by active setups
+            await updatedSetupListenerLastHeight(pending[0].listenerBlockHeight, blockHeight - 1);
 
-            pending = pending.reduce((acc, tx) => {
-                if (!transmittedTxIds.includes(tx.txId)) {
-                    if (tx.listenerBlockHeight === this.lastCrawledHeight) {
-                        acc.push({ ...tx, listenerBlockHeight: blockHeight });
-                    } else {
-                        acc.push(tx);
-                    }
-                }
-                return acc;
-            }, [] as typeof pending);
-
-            this.lastCrawledHeight = blockHeight;
         }
     }
+
+    private async getTransactionByInputs(pendingTx: Transaction, setupTemplates: Pending[], blockHash: string): Promise<RawTransaction | undefined> {
+        try {
+            const searchBy: [string, number][] = [];
+
+            for (const input of pendingTx.inputs) {
+                const parentTemplate = setupTemplates.find((template) =>
+                    input.transactionName === template.transactionName &&
+                    template.incomingTxId !== null)
+                if (parentTemplate === undefined) return undefined;
+
+                const utxo = await this.client.getTxOut(parentTemplate.incomingTxId, input.outputIndex, false);
+                if (utxo !== null) return undefined
+                searchBy.push([parentTemplate.incomingTxId, input.outputIndex]);
+            }
+
+            const blockTxs = (await this.client.getBlock(blockHash)).tx;
+
+            for (const blockTx of blockTxs) {
+                const candidate = await this.client.getRawTransaction(blockTx, true, blockHash);
+                if (candidate.vin.length !== searchBy.length) continue;
+
+                if (searchBy.every((search, index) =>
+                    candidate.vin[index].txid === search[0] && candidate.vin[index].vout === search[1]))
+                    return candidate;
+
+            }
+            return undefined;
+        }
+        catch (error) {
+            console.error(error);
+            return undefined;
+        }
+    }
+
 
     destroy() {
         if (this.scheduler) {
@@ -95,12 +139,14 @@ export class BitcoinNodeListener {
 
 if (process.argv[1] == __filename) {
     (async () => {
-        const nodeListener = new BitcoinNodeListener();
+        const nodeListener = new BitcoinNodeListener('bitsnark_prover_1');
+        //await nodeListener.init();
+        // console.log('Node listener started');
+        // console.log('agentSetups:', nodeListener.agentSetups);
+        // await nodeListener.checkForNewBlock();
+        // nodeListener.destroy();
 
-        await nodeListener.checkForNewBlock();
-        nodeListener.destroy();
-
-        const client = new BitcoinNode().client;
-        await client.getRawTransaction('be71a3bb8fd7c1631a68ecc48f436cfd29f640f6b89edb7b6ecaec54957cf989', true, '').then(console.log);
+        // const client = new BitcoinNode().client;
+        // await client.getRawTransaction('be71a3bb8fd7c1631a68ecc48f436cfd29f640f6b89edb7b6ecaec54957cf989', true, '').then(console.log);
     })().catch(console.error);
 }

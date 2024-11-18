@@ -1,3 +1,4 @@
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /*
 Since client.query accepts any as a parameter and also returns any, we have to disable this rule.
@@ -6,12 +7,13 @@ and it would be fragile for changes.
 
 Most of the objects passed to params are simple types, but some are parsed to any with JSON.parse, so we can't be sure of the type.
 */
+
 import { Transaction } from './transactions';
 import { Client, connect } from 'ts-postgres';
 import { agentConf } from '../agent.conf';
 import { RawTransaction } from 'bitcoin-core';
 import { jsonStringifyCustom, jsonParseCustom } from './json';
-import { AgentRoles } from './types';
+import { AgentRoles, TransactionNames } from './types';
 
 // DB utils
 function jsonizeObject<T>(obj: T): T {
@@ -82,10 +84,7 @@ export enum OutgoingStatus {
     PUBLISHED = 'PUBLISHED',
     REJECTED = 'REJECTED'
 }
-export interface Setup {
-    setup_id: string;
-    status: SetupStatus;
-}
+
 export interface Outgoing {
     transaction_id: string;
     template_id: number;
@@ -99,6 +98,8 @@ export interface Incoming {
     templateId: number;
     rawTransaction: any;
     blockHeight: number;
+    name: string;
+    setupId: string;
 }
 export interface Templates {
     template_id: number;
@@ -114,9 +115,8 @@ export interface Templates {
 export interface Setup {
     setup_id: string;
     status: SetupStatus;
-    genesisBlockHeight?: number;
-    listenerBlockHeight?: number;
-    protocol_version?: string;
+    listenerBlockHeight: number;
+    protocolVersion: number;
 }
 
 export interface SetupPayload {
@@ -130,6 +130,10 @@ export interface Pending {
     templateId: number;
     setupId: string;
     listenerBlockHeight: number;
+    transactionName: TransactionNames;
+    object: Transaction;
+    protocolVersion: number;
+    incomingTxId: string;
 }
 
 // DB functions
@@ -167,10 +171,15 @@ export async function writeSetupStatus(setupId: string, status: SetupStatus) {
     );
 }
 
-export async function readActiveSetups(): Promise<Setup[]> {
-    const result = await runQuery(`SELECT * FROM setups WHERE status = $1`, [SetupStatus.READY]);
-    const results = [...result];
-    return results.map((row) => ({ setup_id: row[0], status: row[1] }));
+export async function readActiveSetups(status: SetupStatus = SetupStatus.READY): Promise<Setup[]> {
+    const result = await runQuery(`
+        SELECT setup_id, status::TEXT , protocol_version, listener_last_crawled_height
+        FROM setups
+        WHERE status = $1::TEXT::setup_status`,
+        [status]);
+    // const results = [...result];
+    return result.rows.map((row) => (
+        { setup_id: row[0], status: row[1], protocolVersion: row[2], listenerBlockHeight: row[3] }));
 }
 
 export async function updateSetupsGenesisBlock(setupId: string, genesisHeight: number) {
@@ -185,13 +194,13 @@ export async function updateSetupsGenesisBlock(setupId: string, genesisHeight: n
 }
 
 
-export async function updatedSetupListenerLastHeight(lastCrawledHeight: number, newCrawledHeight: number) {
+export async function updatedSetupListenerLastHeight(currentCrawledHeight: number, newCrawledHeight: number) {
     const result = await runQuery(
         `UPDATE setups
             SET listener_last_crawled_height = $1
         WHERE listener_last_crawled_height = $2
         AND status = $3::TEXT::setup_status`,
-        [newCrawledHeight, lastCrawledHeight, SetupStatus.SIGNED]
+        [newCrawledHeight, currentCrawledHeight, SetupStatus.SIGNED]
     );
 }
 
@@ -270,18 +279,26 @@ export async function writeOutgoing(templateId: number, data: any, status: Outgo
     await runQuery(`UPDATE outgoing SET data = $1, status = $2 WHERE template_id = $3`, [data, status, templateId]);
 }
 
-export async function readExpectedIncoming(): Promise<Pending[]> {
+export async function readExpectedIncoming(agent_id: string): Promise<Pending[]> {
     const result = await runQuery(`
         SELECT outgoing.transaction_id,
             outgoing.template_id,
             setups.setup_id,
-            setups.listener_last_crawled_height
+            setups.listener_last_crawled_height,
+            templates.name,
+            templates.object,
+            setups.protocol_version,
+            incoming.transaction_id
         FROM outgoing
         INNER JOIN templates
             ON outgoing.template_id = templates.template_id
         INNER JOIN setups
             ON templates.setup_id = setups.setup_id
-        WHERE outgoing.status in ('PENDING', 'PUBLISHED')
+        LEFT JOIN incoming
+            ON outgoing.transaction_id = incoming.transaction
+        WHERE
+            templates.agent_id = $1
+            AND outgoing.status in ('PENDING', 'PUBLISHED')
             AND setups.status = 'SIGNED'
             AND transaction_id NOT IN(
             SELECT transaction_id
@@ -289,10 +306,10 @@ export async function readExpectedIncoming(): Promise<Pending[]> {
         ORDER BY
             listener_last_crawled_height,
             setups.setup_id,
-            outgoing.template_id`);
+            outgoing.template_id`, [agent_id]);
 
     return result.rows.map((row) => (
-        { txId: row[0], templateId: row[1], setupId: row[2], listenerBlockHeight: row[3] }));
+        { txId: row[0], templateId: row[1], setupId: row[2], listenerBlockHeight: row[3], transactionName: row[4], object: unjsonizeObject(row[5]), protocolVersion: row[6], incomingTxId: row[7] }));
 }
 
 export async function writeIncomingTransaction(
@@ -309,23 +326,53 @@ export async function writeIncomingTransaction(
     );
 }
 
-
-
-export async function readIncomingTransactions(setupId: string): Promise<Incoming[]> {
+export async function readIncomingTransactions(setupId: string, agentId?: string): Promise<Incoming[]> {
     const result = await runQuery(
-        `SELECT incoming.transaction_id, template_id, block_height, raw_tx, updated
+        `SELECT incoming.transaction_id,
+            incoming.template_id,
+            incoming.block_height,
+            raw_tx,
+            templates.name,
+            templates.setup_id
         FROM incoming INNER JOIN templates
         ON incoming.template_id = templates.template_id
-        WHERE templates.setup_id = $1`,
-        [setupId]
+        WHERE templates.setup_id = $1` +
+        (agentId ? ` AND templates.agent_id = $2` : ''),
+        [setupId, agentId]
     );
     return result.rows.map((row) => ({
         txId: row[0],
         templateId: row[1],
         blockHeight: row[2],
-        rawTransaction: unjsonizeObject(row[3])
+        rawTransaction: unjsonizeObject(row[3]),
+        name: row[4],
+        setupId: row[5]
     }));
 }
+
+export async function readIncomingTransactionsByAgent(agentId: string): Promise<Incoming[]> {
+    const result = await runQuery(
+        `SELECT incoming.transaction_id,
+            incoming.template_id,
+            incoming.block_height,
+            raw_tx,
+            templates.name,
+            templates.setup_id
+        FROM incoming INNER JOIN templates
+        ON incoming.template_id = templates.template_id
+        WHERE templates.agent_id = $1` ,
+        [agentId]
+    );
+    return result.rows.map((row) => ({
+        txId: row[0],
+        templateId: row[1],
+        blockHeight: row[2],
+        rawTransaction: unjsonizeObject(row[3]),
+        name: row[4],
+        setupId: row[5]
+    }));
+}
+
 
 if (process.argv[1] == __filename) {
     (async () => {

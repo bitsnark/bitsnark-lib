@@ -7,7 +7,7 @@ import { array } from './array-utils';
 
 export const twoDigits = (n: number) => (n < 10 ? `0${n}` : `${n}`);
 
-export const PROTOCOL_VERSION = 0.2;
+// export const PROTOCOL_VERSION = 0.2;
 
 export enum SignatureType {
     NONE = 'NONE',
@@ -63,6 +63,7 @@ export interface Transaction {
     inputs: Input[];
     outputs: Output[];
     external?: boolean;
+    mulableTxid?: boolean;
 }
 
 const protocolStart: Transaction[] = [
@@ -146,6 +147,7 @@ const protocolStart: Transaction[] = [
     {
         role: AgentRoles.VERIFIER,
         transactionName: TransactionNames.CHALLENGE,
+        mulableTxid: true,
         inputs: [
             {
                 transactionName: TransactionNames.PROOF,
@@ -247,6 +249,7 @@ const protocolEnd: Transaction[] = [
     {
         role: AgentRoles.VERIFIER,
         transactionName: TransactionNames.PROOF_REFUTED,
+        mulableTxid: true,
         inputs: [
             {
                 transactionName: TransactionNames.ARGUMENT,
@@ -481,8 +484,8 @@ export function mergeWots(role: AgentRoles, mine: Transaction[], theirs: Transac
                 wotsPublicKeys: !sc.wotsSpec
                     ? undefined
                     : sc.nextRole == role
-                      ? notNull(sc.wotsPublicKeys)
-                      : notNull(
+                        ? notNull(sc.wotsPublicKeys)
+                        : notNull(
                             theirs[transactionIndex].outputs[outputIndex].spendingConditions[scIndex].wotsPublicKeys
                         )
             }))
@@ -583,7 +586,7 @@ export async function initializeTransactions(
 
     // set ordinal, setup id and protocol version
     for (const [i, t] of transactions.entries()) {
-        t.protocolVersion = t.protocolVersion ?? PROTOCOL_VERSION;
+        t.protocolVersion = t.protocolVersion ?? agentConf.protocolVersion;
         t.setupId = setupId;
         t.ordinal = i;
     }

@@ -95,7 +95,7 @@ export const agentConf: AgentConf = {
     postgresBigints: parse.boolean('POSTGRES_BIGINTS', true),
     postgresKeepAlive: parse.boolean('POSTGRES_KEEP_ALIVE', true),
     blocksUntilFinalized: parse.integer('BLOCKS_UNTIL_FINALIZED', 0), // 6
-    protocolVersion: parse.integer('PROTOCOL_VERSION', 1),
+    protocolVersion: parse.integer('PROTOCOL_VERSION', 0.2),
     useMockProgram: parse.boolean('USE_MOCK_PROGRAM', false),
     protocolIntervalMs: parse.integer('PROTOCOL_INTERVAL_MS', 30000)
 };
