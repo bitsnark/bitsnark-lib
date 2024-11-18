@@ -168,7 +168,7 @@ export class ProtocolProver {
     }
 
     private async sendArgument(proof: bigint[], selectionPath: number[], selectionPathUnparsed: Buffer[][]) {
-        const argumentData = await makeArgument(proof, selectionPath, selectionPathUnparsed);
+        const argumentData = await makeArgument(this.setupId, proof, selectionPath, selectionPathUnparsed);
         await this.sendTransaction(TransactionNames.ARGUMENT, argumentData);
     }
 
@@ -194,10 +194,11 @@ export class ProtocolProver {
         const iteration = selectionPath.length;
         const states = await calculateStates(proof, selectionPath);
         const txName = TransactionNames.STATE + '_' + twoDigits(iteration);
-        const statesWi =
-            states.map((s, dataIndex) =>
-                encodeWinternitz256_4(bufferToBigintBE(s), createUniqueDataId(this.setupId, txName, 0, 0, dataIndex)))
-                .flat();
+        const statesWi = states
+            .map((s, dataIndex) =>
+                encodeWinternitz256_4(bufferToBigintBE(s), createUniqueDataId(this.setupId, txName, 0, 0, dataIndex))
+            )
+            .flat();
         await this.sendTransaction(txName, [statesWi]);
     }
 

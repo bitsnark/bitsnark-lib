@@ -218,7 +218,7 @@ const protocolEnd: Transaction[] = [
     {
         role: AgentRoles.PROVER,
         transactionName: TransactionNames.ARGUMENT,
-        inputs: array(6, i => ({
+        inputs: array(6, (i) => ({
             transactionName: `${TransactionNames.SELECT}_${twoDigits(iterations - 1)}`,
             outputIndex: i,
             spendingConditionIndex: 0
@@ -414,7 +414,7 @@ function makeProtocolSteps(): Transaction[] {
                         }
                     ]
                 },
-                ...array<Output>(3, _ => ({
+                ...array<Output>(3, (_) => ({
                     spendingConditions: [
                         {
                             nextRole: AgentRoles.PROVER,

@@ -130,7 +130,13 @@ export class ProtocolVerifier {
         return step1_vm.success?.value === 1n;
     }
 
-    private async refuteArgument(proof: bigint[], states: Buffer<ArrayBufferLike>[][], selectionPath: number[], incoming: Incoming, template: Transaction) {
+    private async refuteArgument(
+        proof: bigint[],
+        states: Buffer<ArrayBufferLike>[][],
+        selectionPath: number[],
+        incoming: Incoming,
+        template: Transaction
+    ) {
         await refuteArgument();
     }
 
@@ -139,7 +145,7 @@ export class ProtocolVerifier {
         const state = parseTransactionData(
             this.templates,
             template,
-            rawTx.vin[0].txinwitness!.map(s => Buffer.from(s, 'hex'))
+            rawTx.vin[0].txinwitness!.map((s) => Buffer.from(s, 'hex'))
         );
         return state;
     }

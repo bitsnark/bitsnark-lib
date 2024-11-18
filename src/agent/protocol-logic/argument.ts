@@ -26,10 +26,15 @@ function makeIndexWitness(
     setupId: string,
     selectionPathUnparsed: Buffer[][],
     index: number,
-    outputIndex: number): Buffer[] {
-    return [...selectionPathUnparsed, encodeWinternitz24(BigInt(index), createUniqueDataId(
-        setupId, TransactionNames.ARGUMENT, outputIndex, 0, selectionPathUnparsed.length
-    ))].flat();
+    outputIndex: number
+): Buffer[] {
+    return [
+        ...selectionPathUnparsed,
+        encodeWinternitz24(
+            BigInt(index),
+            createUniqueDataId(setupId, TransactionNames.ARGUMENT, outputIndex, 0, selectionPathUnparsed.length)
+        )
+    ].flat();
 }
 
 function makeAbcdWitness(
@@ -37,16 +42,19 @@ function makeAbcdWitness(
     beforeRegs: bigint[],
     afterRegs: bigint[],
     instr: Instruction,
-    outputIndex: number): Buffer[] {
+    outputIndex: number
+): Buffer[] {
     const aValue = beforeRegs[instr.param1];
     const bValue = beforeRegs[instr.param2!];
     const cValue = afterRegs[instr.target];
-    const dValue = instr.name == InstrCode.MULMOD || instr.name == InstrCode.DIVMOD ?
-        calculateD(aValue, bValue, cValue) : 0n;
+    const dValue =
+        instr.name == InstrCode.MULMOD || instr.name == InstrCode.DIVMOD ? calculateD(aValue, bValue, cValue) : 0n;
 
-    return [aValue, bValue, cValue, dValue].map((n, dataIndex) => encodeWinternitz256_4(n, createUniqueDataId(
-        setupId, TransactionNames.ARGUMENT, outputIndex, 0, dataIndex
-    ))).flat();
+    return [aValue, bValue, cValue, dValue]
+        .map((n, dataIndex) =>
+            encodeWinternitz256_4(n, createUniqueDataId(setupId, TransactionNames.ARGUMENT, outputIndex, 0, dataIndex))
+        )
+        .flat();
 }
 
 async function makeMerkleProofsWitness(
@@ -54,21 +62,23 @@ async function makeMerkleProofsWitness(
     beforeRegs: bigint[],
     afterRegs: bigint[],
     instr: Instruction,
-    outputIndex: number): Promise<Buffer[][]> {
+    outputIndex: number
+): Promise<Buffer[][]> {
     const merkleProofA = await FatMerkleProof.fromRegs(beforeRegs, instr.param1);
     const merkleProofB = await FatMerkleProof.fromRegs(beforeRegs, instr.param2!);
     const merkleProofC = await FatMerkleProof.fromRegs(afterRegs, instr.target);
 
     const hashes = [merkleProofA.hashes, merkleProofB.hashes, merkleProofC.hashes];
-    const encoded = hashes.map((o, oi) => o.map((b, dataIndex) =>
-        encodeWinternitz256_4(bufferToBigintBE(b), createUniqueDataId(
-            setupId,
-            TransactionNames.ARGUMENT,
-            outputIndex + oi,
-            0,
-            dataIndex
-        ))
-    ).flat());
+    const encoded = hashes.map((o, oi) =>
+        o
+            .map((b, dataIndex) =>
+                encodeWinternitz256_4(
+                    bufferToBigintBE(b),
+                    createUniqueDataId(setupId, TransactionNames.ARGUMENT, outputIndex + oi, 0, dataIndex)
+                )
+            )
+            .flat()
+    );
     return encoded;
 }
 
@@ -76,8 +86,8 @@ export async function makeArgument(
     setupId: string,
     proof: bigint[],
     selectionPath: number[],
-    selectionPathUnparsed: Buffer[][]): Promise<Buffer[][]> {
-
+    selectionPathUnparsed: Buffer[][]
+): Promise<Buffer[][]> {
     let index = 0;
     for (const s of selectionPath) {
         index = index * 10 + s;

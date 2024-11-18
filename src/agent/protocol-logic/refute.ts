@@ -1,4 +1,1 @@
-
-export async function refuteArgument() {
-
-}
+export async function refuteArgument() {}
