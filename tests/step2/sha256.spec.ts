@@ -1,5 +1,5 @@
-import { step2_vm } from '../../src/generator/step2/vm/vm';
-import { SHA256 } from '../../src/generator/step2/sha-256';
+import { step2_vm } from '../../src/generator/32_vm/vm/vm';
+import { SHA256 } from '../../src/generator/32_vm/sha-256';
 import { Register } from '../../src/generator/common/register';
 import { _256To32BE, _32To256BE, hash, hashPair } from '../../src/encoding/encoding';
 

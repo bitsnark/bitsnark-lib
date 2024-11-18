@@ -88,7 +88,7 @@ const protocolStart: Transaction[] = [
                     {
                         nextRole: AgentRoles.PROVER,
                         signatureType: SignatureType.BOTH,
-                        wotsSpec: array(8, WotsType._256)
+                        wotsSpec: array(8, WotsType._256_4)
                     }
                 ]
             }
@@ -117,7 +117,7 @@ const protocolStart: Transaction[] = [
                         // state
                         nextRole: AgentRoles.PROVER,
                         signatureType: SignatureType.BOTH,
-                        wotsSpec: array(9, WotsType._256)
+                        wotsSpec: array(9, WotsType._256_4)
                     },
                     {
                         // challenge but no state
@@ -373,7 +373,7 @@ function makeProtocolSteps(): Transaction[] {
                         {
                             nextRole: AgentRoles.PROVER,
                             signatureType: SignatureType.BOTH,
-                            wotsSpec: array(9, WotsType._256)
+                            wotsSpec: array(9, WotsType._256_4)
                         },
                         // timeout
                         {
@@ -410,7 +410,7 @@ function makeProtocolSteps(): Transaction[] {
                         {
                             nextRole: AgentRoles.PROVER,
                             signatureType: SignatureType.BOTH,
-                            wotsSpec: [WotsType._256, WotsType._256, WotsType._256, WotsType._256]
+                            wotsSpec: [WotsType._256_4, WotsType._256_4, WotsType._256_4, WotsType._256_4]
                         }
                     ]
                 },
@@ -421,7 +421,7 @@ function makeProtocolSteps(): Transaction[] {
                         {
                             nextRole: AgentRoles.PROVER,
                             signatureType: SignatureType.BOTH,
-                            wotsSpec: array<WotsType>(n, WotsType._256)
+                            wotsSpec: array<WotsType>(n, WotsType._256_4)
                         }
                     ]
                 }))

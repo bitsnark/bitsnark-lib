@@ -1,6 +1,6 @@
 import { Register } from '../../src/generator/common/register';
-import { step2_vm, step2_vm as vm } from '../../src/generator/step2/vm/vm';
-import { verifyMerkleProof } from '../../src/generator/step2/merkle';
+import { step2_vm, step2_vm as vm } from '../../src/generator/32_vm/vm/vm';
+import { verifyMerkleProof } from '../../src/generator/32_vm/merkle';
 import { makeMerkleProof, verifyMerkleProof as verifyMerkleProofReference } from '../../src/encoding/merkle';
 import { _256To32BE, _32To256BE } from '../../src/encoding/encoding';
 

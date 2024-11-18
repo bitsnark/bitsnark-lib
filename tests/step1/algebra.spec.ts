@@ -1,9 +1,9 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from '@jest/globals';
-import { Fp } from '../../src/generator/step1/algebra/fp';
-import { Fp2 } from '../../src/generator/step1/algebra/fp2';
-import { step1_vm as vm } from '../../src/generator/step1/vm/vm';
-import { G1, G1Point } from '../../src/generator/step1/algebra/G1';
-import { G2, G2Point } from '../../src/generator/step1/algebra/G2';
+import { Fp } from '../../src/generator/ec_vm/algebra/fp';
+import { Fp2 } from '../../src/generator/ec_vm/algebra/fp2';
+import { step1_vm as vm } from '../../src/generator/ec_vm/vm/vm';
+import { G1, G1Point } from '../../src/generator/ec_vm/algebra/G1';
+import { G2, G2Point } from '../../src/generator/ec_vm/algebra/G2';
 
 const _2 = Fp.hardcoded(2n);
 const _4 = Fp.hardcoded(4n);

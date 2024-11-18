@@ -46,7 +46,7 @@ export class Bitcoin {
     newStackItem(value: number | Buffer): StackItem {
         if (typeof value == 'number' && (value < 0 || value > 65535)) throw new Error('Invalid value');
         const si = this.DATA(value);
-        this.maxStack = Math.max(this.maxStack, this.stack.items.length);
+        this.maxStack = Math.max(this.maxStack, this.stack.items.length + this.altStack.length);
         // console.log('Stack: ', this.stack.items.length);
         if (this.throwOnFail) {
             if (this.stack.items.length + this.altStack.length > 1000)
@@ -755,10 +755,10 @@ export class Bitcoin {
 
     /***  Witness decoding ***/
 
-    winternitzDecodeNibble(target: StackItem, witness: StackItem, publicKey: Buffer) {
+    winternitzDecodeNibble(target: StackItem, witness: StackItem, publicKey: Buffer, iterations: number = 8) {
         const pk = this.hardcode(publicKey);
         this.pick(witness); // witness
-        for (let i = 0; i < 8; i++) {
+        for (let i = 0; i < iterations; i++) {
             this.OP_HASH160(); // hash
             this.OP_DUP(); // hash hash
             this.pick(pk); // hash hash pk
@@ -1153,6 +1153,106 @@ export class Bitcoin {
         this.drop(checksumNibbles);
     }
 
+    winternitzCheck256_4(witness: StackItem[], publicKeys: Buffer[]) {
+        const totalNibbles = 67;
+        const temp = this.newStackItem(0);
+        const checksumNibbles: StackItem[] = [];
+        for (let i = 0; i < 3; i++) checksumNibbles.push(this.newStackItem(0));
+        const checksum = this.newStackItem(0);
+
+        for (let i = 0; i < totalNibbles - 3; i++) {
+            this.winternitzDecodeNibble(temp, witness[i], publicKeys[i], 16);
+            this.pick(checksum);
+            this.pick(temp);
+            this.OP_ADD();
+            this.replaceWithTop(checksum);
+        }
+
+        for (let i = 0; i < 3; i++) {
+            this.winternitzDecodeNibble(
+                checksumNibbles[i],
+                witness[totalNibbles - 3 + i],
+                publicKeys[totalNibbles - 3 + i],
+                16
+            );
+        }
+
+        this.DATA(15);
+        this.pick(checksumNibbles[2]);
+        this.OP_SUB();
+
+        this.mul(16);
+
+        this.DATA(15);
+        this.pick(checksumNibbles[1]);
+        this.OP_SUB();
+        this.OP_ADD();
+
+        this.mul(16);
+
+        this.DATA(15);
+        this.pick(checksumNibbles[0]);
+        this.OP_SUB();
+        this.OP_ADD();
+
+        this.pick(checksum);
+        this.OP_EQUAL();
+        this.OP_VERIFY();
+
+        this.drop(checksum);
+        this.drop(temp);
+        this.drop(checksumNibbles);
+    }
+
+    winternitzDecode256_4(target: StackItem[], witness: StackItem[], publicKeys: Buffer[]) {
+        const totalNibbles = 67;
+        const checksumNibbles: StackItem[] = [];
+        for (let i = 0; i < 3; i++) checksumNibbles.push(this.newStackItem(0));
+        const checksum = this.newStackItem(0);
+
+        for (let i = 0; i < totalNibbles - 3; i++) {
+            this.winternitzDecodeNibble(target[i], witness[i], publicKeys[i], 16);
+            this.pick(checksum);
+            this.pick(target[i]);
+            this.OP_ADD();
+            this.replaceWithTop(checksum);
+        }
+
+        for (let i = 0; i < 3; i++) {
+            this.winternitzDecodeNibble(
+                checksumNibbles[i],
+                witness[totalNibbles - 3 + i],
+                publicKeys[totalNibbles - 3 + i],
+                16
+            );
+        }
+
+        this.DATA(15);
+        this.pick(checksumNibbles[2]);
+        this.OP_SUB();
+
+        this.mul(16);
+
+        this.DATA(15);
+        this.pick(checksumNibbles[1]);
+        this.OP_SUB();
+        this.OP_ADD();
+
+        this.mul(16);
+
+        this.DATA(15);
+        this.pick(checksumNibbles[0]);
+        this.OP_SUB();
+        this.OP_ADD();
+
+        this.pick(checksum);
+        this.OP_EQUAL();
+        this.OP_VERIFY();
+
+        this.drop(checksum);
+        this.drop(checksumNibbles);
+    }
+
     checkInitialTransaction(witness: StackItem[], publicKeys: Buffer[]) {
         for (let i = 0; i < 10; i++) {
             this.winternitzCheck256(witness.slice(i * 90, i * 90 + 90), publicKeys.slice(i * 90, i * 90 + 90));
@@ -1232,9 +1332,9 @@ export class Bitcoin {
         this.drop(index);
     }
 
-    verifyIndex(keys: Buffer[], indexWitness: StackItem[], indexNibbles: number[]) {
-        const tempIndex = this.newNibbles(90);
-        this.winternitzDecode256(tempIndex, indexWitness, keys);
+    verifyIndex(indexWitness: StackItem[], keys: Buffer[], indexNibbles: number[]) {
+        const tempIndex = this.newNibbles(8);
+        this.winternitzDecode24(tempIndex, indexWitness, keys);
         for (let i = 0; i < indexNibbles.length; i++) {
             this.DATA(indexNibbles[i], `indexNibbles_${i}`);
             this.pick(tempIndex[i]);
@@ -1275,19 +1375,21 @@ export class Bitcoin {
         return s;
     }
 
-    programToBinary(opts: ProgramToTemplateOpts = {}): Buffer {
-        return this.programToTemplate(opts).buffer;
+    programToBinary(opts?: ProgramToTemplateOpts): Buffer {
+        return this.programToTemplate(opts ?? { validateStack: true }).buffer;
     }
 
-    programToTemplate(opts: ProgramToTemplateOpts = {}): Template {
-        const validateStack = opts.validateStack ?? true;
+    programToTemplate(opts?: ProgramToTemplateOpts): Template {
+        opts = opts ?? { validateStack: true };
 
-        // program has to end with a single 1 on the stack
-        if (this.stack.length() == 0) {
-            this.OP_0_16(1);
-        } else if (this.stack.length() != 1 || this.stack.top().value !== 1) {
-            if (validateStack) {
-                throw new Error('Stack must have a single 1 at EOP');
+        if (opts.validateStack == true) {
+            // program has to end with a single 1 on the stack
+            while (this.stack.length() > 1) this.drop(this.stack.top());
+            if (this.stack.length() == 0) {
+                this.OP_0_16(1);
+            } else if (this.stack.top().value !== 1) {
+                this.drop(this.stack.top());
+                this.OP_0_16(1);
             }
         }
 

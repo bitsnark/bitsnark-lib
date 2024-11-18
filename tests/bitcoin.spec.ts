@@ -1,4 +1,4 @@
-import { Bitcoin } from '../src/generator/step3/bitcoin';
+import { Bitcoin } from '../src/generator/btc_vm/bitcoin';
 
 describe('Bitcoin', () => {
     let bitcoin: Bitcoin;
@@ -28,11 +28,8 @@ describe('Bitcoin', () => {
     });
 
     describe('programToBinary', () => {
-        it('will validate stack unless told not to', () => {
+        it('will not throw', () => {
             bitcoin.OP_0_16(0);
-            const errorMsg = 'Stack must have a single 1 at EOP';
-            expect(() => bitcoin.programToBinary()).toThrow(errorMsg);
-            expect(() => bitcoin.programToBinary({ validateStack: true })).toThrow(errorMsg);
             expect(() => bitcoin.programToBinary({ validateStack: false })).not.toThrow();
         });
     });

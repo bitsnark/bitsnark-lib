@@ -1,5 +1,5 @@
-import { Bitcoin } from '@src/generator/step3/bitcoin';
-import { StackItem } from '@src/generator/step3/stack';
+import { Bitcoin } from '@src/generator/btc_vm/bitcoin';
+import { StackItem } from '@src/generator/btc_vm/stack';
 import { BtcArithmetic } from './btc-arithmetic';
 import { bigintToNibblesLS, prime_bigint } from './common';
 

@@ -1,5 +1,5 @@
-import { Bitcoin } from '../../generator/step3/bitcoin';
-import { StackItem } from '../../generator/step3/stack';
+import { Bitcoin } from '../../generator/btc_vm/bitcoin';
+import { StackItem } from '../../generator/btc_vm/stack';
 import { nibblesToBigintLS, teaPot } from './common';
 
 export class BtcArithmetic {

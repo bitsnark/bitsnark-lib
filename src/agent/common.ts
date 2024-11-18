@@ -1,9 +1,9 @@
 import { SavedVm } from '../generator/common/saved-vm';
-import groth16Verify, { Key, Proof } from '../generator/step1/verifier';
-import { step1_vm } from '../generator/step1/vm/vm';
+import groth16Verify, { Key, Proof } from '../generator/ec_vm/verifier';
+import { step1_vm } from '../generator/ec_vm/vm/vm';
 import { proof } from './proof';
 import { verificationKey } from './verification-key';
-import { InstrCode as Step1_InstrCode } from '../../src/generator/step1/vm/types';
+import { InstrCode as Step1_InstrCode } from '../generator/ec_vm/vm/types';
 
 export const enum TransactionNames {
     LOCKED_FUNDS = 'locked_funds',
