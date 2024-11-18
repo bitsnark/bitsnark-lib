@@ -218,7 +218,7 @@ const protocolEnd: Transaction[] = [
     {
         role: AgentRoles.PROVER,
         transactionName: TransactionNames.ARGUMENT,
-        inputs: array(6, (i: number) => ({
+        inputs: array(6, i => ({
             transactionName: `${TransactionNames.SELECT}_${twoDigits(iterations - 1)}`,
             outputIndex: i,
             spendingConditionIndex: 0
@@ -414,14 +414,12 @@ function makeProtocolSteps(): Transaction[] {
                         }
                     ]
                 },
-                // 3 merkle proofs of 12 hashes each, that's 4 outputs with 10, 10, 10, and 6 values
-
-                ...[10, 10, 10, 6].map((n) => ({
+                ...array<Output>(3, _ => ({
                     spendingConditions: [
                         {
                             nextRole: AgentRoles.PROVER,
                             signatureType: SignatureType.BOTH,
-                            wotsSpec: array<WotsType>(n, WotsType._256_4)
+                            wotsSpec: array<WotsType>(14, WotsType._256_4)
                         }
                     ]
                 }))

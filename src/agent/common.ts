@@ -110,7 +110,7 @@ export function range(start: number, end: number): number[] {
     return new Array(end - start).fill(0).map((_, i) => i);
 }
 
-export function array<T>(count: number, f?: any): T[] {
+export function array<T>(count: number, f?: ((i: number) => T) | T): T[] {
     if (f && typeof f == 'function') return new Array(count).fill(0).map((_, i) => f(i));
     return new Array(count).fill(f);
 }

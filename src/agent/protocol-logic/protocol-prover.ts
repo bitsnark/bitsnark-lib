@@ -14,7 +14,7 @@ import {
     writeSetupStatus
 } from '../db';
 import { createUniqueDataId, getTransactionByName, SpendingCondition, Transaction } from '../transactions-new';
-import { bufferToBigintBE, encodeWinternitz256 } from '../winternitz';
+import { bufferToBigintBE, encodeWinternitz256_4 } from '../winternitz';
 import { parseTransactionData } from './parser';
 import { calculateStates } from './states';
 import { makeArgument } from './argument';
@@ -143,7 +143,7 @@ export class ProtocolProver {
     private async sendProof(proof: bigint[]) {
         const data = proof
             .map((n, dataIndex) =>
-                encodeWinternitz256(n, createUniqueDataId(this.setupId, TransactionNames.PROOF, 0, 0, dataIndex))
+                encodeWinternitz256_4(n, createUniqueDataId(this.setupId, TransactionNames.PROOF, 0, 0, dataIndex))
             )
             .flat();
         await this.sendTransaction(TransactionNames.PROOF, [data]);
@@ -196,7 +196,7 @@ export class ProtocolProver {
         const txName = TransactionNames.STATE + '_' + twoDigits(iteration);
         const statesWi =
             states.map((s, dataIndex) =>
-                encodeWinternitz256(bufferToBigintBE(s), createUniqueDataId(this.setupId, txName, 0, 0, dataIndex)))
+                encodeWinternitz256_4(bufferToBigintBE(s), createUniqueDataId(this.setupId, txName, 0, 0, dataIndex)))
                 .flat();
         await this.sendTransaction(txName, [statesWi]);
     }

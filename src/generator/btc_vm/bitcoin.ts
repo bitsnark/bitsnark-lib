@@ -2,6 +2,7 @@ import * as bitcoinjs from 'bitcoinjs-lib';
 import { hardcode, opcodeMap, OpcodeType, opcodeValues } from './bitcoin-opcodes';
 import { StackItem, Stack } from './stack';
 import { createHash } from 'crypto';
+import { WotsType } from '@src/agent/winternitz';
 
 interface Operation {
     op?: OpcodeType;

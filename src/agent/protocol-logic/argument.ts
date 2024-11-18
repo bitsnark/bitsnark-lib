@@ -1,12 +1,12 @@
-import groth16Verify, { Key, Proof as Step1_Proof } from '../../generator/step1/verifier';
-import { step1_vm } from '../../generator/step1/vm/vm';
-import { vKey } from '../../generator/step1/constants';
+import groth16Verify, { Key, Proof as Step1_Proof } from '../../generator/ec_vm/verifier';
+import { step1_vm } from '../../generator/ec_vm/vm/vm';
+import { vKey } from '../../generator/ec_vm/constants';
 import { FatMerkleProof } from './fat-merkle';
-import { Runner } from '@src/generator/step1/vm/runner';
-import { bufferToBigintBE, encodeWinternitz24, encodeWinternitz256 } from '../winternitz';
+import { Runner } from '../../generator/ec_vm/vm/runner';
+import { bufferToBigintBE, encodeWinternitz24, encodeWinternitz256_4 } from '../winternitz';
 import { createUniqueDataId } from '../transactions-new';
 import { TransactionNames } from '../common';
-import { InstrCode, Instruction } from '@src/generator/step1/vm/types';
+import { InstrCode, Instruction } from '../../generator/ec_vm/vm/types';
 
 function calculateD(a: bigint, b: bigint, c: bigint): bigint {
     return 0n;
@@ -44,7 +44,7 @@ function makeAbcdWitness(
     const dValue = instr.name == InstrCode.MULMOD || instr.name == InstrCode.DIVMOD ?
         calculateD(aValue, bValue, cValue) : 0n;
 
-    return [aValue, bValue, cValue, dValue].map((n, dataIndex) => encodeWinternitz256(n, createUniqueDataId(
+    return [aValue, bValue, cValue, dValue].map((n, dataIndex) => encodeWinternitz256_4(n, createUniqueDataId(
         setupId, TransactionNames.ARGUMENT, outputIndex, 0, dataIndex
     ))).flat();
 }
@@ -61,7 +61,7 @@ async function makeMerkleProofsWitness(
 
     const hashes = [merkleProofA.hashes, merkleProofB.hashes, merkleProofC.hashes];
     const encoded = hashes.map((o, oi) => o.map((b, dataIndex) =>
-        encodeWinternitz256(bufferToBigintBE(b), createUniqueDataId(
+        encodeWinternitz256_4(bufferToBigintBE(b), createUniqueDataId(
             setupId,
             TransactionNames.ARGUMENT,
             outputIndex + oi,

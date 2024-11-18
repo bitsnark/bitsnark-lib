@@ -1,6 +1,6 @@
 import { Bitcoin } from '../generator/btc_vm/bitcoin';
 import { WOTS_NIBBLES, WotsType } from './winternitz';
-import { AgentRoles, array, TransactionNames } from './common';
+import { AgentRoles, TransactionNames } from './common';
 import { StackItem } from '../generator/btc_vm/stack';
 import { SimpleTapTree } from './simple-taptree';
 import { agentConf } from './agent.conf';
@@ -91,8 +91,7 @@ function generateBoilerplate(transations: Transaction[], myRole: AgentRoles, inp
 
         const decoders = {
             [WotsType._256]: (dataIndex: number) => bitcoin.winternitzCheck256(witnessSIs[dataIndex], keys[dataIndex]),
-            [WotsType._256_4]: (dataIndex: number) =>
-                bitcoin.winternitzCheck256_4(witnessSIs[dataIndex], keys[dataIndex]),
+            [WotsType._256_4]: (dataIndex: number) => bitcoin.winternitzCheck256_4(witnessSIs[dataIndex], keys[dataIndex]),
             [WotsType._24]: (dataIndex: number) => bitcoin.winternitzCheck24(witnessSIs[dataIndex], keys[dataIndex]),
             [WotsType._1]: (dataIndex: number) => bitcoin.winternitzCheck1(witnessSIs[dataIndex], keys[dataIndex])
         };
@@ -126,7 +125,7 @@ function generateProcessSelectionPath(sc: SpendingCondition): Buffer {
 
     const pathNibbles: StackItem[][] = [];
     for (let i = 0; i < pathWitness.length; i++) {
-        const result = array(8).map((_) => bitcoin.newStackItem(0));
+        const result = bitcoin.newNibbles(8);
         pathNibbles.push(result);
         bitcoin.winternitzDecode24(result, pathWitness[i], pubKeys[i]);
         bitcoin.drop(pathWitness[i]);
