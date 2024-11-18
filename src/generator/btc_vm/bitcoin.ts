@@ -107,7 +107,7 @@ export class Bitcoin {
     }
 
     getTopStackItam(): StackItem {
-        return this.stack.items[this.stack.items.length - 1];
+        return this.stack.top();
     }
 
     popNumber(): number {
@@ -765,7 +765,7 @@ export class Bitcoin {
             this.OP_EQUAL(); // hash 0/1
 
             // hack
-            const flag = this.stack.items[this.stack.items.length - 1].value;
+            const flag = this.stack.top().value;
 
             this.OP_IF(); // hash
             this.DATA(i); // hash i

@@ -1,5 +1,6 @@
 import assert from 'assert';
 import { hashPair } from '../../src/encoding/encoding';
+import { first, last } from '../agent/common';
 
 function hashLayer(na: bigint[]): bigint[] {
     const newNa: bigint[] = [];
@@ -44,8 +45,8 @@ export function verifyMerkleProof(proof: bigint[], leafIndex: number): boolean {
 function test(test1: bigint[], leafIndex: number) {
     const root = calculateMerkleRoot(test1);
     const proof = makeMerkleProof(test1, leafIndex);
-    assert(proof[0] == test1[leafIndex]);
-    assert(proof[proof.length - 1] == root);
+    assert(first(proof) == test1[leafIndex]);
+    assert(last(proof) == root);
     assert(proof.length == Math.ceil(Math.log2(test1.length)) + 2);
     const flag = verifyMerkleProof(proof, leafIndex);
     assert(flag);

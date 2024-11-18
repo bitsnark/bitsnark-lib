@@ -4,8 +4,8 @@ import { Decasector } from '../final-step/decasector';
 import { vKey } from '../../generator/ec_vm/constants';
 import { Runner } from '../../generator/ec_vm/vm/runner';
 import { FatMerkleProof } from './fat-merkle';
-import { InstrCode } from '@src/generator/ec_vm/vm/types';
-import { SavedVm } from '@src/generator/common/saved-vm';
+import { InstrCode } from '../../generator/ec_vm/vm/types';
+import { SavedVm } from '../../generator/common/saved-vm';
 
 interface RegsItem {
     runtimeIndex: number;

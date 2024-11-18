@@ -1,5 +1,6 @@
 import { Bitcoin } from '../../generator/btc_vm/bitcoin';
 import { StackItem } from '../../generator/btc_vm/stack';
+import { last } from '../common';
 import { nibblesToBigintLS, teaPot } from './common';
 
 export class BtcArithmetic {
@@ -127,7 +128,7 @@ export class BtcArithmetic {
             this.bitcoin.OP_0_16(0); // a[i]-borrow-b[i] a[i]-borrow-b[i] 0
             this.bitcoin.OP_LESSTHAN(); // a[i]-borrow-b[i] flag
 
-            const flag = stack[stack.length - 1].value;
+            const flag = last(stack).value;
 
             this.bitcoin.OP_IF(); // a[i]-borrow-b[i]
             this.bitcoin.OP_0_16(8); // a[i]-borrow-b[i] 8
@@ -139,7 +140,7 @@ export class BtcArithmetic {
 
             // hack
             stack.pop();
-            stack[stack.length - 1].value = flag;
+            last(stack).value = flag;
             if (!flag) (stack[stack.length - 2].value as number) -= 8;
 
             if (i + 1 < a.length) this.bitcoin.OP_TOALTSTACK(); // a[i]-borrow-b[i]

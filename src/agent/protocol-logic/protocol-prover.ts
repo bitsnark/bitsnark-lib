@@ -1,7 +1,7 @@
 import { RawTransaction } from 'bitcoin-core';
 import { agentConf } from '../agent.conf';
 import { BitcoinNode } from '../bitcoin-node';
-import { AgentRoles, iterations, TransactionNames, twoDigits } from '../common';
+import { AgentRoles, iterations, last, TransactionNames, twoDigits } from '../common';
 import {
     Incoming,
     OutgoingStatus,
@@ -63,7 +63,7 @@ export class ProtocolProver {
 
         // examine each one
         for (const pair of pairs) {
-            const lastFlag = pair === pairs[pairs.length - 1];
+            const lastFlag = pair === last(pairs);
 
             switch (pair.template.transactionName) {
                 case TransactionNames.PROOF:
