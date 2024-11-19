@@ -49,7 +49,7 @@ spend_with_condition() {
 }
 
 proof=$(fake_fund "$prover" proof)
-mine_blocks 100
+mine_blocks 6
 echo Checking proof uncontested timeout
 spend_with_condition "$prover" proof "$proof" 0 0
 echo Success

@@ -206,6 +206,15 @@ def execute_script_test_case(
     bitcoin_rpc.mine_blocks()
     logger.info(f"Broadcast script transaction %s, attempting to spend it next", script_tx_id)
 
+    timeout_blocks = test_case.tx_template.outputs[
+        test_case.output_index
+    ]['spendingConditions'][
+        test_case.spending_condition_index
+    ].get('timeoutBlocks')
+    if timeout_blocks:
+        logger.info("Mining %d blocks to test timeout", timeout_blocks)
+        bitcoin_rpc.mine_blocks(timeout_blocks)
+
     # Spend the output
     spending_tx = CMutableTransaction(
         vin=[
@@ -213,7 +222,7 @@ def execute_script_test_case(
                 COutPoint(
                     hash=bytes.fromhex(script_tx_id)[::-1],
                     n=0,
-                )
+                ), nSequence=(timeout_blocks or 0xffffffff)
             )
         ],
         vout=[
