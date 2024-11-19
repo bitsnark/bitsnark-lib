@@ -4,6 +4,7 @@ import { bigintFromBytes, bigintToBufferBE, bytesFromBigint, cat, padHex, tagged
 
 import * as bitcoin from 'bitcoinjs-lib';
 import * as ecc from 'tiny-secp256k1';
+import { last } from './common';
 
 const DEAD_ROOT = Buffer.from('UNSPENDABLE', 'ascii');
 
@@ -95,7 +96,7 @@ export class Compressor {
 
     addItem(script: Buffer) {
         this.compress();
-        this.data[this.data.length - 1].push(getHash(script));
+        last(this.data).push(getHash(script));
         this.counter++;
     }
 

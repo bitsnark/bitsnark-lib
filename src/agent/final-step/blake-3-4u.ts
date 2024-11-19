@@ -306,7 +306,7 @@ export class BLAKE3 {
     }
 
     nibblesToRegisters(si: StackItem[]): Register[] {
-        const regs: Register[] = array(Math.ceil(si.length / 8), () => []);
+        const regs: Register[] = array(Math.ceil(si.length / 8), (_) => []);
         si.forEach((tsi, i) => (regs[Math.floor(i / 8)][i % 8] = tsi));
         return regs;
     }

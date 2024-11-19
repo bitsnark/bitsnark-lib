@@ -1,6 +1,6 @@
 import { Bitcoin } from '../generator/btc_vm/bitcoin';
 import { WOTS_NIBBLES, WotsType } from './winternitz';
-import { AgentRoles, array, TransactionNames } from './common';
+import { AgentRoles, TransactionNames } from './common';
 import { StackItem } from '../generator/btc_vm/stack';
 import { SimpleTapTree } from './simple-taptree';
 import { agentConf } from './agent.conf';
@@ -126,7 +126,7 @@ function generateProcessSelectionPath(sc: SpendingCondition): Buffer {
 
     const pathNibbles: StackItem[][] = [];
     for (let i = 0; i < pathWitness.length; i++) {
-        const result = array(8).map((_) => bitcoin.newStackItem(0));
+        const result = bitcoin.newNibbles(8);
         pathNibbles.push(result);
         bitcoin.winternitzDecode24(result, pathWitness[i], pubKeys[i]);
         bitcoin.drop(pathWitness[i]);

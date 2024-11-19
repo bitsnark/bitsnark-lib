@@ -2,7 +2,7 @@ import assert from 'assert';
 import { StackItem } from '../../generator/btc_vm/stack';
 import { bigintToNibblesLS } from './common';
 import { BtcArithmetic } from './btc-arithmetic';
-import { Bitcoin } from '@src/generator/btc_vm/bitcoin';
+import { Bitcoin } from '../../generator/btc_vm/bitcoin';
 
 export const prime_bigint = 21888242871839275222246405745257275088696311157297823662689037894645226208583n;
 

@@ -1,6 +1,7 @@
 import { step2_vm } from './vm/vm';
 import { SHA256 } from './sha-256';
 import { _256 } from './vm/types';
+import { last } from '../../agent/common';
 
 export function verifyMerkleProof(proof: _256[], index: number) {
     const sha256 = new SHA256();
@@ -14,7 +15,7 @@ export function verifyMerkleProof(proof: _256[], index: number) {
     }
     sha256.free();
     for (let i = 0; i < 8; i++) {
-        step2_vm.assertEq(proof[0][i], proof[proof.length - 1][i]);
-        if (proof[0][i] != proof[proof.length - 1][i]) break;
+        step2_vm.assertEq(proof[0][i], last(proof)[i]);
+        if (proof[0][i] != last(proof)[i]) break;
     }
 }

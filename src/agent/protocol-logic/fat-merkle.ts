@@ -1,6 +1,7 @@
 import assert from 'assert';
 import { blake3 as blake3_wasm } from 'hash-wasm';
 import { bigintToBufferBE } from '../winternitz';
+import { last } from '../common';
 
 const foo = Buffer.from('fu manchu');
 
@@ -68,7 +69,7 @@ export class FatMerkleProof {
     }
 
     public getRoot(): Buffer {
-        return this.hashes[this.hashes.length - 1];
+        return last(this.hashes);
     }
 
     public getLeaf(): Buffer {
