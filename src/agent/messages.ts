@@ -3,6 +3,7 @@ import { Transaction } from './transactions-new';
 
 type MessageType = 'start' | 'join' | 'transactions' | 'signatures' | 'done' | 'error';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function _assign(target: any, from: any) {
     if (!from) return;
     Object.keys(target)
@@ -49,10 +50,10 @@ export class TransactionsMessage {
     }
 }
 
-class Signed {
+export class Signed {
     transactionName: string = '';
     txId: string = '';
-    signatures: string = '';
+    signatures: string[] = [];
 }
 
 export class SignaturesMessage {
@@ -108,11 +109,12 @@ export function fromJson(json: string): Message {
         if (typeof value === 'string' && value.startsWith('hex:')) return Buffer.from(value.replace('hex:', ''), 'hex');
         return value;
     });
-    const t = (typeToClass as any)[obj.messageType];
+    const t = typeToClass[obj.messageType as MessageType];
     if (!t) throw new Error('Invalid message type');
     const m = new t();
     Object.keys(m).forEach((k) => {
-        m[k] = obj[k];
+        const key = k as keyof Message;
+        m[key] = obj[key];
     });
     return m;
 }

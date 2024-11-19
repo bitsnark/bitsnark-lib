@@ -12,14 +12,14 @@ export enum WotsType {
     _1 = 'WOTS_1'
 }
 
-export const WOTS_NIBBLES: any = {
+export const WOTS_NIBBLES: { [key in WotsType]: number } = {
     [WotsType._256]: 90,
     [WotsType._256_4]: 67,
     [WotsType._24]: 10,
     [WotsType._1]: 2
 };
 
-export const WOTS_BITS: any = {
+export const WOTS_BITS: { [key in WotsType]: number } = {
     [WotsType._256]: 3,
     [WotsType._256_4]: 4,
     [WotsType._24]: 3,

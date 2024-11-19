@@ -10,7 +10,7 @@ export class VM {
     success?: Register;
     registers: Register[] = [];
 
-    hardcodedCache: any = {};
+    hardcodedCache: { [key: string]: Register } = {};
     instrCounter = 0;
 
     pool: Register[] = [];

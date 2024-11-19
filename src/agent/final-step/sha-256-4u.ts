@@ -3,7 +3,7 @@ import { Bitcoin } from '../../generator/btc_vm/bitcoin';
 import { StackItem } from '../../generator/btc_vm/stack';
 import { _256To32BE, _32To256BE, hash, hashPair } from '../../../src/encoding/encoding';
 
-let stats: any = {};
+// let stats: any = {};
 function measureIn(name: string, bitcoin: Bitcoin) {
     // stats[name] = stats[name] ?? {};
     // stats[name].before = bitcoin.programSizeInBitcoinBytes();
@@ -506,7 +506,7 @@ export class SHA256 {
 }
 
 {
-    stats = {};
+    //stats = {};
 
     const test1 = 123456789012345678901234567890n;
 
@@ -520,13 +520,13 @@ export class SHA256 {
     console.log('h1', h1);
     console.log('h2', h2);
     console.log(`max stack: ${bitcoin.maxStack}    size: ${bitcoin.programSizeInBitcoinBytes()}`);
-    console.log(stats);
+    //console.log(stats);
     sha256.free();
     assert(h1 == h2);
 }
 
 {
-    stats = {};
+    //stats = {};
 
     const test1 = 123456789012345678901234567890n;
     const test2 = 98765432109876543210987654321n;
@@ -547,7 +547,7 @@ export class SHA256 {
     console.log('h1', h1);
     console.log('h2', h2);
     console.log(`max stack: ${bitcoin.maxStack}    size: ${bitcoin.programSizeInBitcoinBytes()}`);
-    console.log(stats);
+    //console.log(stats);
     sha256.free();
     assert(h1 == h2);
 }

@@ -9,6 +9,7 @@ const PYTHON_EXECUTABLE = process.env.PYTHON ?? 'python';
 const PYTHON_ROOT_DIR = path.resolve(__dirname, '../../python');
 
 interface PyCallSuccess {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     result: any;
 }
 
@@ -20,6 +21,7 @@ interface PyCallError {
 type PyCallResult = PyCallSuccess | PyCallError;
 
 // TODO: this doesn't need to be exported
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function runPythonScript(moduleName: string, inputData: any): Promise<any> {
     return new Promise((resolve, reject) => {
         const pythonProcess = spawn(PYTHON_EXECUTABLE, ['-m', moduleName], {

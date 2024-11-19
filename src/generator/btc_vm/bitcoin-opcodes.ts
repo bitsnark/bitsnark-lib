@@ -141,5 +141,6 @@ export const opcodeValues = {
 
 export const opcodeMap: OpcodeType[] = [];
 Object.keys(opcodeValues).forEach((k) => {
-    opcodeMap[(opcodeValues as any)[k]] = k as OpcodeType;
+    const key = k as keyof typeof opcodeValues;
+    opcodeMap[opcodeValues[key]] = k as OpcodeType;
 });

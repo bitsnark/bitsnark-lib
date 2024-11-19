@@ -87,6 +87,7 @@ export function random(bytes: number): bigint {
     return n;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function jsonStringifyCustom(obj: any): string {
     return JSON.stringify(obj, (key, value) => {
         if (typeof value === 'bigint') return `0x${value.toString(16)}n`;
@@ -97,6 +98,7 @@ export function jsonStringifyCustom(obj: any): string {
     });
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function jsonParseCustom(json: string): any {
     return JSON.parse(json, (key, value) => {
         if (typeof value === 'string' && value.startsWith('0x') && value.endsWith('n'))
