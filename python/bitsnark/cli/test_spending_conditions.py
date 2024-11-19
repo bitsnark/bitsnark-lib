@@ -34,8 +34,16 @@ class TestSpendingConditionsCommand(Command):
     def init_parser(self, parser: argparse.ArgumentParser):
         parser.add_argument('--setup-id', default='test_setup',
                             help='Setup ID of the tx templates to test')
-        parser.add_argument('--agent-id', default='bitsnark_prover_1',
-                            help='Agent ID of the tx templates to test (only used for filtering)')
+        parser.add_argument('--role',
+                            type=lambda x: x.upper(),
+                            default='PROVER',
+                            choices=['PROVER', 'VERIFIER', 'prover', 'verifier'],
+                            help='Role to test (PROVER or VERIFIER)')
+        parser.add_argument('--agent-id',
+                            help=(
+                                'Agent ID of the tx templates to test (only used for filtering). '
+                                'Default is based on --role (bitsnark_prover_1 or bitsnar_verifier_1)'
+                            ))
         parser.add_argument('--names',
                             help='Comma-separated list of tx template names. If omitted, test everything')
         parser.add_argument('--prover-privkey',
@@ -55,12 +63,21 @@ class TestSpendingConditionsCommand(Command):
         bitcoin_rpc = context.bitcoin_rpc
         change_address = bitcoin_rpc.call('getnewaddress')
 
+        setup_id = context.args.setup_id
+        agent_id = context.args.agent_id or f'bitsnark_{context.args.role.lower()}_1'
+        logger.info(
+            "Testing spending conditions. role: %s, setup_id: %s, agent_id: %s",
+            context.args.role,
+            setup_id,
+            agent_id,
+        )
+
         logger.info('Mining 101 blocks to %s to ensure we have enough funds', change_address)
         bitcoin_rpc.mine_blocks(101, change_address)
 
         tx_template_query = sa.select(TransactionTemplate).filter_by(
-            agent_id=context.args.agent_id,
-            setup_id=context.args.setup_id,
+            agent_id=agent_id,
+            setup_id=setup_id,
         )
         if context.args.names:
             names = context.args.names.split(',')
@@ -100,6 +117,19 @@ class TestSpendingConditionsCommand(Command):
                             output_index,
                             spending_condition['index']
                         )
+
+                    role = spending_condition.get('nextRole')
+                    if role != context.args.role:
+                        logger.info(
+                            'Skipping spending condition with nextRole=%s (%s/%s/%s) -- only looking for role %s',
+                            role,
+                            tx_template.name,
+                            output_index,
+                            spending_condition['index'],
+                            context.args.role,
+                        )
+                        continue
+
 
                     logger.info(
                         'Adding spending condition to tests: %s/%s/%s',

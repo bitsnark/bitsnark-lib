@@ -10,7 +10,7 @@ from types import SimpleNamespace
 
 logger = logging.getLogger(__name__)
 
-COMPOSE_VERBOSE = os.environ.get("COMPOSE_VERBOSE") != "0"
+COMPOSE_VERBOSE = os.environ.get("COMPOSE_VERBOSE", "").lower() in ("1", "true")
 BASE_DIR = pathlib.Path(__file__).parent.parent.parent  # just use the root python dir for now
 COMPOSE_COMMAND = ["docker", "compose"]
 COMPOSE_FILE = BASE_DIR / "docker-compose.yaml"
@@ -85,13 +85,14 @@ def get_container_info(service: str):
 
 
 def start_docker_compose():
+    services = ["bitcoind", "postgres"]
     run_docker_compose_command("up", "-d", "--build")
     for _ in range(20):
-        if is_service_running("bitcoind"):
+        if all(is_service_running(service) for service in services):
             break
         time.sleep(1)
     else:
-        raise TimeoutError("bitcoind service did not start in time")
+        raise TimeoutError("a service did not start in time")
 
 
 

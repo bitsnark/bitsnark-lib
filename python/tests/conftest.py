@@ -2,24 +2,26 @@ import logging
 import pytest
 from sqlalchemy import create_engine, Engine
 from sqlalchemy.orm import Session
-
+from bitcointx import ChainParams
 
 from bitsnark.btc.rpc import BitcoinRPC
-from demo.test_full_flow import RPC_BASE_URL
 from .utils.docker_compose import start_stop_docker_compose
 from .utils.bitcoin_wallet import BitcoinWallet
-
+from .utils.npm import NPMCommandRunner
+from .constants import POSTGRES_URL, BITCOIN_RPC_URL
 
 logger = logging.getLogger(__name__)
 
-@pytest.fixture()
-def db_engine() -> Engine:
-    return create_engine('postgresql://postgres:1234@localhost:5432/postgres')
+
+@pytest.fixture(autouse=True)
+def use_regtest_bitcointx():
+    with ChainParams('bitcoin/regtest'):
+        yield
 
 
 @pytest.fixture()
-def dbsession(db_engine) -> Session:
-    return Session(bind=db_engine, autobegin=False)
+def npm() -> NPMCommandRunner:
+    return NPMCommandRunner()
 
 
 @pytest.fixture()
@@ -29,8 +31,18 @@ def docker_compose():
 
 
 @pytest.fixture()
+def db_engine(docker_compose) -> Engine:
+    return create_engine(POSTGRES_URL)
+
+
+@pytest.fixture()
+def dbsession(db_engine) -> Session:
+    return Session(bind=db_engine, autobegin=False)
+
+
+@pytest.fixture()
 def btc_rpc(docker_compose) -> BitcoinRPC:
-    rpc = BitcoinRPC("http://rpcuser:rpcpassword@localhost:19443")
+    rpc = BitcoinRPC(BITCOIN_RPC_URL)
     blockcount = rpc.call('getblockcount')
     # Mine enough blocks to activate segwit
     required = 432 - blockcount

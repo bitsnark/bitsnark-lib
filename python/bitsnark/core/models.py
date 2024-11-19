@@ -2,9 +2,8 @@ from __future__ import annotations
 import datetime
 import enum
 from typing import TypedDict, Optional, ClassVar, Any
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, declarative_base
 from sqlalchemy import Column, Integer, JSON, String, Boolean, TIMESTAMP, Enum
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.schema import FetchedValue
 
 
@@ -42,7 +41,7 @@ class TransactionTemplate(Base):
         return (
             f"<TransactionTemplate(name={self.name}, agent_id={self.agent_id}, "
             f"setup_id={self.setup_id}, template_id={self.template_id}, ordinal={self.ordinal}, "
-            f"role={self.role}, is_exteranl={self.is_external}, object=...)>")
+            f"role={self.role}, is_external={self.is_external}, object=...)>")
 
     @property
     def inputs(self) -> list[TxInJson]:
