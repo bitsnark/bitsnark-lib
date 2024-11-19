@@ -454,7 +454,6 @@ function makeProtocolSteps(): Transaction[] {
 }
 
 export function mergeWots(role: AgentRoles, mine: Transaction[], theirs: Transaction[]): Transaction[] {
-
     const notNull = (t: Buffer[][] | undefined) => {
         if (!t) throw new Error('Null error');
         return t;
