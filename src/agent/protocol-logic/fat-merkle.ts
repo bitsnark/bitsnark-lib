@@ -80,6 +80,13 @@ export class FatMerkleProof {
         return (await this.indexToRefute()) >= 0;
     }
 
+    public toArgument(): Buffer[] {
+        // copy and remove root
+        let r = this.hashes.map(b => b).slice(0, this.hashes.length - 2);
+        // remove leaf
+        return this.leafIndex % 1 == 0 ? r.slice(1) : [ r[0], ...r.slice(2) ];
+    }
+
     public async indexToRefute(): Promise<number> {
         const proof = this.hashes.map((b) => b);
         for (let i = 0; i < proof.length; i += 2) {

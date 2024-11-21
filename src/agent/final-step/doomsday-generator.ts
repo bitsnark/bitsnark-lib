@@ -32,7 +32,7 @@ import {
 import { Compressor } from '../simple-taptree';
 import { agentConf } from '../agent.conf';
 import { BLAKE3, Register } from './blake-3-4u';
-import { Decasector } from './decasector';
+import { Decasector } from '../protocol-logic/decasector';
 import { combineHashes } from '../../common/taproot-common';
 import { readTemplates } from '../db';
 import { blake3 as blake3_wasm } from 'hash-wasm';
@@ -46,7 +46,7 @@ export class DoomsdayGenerator {
         groth16Verify(Key.fromSnarkjs(vKey), Step1_Proof.fromSnarkjs(proof));
         if (!step1_vm.success?.value) throw new Error('Failed.');
         this.program = step1_vm.instructions;
-        this.decasector = new Decasector(this.program.length);
+        this.decasector = new Decasector();
     }
 
     private renderTemplateWithIndex(template: Template, index: number): Buffer {
@@ -129,7 +129,7 @@ export class DoomsdayGenerator {
         const started = Date.now();
         let total = 0;
         let max = 0;
-        const compressor = new Compressor(this.decasector.iterations, agentConf.internalPubkey);
+        const compressor = new Compressor(agentConf.internalPubkey, this.decasector.total);
 
         console.log(`Generating refute instruction taproot for ${this.program.length} instructions`);
         for (let index = 0; index < this.program.length; index++) {
@@ -214,7 +214,7 @@ export class DoomsdayGenerator {
         return compressor.getRoot();
     }
 
-    private assertDoubleHash(
+    private assertPairHash(
         blake3: BLAKE3,
         leftNibbles: StackItem[],
         rightNibbles: StackItem[],
@@ -269,12 +269,12 @@ export class DoomsdayGenerator {
         bitcoin.winternitzDecode256_4(resultSi, resultWi, resultKeys);
         bitcoin.drop(resultWi);
 
-        this.assertDoubleHash(blake3, rightSi, leftSi, resultSi);
+        this.assertPairHash(blake3, rightSi, leftSi, resultSi);
         return bitcoin.programToTemplate({ validateStack: true });
     }
 
     private async generateRefuteMerkleProofTaproot(transactions: Transaction[]): Promise<Buffer> {
-        const compressor = new Compressor(this.decasector.iterations + 2, agentConf.internalPubkey);
+        const compressor = new Compressor(agentConf.internalPubkey, this.decasector.total * 18);
         let template: Template | undefined = undefined;
 
         const started = Date.now();
@@ -291,14 +291,14 @@ export class DoomsdayGenerator {
             }
 
             // first find the 2 roots for the 3 merkle proofs
-            const stateCommitmentInfoBefore = this.decasector.getStateCommitmentsForRow(index)[0];
-            const stateCommitmentInfoAfter = this.decasector.getStateCommitmentsForRow(index)[1];
+            const stateCommitmentBefore = this.decasector.stateCommitmentByLine[index - 1];
+            const stateCommitmentAfter = this.decasector.stateCommitmentByLine[index];
 
             // transaction names start with 0 while state commitment count starts with 1, so -1 here
-            const beforeStateIteration = stateCommitmentInfoBefore[0] - 1;
-            const afterStateIteration = stateCommitmentInfoAfter[0] - 1;
-            const stateCommitmentIndexBefore = stateCommitmentInfoBefore[1];
-            const stateCommitmentIndexAfter = stateCommitmentInfoAfter[1];
+            const beforeStateIteration = stateCommitmentBefore.iteration - 1;
+            const afterStateIteration = stateCommitmentAfter.iteration - 1;
+            const stateCommitmentIndexBefore = stateCommitmentBefore.selection;
+            const stateCommitmentIndexAfter = stateCommitmentAfter.selection;
 
             const stateTxBefore = getTransactionByName(
                 transactions,
@@ -313,7 +313,7 @@ export class DoomsdayGenerator {
             const scAfter = getSpendingConditionByInput(transactions, stateTxAfter.inputs[0]);
             const afterRootKeys = scAfter.wotsPublicKeys![stateCommitmentIndexAfter];
 
-            // now let's get the merkle proofs keys, there are 3 proofs, each with 12 hashes, each with 90 keys
+            // now let's get the merkle proofs keys, there are 3 proofs
             const merkleProofKeysAll: Buffer[][] = [];
             const argument = getTransactionByName(transactions, TransactionNames.ARGUMENT);
 
@@ -323,7 +323,7 @@ export class DoomsdayGenerator {
                 const sc = getSpendingConditionByInput(transactions, input);
                 merkleProofKeysAll.push(...sc.wotsPublicKeys!);
             }
-            // divide these into 3 sets of 12
+            // divide these into 3 sets of 13
             const merkleProofKeys: Buffer[][][] = [0, 1, 2].map((i) => merkleProofKeysAll.slice(i * 12, (i + 1) * 12));
 
             // now add the value before the proof, and the root after it

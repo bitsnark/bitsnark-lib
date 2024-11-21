@@ -419,7 +419,7 @@ function makeProtocolSteps(): Transaction[] {
                         {
                             nextRole: AgentRoles.PROVER,
                             signatureType: SignatureType.BOTH,
-                            wotsSpec: array<WotsType>(14, WotsType._256_4)
+                            wotsSpec: array<WotsType>(11, WotsType._256_4)
                         }
                     ]
                 }))

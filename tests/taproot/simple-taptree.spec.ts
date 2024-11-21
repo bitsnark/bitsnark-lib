@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@jest/globals';
 
-import { SimpleTapTree } from '../../src/agent/simple-taptree';
+import { DEAD_ROOT, SimpleTapTree } from '../../src/agent/simple-taptree';
 import { stringToBigint } from '../../src/encoding/encoding';
 
 describe('SimpleTapTree', () => {
@@ -90,6 +90,6 @@ describe('SimpleTapTree', () => {
         const tapTree = new SimpleTapTree(stringToBigint(internalPubkey), []);
         const root = tapTree.getRoot();
 
-        expect(root).toEqual(Buffer.from('UNSPENDABLE', 'ascii'));
+        expect(root).toEqual(DEAD_ROOT);
     });
 });
