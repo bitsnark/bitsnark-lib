@@ -33,6 +33,7 @@ export interface Input {
     transactionName: string;
     outputIndex: number;
     spendingConditionIndex: number;
+    nSequence?: number;
     data?: bigint[];
     script?: Buffer;
     proverSignature?: string;
@@ -44,7 +45,6 @@ export interface Output {
     taprootKey?: Buffer;
     amount?: bigint;
     spendingConditions: SpendingCondition[];
-    timeoutBlocks?: number;
 }
 
 export interface Transaction {
@@ -661,12 +661,10 @@ export async function initializeTransactions(
         }
     }
 
-    // copy timeouts from input to output for indexer
+    // Copy timeouts from spending conditions to their inputs, so CHECKSEQUENCEVERIFY can verify the nSequence.
     for (const t of transactions) {
         for (const input of t.inputs) {
-            const output = findOutputByInput(transactions, input);
-            const spend = output.spendingConditions[input.spendingConditionIndex];
-            output.timeoutBlocks = spend.timeoutBlocks;
+            input.nSequence = getSpendingConditionByInput(transactions, input).timeoutBlocks;
         }
     }
 
