@@ -664,9 +664,7 @@ export async function initializeTransactions(
     // Copy timeouts from spending conditions to their inputs, so CHECKSEQUENCEVERIFY can verify the nSequence.
     for (const t of transactions) {
         for (const input of t.inputs) {
-            input.nSequence = findOutputByInput(transactions, input).spendingConditions[
-                input.spendingConditionIndex
-            ].timeoutBlocks;
+            input.nSequence = getSpendingConditionByInput(transactions, input).timeoutBlocks;
         }
     }
 
