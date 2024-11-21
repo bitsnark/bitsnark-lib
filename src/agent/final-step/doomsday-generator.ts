@@ -33,9 +33,19 @@ import { Compressor } from '../simple-taptree';
 import { agentConf } from '../agent.conf';
 import { BLAKE3, Register } from './blake-3-4u';
 import { Decasector } from '../protocol-logic/decasector';
-import { combineHashes } from '../../common/taproot-common';
 import { readTemplates } from '../db';
 import { blake3 as blake3_wasm } from 'hash-wasm';
+
+enum RefutationType {
+    INSTR,
+    HASH
+}
+
+interface ScriptDescriptor {
+    refutationType: RefutationType;
+    line: number;
+    which?: number;
+}
 
 export class DoomsdayGenerator {
     program: Instruction[];
@@ -120,7 +130,7 @@ export class DoomsdayGenerator {
         }
     }
 
-    private generateRefuteInstructionTaproot(transactions: Transaction[]): Buffer {
+    private generateRefuteInstructionTaproot(compressor: Compressor, transactions: Transaction[]) {
         const lastSelect = getTransactionByName(transactions, `select_${twoDigits(this.decasector.iterations - 1)}`);
         const semiFinal = getTransactionByName(transactions, TransactionNames.ARGUMENT);
 
@@ -129,7 +139,6 @@ export class DoomsdayGenerator {
         const started = Date.now();
         let total = 0;
         let max = 0;
-        const compressor = new Compressor(agentConf.internalPubkey, this.decasector.total);
 
         console.log(`Generating refute instruction taproot for ${this.program.length} instructions`);
         for (let index = 0; index < this.program.length; index++) {
@@ -273,8 +282,7 @@ export class DoomsdayGenerator {
         return bitcoin.programToTemplate({ validateStack: true });
     }
 
-    private async generateRefuteMerkleProofTaproot(transactions: Transaction[]): Promise<Buffer> {
-        const compressor = new Compressor(agentConf.internalPubkey, this.decasector.total * 18);
+    private async generateRefuteMerkleProofTaproot(compressor: Compressor, transactions: Transaction[]) {
         let template: Template | undefined = undefined;
 
         const started = Date.now();
@@ -363,15 +371,28 @@ export class DoomsdayGenerator {
                 }
             }
         }
-
-        return compressor.getRoot();
     }
 
-    async generateFinalStepTaproot(transactions: Transaction[]): Promise<Buffer> {
-        const tr2 = await this.generateRefuteMerkleProofTaproot(transactions);
-        const tr1 = this.generateRefuteInstructionTaproot(transactions);
-        const root = combineHashes(tr1, tr2);
-        return Compressor.toPubKey(agentConf.internalPubkey, root);
+    async generateFinalStepTaproot(transactions: Transaction[], scriptDescriptor?: ScriptDescriptor): Promise<{ pubkey: Buffer, script?: Buffer, controlBlock?: Buffer }> {
+
+        let compressor = new Compressor(agentConf.internalPubkey, 20 * 300000);
+
+        // which index do we need?
+        if (scriptDescriptor) {
+            const leafIndex = scriptDescriptor.refutationType == RefutationType.INSTR ?
+                scriptDescriptor.line :
+                scriptDescriptor.line * (1 + scriptDescriptor.which!);
+            compressor = new Compressor(agentConf.internalPubkey, 20 * 300000, leafIndex);
+        }
+
+        await this.generateRefuteMerkleProofTaproot(compressor, transactions);
+        this.generateRefuteInstructionTaproot(compressor, transactions);
+
+        return {
+            pubkey: compressor.getScriptPubkey(),
+            controlBlock: scriptDescriptor ? compressor.getControlBlock() : undefined,
+            script: scriptDescriptor ? compressor.script : undefined,
+        };
     }
 }
 
