@@ -2,7 +2,7 @@ import { Transaction } from '../common/transactions';
 import { agentConf } from '../agent.conf';
 import { BitcoinNode } from '../common/bitcoin-node';
 import { RawTransaction } from 'bitcoin-core';
-import { Pending, readExpectedIncoming, writeIncomingTransaction } from '../common/db';
+import { Pending, readExpectedIncoming, writeIncomingTransaction, updatedSetupListenerLastHeight } from '../common/db';
 
 const checkNodeInterval = 60000;
 export interface expectByInputs {
@@ -89,7 +89,6 @@ export class BitcoinNodeListener {
 
             //fix to by active setups
             await updatedSetupListenerLastHeight(pending[0].listenerBlockHeight, blockHeight - 1);
-
         }
     }
 
@@ -103,9 +102,9 @@ export class BitcoinNodeListener {
                     template.incomingTxId !== null)
                 if (parentTemplate === undefined) return undefined;
 
-                const utxo = await this.client.getTxOut(parentTemplate.incomingTxId, input.outputIndex, false);
+                const utxo = await this.client.getTxOut(parentTemplate.incomingTxId!, input.outputIndex, false);
                 if (utxo !== null) return undefined
-                searchBy.push([parentTemplate.incomingTxId, input.outputIndex]);
+                searchBy.push([parentTemplate.incomingTxId!, input.outputIndex]);
             }
 
             const blockTxs = (await this.client.getBlock(blockHash)).tx;
@@ -139,14 +138,7 @@ export class BitcoinNodeListener {
 
 if (process.argv[1] == __filename) {
     (async () => {
-        const nodeListener = new BitcoinNodeListener('bitsnark_prover_1');
-        //await nodeListener.init();
-        // console.log('Node listener started');
-        // console.log('agentSetups:', nodeListener.agentSetups);
-        // await nodeListener.checkForNewBlock();
-        // nodeListener.destroy();
-
-        // const client = new BitcoinNode().client;
-        // await client.getRawTransaction('be71a3bb8fd7c1631a68ecc48f436cfd29f640f6b89edb7b6ecaec54957cf989', true, '').then(console.log);
+        const setupsTemplates = await readExpectedIncoming('bitsnark_prover_1')
+        console.log(setupsTemplates.map((tx) => tx.listenerBlockHeight));
     })().catch(console.error);
 }

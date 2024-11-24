@@ -1,4 +1,3 @@
-
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /*
 Since client.query accepts any as a parameter and also returns any, we have to disable this rule.
@@ -7,13 +6,12 @@ and it would be fragile for changes.
 
 Most of the objects passed to params are simple types, but some are parsed to any with JSON.parse, so we can't be sure of the type.
 */
-
-import { Transaction } from './transactions';
+import { Transaction } from '../common/transactions';
 import { Client, connect } from 'ts-postgres';
 import { agentConf } from '../agent.conf';
 import { RawTransaction } from 'bitcoin-core';
 import { jsonStringifyCustom, jsonParseCustom } from './json';
-import { AgentRoles, TransactionNames } from './types';
+import { AgentRoles } from './types';
 
 // DB utils
 function jsonizeObject<T>(obj: T): T {
@@ -130,10 +128,10 @@ export interface Pending {
     templateId: number;
     setupId: string;
     listenerBlockHeight: number;
-    transactionName: TransactionNames;
-    object: Transaction;
-    protocolVersion: number;
-    incomingTxId: string;
+    transactionName: string;
+    object: any;
+    protocolVersion: string;
+    incomingTxId: string | null;
 }
 
 // DB functions
@@ -295,14 +293,12 @@ export async function readExpectedIncoming(agent_id: string): Promise<Pending[]>
         INNER JOIN setups
             ON templates.setup_id = setups.setup_id
         LEFT JOIN incoming
-            ON outgoing.transaction_id = incoming.transaction
+            ON outgoing.template_id = incoming.template_id
         WHERE
             templates.agent_id = $1
+            AND templates.ordinal < 7
             AND outgoing.status in ('PENDING', 'PUBLISHED')
             AND setups.status = 'SIGNED'
-            AND transaction_id NOT IN(
-            SELECT transaction_id
-                FROM incoming )
         ORDER BY
             listener_last_crawled_height,
             setups.setup_id,
