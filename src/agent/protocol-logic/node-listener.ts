@@ -2,7 +2,7 @@ import { Transaction } from '../common/transactions';
 import { agentConf } from '../agent.conf';
 import { BitcoinNode } from '../common/bitcoin-node';
 import { RawTransaction } from 'bitcoin-core';
-import { Pending, readExpectedIncoming, writeIncomingTransaction, updatedSetupListenerLastHeight } from '../common/db';
+import { Pending, readExpectedIncoming, writeIncomingTransaction, updatedSetupListenerHeightBySetups } from '../common/db';
 
 const checkNodeInterval = 60000;
 export interface expectByInputs {
@@ -55,15 +55,13 @@ export class BitcoinNodeListener {
 
     async monitorTransmitted(): Promise<void> {
         const setupsTemplates = await readExpectedIncoming(this.agentId);
-        const pending = setupsTemplates.filter((tx) => tx.incomingTxId !== null);
+        const pending = setupsTemplates.filter((tx) => tx.incomingTxId === null);
         if (pending.length === 0) return;
 
         let blockHeight = pending[0].listenerBlockHeight + 1
 
         while (blockHeight <= this.tipHeight - agentConf.blocksUntilFinalized) {
-            console.log('Crawling:', blockHeight);
-
-            const blockHash = blockHeight === this.tipHeight ? this.tipHash : await this.client.getBlockHash(blockHeight);
+            const blockHash = await this.client.getBlockHash(blockHeight);
 
             for (const pendingTx of pending) {
                 try {
@@ -84,22 +82,23 @@ export class BitcoinNodeListener {
                     console.error(error);
                     continue;
                 }
-                blockHeight++;
             }
 
-            //fix to by active setups
-            await updatedSetupListenerLastHeight(pending[0].listenerBlockHeight, blockHeight - 1);
+            blockHeight++;
+
+            await updatedSetupListenerHeightBySetups(Array.from(new Set(pending.map((tx) => tx.setupId))), blockHeight);
         }
     }
 
     private async getTransactionByInputs(pendingTx: Transaction, setupTemplates: Pending[], blockHash: string): Promise<RawTransaction | undefined> {
         try {
             const searchBy: [string, number][] = [];
-
             for (const input of pendingTx.inputs) {
+
                 const parentTemplate = setupTemplates.find((template) =>
                     input.transactionName === template.transactionName &&
                     template.incomingTxId !== null)
+
                 if (parentTemplate === undefined) return undefined;
 
                 const utxo = await this.client.getTxOut(parentTemplate.incomingTxId!, input.outputIndex, false);

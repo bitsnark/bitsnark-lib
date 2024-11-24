@@ -202,6 +202,15 @@ export async function updatedSetupListenerLastHeight(currentCrawledHeight: numbe
     );
 }
 
+export async function updatedSetupListenerHeightBySetups(setupIds: string[], newCrawledHeight: number) {
+    const result = await runQuery(
+        `UPDATE setups
+            SET listener_last_crawled_height = $1
+        WHERE setup_id = ANY($2::TEXT[])`,
+        [newCrawledHeight, setupIds]
+    );
+}
+
 export async function writeTemplate(agentId: string, setupId: string, transaction: Transaction) {
     const jsonizedObject = jsonizeObject(transaction);
     const result = await runQuery(
