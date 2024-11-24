@@ -2,7 +2,7 @@ import { Transaction } from '../common/transactions';
 import { agentConf } from '../agent.conf';
 import { BitcoinNode } from '../common/bitcoin-node';
 import { RawTransaction } from 'bitcoin-core';
-import { Pending, readExpectedIncoming, writeIncomingTransaction, updatedSetupListenerHeightBySetups } from '../common/db';
+import { Pending, readExpectedIncoming, writeIncomingTransaction, updatedListenerHeightBySetupsIds } from '../common/db';
 
 const checkNodeInterval = 60000;
 export interface expectByInputs {
@@ -31,17 +31,14 @@ export class BitcoinNodeListener {
                 if (this.isCrawling) return;
                 this.isCrawling = true;
                 await this.checkForNewBlock().catch((error) => console.error(error));
-            }
-            catch (error) {
+            } catch (error) {
                 console.error(error);
-            }
-            finally {
+            } finally {
                 this.isCrawling = false;
             }
         }, checkNodeInterval);
         await this.checkForNewBlock();
     }
-
 
     async checkForNewBlock() {
         const tipHash = await this.client.getBestBlockHash();
@@ -58,7 +55,7 @@ export class BitcoinNodeListener {
         const pending = setupsTemplates.filter((tx) => tx.incomingTxId === null);
         if (pending.length === 0) return;
 
-        let blockHeight = pending[0].listenerBlockHeight + 1
+        let blockHeight = pending[0].listenerBlockHeight + 1;
 
         while (blockHeight <= this.tipHeight - agentConf.blocksUntilFinalized) {
             const blockHash = await this.client.getBlockHash(blockHeight);
@@ -72,13 +69,11 @@ export class BitcoinNodeListener {
                         transmittedTx = await this.getTransactionByInputs(
                             pendingTx.object,
                             setupsTemplates.filter((tx) => tx.setupId === pendingTx.setupId),
-                            blockHash);
+                            blockHash
+                        );
 
-                    if (transmittedTx)
-                        await writeIncomingTransaction(transmittedTx, blockHeight, pendingTx.templateId);
-
-                }
-                catch (error) {
+                    if (transmittedTx) await writeIncomingTransaction(transmittedTx, blockHeight, pendingTx.templateId);
+                } catch (error) {
                     console.error(error);
                     continue;
                 }
@@ -86,23 +81,26 @@ export class BitcoinNodeListener {
 
             blockHeight++;
 
-            await updatedSetupListenerHeightBySetups(Array.from(new Set(pending.map((tx) => tx.setupId))), blockHeight);
+            await updatedListenerHeightBySetupsIds(Array.from(new Set(pending.map((tx) => tx.setupId))), blockHeight);
         }
     }
 
-    private async getTransactionByInputs(pendingTx: Transaction, setupTemplates: Pending[], blockHash: string): Promise<RawTransaction | undefined> {
+    private async getTransactionByInputs(
+        pendingTx: Transaction,
+        setupTemplates: Pending[],
+        blockHash: string
+    ): Promise<RawTransaction | undefined> {
         try {
             const searchBy: [string, number][] = [];
             for (const input of pendingTx.inputs) {
-
-                const parentTemplate = setupTemplates.find((template) =>
-                    input.transactionName === template.transactionName &&
-                    template.incomingTxId !== null)
+                const parentTemplate = setupTemplates.find(
+                    (template) => input.transactionName === template.transactionName && template.incomingTxId !== null
+                );
 
                 if (parentTemplate === undefined) return undefined;
 
                 const utxo = await this.client.getTxOut(parentTemplate.incomingTxId!, input.outputIndex, false);
-                if (utxo !== null) return undefined
+                if (utxo !== null) return undefined;
                 searchBy.push([parentTemplate.incomingTxId!, input.outputIndex]);
             }
 
@@ -112,19 +110,20 @@ export class BitcoinNodeListener {
                 const candidate = await this.client.getRawTransaction(blockTx, true, blockHash);
                 if (candidate.vin.length !== searchBy.length) continue;
 
-                if (searchBy.every((search, index) =>
-                    candidate.vin[index].txid === search[0] && candidate.vin[index].vout === search[1]))
+                if (
+                    searchBy.every(
+                        (search, index) =>
+                            candidate.vin[index].txid === search[0] && candidate.vin[index].vout === search[1]
+                    )
+                )
                     return candidate;
-
             }
             return undefined;
-        }
-        catch (error) {
+        } catch (error) {
             console.error(error);
             return undefined;
         }
     }
-
 
     destroy() {
         if (this.scheduler) {
@@ -134,10 +133,9 @@ export class BitcoinNodeListener {
     }
 }
 
-
 if (process.argv[1] == __filename) {
     (async () => {
-        const setupsTemplates = await readExpectedIncoming('bitsnark_prover_1')
+        const setupsTemplates = await readExpectedIncoming('bitsnark_prover_1');
         console.log(setupsTemplates.map((tx) => tx.listenerBlockHeight));
     })().catch(console.error);
 }

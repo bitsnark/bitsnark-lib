@@ -1,14 +1,14 @@
-import { Pending } from "@src/agent/db";
-import { TransactionNames } from "@src/agent/common";
-import { Input } from "@src/agent/transactions-new";
+import { Pending } from '@src/agent/db';
+import { TransactionNames } from '@src/agent/common';
+import { Input } from '@src/agent/transactions-new';
 
-const templates = [TransactionNames.LOCKED_FUNDS,
-TransactionNames.PROVER_STAKE,
-TransactionNames.PROOF,
-TransactionNames.CHALLENGE,
-TransactionNames.PROOF_UNCONTESTED]
-
-
+const templates = [
+    TransactionNames.LOCKED_FUNDS,
+    TransactionNames.PROVER_STAKE,
+    TransactionNames.PROOF,
+    TransactionNames.CHALLENGE,
+    TransactionNames.PROOF_UNCONTESTED
+];
 
 const IncomingTransactionsBaseRow = {
     txId: '',
@@ -28,16 +28,15 @@ const IncomingTransactionsBaseRow = {
     },
     protocolVersion: '0.2',
     incomingTxId: null
-}
-
+};
 
 const setups = ['test_setup_1'];
 
 export function txIdBySetupAndName(setupId: string, transactionName: string) {
-    return `${setupId}_tx_${transactionName}`
+    return `${setupId}_tx_${transactionName}`;
 }
 
-export const mockExpected = function createSetupsIncomingTransactions(): Pending[] {
+export const mockExpected = (function createSetupsIncomingTransactions(): Pending[] {
     return setups.flatMap((setupId, setupIndex) => {
         return templates.map((templateName, index) => {
             return {
@@ -46,8 +45,7 @@ export const mockExpected = function createSetupsIncomingTransactions(): Pending
                 templateId: setupIndex * 100 + index,
                 transactionName: templateName,
                 setupId: setupId,
-                object:
-                {
+                object: {
                     ...IncomingTransactionsBaseRow.object,
                     txId: txIdBySetupAndName(setupId, templateName),
                     inputs: getInputs(templateName),
@@ -56,26 +54,26 @@ export const mockExpected = function createSetupsIncomingTransactions(): Pending
                     transactionName: templateName,
                     mulableTxid: templateName === TransactionNames.CHALLENGE
                 }
-            }
+            };
         });
     });
-}();
-
+})();
 
 function getInputs(templateName: string): Input[] {
     if (templateName === TransactionNames.PROOF) {
-        return [getInput(0, 0, TransactionNames.PROVER_STAKE, 0)]
+        return [getInput(0, 0, TransactionNames.PROVER_STAKE, 0)];
     }
     if (templateName === TransactionNames.CHALLENGE) {
-        return [getInput(0, 1, TransactionNames.PROOF, 0)]
+        return [getInput(0, 1, TransactionNames.PROOF, 0)];
     }
     if (templateName === TransactionNames.PROOF_UNCONTESTED) {
         return [
             getInput(0, 0, TransactionNames.LOCKED_FUNDS, 0),
             getInput(1, 0, TransactionNames.PROOF, 0),
-            getInput(2, 1, TransactionNames.PROOF, 0)]
+            getInput(2, 1, TransactionNames.PROOF, 0)
+        ];
     }
-    return []
+    return [];
 
     function getInput(index: number, outputIndex: number, transactionName: string, spendingConditionIndex: number) {
         return {
@@ -83,7 +81,7 @@ function getInputs(templateName: string): Input[] {
             outputIndex: outputIndex,
             transactionName: transactionName,
             spendingConditionIndex: spendingConditionIndex
-        }
+        };
     }
 }
 
@@ -93,12 +91,11 @@ export function getmockExpected(markIncoming?: Set<string>) {
             return {
                 ...expectedTx,
                 incomingTxId: expectedTx.txId
-            }
+            };
+        } else {
+            return expectedTx;
         }
-        else {
-            return expectedTx
-        }
-    })
+    });
 }
 
 export function getMockRawChallengeTx(setupId: string) {
@@ -108,14 +105,7 @@ export function getMockRawChallengeTx(setupId: string) {
             {
                 txid: 'test_setup_1_tx_proof',
                 vout: 1
-            }]
-
-    }
+            }
+        ]
+    };
 }
-
-
-
-
-
-
-

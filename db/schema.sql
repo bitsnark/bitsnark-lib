@@ -3,7 +3,6 @@ CREATE TYPE public.setup_status AS ENUM ( 'PENDING', 'READY', 'SIGNED', 'FAILED'
 CREATE TABLE public.setups (
     setup_id CHARACTER VARYING PRIMARY KEY,
     protocol_version CHARACTER VARYING NOT NULL,
-    genesis_block_height INTEGER NOT NULL DEFAULT 0,
     status public.setup_status NOT NULL DEFAULT 'PENDING',
     listener_last_crawled_height INTEGER NOT NULL DEFAULT 0
 );

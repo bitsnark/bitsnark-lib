@@ -20,7 +20,7 @@ import { addAmounts } from './amounts';
 import { signTransactions } from './sign-transactions';
 import { AgentRoles, FundingUtxo } from '../common/types';
 import { BitcoinNode } from '../common/bitcoin-node';
-import { updateSetupsGenesisBlock } from '../common/db';
+import { updatedListenerHeightBySetupsIds } from '../common/db';
 
 interface AgentInfo {
     agentId: string;
@@ -65,7 +65,7 @@ export class Agent {
     instances: Map<string, SetupInstance> = new Map<string, SetupInstance>();
     schnorrPublicKey: string;
     bot: TelegramBot;
-    bitcoinClient: BitcoinNode
+    bitcoinClient: BitcoinNode;
 
     constructor(agentId: string, role: AgentRoles) {
         this.agentId = agentId;
@@ -311,7 +311,7 @@ export class Agent {
         });
 
         const currentTip = await this.bitcoinClient.getBlockCount();
-        updateSetupsGenesisBlock(i.setupId, currentTip);
+        updatedListenerHeightBySetupsIds([i.setupId], currentTip - 1);
 
         const signaturesMessage = new SignaturesMessage({
             setupId: i.setupId,

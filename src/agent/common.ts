@@ -50,10 +50,6 @@ export interface TransactionInfo {
     value?: bigint;
 }
 
-export const mulableTransactions = [
-    { name: TransactionNames.CHALLENGE, role: AgentRoles.VERIFIER },
-    { name: TransactionNames.PROOF_REFUTED, role: AgentRoles.VERIFIER }];
-
 export interface ScriptAndKeys {
     script: Buffer;
     wotsPublicKeys: bigint[];

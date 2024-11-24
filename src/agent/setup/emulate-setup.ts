@@ -1,6 +1,12 @@
 import { agentConf } from '../agent.conf';
 import { addAmounts } from './amounts';
-import { dev_ClearTemplates, SetupStatus, updateSetupsGenesisBlock, writeSetupStatus, writeTemplates } from './common/db';
+import {
+    dev_ClearTemplates,
+    SetupStatus,
+    updatedListenerHeightBySetupsIds,
+    writeSetupStatus,
+    writeTemplates
+} from '../common/db';
 import { generateAllScripts } from './generate-scripts';
 import { signTransactions } from './sign-transactions';
 import { initializeTransactions, mergeWots, getSpendingConditionByInput, SignatureType } from '../common/transactions';
@@ -103,7 +109,7 @@ export async function emulateSetup(
     console.log('update listener data...');
     const bitcoinClient = new BitcoinNode();
     const currentTip = await bitcoinClient.getBlockCount();
-    updateSetupsGenesisBlock(setupId, currentTip);
+    await updatedListenerHeightBySetupsIds([setupId], currentTip - 1);
 
     console.log('checking...');
 
