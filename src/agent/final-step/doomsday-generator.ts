@@ -3,7 +3,7 @@ import { InstrCode, Instruction } from '../../generator/ec_vm/vm/types';
 import { proof, vKey } from '../../generator/ec_vm/constants';
 import { Bitcoin, Template } from '../../generator/btc_vm/bitcoin';
 import { getSpendingConditionByInput, getTransactionByName, Transaction } from '../transactions-new';
-import { bigintToNibblesLS } from './common';
+import { bigintToNibblesLS, prime_bigint } from './common';
 import { TransactionNames, twoDigits } from '../common';
 import {
     bufferToBigintBE,
@@ -32,10 +32,22 @@ import {
 import { Compressor } from '../simple-taptree';
 import { agentConf } from '../agent.conf';
 import { BLAKE3, Register } from './blake-3-4u';
-import { Decasector } from './decasector';
-import { combineHashes } from '../../common/taproot-common';
+import { Decasector } from '../protocol-logic/decasector';
 import { readTemplates } from '../db';
 import { blake3 as blake3_wasm } from 'hash-wasm';
+import { modInverse } from '../../generator/common/math-utils';
+
+export enum RefutationType {
+    INSTR,
+    HASH
+}
+
+export interface ScriptDescriptor {
+    refutationType: RefutationType;
+    line: number;
+    whichProof?: number;
+    whichHash?: number;
+}
 
 export class DoomsdayGenerator {
     program: Instruction[];
@@ -46,7 +58,7 @@ export class DoomsdayGenerator {
         groth16Verify(Key.fromSnarkjs(vKey), Step1_Proof.fromSnarkjs(proof));
         if (!step1_vm.success?.value) throw new Error('Failed.');
         this.program = step1_vm.instructions;
-        this.decasector = new Decasector(this.program.length);
+        this.decasector = new Decasector();
     }
 
     private renderTemplateWithIndex(template: Template, index: number): Buffer {
@@ -69,7 +81,44 @@ export class DoomsdayGenerator {
         return template.buffer;
     }
 
-    private checkLine(
+    // return true if the line succeeds!!!
+    public checkLine(index: number, a: bigint, b: bigint, c: bigint, d?: bigint): boolean {
+        const line = this.program[index];
+        switch (line.name) {
+            case InstrCode.ADDMOD:
+                return c == (a + b) % prime_bigint;
+            case InstrCode.ANDBIT:
+                return c == (a & (1n << BigInt(line.bit!)) ? b : 0n);
+            case InstrCode.ANDNOTBIT:
+                return c == (a & (1n << BigInt(line.bit!)) ? 0n : b);
+            case InstrCode.MOV:
+                return a == c;
+            case InstrCode.EQUAL:
+                return c != 0n ? a == b : a != b;
+            case InstrCode.MULMOD:
+                return c == (a * b) % prime_bigint;
+            case InstrCode.OR:
+                return c != 0n ? a != 0n || b != 0n : a == 0n && b == 0n;
+            case InstrCode.AND:
+                return c != 0n ? a != 0n && b != 0n : a == 0n || b == 0n;
+            case InstrCode.NOT:
+                return c != 0n ? a == 0n : a != 0n;
+            case InstrCode.SUBMOD:
+                return c == (prime_bigint + a - b) % prime_bigint;
+            case InstrCode.DIVMOD:
+                try {
+                    return c == a * modInverse(b, prime_bigint);
+                } catch (e) {
+                    return false;
+                }
+            case InstrCode.ASSERTONE:
+                return a == 1n;
+            case InstrCode.ASSERTZERO:
+                return a == 0n;
+        }
+    }
+
+    private checkLineBitcoin(
         bitcoin: Bitcoin,
         line: Instruction,
         a: StackItem[],
@@ -120,7 +169,7 @@ export class DoomsdayGenerator {
         }
     }
 
-    private generateRefuteInstructionTaproot(transactions: Transaction[]): Buffer {
+    private generateRefuteInstructionTaproot(compressor: Compressor, transactions: Transaction[]) {
         const lastSelect = getTransactionByName(transactions, `select_${twoDigits(this.decasector.iterations - 1)}`);
         const semiFinal = getTransactionByName(transactions, TransactionNames.ARGUMENT);
 
@@ -129,7 +178,6 @@ export class DoomsdayGenerator {
         const started = Date.now();
         let total = 0;
         let max = 0;
-        const compressor = new Compressor(this.decasector.iterations, agentConf.internalPubkey);
 
         console.log(`Generating refute instruction taproot for ${this.program.length} instructions`);
         for (let index = 0; index < this.program.length; index++) {
@@ -199,7 +247,7 @@ export class DoomsdayGenerator {
                     bitcoin.drop(w_d);
                 }
 
-                this.checkLine(bitcoin, line, a, b, c, d!);
+                this.checkLineBitcoin(bitcoin, line, a, b, c, d!);
                 const template = bitcoin.programToTemplate();
                 cache[cacheKey] = template;
                 final = template.buffer;
@@ -214,7 +262,7 @@ export class DoomsdayGenerator {
         return compressor.getRoot();
     }
 
-    private assertDoubleHash(
+    private assertPairHash(
         blake3: BLAKE3,
         leftNibbles: StackItem[],
         rightNibbles: StackItem[],
@@ -269,12 +317,11 @@ export class DoomsdayGenerator {
         bitcoin.winternitzDecode256_4(resultSi, resultWi, resultKeys);
         bitcoin.drop(resultWi);
 
-        this.assertDoubleHash(blake3, rightSi, leftSi, resultSi);
+        this.assertPairHash(blake3, rightSi, leftSi, resultSi);
         return bitcoin.programToTemplate({ validateStack: true });
     }
 
-    private async generateRefuteMerkleProofTaproot(transactions: Transaction[]): Promise<Buffer> {
-        const compressor = new Compressor(this.decasector.iterations + 2, agentConf.internalPubkey);
+    private async generateRefuteMerkleProofTaproot(compressor: Compressor, transactions: Transaction[]) {
         let template: Template | undefined = undefined;
 
         const started = Date.now();
@@ -291,14 +338,14 @@ export class DoomsdayGenerator {
             }
 
             // first find the 2 roots for the 3 merkle proofs
-            const stateCommitmentInfoBefore = this.decasector.getStateCommitmentsForRow(index)[0];
-            const stateCommitmentInfoAfter = this.decasector.getStateCommitmentsForRow(index)[1];
+            const stateCommitmentBefore = this.decasector.stateCommitmentByLine[index - 1];
+            const stateCommitmentAfter = this.decasector.stateCommitmentByLine[index];
 
             // transaction names start with 0 while state commitment count starts with 1, so -1 here
-            const beforeStateIteration = stateCommitmentInfoBefore[0] - 1;
-            const afterStateIteration = stateCommitmentInfoAfter[0] - 1;
-            const stateCommitmentIndexBefore = stateCommitmentInfoBefore[1];
-            const stateCommitmentIndexAfter = stateCommitmentInfoAfter[1];
+            const beforeStateIteration = stateCommitmentBefore.iteration - 1;
+            const afterStateIteration = stateCommitmentAfter.iteration - 1;
+            const stateCommitmentIndexBefore = stateCommitmentBefore.selection;
+            const stateCommitmentIndexAfter = stateCommitmentAfter.selection;
 
             const stateTxBefore = getTransactionByName(
                 transactions,
@@ -313,7 +360,7 @@ export class DoomsdayGenerator {
             const scAfter = getSpendingConditionByInput(transactions, stateTxAfter.inputs[0]);
             const afterRootKeys = scAfter.wotsPublicKeys![stateCommitmentIndexAfter];
 
-            // now let's get the merkle proofs keys, there are 3 proofs, each with 12 hashes, each with 90 keys
+            // now let's get the merkle proofs keys, there are 3 proofs
             const merkleProofKeysAll: Buffer[][] = [];
             const argument = getTransactionByName(transactions, TransactionNames.ARGUMENT);
 
@@ -323,7 +370,7 @@ export class DoomsdayGenerator {
                 const sc = getSpendingConditionByInput(transactions, input);
                 merkleProofKeysAll.push(...sc.wotsPublicKeys!);
             }
-            // divide these into 3 sets of 12
+            // divide these into 3 sets of 13
             const merkleProofKeys: Buffer[][][] = [0, 1, 2].map((i) => merkleProofKeysAll.slice(i * 12, (i + 1) * 12));
 
             // now add the value before the proof, and the root after it
@@ -363,15 +410,31 @@ export class DoomsdayGenerator {
                 }
             }
         }
-
-        return compressor.getRoot();
     }
 
-    async generateFinalStepTaproot(transactions: Transaction[]): Promise<Buffer> {
-        const tr2 = await this.generateRefuteMerkleProofTaproot(transactions);
-        const tr1 = this.generateRefuteInstructionTaproot(transactions);
-        const root = combineHashes(tr1, tr2);
-        return Compressor.toPubKey(agentConf.internalPubkey, root);
+    async generateFinalStepTaproot(
+        transactions: Transaction[],
+        scriptDescriptor?: ScriptDescriptor
+    ): Promise<{ pubkey: Buffer; script?: Buffer; controlBlock?: Buffer }> {
+        let compressor = new Compressor(agentConf.internalPubkey, 20 * 300000);
+
+        // which index do we need?
+        if (scriptDescriptor) {
+            const leafIndex =
+                scriptDescriptor.refutationType == RefutationType.INSTR
+                    ? scriptDescriptor.line
+                    : scriptDescriptor.line * (1 + scriptDescriptor.whichProof! * 6 + scriptDescriptor.whichHash!);
+            compressor = new Compressor(agentConf.internalPubkey, 20 * 300000, leafIndex);
+        }
+
+        await this.generateRefuteMerkleProofTaproot(compressor, transactions);
+        this.generateRefuteInstructionTaproot(compressor, transactions);
+
+        return {
+            pubkey: compressor.getScriptPubkey(),
+            controlBlock: scriptDescriptor ? compressor.getControlBlock() : undefined,
+            script: scriptDescriptor ? compressor.script : undefined
+        };
     }
 }
 

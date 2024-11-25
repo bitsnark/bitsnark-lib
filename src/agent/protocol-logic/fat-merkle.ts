@@ -61,11 +61,8 @@ export class FatMerkleProof {
         return new FatMerkleProof(await makeFatMerkleProof(regs, leafIndex), leafIndex);
     }
 
-    public static fromArgument(hashes: Buffer[], root: Buffer, leaf: Buffer, leafIndex: number): FatMerkleProof {
-        return new FatMerkleProof(
-            leafIndex % 1 == 0 ? [leaf, ...hashes, root] : [hashes[0], leaf, ...hashes.slice(1), root],
-            leafIndex
-        );
+    public static fromArgument(hashes: Buffer[], leafIndex: number): FatMerkleProof {
+        return new FatMerkleProof(hashes, leafIndex);
     }
 
     public getRoot(): Buffer {
@@ -78,6 +75,13 @@ export class FatMerkleProof {
 
     public async verify(): Promise<boolean> {
         return (await this.indexToRefute()) >= 0;
+    }
+
+    public toArgument(): Buffer[] {
+        // copy and remove root
+        const r = this.hashes.map((b) => b).slice(0, this.hashes.length - 2);
+        // remove leaf
+        return this.leafIndex % 1 == 0 ? r.slice(1) : [r[0], ...r.slice(2)];
     }
 
     public async indexToRefute(): Promise<number> {

@@ -56,7 +56,7 @@ export class VM {
 
     /// *** BASIC OPERATIONS ***
 
-    private pushInstruction(name: InstrCode, target: Register, param1?: Register, param2?: Register, bit?: number) {
+    private pushInstruction(name: InstrCode, target: Register, param1: Register, param2?: Register, bit?: number) {
         if (!this.success) throw new Error('Program not in running state');
         this.instructions.push({ name, target: target.index, param1: param1?.index, param2: param2?.index, bit });
         this.instrCounter++;
