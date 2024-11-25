@@ -124,15 +124,15 @@ export class Agent {
 
     private signMessageAndSend(ctx: SimpleContext, message: Message) {
         const signature = signMessage(toJson(message), agentConf.keyPairs[this.agentId].schnorrPrivate);
-        message.signature = signature;
+        message.telegramMessageSig = signature;
         ctx.send(message);
     }
 
     private verifyMessage(message: Message, i: SetupInstance) {
         const otherPubKey = this.role == AgentRoles.PROVER ? i.verifier!.schnorrPublicKey : i.prover!.schnorrPublicKey;
         const verified = verifyMessage(
-            toJson({ ...message, signature: '' }),
-            message.signature,
+            toJson({ ...message, telegramMessageSig: '' }),
+            message.telegramMessageSig,
             bigintToString(otherPubKey)
         );
         if (!verified) throw new Error('Invalid signature');

@@ -21,7 +21,7 @@ export class StartMessage {
     signature: string = '';
     payloadUtxo?: FundingUtxo;
     proverUtxo?: FundingUtxo;
-    schnorrMessageSig: string = '';
+    telegramMessageSig: string = '';
 
     constructor(obj?: Partial<StartMessage>) {
         _assign(this, obj);
@@ -33,7 +33,7 @@ export class JoinMessage {
     setupId: string = '';
     agentId: string = '';
     schnorrPublicKey: string = '';
-    signature: string = '';
+    telegramMessageSig: string = '';
 
     constructor(obj?: Partial<JoinMessage>) {
         _assign(this, obj);
@@ -45,7 +45,7 @@ export class TransactionsMessage {
     setupId: string = '';
     agentId: string = '';
     transactions: Transaction[] = [];
-    signature: string = '';
+    telegramMessageSig: string = '';
 
     constructor(obj?: Partial<TransactionsMessage>) {
         _assign(this, obj);
@@ -63,7 +63,7 @@ export class SignaturesMessage {
     setupId: string = '';
     agentId: string = '';
     signed: Signed[] = [];
-    signature: string = '';
+    telegramMessageSig: string = '';
 
     constructor(obj?: Partial<SignaturesMessage>) {
         _assign(this, obj);
@@ -74,7 +74,7 @@ export class DoneMessage {
     messageType: MessageType = 'done';
     setupId: string = '';
     agentId: string = '';
-    signature: string = '';
+    telegramMessageSig: string = '';
 
     constructor(obj?: Partial<DoneMessage>) {
         _assign(this, obj);
@@ -86,7 +86,7 @@ export class ErrorMessage {
     setupId: string = '';
     agentId: string = '';
     error: string = '';
-    signature: string = '';
+    telegramMessageSig: string = '';
 
     constructor(obj?: Partial<ErrorMessage>) {
         _assign(this, obj);
