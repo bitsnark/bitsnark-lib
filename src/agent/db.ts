@@ -40,11 +40,7 @@ async function runQuery(sql: string, params: any[] = []) {
         const result = await client.query(sql, params);
         return result;
     } catch (e) {
-        if (e instanceof Error) {
-            console.error(e.message);
-        } else {
-            console.error(e);
-        }
+        console.error(e);
         throw e;
     } finally {
         await client.end();
@@ -62,11 +58,7 @@ async function runDBTransaction(queries: [string, (string | number | boolean)[]]
         return true;
     } catch (e) {
         await client.query('ROLLBACK');
-        if (e instanceof Error) {
-            console.error(e.message);
-        } else {
-            console.error(e);
-        }
+        console.error(e);
         throw e;
     } finally {
         await client.end();
