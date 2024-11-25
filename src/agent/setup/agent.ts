@@ -122,6 +122,7 @@ export class Agent {
         }
     }
 
+
     public signMessage(ctx: SimpleContext, message: Message): Message {
         const signature = signMessage(toJson(message), agentConf.keyPairs[this.agentId].schnorrPrivate);
         message.telegramMessageSig = signature;
@@ -310,8 +311,8 @@ export class Agent {
             return {
                 transactionName: t.transactionName,
                 txId: t.txId ?? '',
-                signatures: t.inputs.map(
-                    (input) => (this.role == AgentRoles.PROVER ? input.proverSignature : input.verifierSignature) ?? ''
+                signatures: t.inputs.map((input) =>
+                    (this.role == AgentRoles.PROVER ? input.proverSignature : input.verifierSignature) ?? ''
                 )
             };
         });
