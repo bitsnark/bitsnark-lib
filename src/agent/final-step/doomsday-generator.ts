@@ -35,7 +35,7 @@ import { BLAKE3, Register } from './blake-3-4u';
 import { Decasector } from '../protocol-logic/decasector';
 import { readTemplates } from '../db';
 import { blake3 as blake3_wasm } from 'hash-wasm';
-import { modInverse } from '@src/generator/common/math-utils';
+import { modInverse } from '../../generator/common/math-utils';
 
 export enum RefutationType {
     INSTR,
