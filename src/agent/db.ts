@@ -1,3 +1,11 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/*
+Since client.query accepts any as a parameter and also returns any, we have to disable this rule.
+It could be possible to create a custom type for the query result and params, but it would be a lot of work for no real benefit,
+and it would be fragile for changes.
+
+Most of the objects passed to params are simple types, but some are parsed to any with JSON.parse, so we can't be sure of the type.
+*/
 import { AgentRoles, jsonParseCustom, jsonStringifyCustom } from './common';
 import { Transaction } from './transactions-new';
 import { Client, connect } from 'ts-postgres';
@@ -5,14 +13,14 @@ import { agentConf } from './agent.conf';
 import { RawTransaction } from 'bitcoin-core';
 
 // DB utils
-function jsonizeObject(obj: any): any {
+function jsonizeObject<T>(obj: T): T {
     const json = jsonStringifyCustom(obj);
-    return JSON.parse(json);
+    return JSON.parse(json) as T;
 }
 
-function unjsonizeObject(obj: any): any {
+function unjsonizeObject<T>(obj: T): T {
     const json = JSON.stringify(obj);
-    return jsonParseCustom(json);
+    return jsonParseCustom(json) as T;
 }
 
 async function getConnection(): Promise<Client> {
@@ -32,7 +40,7 @@ async function runQuery(sql: string, params: any[] = []) {
         const result = await client.query(sql, params);
         return result;
     } catch (e) {
-        console.error((e as any).message);
+        console.error(e);
         throw e;
     } finally {
         await client.end();
@@ -50,7 +58,7 @@ async function runDBTransaction(queries: [string, (string | number | boolean)[]]
         return true;
     } catch (e) {
         await client.query('ROLLBACK');
-        console.error((e as any).message);
+        console.error(e);
         throw e;
     } finally {
         await client.end();

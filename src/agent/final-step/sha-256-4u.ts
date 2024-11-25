@@ -3,16 +3,6 @@ import { Bitcoin } from '../../generator/btc_vm/bitcoin';
 import { StackItem } from '../../generator/btc_vm/stack';
 import { _256To32BE, _32To256BE, hash, hashPair } from '../../../src/encoding/encoding';
 
-let stats: any = {};
-function measureIn(name: string, bitcoin: Bitcoin) {
-    // stats[name] = stats[name] ?? {};
-    // stats[name].before = bitcoin.programSizeInBitcoinBytes();
-}
-function measureOut(name: string, bitcoin: Bitcoin) {
-    // stats[name].after = bitcoin.programSizeInBitcoinBytes();
-    // stats[name].size = (stats[name].size ?? 0) + stats[name].after - stats[name].before;
-}
-
 export type Register = StackItem[];
 
 const hHex = [0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19];
@@ -111,7 +101,6 @@ export class SHA256 {
     }
 
     and(target: Register, x: Register, y: Register) {
-        measureIn('and', this.bitcoin);
         for (let i = 0; i < target.length; i++) {
             this.bitcoin.pick(x[i]);
             this.bitcoin.tableFetchInStack(this.mul16Table);
@@ -120,21 +109,17 @@ export class SHA256 {
             this.bitcoin.tableFetchInStack(this.andTable);
             this.bitcoin.replaceWithTop(target[i]);
         }
-        measureOut('and', this.bitcoin);
     }
 
     not(target: Register, x: Register) {
-        measureIn('not', this.bitcoin);
         for (let i = 0; i < target.length; i++) {
             this.bitcoin.pick(x[i]);
             this.bitcoin.tableFetchInStack(this.notTable);
             this.bitcoin.replaceWithTop(target[i]);
         }
-        measureOut('not', this.bitcoin);
     }
 
     xor(target: Register, x: Register, y: Register) {
-        measureIn('xor', this.bitcoin);
         for (let i = 0; i < target.length; i++) {
             this.bitcoin.pick(x[i]);
             this.bitcoin.tableFetchInStack(this.mul16Table);
@@ -143,7 +128,6 @@ export class SHA256 {
             this.bitcoin.tableFetchInStack(this.xorTable);
             this.bitcoin.replaceWithTop(target[i]);
         }
-        measureOut('xor', this.bitcoin);
     }
 
     toBitsOnAltstack(x: Register, drop: number) {
@@ -256,8 +240,6 @@ export class SHA256 {
     }
 
     rotr(target: Register, x: Register, n: number) {
-        measureIn('rotr', this.bitcoin);
-
         let s = this.registerToNumber(x).toString(2);
         while (s.length < 32) s = '0' + s;
         const t = s.slice(s.length - n) + s.slice(0, s.length - n);
@@ -268,13 +250,9 @@ export class SHA256 {
 
         const tt = this.registerToNumber(target);
         assert(tn == tt);
-
-        measureOut('rotr', this.bitcoin);
     }
 
     shr(target: Register, x: Register, n: number) {
-        measureIn('shr', this.bitcoin);
-
         let s = this.registerToNumber(x).toString(2);
         while (s.length < 32) s = '0' + s;
         const t = new Array(n).fill('0').join('') + s.slice(0, s.length - n);
@@ -285,13 +263,9 @@ export class SHA256 {
 
         const tt = this.registerToNumber(target);
         assert(tn == tt);
-
-        measureOut('shr', this.bitcoin);
     }
 
     add(target: Register, x: Register, y: Register) {
-        measureIn('add', this.bitcoin);
-
         const tx = this.registerToNumber(x);
         const ty = this.registerToNumber(y);
 
@@ -317,13 +291,9 @@ export class SHA256 {
 
         const tt = this.registerToNumber(target);
         assert((tx + ty) % 2 ** 32 == tt);
-
-        measureOut('add', this.bitcoin);
     }
 
     addK(target: Register, x: Register, ki: number) {
-        measureIn('addK', this.bitcoin);
-
         const krn = new Array(11).fill(0).map((_, i) => (kHex[ki] >> (i * 4)) & 15);
 
         const tx = this.registerToNumber(x);
@@ -351,8 +321,6 @@ export class SHA256 {
 
         const tt = this.registerToNumber(target);
         assert((tx + ty) % 2 ** 32 == tt);
-
-        measureOut('addK', this.bitcoin);
     }
 
     mov(target: Register, x: Register) {
@@ -506,8 +474,6 @@ export class SHA256 {
 }
 
 {
-    stats = {};
-
     const test1 = 123456789012345678901234567890n;
 
     const h1 = hash(test1);
@@ -520,14 +486,11 @@ export class SHA256 {
     console.log('h1', h1);
     console.log('h2', h2);
     console.log(`max stack: ${bitcoin.maxStack}    size: ${bitcoin.programSizeInBitcoinBytes()}`);
-    console.log(stats);
     sha256.free();
     assert(h1 == h2);
 }
 
 {
-    stats = {};
-
     const test1 = 123456789012345678901234567890n;
     const test2 = 98765432109876543210987654321n;
 
@@ -547,7 +510,6 @@ export class SHA256 {
     console.log('h1', h1);
     console.log('h2', h2);
     console.log(`max stack: ${bitcoin.maxStack}    size: ${bitcoin.programSizeInBitcoinBytes()}`);
-    console.log(stats);
     sha256.free();
     assert(h1 == h2);
 }

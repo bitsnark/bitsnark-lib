@@ -9,6 +9,7 @@ import {
     JoinMessage,
     Message,
     SignaturesMessage,
+    Signed,
     StartMessage,
     toJson,
     TransactionsMessage
@@ -105,8 +106,10 @@ export class Agent {
             console.log('Message received: ', message);
             if (message.agentId == this.agentId) return;
 
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const f = (this as any)[`on_${message.messageType}`];
             if (!f) throw new Error('Invalid dispatch');
+
             try {
                 await f.apply(this, [ctx, message]);
             } catch (e) {
@@ -116,7 +119,7 @@ export class Agent {
     }
 
     private signMessageAndSend(ctx: SimpleContext, message: Message) {
-        const signature = signMessage(toJson(message), (agentConf.keyPairs as any)[this.agentId].schnorrPrivate);
+        const signature = signMessage(toJson(message), agentConf.keyPairs[this.agentId].schnorrPrivate);
         message.signature = signature;
         ctx.send(message);
     }
@@ -293,12 +296,12 @@ export class Agent {
 
         i.transactions = await signTransactions(this.role, this.agentId, i.setupId, i.transactions!);
 
-        const signed: any[] = i.transactions!.map((t) => {
+        const signed: Signed[] = i.transactions!.map((t) => {
             return {
                 transactionName: t.transactionName,
-                txId: t.txId,
-                signatures: t.inputs.map((input) =>
-                    this.role == AgentRoles.PROVER ? input.proverSignature : input.verifierSignature
+                txId: t.txId ?? '',
+                signatures: t.inputs.map(
+                    (input) => (this.role == AgentRoles.PROVER ? input.proverSignature : input.verifierSignature) ?? ''
                 )
             };
         });
