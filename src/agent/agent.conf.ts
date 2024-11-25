@@ -69,7 +69,7 @@ export const agentConf: AgentConf = {
             ),
             schnorrPrivate: parse.string(
                 'PROVER_SCHNORR_PRIVATE',
-                'd4067af1132afcb352b0edef53d8aa2a5fc713df61dee31b1d937e69ece0ebf0'
+                '415c69b837f4146019574f59c223054c8c144ac61b6ae87bc26824c0f8d034e2'
             )
         },
         bitsnark_verifier_1: {
