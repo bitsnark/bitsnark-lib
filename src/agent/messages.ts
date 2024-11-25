@@ -3,12 +3,14 @@ import { Transaction } from './transactions-new';
 
 type MessageType = 'start' | 'join' | 'transactions' | 'signatures' | 'done' | 'error';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function _assign(target: any, from: any) {
+function _assign<T extends Message>(target: T, from?: Partial<T>) {
     if (!from) return;
     Object.keys(target)
-        .filter((k) => k != 'messageType' && from[k])
-        .forEach((k) => (target[k] = from[k]));
+        .filter((k) => k != 'messageType' && from[k as keyof T] !== undefined)
+        .forEach((k) => {
+            const key = k as keyof T;
+            target[key] = from[key] as T[keyof T];
+        });
 }
 
 export class StartMessage {
@@ -74,7 +76,7 @@ export class DoneMessage {
     agentId: string = '';
     signature: string = '';
 
-    constructor(obj?: Partial<SignaturesMessage>) {
+    constructor(obj?: Partial<DoneMessage>) {
         _assign(this, obj);
     }
 }

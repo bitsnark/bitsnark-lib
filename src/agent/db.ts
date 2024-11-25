@@ -13,14 +13,14 @@ import { agentConf } from './agent.conf';
 import { RawTransaction } from 'bitcoin-core';
 
 // DB utils
-function jsonizeObject(obj: any): any {
+function jsonizeObject<T>(obj: T): T {
     const json = jsonStringifyCustom(obj);
-    return JSON.parse(json);
+    return JSON.parse(json) as T;
 }
 
-function unjsonizeObject(obj: any): any {
+function unjsonizeObject<T>(obj: T): T {
     const json = JSON.stringify(obj);
-    return jsonParseCustom(json);
+    return jsonParseCustom(json) as T;
 }
 
 async function getConnection(): Promise<Client> {

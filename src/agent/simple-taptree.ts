@@ -23,7 +23,7 @@ function taprootTweakPubkey(pubkey: bigint, h: Buffer): [bigint, Buffer | null] 
     const P = lift_x(pubkey);
     const Q = pointAdd(P, pointMul(G, t));
 
-    return [hasEvenY(Q) ? 0n : 1n, bytesFromBigint(Q?.x ?? 0n) ?? null];
+    return [hasEvenY(Q) ? 0n : 1n, bytesFromBigint(Q?.x ?? 0n)];
 }
 
 export class SimpleTapTree {

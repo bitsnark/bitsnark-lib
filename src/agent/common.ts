@@ -87,8 +87,7 @@ export function random(bytes: number): bigint {
     return n;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function jsonStringifyCustom(obj: any): string {
+export function jsonStringifyCustom<T>(obj: T): string {
     return JSON.stringify(obj, (key, value) => {
         if (typeof value === 'bigint') return `0x${value.toString(16)}n`;
         if (value?.type == 'Buffer' && value.data) {
@@ -98,14 +97,13 @@ export function jsonStringifyCustom(obj: any): string {
     });
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function jsonParseCustom(json: string): any {
+export function jsonParseCustom<T>(json: string): T {
     return JSON.parse(json, (key, value) => {
         if (typeof value === 'string' && value.startsWith('0x') && value.endsWith('n'))
             return BigInt(value.replace('n', ''));
         if (typeof value === 'string' && value.startsWith('hex:')) return Buffer.from(value.replace('hex:', ''), 'hex');
         return value;
-    });
+    }) as T;
 }
 
 export function range(start: number, end: number): number[] {
