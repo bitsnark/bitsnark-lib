@@ -11,16 +11,17 @@ import {
     readTemplates,
     SetupStatus,
     writeOutgoing,
-    writeSetupStatus
+    writeSetupStatus,
+    writeTemplate
 } from '../db';
 import { createUniqueDataId, getTransactionByName, SpendingCondition, Transaction } from '../transactions-new';
-import { parseTransactionData } from './parser';
+import { parseInput } from './parser';
 import { step1_vm } from '../../generator/ec_vm/vm/vm';
 import { vKey } from '../../generator/ec_vm/constants';
 import groth16Verify, { Key, Proof as Step1_Proof } from '../../generator/ec_vm/verifier';
 import { findErrorState } from './states';
-import { encodeWinternitz24 } from '../winternitz';
-import { refuteArgument } from './refute';
+import { encodeWinternitz24, encodeWinternitz256_4 } from '../winternitz';
+import { Argument } from './argument';
 
 export class ProtocolVerifier {
     agentId: string;
@@ -58,6 +59,7 @@ export class ProtocolVerifier {
             .sort((p1, p2) => p1.template.ordinal! - p2.template.ordinal!);
 
         const selectionPath: number[] = [];
+        const selectionPathUnparsed: Buffer[][] = [];
         let proof: bigint[] = [];
         const states: Buffer[][] = [];
 
@@ -88,7 +90,7 @@ export class ProtocolVerifier {
                     break;
                 case TransactionNames.ARGUMENT:
                     if (lastFlag) {
-                        this.refuteArgument(proof, states, selectionPath, pair.incoming, pair.template);
+                        this.refuteArgument(proof, pair.incoming, pair.template);
                     }
                     break;
                 case TransactionNames.ARGUMENT_UNCONTESTED:
@@ -108,6 +110,8 @@ export class ProtocolVerifier {
             } else if (pair.template.transactionName.startsWith(TransactionNames.SELECT)) {
                 const selection = this.parseSelection(pair.incoming, pair.template);
                 selectionPath.push(selection);
+                const rawTx = pair.incoming.rawTransaction as RawTransaction;
+                selectionPathUnparsed.push(rawTx.vin[0].txinwitness!.map((s) => Buffer.from(s, 'hex')));
                 if (lastFlag) {
                     const timeoutSc = await this.checkTimeout(pair.incoming, pair.template);
                     if (timeoutSc) await this.sendSelectUncontested(selectionPath.length);
@@ -126,21 +130,37 @@ export class ProtocolVerifier {
         return step1_vm.success?.value === 1n;
     }
 
-    private async refuteArgument(
-        proof: bigint[],
-        states: Buffer[][],
-        selectionPath: number[],
-        incoming: Incoming,
-        template: Transaction
-    ) {
-        await refuteArgument();
+    private async refuteArgument(proof: bigint[], incoming: Incoming, template: Transaction) {
+        const rawTx = incoming.rawTransaction as RawTransaction;
+        const argData = rawTx.vin.map((vin, i) =>
+            parseInput(
+                this.templates,
+                template.inputs[i],
+                vin.txinwitness!.map((s) => Buffer.from(s, 'hex'))
+            )
+        );
+        const argument = new Argument(this.setupId, proof);
+        const refutation = await argument.refute(this.templates, argData);
+
+        template.inputs[0].script = refutation.script;
+        template.inputs[0].controlBlock = refutation.controlBlock;
+        await writeTemplate(this.agentId, this.setupId, template);
+        const data = refutation.data
+            .map((n, dataIndex) =>
+                encodeWinternitz256_4(
+                    n,
+                    createUniqueDataId(this.setupId, TransactionNames.PROOF_REFUTED, 0, 0, dataIndex)
+                )
+            )
+            .flat();
+        this.sendTransaction(TransactionNames.PROOF_REFUTED, [data]);
     }
 
     private parseState(incoming: Incoming, template: Transaction) {
         const rawTx = incoming.rawTransaction as RawTransaction;
-        const state = parseTransactionData(
+        const state = parseInput(
             this.templates,
-            template,
+            template.inputs[0],
             rawTx.vin[0].txinwitness!.map((s) => Buffer.from(s, 'hex'))
         );
         return state;
@@ -164,9 +184,9 @@ export class ProtocolVerifier {
 
     private parseProof(incoming: Incoming, template: Transaction): bigint[] {
         const rawTx = incoming.rawTransaction as RawTransaction;
-        const proof = parseTransactionData(
+        const proof = parseInput(
             this.templates,
-            template,
+            template.inputs[0],
             rawTx.vin[0].txinwitness!.map((s) => Buffer.from(s, 'hex'))
         );
         return proof;
@@ -174,9 +194,9 @@ export class ProtocolVerifier {
 
     private parseSelection(incoming: Incoming, template: Transaction): number {
         const rawTx = incoming.rawTransaction as RawTransaction;
-        const data = parseTransactionData(
+        const data = parseInput(
             this.templates,
-            template,
+            template.inputs[0],
             rawTx.vin[0].txinwitness!.map((s) => Buffer.from(s, 'hex'))
         );
         return Number(data[0]);

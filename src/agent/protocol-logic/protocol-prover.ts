@@ -15,9 +15,9 @@ import {
 } from '../db';
 import { createUniqueDataId, getTransactionByName, SpendingCondition, Transaction } from '../transactions-new';
 import { bufferToBigintBE, encodeWinternitz256_4 } from '../winternitz';
-import { parseTransactionData } from './parser';
 import { calculateStates } from './states';
-import { makeArgument } from './argument';
+import { Argument } from './argument';
+import { parseInput } from './parser';
 
 export class ProtocolProver {
     agentId: string;
@@ -155,9 +155,9 @@ export class ProtocolProver {
 
     private parseProof(incoming: Incoming, template: Transaction): bigint[] {
         const rawTx = incoming.rawTransaction as RawTransaction;
-        const proof = parseTransactionData(
+        const proof = parseInput(
             this.templates,
-            template,
+            template.inputs[0],
             rawTx.vin[0].txinwitness!.map((s) => Buffer.from(s, 'hex'))
         );
         return proof;
@@ -168,7 +168,8 @@ export class ProtocolProver {
     }
 
     private async sendArgument(proof: bigint[], selectionPath: number[], selectionPathUnparsed: Buffer[][]) {
-        const argumentData = await makeArgument(this.setupId, proof, selectionPath, selectionPathUnparsed);
+        const argument = new Argument(this.setupId, proof);
+        const argumentData = await argument.makeArgument(selectionPath, selectionPathUnparsed);
         await this.sendTransaction(TransactionNames.ARGUMENT, argumentData);
     }
 
@@ -182,9 +183,9 @@ export class ProtocolProver {
 
     private parseSelection(incoming: Incoming, template: Transaction): number {
         const rawTx = incoming.rawTransaction as RawTransaction;
-        const data = parseTransactionData(
+        const data = parseInput(
             this.templates,
-            template,
+            template.inputs[0],
             rawTx.vin[0].txinwitness!.map((s) => Buffer.from(s, 'hex'))
         );
         return Number(data[0]);

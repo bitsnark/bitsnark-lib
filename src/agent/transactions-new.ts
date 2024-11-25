@@ -35,6 +35,7 @@ export interface Input {
     spendingConditionIndex: number;
     data?: bigint[];
     script?: Buffer;
+    controlBlock?: Buffer;
     proverSignature?: string;
     verifierSignature?: string;
 }

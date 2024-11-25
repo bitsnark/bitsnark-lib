@@ -104,12 +104,12 @@ export class Compressor {
         indexToSave: number = -1
     ) {
         this.depth = Math.ceil(Math.log2(leavesCount)) + 1;
-        this.data = array(this.depth, _ => []);
+        this.data = array(this.depth, (_) => []);
         this.internalPubkey = internalPubkey;
         this.indexToSave = indexToSave;
 
         if (indexToSave >= 0) {
-            let s = toBinStringPad(indexToSave, this.depth - 1);
+            const s = toBinStringPad(indexToSave, this.depth - 1);
             for (let i = 0; i < s.length; i++) {
                 const ts = s.slice(0, i + 1).split('');
                 ts[ts.length - 1] = ts[ts.length - 1] == '0' ? '1' : '0';
@@ -197,7 +197,7 @@ export class Compressor {
 
 function test1() {
     const index = 3;
-    const scripts = array(8, i => Buffer.from([i]));
+    const scripts = array(8, (i) => Buffer.from([i]));
     const stt = new SimpleTapTree(1n, scripts);
 
     const c = new Compressor(1n, scripts.length, index);

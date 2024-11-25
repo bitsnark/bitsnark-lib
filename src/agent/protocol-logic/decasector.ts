@@ -56,17 +56,17 @@ export class StateCommitment {
     public getValues(): bigint[] {
         if (this.values) return this.values;
         const regs = getRegsAt(this.savedVm, this.left, this.line, this.right);
-        this.values = regs.map(ri => ri.value!);
+        this.values = regs.map((ri) => ri.value!);
         // pad to 64 so our merkle proofs are the same size
         while (this.values.length < 64) this.values.push(0n);
-        this.regIndexToRuntimeIndex = regs.map(ri => ri.runtimeIndex ?? 0);
+        this.regIndexToRuntimeIndex = regs.map((ri) => ri.runtimeIndex ?? 0);
         return this.values;
     }
 
     public getIndexForRuntimeIndex(runtimeIndex: number): number {
         if (!this.regIndexToRuntimeIndex) this.getValues();
-        const index = this.regIndexToRuntimeIndex!.findIndex(ri => runtimeIndex === runtimeIndex);
-        if (index< 0) throw new Error('Runtime index not found in state commitment');
+        const index = this.regIndexToRuntimeIndex!.findIndex((ri) => runtimeIndex === runtimeIndex);
+        if (index < 0) throw new Error('Runtime index not found in state commitment');
         return index;
     }
 
@@ -103,15 +103,14 @@ export class Decasector {
             for (let i = 0; i <= 9; i++) {
                 const line = left + (i + 1) * d;
                 if (!this.stateCommitmentByLine[line]) {
-                    this.stateCommitmentByLine[line] =
-                        new StateCommitment({
-                            left,
-                            right,
-                            iteration: iter,
-                            selection: i,
-                            line,
-                            savedVm: this.savedVm
-                        });
+                    this.stateCommitmentByLine[line] = new StateCommitment({
+                        left,
+                        right,
+                        iteration: iter,
+                        selection: i,
+                        line,
+                        savedVm: this.savedVm
+                    });
                 }
                 _sc(left + i * d, left + (i + 1) * d, iter + 1);
             }

@@ -163,7 +163,7 @@ export async function generateAllScripts(
             const ddg = new DoomsdayGenerator();
             let taproot;
             if (generateFinal) {
-                taproot = await ddg.generateFinalStepTaproot(transactions);
+                taproot = (await ddg.generateFinalStepTaproot(transactions)).pubkey;
             } else {
                 const mockSTT = new SimpleTapTree(agentConf.internalPubkey, [DEAD_SCRIPT, DEAD_SCRIPT]);
                 taproot = mockSTT.getScriptPubkey();

@@ -3,7 +3,7 @@ import { InstrCode, Instruction } from '../../generator/ec_vm/vm/types';
 import { proof, vKey } from '../../generator/ec_vm/constants';
 import { Bitcoin, Template } from '../../generator/btc_vm/bitcoin';
 import { getSpendingConditionByInput, getTransactionByName, Transaction } from '../transactions-new';
-import { bigintToNibblesLS } from './common';
+import { bigintToNibblesLS, prime_bigint } from './common';
 import { TransactionNames, twoDigits } from '../common';
 import {
     bufferToBigintBE,
@@ -35,16 +35,18 @@ import { BLAKE3, Register } from './blake-3-4u';
 import { Decasector } from '../protocol-logic/decasector';
 import { readTemplates } from '../db';
 import { blake3 as blake3_wasm } from 'hash-wasm';
+import { modInverse } from '@src/generator/common/math-utils';
 
-enum RefutationType {
+export enum RefutationType {
     INSTR,
     HASH
 }
 
-interface ScriptDescriptor {
+export interface ScriptDescriptor {
     refutationType: RefutationType;
     line: number;
-    which?: number;
+    whichProof?: number;
+    whichHash?: number;
 }
 
 export class DoomsdayGenerator {
@@ -79,7 +81,44 @@ export class DoomsdayGenerator {
         return template.buffer;
     }
 
-    private checkLine(
+    // return true if the line succeeds!!!
+    public checkLine(index: number, a: bigint, b: bigint, c: bigint, d?: bigint): boolean {
+        const line = this.program[index];
+        switch (line.name) {
+            case InstrCode.ADDMOD:
+                return c == (a + b) % prime_bigint;
+            case InstrCode.ANDBIT:
+                return c == (a & (1n << BigInt(line.bit!)) ? b : 0n);
+            case InstrCode.ANDNOTBIT:
+                return c == (a & (1n << BigInt(line.bit!)) ? 0n : b);
+            case InstrCode.MOV:
+                return a == c;
+            case InstrCode.EQUAL:
+                return c != 0n ? a == b : a != b;
+            case InstrCode.MULMOD:
+                return c == (a * b) % prime_bigint;
+            case InstrCode.OR:
+                return c != 0n ? a != 0n || b != 0n : a == 0n && b == 0n;
+            case InstrCode.AND:
+                return c != 0n ? a != 0n && b != 0n : a == 0n || b == 0n;
+            case InstrCode.NOT:
+                return c != 0n ? a == 0n : a != 0n;
+            case InstrCode.SUBMOD:
+                return c == (prime_bigint + a - b) % prime_bigint;
+            case InstrCode.DIVMOD:
+                try {
+                    return c == a * modInverse(b, prime_bigint);
+                } catch (e) {
+                    return false;
+                }
+            case InstrCode.ASSERTONE:
+                return a == 1n;
+            case InstrCode.ASSERTZERO:
+                return a == 0n;
+        }
+    }
+
+    private checkLineBitcoin(
         bitcoin: Bitcoin,
         line: Instruction,
         a: StackItem[],
@@ -208,7 +247,7 @@ export class DoomsdayGenerator {
                     bitcoin.drop(w_d);
                 }
 
-                this.checkLine(bitcoin, line, a, b, c, d!);
+                this.checkLineBitcoin(bitcoin, line, a, b, c, d!);
                 const template = bitcoin.programToTemplate();
                 cache[cacheKey] = template;
                 final = template.buffer;
@@ -373,15 +412,18 @@ export class DoomsdayGenerator {
         }
     }
 
-    async generateFinalStepTaproot(transactions: Transaction[], scriptDescriptor?: ScriptDescriptor): Promise<{ pubkey: Buffer, script?: Buffer, controlBlock?: Buffer }> {
-
+    async generateFinalStepTaproot(
+        transactions: Transaction[],
+        scriptDescriptor?: ScriptDescriptor
+    ): Promise<{ pubkey: Buffer; script?: Buffer; controlBlock?: Buffer }> {
         let compressor = new Compressor(agentConf.internalPubkey, 20 * 300000);
 
         // which index do we need?
         if (scriptDescriptor) {
-            const leafIndex = scriptDescriptor.refutationType == RefutationType.INSTR ?
-                scriptDescriptor.line :
-                scriptDescriptor.line * (1 + scriptDescriptor.which!);
+            const leafIndex =
+                scriptDescriptor.refutationType == RefutationType.INSTR
+                    ? scriptDescriptor.line
+                    : scriptDescriptor.line * (1 + scriptDescriptor.whichProof! * 6 + scriptDescriptor.whichHash!);
             compressor = new Compressor(agentConf.internalPubkey, 20 * 300000, leafIndex);
         }
 
@@ -391,7 +433,7 @@ export class DoomsdayGenerator {
         return {
             pubkey: compressor.getScriptPubkey(),
             controlBlock: scriptDescriptor ? compressor.getControlBlock() : undefined,
-            script: scriptDescriptor ? compressor.script : undefined,
+            script: scriptDescriptor ? compressor.script : undefined
         };
     }
 }
