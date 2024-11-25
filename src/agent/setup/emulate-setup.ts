@@ -12,7 +12,6 @@ import { signTransactions } from './sign-transactions';
 import { initializeTransactions, mergeWots, getSpendingConditionByInput, SignatureType } from '../common/transactions';
 import { verifySetup } from './verify-setup';
 import { AgentRoles } from '../common/types';
-import { BitcoinNode } from '../common/bitcoin-node';
 
 export async function emulateSetup(
     proverAgentId: string,
@@ -107,9 +106,9 @@ export async function emulateSetup(
     await writeTemplates(verifierAgentId, setupId, verifierTemplates);
 
     console.log('update listener data...');
-    const bitcoinClient = new BitcoinNode();
-    const currentTip = await bitcoinClient.getBlockCount();
-    await updatedListenerHeightBySetupsIds([setupId], currentTip - 1);
+    // const bitcoinClient = new BitcoinNode();
+    // const currentTip = await bitcoinClient.getBlockCount();
+    await updatedListenerHeightBySetupsIds([setupId], 100);
 
     console.log('checking...');
 
