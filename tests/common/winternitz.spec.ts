@@ -2,15 +2,12 @@ import { Bitcoin } from '../../src/generator/btc_vm/bitcoin';
 import {
     decodeWinternitz,
     encodeWinternitz,
-    encodeWinternitz1,
     getWinternitzPublicKeys,
     WOTS_DATA_NIBBLES,
-    WOTS_NIBBLES,
     WotsType
 } from '../../src/agent/common/winternitz';
 import { StackItem } from '../../src/generator/btc_vm/stack';
 import { nibblesToBigintLS } from '../../src/agent/final-step/nibbles';
-import { randomInt } from 'node:crypto';
 
 function bitcoinWinernitzCheck(wotsType: WotsType, encoded: Buffer[], keys: Buffer[]) {
     const bitcoin = new Bitcoin();
