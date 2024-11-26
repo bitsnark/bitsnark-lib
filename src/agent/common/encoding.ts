@@ -14,10 +14,6 @@ export function strToBigint(s: string): bigint {
     return n;
 }
 
-export function bigintToBufferBE(n: bigint, bytes: number): Buffer {
-    return Buffer.from(padHex(n.toString(16), bytes), 'hex');
-}
-
 export function bufferToBigints256BE(buffer: Buffer): bigint[] {
     if (buffer.length % 32 !== 0) throw new Error('invalid size');
     return bufferToBigintsBE(buffer, 32);
@@ -149,4 +145,14 @@ export function numToStr2Digits(i: number): string {
 export function bufferToBigint160(b: Buffer): bigint {
     if (b.length !== 20) throw new Error('Invalid size');
     return BigInt('0x' + b.toString('hex'));
+}
+
+export function bufferToBigintBE(buffer: Buffer): bigint {
+    return BigInt('0x' + buffer.toString('hex'));
+}
+
+export function bigintToBufferBE(n: bigint, bits: number): Buffer {
+    let s = n.toString(16);
+    while (s.length < Math.ceil(bits / 4)) s = '0' + s;
+    return Buffer.from(s, 'hex');
 }

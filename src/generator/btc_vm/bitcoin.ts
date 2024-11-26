@@ -800,7 +800,8 @@ export class Bitcoin {
         this.drop(data);
     }
 
-    winternitzDecode1(target: StackItem, witness: StackItem[], publicKeys: Buffer[]) {
+    winternitzDecode1(target: StackItem | StackItem[], witness: StackItem[], publicKeys: Buffer[]) {
+        if (Array.isArray(target)) target = target[0];
         if (witness.length != 2 || publicKeys.length != 2) throw new Error('Invalid length');
         const checksum = this.newStackItem(0);
         this.winternitzDecodeNibble(target, witness[0], publicKeys[0]);
