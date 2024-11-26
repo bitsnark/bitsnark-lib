@@ -57,9 +57,7 @@ export class Argument {
                 encodeWinternitz256_4(
                     n,
                     createUniqueDataId(this.setupId, TransactionNames.ARGUMENT, outputIndex, 0, dataIndex)
-                )
-            )
-            .flat();
+                )).flat();
     }
 
     private async makeMerkleProofsWitness(
@@ -81,15 +79,11 @@ export class Argument {
 
         const hashes = [merkleProofA.toArgument(), merkleProofB.toArgument(), merkleProofC.toArgument()];
         const encoded = hashes.map((o, oi) =>
-            o
-                .map((b, dataIndex) =>
-                    encodeWinternitz256_4(
-                        bufferToBigintBE(b),
-                        createUniqueDataId(this.setupId, TransactionNames.ARGUMENT, outputIndex + oi, 0, dataIndex)
-                    )
-                )
-                .flat()
-        );
+            o.map((b, dataIndex) =>
+                encodeWinternitz256_4(
+                    bufferToBigintBE(b),
+                    createUniqueDataId(this.setupId, TransactionNames.ARGUMENT, outputIndex + oi, 0, dataIndex)
+                )).flat());
         return encoded;
     }
 
@@ -115,8 +109,10 @@ export class Argument {
 
     public async refute(
         transactions: Transaction[],
-        argData: bigint[][]
+        argData: bigint[][],
+        states: Buffer[][]
     ): Promise<{ data: bigint[]; script: Buffer; controlBlock: Buffer }> {
+
         // first input is the selection path, 6 selections and then the index
         // the selection path can't be wrong, becaue of the winternitz signature on it
         this.selectionPath = argData[0].slice(0, 6).map((n) => Number(n));
@@ -154,20 +150,19 @@ export class Argument {
         // 3 merkle proofs are in input 2, 3, and 4
         const decasector = new Decasector(this.proof);
         const instr = decasector.savedVm.program[this.index];
-        const merkleProofA = await FatMerkleProof.fromArgument(
-            argData[2].map((n) => bigintToBufferBE(n, 256)),
-            this.index
-        );
-        const merkleProofB = instr.param2
-            ? await FatMerkleProof.fromArgument(
-                  argData[3].map((n) => bigintToBufferBE(n, 256)),
-                  this.index
-              )
-            : merkleProofA;
-        const merkleProofC = await FatMerkleProof.fromArgument(
-            argData[4].map((n) => bigintToBufferBE(n, 256)),
-            this.index
-        );
+
+        const makeProof = async (i: number) => {
+            const hashes = argData[2 + i].map((n) => bigintToBufferBE(n, 256));
+            const iter = decasector.stateCommitmentByLine[this.index].iteration;
+            const which = decasector.stateCommitmentByLine[this.index].selection;
+            const root = states[iter][which];
+            const leaf = bigintToBufferBE([a, b, c, d][i], 256);
+            return await FatMerkleProof.fromArgument(hashes, leaf, root, this.index);
+        };
+
+        const merkleProofA = await makeProof(0);
+        const merkleProofB = instr.param2 ? await makeProof(1) : merkleProofA;
+        const merkleProofC = await makeProof(2);
         const proofs = [merkleProofA, merkleProofB, merkleProofC];
         const whichProof = proofs.findIndex((p) => !p.verify());
         if (whichProof < 0) {

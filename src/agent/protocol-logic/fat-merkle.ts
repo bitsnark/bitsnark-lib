@@ -2,6 +2,7 @@ import assert from 'assert';
 import { blake3 as blake3_wasm } from 'hash-wasm';
 import { last } from '../common/common';
 import { bigintToBufferBE } from '../common/encoding';
+import { hash } from 'crypto';
 
 const foo = Buffer.from('fu manchu');
 
@@ -61,8 +62,11 @@ export class FatMerkleProof {
         return new FatMerkleProof(await makeFatMerkleProof(regs, leafIndex), leafIndex);
     }
 
-    public static fromArgument(hashes: Buffer[], leafIndex: number): FatMerkleProof {
-        return new FatMerkleProof(hashes, leafIndex);
+    public static fromArgument(hashes: Buffer[], leaf: Buffer, root: Buffer, leafIndex: number): FatMerkleProof {
+        let h: Buffer[];
+        if (leafIndex % 2 == 0) h = [leaf, ...hashes, root];
+        else h = [hashes[0], leaf, ...hashes.slice(1), root];
+        return new FatMerkleProof(h, leafIndex);
     }
 
     public getRoot(): Buffer {

@@ -19,6 +19,7 @@ import { verifySetup } from './verify-setup';
 import { signMessage, verifyMessage } from '../common/schnorr';
 import { addAmounts } from './amounts';
 import { signTransactions } from './sign-transactions';
+import { setWotsPublicKeysForArgument } from './wots-keys';
 
 interface AgentInfo {
     agentId: string;
@@ -277,6 +278,7 @@ export class Agent {
 
         // copy their wots pubkeys to ours
         i.transactions = mergeWots(i.myRole, i.transactions!, message.transactions!);
+        if (this.role == AgentRoles.PROVER) setWotsPublicKeysForArgument( i.transactions!);
 
         i.state = SetupState.SIGNATURES;
 
