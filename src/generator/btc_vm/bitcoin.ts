@@ -1482,6 +1482,7 @@ export function executeProgram(bitcoin: Bitcoin, script: Buffer, printFlag: bool
             i += b.length;
             print(`<${b.toString('hex')}>`);
         } else {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (bitcoin as any)[String(opcode!)]();
             print(opcode);
         }

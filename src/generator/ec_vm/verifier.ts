@@ -34,6 +34,7 @@ export class Proof {
         return t;
     }
 
+    /* eslint-disable @typescript-eslint/no-explicit-any */
     static fromSnarkjs(snarkjsProof: any): Proof {
         let t = [
             snarkjsProof.pi_a[0],
@@ -74,7 +75,8 @@ export class Key {
         this.vk_x = vk_x;
     }
 
-    static fromSnarkjs(obj: any) {
+    /* eslint-disable @typescript-eslint/no-explicit-any */
+    static fromSnarkjs(obj: any): Key {
         if (obj.protocol != 'groth16' || obj.curve != 'bn128') throw new Error('Invalid key file');
 
         function toFp(s: string): Fp {

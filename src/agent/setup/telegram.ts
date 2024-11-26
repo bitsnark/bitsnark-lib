@@ -3,7 +3,7 @@ import { channelPost, message } from 'telegraf/filters';
 import { agentConf } from '../agent.conf';
 import axios from 'axios';
 import { Update } from 'telegraf/types';
-import { toJson } from './messages';
+import { Message, toJson } from './messages';
 
 type TelegrafContext = NarrowedContext<Context<Update>, Update.ChannelPostUpdate>;
 
@@ -14,7 +14,7 @@ export class SimpleContext {
         this.ctx = ctx;
     }
 
-    async send(data: any) {
+    async send(data: Message) {
         const text = toJson(data);
         if (text.length < 10 * 1024) {
             await this.ctx.reply(text);
@@ -39,7 +39,7 @@ export class TelegramBot {
 
     constructor(agentId: string, client: ITelegramClient) {
         this.agentId = agentId;
-        this.token = (agentConf.tokens as any)[agentId];
+        this.token = agentConf.tokens[agentId];
         this.bot = new Telegraf(this.token);
         this.client = client;
 
@@ -49,8 +49,10 @@ export class TelegramBot {
 
         this.bot.on(channelPost(), async (ctx) => {
             console.log(ctx.update.channel_post);
-            const text = (ctx.update.channel_post as any).text as string;
-            const file = (ctx.update.channel_post as any).document;
+            const channelPost = ctx.update.channel_post;
+            const text = 'text' in channelPost ? channelPost.text : undefined;
+            const file = 'document' in channelPost ? channelPost.document : undefined;
+
             try {
                 if (text) {
                     console.log('!!! text !!!', text);

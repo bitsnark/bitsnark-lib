@@ -28,7 +28,7 @@ export class ProtocolVerifier {
     setupId: string;
     bitcoinClient: BitcoinNode;
     templates: Transaction[] = [];
-    states: any;
+    states: bigint[][] = [];
 
     constructor(agentId: string, setupId: string) {
         this.agentId = agentId;

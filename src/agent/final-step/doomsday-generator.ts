@@ -64,8 +64,10 @@ export class DoomsdayGenerator {
 
     private renderTemplateWithIndex(template: Template, index: number): Buffer {
         const nibbles = bigintToNibblesLS(BigInt(index), 8);
-        const map: any = {};
-        for (let i = 0; i < nibbles.length; i++) map[`indexNibbles_${i}`] = nibbles[i];
+        const map: { [key: string]: number } = {};
+        for (let i = 0; i < nibbles.length; i++) {
+            map[`indexNibbles_${i}`] = nibbles[i];
+        }
         template.items.forEach((item) => {
             const b = Buffer.from([map[item.itemId]]);
             b.copy(template.buffer, item.index, 0, 1);
@@ -174,7 +176,7 @@ export class DoomsdayGenerator {
         const lastSelect = getTransactionByName(transactions, `select_${twoDigits(this.decasector.iterations - 1)}`);
         const semiFinal = getTransactionByName(transactions, TransactionNames.ARGUMENT);
 
-        const cache: any = {};
+        const cache: { [key: string]: Template } = {};
 
         const started = Date.now();
         let total = 0;

@@ -17,13 +17,13 @@ function toBinStringPad(n: number, l: number): string {
     return s;
 }
 
-function taprootTweakPubkey(pubkey: bigint, h: Buffer): any[] {
+function taprootTweakPubkey(pubkey: bigint, h: Buffer): [bigint, Buffer | null] {
     const t = bigintFromBytes(taggedHash('TapTweak', cat([bigintToBufferBE(pubkey, 32), h])));
     if (t >= SECP256K1_ORDER) throw new Error('t >= SECP256K1_ORDER');
     const P = lift_x(pubkey);
     const Q = pointAdd(P, pointMul(G, t));
 
-    return [hasEvenY(Q) ? 0n : 1n, bytesFromBigint(Q?.x ?? 0n) ?? null];
+    return [hasEvenY(Q) ? 0n : 1n, bytesFromBigint(Q?.x ?? 0n)];
 }
 
 export class SimpleTapTree {

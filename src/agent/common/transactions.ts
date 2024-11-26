@@ -454,7 +454,7 @@ function makeProtocolSteps(): Transaction[] {
 }
 
 export function mergeWots(role: AgentRoles, mine: Transaction[], theirs: Transaction[]): Transaction[] {
-    const notNull = (t: any) => {
+    const notNull = (t: Buffer[][] | undefined) => {
         if (!t) throw new Error('Null error');
         return t;
     };
@@ -518,7 +518,8 @@ export function getSpendingConditionByInput(transactions: Transaction[], input: 
 }
 
 function assertOrder(transactions: Transaction[]) {
-    const map: any = {};
+    const map: { [key: string]: Transaction } = {};
+
     for (const t of transactions) {
         for (const i of t.inputs) {
             if (!map[i.transactionName!]) throw new Error('Transaction not found: ' + i.transactionName);

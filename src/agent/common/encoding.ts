@@ -40,7 +40,7 @@ export function padHex(s: string, bytes: number): string {
 }
 
 export function cat(buffers: Buffer[]): Buffer {
-    return Buffer.concat(buffers as any);
+    return Buffer.concat(buffers);
 }
 
 export function hash(input: bigint, times: number = 1): bigint {
