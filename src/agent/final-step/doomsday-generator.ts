@@ -4,7 +4,6 @@ import { proof, vKey } from '../../generator/ec_vm/constants';
 import { Bitcoin, Template } from '../../generator/btc_vm/bitcoin';
 import { getSpendingConditionByInput, getTransactionByName, Transaction } from '../common/transactions';
 import {
-    bufferToBigintBE,
     encodeWinternitz24,
     encodeWinternitz256_4,
     getWinternitzPublicKeys,
@@ -37,6 +36,7 @@ import { modInverse } from '../../generator/common/math-utils';
 import { prime_bigint } from '../common/constants';
 import { twoDigits, TransactionNames } from '../common/common';
 import { bigintToNibblesLS } from './nibbles';
+import { bufferToBigintBE } from '../common/encoding';
 
 export enum RefutationType {
     INSTR,

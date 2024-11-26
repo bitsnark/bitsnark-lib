@@ -1,7 +1,7 @@
 import assert from 'assert';
 import { blake3 as blake3_wasm } from 'hash-wasm';
-import { bigintToBufferBE } from '../common/winternitz';
 import { last } from '../common/common';
+import { bigintToBufferBE } from '../common/encoding';
 
 const foo = Buffer.from('fu manchu');
 

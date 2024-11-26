@@ -1,7 +1,8 @@
 import { TransactionNames, AgentRoles, FundingUtxo, iterations, twoDigits, random, array } from './common';
-import { bigintToBufferBE, encodeWinternitz, getWinternitzPublicKeys, WOTS_NIBBLES, WotsType } from './winternitz';
+import { encodeWinternitz, getWinternitzPublicKeys, WOTS_NIBBLES, WotsType } from './winternitz';
 import { agentConf } from '../agent.conf';
 import { dev_ClearTemplates, SetupStatus, writeSetupStatus, writeTemplates } from './db';
+import { bigintToBufferBE } from './encoding';
 
 export const PROTOCOL_VERSION = 0.2;
 
@@ -679,10 +680,10 @@ export async function initializeTransactions(
             if (!spend) throw new Error('Invalid spending condition: ' + input.spendingConditionIndex);
             spend.signaturesPublicKeys = [];
             if (spend.signatureType == SignatureType.PROVER || spend.signatureType == SignatureType.BOTH) {
-                spend.signaturesPublicKeys.push(bigintToBufferBE(proverPublicKey, 32));
+                spend.signaturesPublicKeys.push(bigintToBufferBE(proverPublicKey, 256));
             }
             if (spend.signatureType == SignatureType.VERIFIER || spend.signatureType == SignatureType.BOTH) {
-                spend.signaturesPublicKeys.push(bigintToBufferBE(verifierPublicKey, 32));
+                spend.signaturesPublicKeys.push(bigintToBufferBE(verifierPublicKey, 256));
             }
         }
     }

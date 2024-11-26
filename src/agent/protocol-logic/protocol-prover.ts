@@ -14,10 +14,11 @@ import {
     writeSetupStatus
 } from '../common/db';
 import { createUniqueDataId, getTransactionByName, SpendingCondition, Transaction } from '../common/transactions';
-import { bufferToBigintBE, encodeWinternitz256_4 } from '../common/winternitz';
+import { encodeWinternitz256_4 } from '../common/winternitz';
 import { calculateStates } from './states';
 import { Argument } from './argument';
 import { parseInput } from './parser';
+import { bufferToBigintBE } from '../common/encoding';
 
 export class ProtocolProver {
     agentId: string;
