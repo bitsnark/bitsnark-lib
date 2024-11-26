@@ -3,12 +3,7 @@ import { InstrCode, Instruction } from '../../generator/ec_vm/vm/types';
 import { proof, vKey } from '../../generator/ec_vm/constants';
 import { Bitcoin, Template } from '../../generator/btc_vm/bitcoin';
 import { getSpendingConditionByInput, getTransactionByName, Transaction } from '../common/transactions';
-import {
-    encodeWinternitz24,
-    encodeWinternitz256_4,
-    getWinternitzPublicKeys,
-    WotsType
-} from '../common/winternitz';
+import { encodeWinternitz24, encodeWinternitz256_4, getWinternitzPublicKeys, WotsType } from '../common/winternitz';
 import { step1_vm } from '../../generator/ec_vm/vm/vm';
 import { StackItem } from '../../generator/btc_vm/stack';
 import {
