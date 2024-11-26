@@ -18,7 +18,6 @@ export class StartMessage {
     setupId: string = '';
     agentId: string = '';
     schnorrPublicKey: string = '';
-    signature: string = '';
     payloadUtxo?: FundingUtxo;
     proverUtxo?: FundingUtxo;
     telegramMessageSig: string = '';

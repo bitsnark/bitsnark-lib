@@ -122,14 +122,20 @@ export class Agent {
         }
     }
 
-    private signMessageAndSend(ctx: SimpleContext, message: Message) {
+    public signMessage(ctx: SimpleContext, message: Message): Message {
         const signature = signMessage(toJson(message), agentConf.keyPairs[this.agentId].schnorrPrivate);
         message.telegramMessageSig = signature;
-        ctx.send(message);
+        return message;
     }
 
-    private verifyMessage(message: Message, i: SetupInstance) {
+    public signMessageAndSend(ctx: SimpleContext, message: Message) {
+        const signedMessage = this.signMessage(ctx, message);
+        ctx.send(signedMessage);
+    }
+
+    public verifyMessage(message: Message, i: SetupInstance) {
         const otherPubKey = this.role == AgentRoles.PROVER ? i.verifier!.schnorrPublicKey : i.prover!.schnorrPublicKey;
+
         const verified = verifyMessage(
             toJson({ ...message, telegramMessageSig: '' }),
             message.telegramMessageSig,
@@ -363,12 +369,14 @@ export class Agent {
     }
 }
 
-console.log('Starting');
+if (__filename == process.argv[1]) {
+    console.log('Starting');
 
-const agentId = process.argv[2] ?? 'bitsnark_prover_1';
-const role = agentId.indexOf('prover') >= 0 ? AgentRoles.PROVER : AgentRoles.VERIFIER;
+    const agentId = process.argv[2] ?? 'bitsnark_prover_1';
+    const role = agentId.indexOf('prover') >= 0 ? AgentRoles.PROVER : AgentRoles.VERIFIER;
 
-const agent = new Agent(agentId, role);
-agent.launch().then(() => {
-    console.log('Quitting');
-});
+    const agent = new Agent(agentId, role);
+    agent.launch().then(() => {
+        console.log('Quitting');
+    });
+}
