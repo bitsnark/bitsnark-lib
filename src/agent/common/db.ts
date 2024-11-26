@@ -1,7 +1,7 @@
 import { AgentRoles, jsonParseCustom, jsonStringifyCustom } from './common';
-import { Transaction } from './transactions-new';
+import { Transaction } from './transactions';
 import { Client, connect } from 'ts-postgres';
-import { agentConf } from './agent.conf';
+import { agentConf } from '../agent.conf';
 import { RawTransaction } from 'bitcoin-core';
 
 // DB utils

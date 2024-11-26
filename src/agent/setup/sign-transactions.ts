@@ -1,7 +1,7 @@
-import { Transaction } from './transactions-new';
+import { Transaction } from '../common/transactions';
 import { execFileSync } from 'node:child_process';
-import { readTemplates } from './db';
-import { AgentRoles, TransactionNames } from './common';
+import { readTemplates } from '../common/db';
+import { AgentRoles, TransactionNames } from '../common/common';
 
 export async function signTransactions(
     role: AgentRoles,

@@ -1,8 +1,9 @@
 import assert from 'assert';
 import { StackItem } from '../../generator/btc_vm/stack';
-import { bigintToNibblesLS, prime_bigint } from './common';
 import { BtcArithmetic } from './btc-arithmetic';
 import { Bitcoin } from '../../generator/btc_vm/bitcoin';
+import { prime_bigint } from '../common/constants';
+import { bigintToNibblesLS } from './nibbles';
 
 export function verifyMulMod(bitcoin: Bitcoin, a: bigint, b: bigint, c: bigint, d: bigint): BtcArithmetic {
     const btca = new BtcArithmetic(bitcoin);

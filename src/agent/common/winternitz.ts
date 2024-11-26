@@ -1,7 +1,7 @@
-import { createHash } from 'node:crypto';
-import { agentConf } from './agent.conf';
 import assert from 'node:assert';
-import { Bitcoin } from '../generator/btc_vm/bitcoin';
+import { createHash } from 'node:crypto';
+import { agentConf } from '../agent.conf';
+import { Bitcoin } from '../../generator/btc_vm/bitcoin';
 
 export const winternitzHashSizeInBytes = 20;
 

@@ -1,18 +1,18 @@
 import { describe, expect, it } from '@jest/globals';
 import {
-    _32To256BE,
-    _32To256LE,
     _256To32BE,
     _256To32LE,
+    _32To256BE,
+    _32To256LE,
     bigintToBufferBE,
     bitsToBigint,
     bufferToBigints256BE,
+    bytesFromBigint,
     hash,
     hashPair,
     padHex,
-    strToBigint,
-    bytesFromBigint
-} from '../../src/encoding/encoding';
+    strToBigint
+} from '../../src/agent/common/encoding';
 
 describe('strToBigint', () => {
     it('should convert a string to a bigint', () => {

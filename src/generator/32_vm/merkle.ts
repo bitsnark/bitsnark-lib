@@ -1,7 +1,7 @@
 import { step2_vm } from './vm/vm';
 import { SHA256 } from './sha-256';
 import { _256 } from './vm/types';
-import { last } from '../../agent/common';
+import { last } from '../../agent/common/common';
 
 export function verifyMerkleProof(proof: _256[], index: number) {
     const sha256 = new SHA256();

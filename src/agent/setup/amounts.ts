@@ -1,7 +1,7 @@
-import { AgentRoles, TransactionNames } from './common';
-import { agentConf } from './agent.conf';
-import { findOutputByInput, getTransactionByName, Transaction } from './transactions-new';
-import { readTemplates, writeTemplates } from './db';
+import { AgentRoles, TransactionNames } from '../common/common';
+import { agentConf } from '../agent.conf';
+import { findOutputByInput, getTransactionByName, Transaction } from '../common/transactions';
+import { readTemplates, writeTemplates } from '../common/db';
 
 const externallyFundedTxs: string[] = [
     TransactionNames.LOCKED_FUNDS,

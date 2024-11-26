@@ -1,6 +1,6 @@
-import { Bitcoin, executeProgram } from '../generator/btc_vm/bitcoin';
-import { readTemplates } from './db';
-import { getSpendingConditionByInput, SignatureType, Transaction } from './transactions-new';
+import { Bitcoin, executeProgram } from '../../generator/btc_vm/bitcoin';
+import { readTemplates } from '../common/db';
+import { getSpendingConditionByInput, SignatureType, Transaction } from '../common/transactions';
 
 export function emulateTransactionScripts(transactions: Transaction[]) {
     for (const transaction of transactions) {

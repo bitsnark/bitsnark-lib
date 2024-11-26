@@ -1,7 +1,8 @@
 import { Bitcoin } from '../../generator/btc_vm/bitcoin';
 import { StackItem } from '../../generator/btc_vm/stack';
-import { last } from '../common';
-import { nibblesToBigintLS, teaPot } from './common';
+import { last } from '../common/common';
+import { teaPot } from '../common/common';
+import { nibblesToBigintLS } from './nibbles';
 
 export class BtcArithmetic {
     bitcoin: Bitcoin;

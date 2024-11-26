@@ -1,7 +1,7 @@
 import { RawTransaction } from 'bitcoin-core';
 import { agentConf } from '../agent.conf';
-import { BitcoinNode } from '../bitcoin-node';
-import { AgentRoles, iterations, last, TransactionNames, twoDigits } from '../common';
+import { BitcoinNode } from '../common/bitcoin-node';
+import { AgentRoles, iterations, last, TransactionNames, twoDigits } from '../common/common';
 import {
     Incoming,
     OutgoingStatus,
@@ -12,9 +12,9 @@ import {
     SetupStatus,
     writeOutgoing,
     writeSetupStatus
-} from '../db';
-import { createUniqueDataId, getTransactionByName, SpendingCondition, Transaction } from '../transactions-new';
-import { bufferToBigintBE, encodeWinternitz256_4 } from '../winternitz';
+} from '../common/db';
+import { createUniqueDataId, getTransactionByName, SpendingCondition, Transaction } from '../common/transactions';
+import { bufferToBigintBE, encodeWinternitz256_4 } from '../common/winternitz';
 import { calculateStates } from './states';
 import { Argument } from './argument';
 import { parseInput } from './parser';

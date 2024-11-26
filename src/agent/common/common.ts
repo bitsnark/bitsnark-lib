@@ -1,9 +1,10 @@
-import { SavedVm } from '../generator/common/saved-vm';
-import groth16Verify, { Key, Proof } from '../generator/ec_vm/verifier';
-import { step1_vm } from '../generator/ec_vm/vm/vm';
-import { proof } from './proof';
-import { verificationKey } from './verification-key';
-import { InstrCode as Step1_InstrCode } from '../generator/ec_vm/vm/types';
+import { SavedVm } from '../../generator/common/saved-vm';
+import { InstrCode as Step1_InstrCode } from '../../generator/ec_vm/vm/types';
+import { proof, verificationKey } from './constants';
+import groth16Verify, { Key, Proof } from '../../generator/ec_vm/verifier';
+import { step1_vm } from '../../generator/ec_vm/vm/vm';
+
+export const iterations = 6;
 
 export const enum TransactionNames {
     LOCKED_FUNDS = 'locked_funds',
@@ -20,8 +21,6 @@ export const enum TransactionNames {
     ARGUMENT_UNCONTESTED = 'argument_uncontested',
     PROOF_REFUTED = 'proof_refuted'
 }
-
-export const iterations = 6;
 
 export enum ProtocolStep {
     INITIAL = 'INITIAL',
@@ -77,6 +76,10 @@ export function getSavedStep1(): SavedVm<Step1_InstrCode> {
 }
 
 export const twoDigits = (n: number) => (n < 10 ? `0${n}` : `${n}`);
+
+export function teaPot() {
+    throw new Error("I'm a teapot");
+}
 
 export function random(bytes: number): bigint {
     let n = 0n;

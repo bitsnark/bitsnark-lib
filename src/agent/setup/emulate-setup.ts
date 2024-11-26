@@ -1,10 +1,10 @@
-import { agentConf } from './agent.conf';
+import { agentConf } from '../agent.conf';
 import { addAmounts } from './amounts';
-import { AgentRoles } from './common';
-import { dev_ClearTemplates, SetupStatus, writeSetupStatus, writeTemplates } from './db';
+import { AgentRoles } from '../common/common';
+import { dev_ClearTemplates, SetupStatus, writeSetupStatus, writeTemplates } from '../common/db';
 import { generateAllScripts } from './generate-scripts';
 import { signTransactions } from './sign-transactions';
-import { initializeTransactions, mergeWots, getSpendingConditionByInput, SignatureType } from './transactions-new';
+import { initializeTransactions, mergeWots, getSpendingConditionByInput, SignatureType } from '../common/transactions';
 import { verifySetup } from './verify-setup';
 
 export async function emulateSetup(

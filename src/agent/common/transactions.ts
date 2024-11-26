@@ -1,6 +1,6 @@
 import { TransactionNames, AgentRoles, FundingUtxo, iterations, twoDigits, random, array } from './common';
 import { bigintToBufferBE, encodeWinternitz, getWinternitzPublicKeys, WOTS_NIBBLES, WotsType } from './winternitz';
-import { agentConf } from './agent.conf';
+import { agentConf } from '../agent.conf';
 import { dev_ClearTemplates, SetupStatus, writeSetupStatus, writeTemplates } from './db';
 
 export const PROTOCOL_VERSION = 0.2;

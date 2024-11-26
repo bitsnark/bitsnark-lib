@@ -1,6 +1,6 @@
-import { hasEvenY, lift_x, pointAdd, pointMul } from '../common/point';
-import { G, SECP256K1_ORDER, combineHashes, getHash, taprootVersion } from '../common/taproot-common';
-import { bigintFromBytes, bigintToBufferBE, bytesFromBigint, cat, padHex, taggedHash } from '../encoding/encoding';
+import { hasEvenY, lift_x, pointAdd, pointMul } from '../../common/point';
+import { G, SECP256K1_ORDER, combineHashes, getHash, taprootVersion } from '../../common/taproot-common';
+import { bigintFromBytes, bigintToBufferBE, bytesFromBigint, cat, padHex, taggedHash } from './encoding';
 
 import * as bitcoin from 'bitcoinjs-lib';
 import * as ecc from 'tiny-secp256k1';

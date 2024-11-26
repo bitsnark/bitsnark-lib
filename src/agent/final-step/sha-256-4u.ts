@@ -1,7 +1,7 @@
 import assert from 'assert';
 import { Bitcoin } from '../../generator/btc_vm/bitcoin';
 import { StackItem } from '../../generator/btc_vm/stack';
-import { _256To32BE, _32To256BE, hash, hashPair } from '../../../src/encoding/encoding';
+import { _256To32BE, _32To256BE, hash, hashPair } from '../common/encoding';
 
 let stats: any = {};
 function measureIn(name: string, bitcoin: Bitcoin) {

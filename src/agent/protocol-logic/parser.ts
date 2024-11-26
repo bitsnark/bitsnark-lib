@@ -1,5 +1,5 @@
-import { findOutputByInput, Input, Transaction } from '../transactions-new';
-import { decodeWinternitz, WOTS_NIBBLES } from '../winternitz';
+import { findOutputByInput, Input, Transaction } from '../common/transactions';
+import { decodeWinternitz, WOTS_NIBBLES } from '../common/winternitz';
 
 function hashesFromBuffer(data: Buffer): Buffer[] {
     const result: Buffer[] = [];

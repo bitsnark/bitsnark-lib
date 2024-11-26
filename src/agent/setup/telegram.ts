@@ -1,9 +1,9 @@
 import { Context, NarrowedContext, Telegraf } from 'telegraf';
 import { channelPost, message } from 'telegraf/filters';
-import { agentConf } from './agent.conf';
+import { agentConf } from '../agent.conf';
 import axios from 'axios';
-import { toJson } from './messages';
 import { Update } from 'telegraf/types';
+import { toJson } from './messages';
 
 type TelegrafContext = NarrowedContext<Context<Update>, Update.ChannelPostUpdate>;
 

@@ -1,6 +1,6 @@
-import { readExpectedIncoming, writeIncomingTransaction } from './db';
-import { agentConf } from './agent.conf';
-import { BitcoinNode } from './bitcoin-node';
+import { readExpectedIncoming, writeIncomingTransaction } from '../common/db';
+import { agentConf } from '../agent.conf';
+import { BitcoinNode } from '../common/bitcoin-node';
 import { RawTransaction, TransactionData } from 'bitcoin-core';
 
 const checkNodeInterval = 60000;
