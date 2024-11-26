@@ -4,6 +4,7 @@ import { Agent } from '../../src/agent/agent';
 import { AgentRoles } from '../../src/agent/common';
 import { ONE_BITCOIN } from '../../src/agent/agent.conf';
 
+
 export const mockAgent = {
     signMessageAndSend: jest.fn(),
     verifyMessage: jest.fn()
@@ -28,6 +29,7 @@ const proverStake = {
     amount: ONE_BITCOIN,
     external: true
 };
+
 
 //Focuses on agent message signatures; setup is checked in emulate-setups.
 describe('Agents message signatures check', () => {
@@ -56,6 +58,9 @@ describe('Agents message signatures check', () => {
         const messageStart = new StartMessage(prover);
         messageStart.payloadUtxo = lockedFunds;
         messageStart.proverUtxo = proverStake;
+        expect(setupId).toBeDefined();
+        expect(counter).toBe(1);
+
         messageStart.setupId = setupId;
         signedMessage = prover.signMessage(mockCtx as any, messageStart);
 
@@ -90,4 +95,5 @@ describe('Agents message signatures check', () => {
         expect(spySignMessageAndSend).toHaveBeenCalledTimes(2);
         expect(spyVerifyMessage).not.toThrow('Invalid signature');
     });
+
 });
