@@ -109,7 +109,6 @@ declare module "bitcoin-core" {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         decoded?: any; // The structure of 'decoded' can be complex, so 'any' is used here. You can define it more precisely if needed.
         setupId?: string; // Optional field
-
     }
 
     export interface TxOut {

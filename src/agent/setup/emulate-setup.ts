@@ -106,8 +106,6 @@ export async function emulateSetup(
     await writeTemplates(verifierAgentId, setupId, verifierTemplates);
 
     console.log('update listener data...');
-    // const bitcoinClient = new BitcoinNode();
-    // const currentTip = await bitcoinClient.getBlockCount();
     await updatedListenerHeightBySetupsIds([setupId], 100);
 
     console.log('checking...');

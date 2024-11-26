@@ -113,7 +113,7 @@ export interface Setup {
     setup_id: string;
     status: SetupStatus;
     listenerBlockHeight: number;
-    protocolVersion: number;
+    protocolVersion: string;
 }
 
 export interface Pending {

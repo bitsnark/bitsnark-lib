@@ -2,7 +2,7 @@ import { BitcoinNodeListener } from '../../src/agent/protocol-logic/node-listene
 import { readExpectedIncoming, updatedListenerHeightBySetupsIds, writeIncomingTransaction } from '../../src/agent/common/db';
 import Client from 'bitcoin-core';
 import { AgentRoles, TransactionNames } from '../../src/agent/common';
-import { getmockExpected, getMockRawChallengeTx, txIdBySetupAndName } from './node-listener-test-data';
+import { getmockExpected, getMockRawChallengeTx, txIdBySetupAndName } from './bitcoin-node-listener-test-data';
 
 jest.mock('../../src/agent/common/db', () => ({
     readExpectedIncoming: jest.fn(),
@@ -45,7 +45,6 @@ describe('BitcoinNodeListener', () => {
 
     afterEach(() => {
         jest.clearAllMocks();
-        nodeListener.destroy();
     });
 
     const setupLastBlockProperties = (nodeListener: BitcoinNodeListener, hash: string, height: number) => {
@@ -106,7 +105,7 @@ describe('BitcoinNodeListener', () => {
         expect(clientMock.getBlockHash).toHaveBeenCalled();
     });
 
-    it('Will serach for all unpublished not mulable txs by transactions id', async () => {
+    it('Will serach for all unpublished not temporaryTxId txs by transactions id', async () => {
         setupLastBlockProperties(nodeListener, 'hash107', 107);
         const mockExpected = getmockExpected();
         (readExpectedIncoming as jest.Mock).mockResolvedValue(mockExpected);
@@ -116,11 +115,11 @@ describe('BitcoinNodeListener', () => {
 
         expect(clientMock.getRawTransaction).toHaveBeenCalledTimes(4);
         expect(clientMock.getRawTransaction).not.toHaveBeenCalledWith(
-            mockExpected.find((tx) => !tx.object.mulableTxid)
+            mockExpected.find((tx) => !tx.object.temporaryTxId)
         );
     });
 
-    it('Will serach for mulable transaction parent spend inputs', async () => {
+    it('Will serach for temporaryTxId transaction parent spend inputs', async () => {
         setupLastBlockProperties(nodeListener, 'hash107', 107);
         const mockExpected = getmockExpected(
             new Set([
@@ -137,7 +136,7 @@ describe('BitcoinNodeListener', () => {
         expect(clientMock.getTxOut).toHaveBeenCalled();
     });
 
-    it("Will not serach for mulable transaction if parent published but requiered inputs arn't spent", async () => {
+    it("Will not serach for temporaryTxId transaction if parent published but requiered inputs arn't spent", async () => {
         setupLastBlockProperties(nodeListener, 'hash107', 107);
         const mockExpected = getmockExpected(
             new Set([
@@ -156,7 +155,7 @@ describe('BitcoinNodeListener', () => {
         expect(clientMock.getRawTransaction).not.toHaveBeenCalledTimes(4);
     });
 
-    it("Will serach for mulable transaction if parent published and it's requiered inputs spent", async () => {
+    it("Will serach for temporaryTxId transaction if parent published and it's requiered inputs spent", async () => {
         setupLastBlockProperties(nodeListener, 'hash107', 107);
         const mockExpected = getmockExpected(
             new Set([

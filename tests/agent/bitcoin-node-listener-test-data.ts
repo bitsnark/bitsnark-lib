@@ -52,7 +52,7 @@ export const mockExpected = (function createSetupsIncomingTransactions(): Pendin
                     templateId: setupIndex * 100 + index,
                     setupId: setupId,
                     transactionName: templateName,
-                    mulableTxid: templateName === TransactionNames.CHALLENGE
+                    temporaryTxId: templateName === TransactionNames.CHALLENGE
                 }
             };
         });
