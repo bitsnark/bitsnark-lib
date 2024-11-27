@@ -1,8 +1,11 @@
 import { Bitcoin } from '../../generator/btc_vm/bitcoin';
 import { StackItem } from '../../generator/btc_vm/stack';
-import { last } from '../common/common';
-import { teaPot } from '../common/common';
+import { last } from '../common/array-utils';
 import { nibblesToBigintLS } from './nibbles';
+
+export function teaPot() {
+    throw new Error("I'm a teapot");
+}
 
 export class BtcArithmetic {
     bitcoin: Bitcoin;

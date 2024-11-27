@@ -2,7 +2,7 @@ import groth16Verify, { Key, Proof as Step1_Proof } from '../../generator/ec_vm/
 import { InstrCode, Instruction } from '../../generator/ec_vm/vm/types';
 import { proof, vKey } from '../../generator/ec_vm/constants';
 import { Bitcoin, Template } from '../../generator/btc_vm/bitcoin';
-import { getSpendingConditionByInput, getTransactionByName, Transaction } from '../common/transactions';
+import { getSpendingConditionByInput, getTransactionByName, Transaction, twoDigits } from '../common/transactions';
 import { encodeWinternitz24, encodeWinternitz256_4, getWinternitzPublicKeys, WotsType } from '../common/winternitz';
 import { step1_vm } from '../../generator/ec_vm/vm/vm';
 import { StackItem } from '../../generator/btc_vm/stack';
@@ -29,9 +29,9 @@ import { readTemplates } from '../common/db';
 import { blake3 as blake3_wasm } from 'hash-wasm';
 import { modInverse } from '../../generator/common/math-utils';
 import { prime_bigint } from '../common/constants';
-import { twoDigits, TransactionNames } from '../common/common';
 import { bigintToNibblesLS } from './nibbles';
 import { bufferToBigintBE } from '../common/encoding';
+import { TransactionNames } from '../common/types';
 
 export enum RefutationType {
     INSTR,

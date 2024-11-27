@@ -1,5 +1,5 @@
-import { FundingUtxo } from '../common/common';
 import { Transaction } from '../common/transactions';
+import { FundingUtxo } from '../common/types';
 
 type MessageType = 'start' | 'join' | 'transactions' | 'signatures' | 'done' | 'error';
 

@@ -1,5 +1,4 @@
 import { StackItem } from '../../generator/btc_vm/stack';
-import { teaPot } from '../common/common';
 
 export function nibblesToBigintLS(s: StackItem[]): bigint {
     let result = 0n;
@@ -15,6 +14,6 @@ export function bigintToNibblesLS(n: bigint, c?: number): number[] {
         result.push(Number(n & 0x7n));
         n = n >> 3n;
     }
-    if (n > 0) teaPot();
+    if (n > 0) throw new Error('Numeric remainder');
     return result;
 }

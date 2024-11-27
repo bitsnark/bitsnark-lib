@@ -2,7 +2,7 @@ import assert from 'assert';
 import { Bitcoin } from '../../generator/btc_vm/bitcoin';
 import { StackItem } from '../../generator/btc_vm/stack';
 import { blake3 as blake3_wasm } from 'hash-wasm';
-import { array } from '../common/common';
+import { array } from '../common/array-utils';
 
 const OUT_LEN = 32;
 const BLOCK_LEN = 64;

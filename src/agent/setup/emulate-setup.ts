@@ -1,12 +1,12 @@
 import { agentConf } from '../agent.conf';
 import { addAmounts } from './amounts';
-import { AgentRoles } from '../common/common';
 import { dev_ClearTemplates, SetupStatus, writeSetupStatus, writeTemplates } from '../common/db';
 import { generateAllScripts } from './generate-scripts';
 import { signTransactions } from './sign-transactions';
 import { initializeTransactions, mergeWots, getSpendingConditionByInput, SignatureType } from '../common/transactions';
 import { verifySetup } from './verify-setup';
 import { setWotsPublicKeysForArgument } from './wots-keys';
+import { AgentRoles } from '../common/types';
 
 export async function emulateSetup(
     proverAgentId: string,
