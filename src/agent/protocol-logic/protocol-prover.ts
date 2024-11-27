@@ -1,7 +1,6 @@
 import { RawTransaction } from 'bitcoin-core';
 import { agentConf } from '../agent.conf';
 import { BitcoinNode } from '../common/bitcoin-node';
-import { AgentRoles, iterations, last, TransactionNames, twoDigits } from '../common/common';
 import {
     Incoming,
     OutgoingStatus,
@@ -13,12 +12,20 @@ import {
     writeOutgoing,
     writeSetupStatus
 } from '../common/db';
-import { createUniqueDataId, getTransactionByName, SpendingCondition, Transaction } from '../common/transactions';
+import {
+    createUniqueDataId,
+    getTransactionByName,
+    SpendingCondition,
+    Transaction,
+    twoDigits
+} from '../common/transactions';
 import { encodeWinternitz256_4 } from '../common/winternitz';
 import { calculateStates } from './states';
 import { Argument } from './argument';
 import { parseInput } from './parser';
 import { bufferToBigintBE } from '../common/encoding';
+import { last } from '../common/array-utils';
+import { TransactionNames, iterations, AgentRoles } from '../common/types';
 
 export class ProtocolProver {
     agentId: string;

@@ -1,6 +1,5 @@
 import { Bitcoin } from '../../generator/btc_vm/bitcoin';
 import { WOTS_NIBBLES, WotsType } from '../common/winternitz';
-import { AgentRoles, TransactionNames } from '../common/common';
 import { StackItem } from '../../generator/btc_vm/stack';
 import { SimpleTapTree } from '../common/taptree';
 import { agentConf } from '../agent.conf';
@@ -16,6 +15,7 @@ import {
 } from '../common/transactions';
 import { readTemplates, writeTemplates } from '../common/db';
 import { DoomsdayGenerator } from '../final-step/doomsday-generator';
+import { AgentRoles, TransactionNames } from '../common/types';
 
 const DEAD_SCRIPT = Buffer.from([0x6a]); // opcode fails transaction
 

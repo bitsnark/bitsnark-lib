@@ -1,7 +1,7 @@
 import { readTemplates } from '../common/db';
 import { getSpendingConditionByInput, SignatureType } from '../common/transactions';
+import { TransactionNames } from '../common/types';
 import { validateTransactionFees } from './amounts';
-import { TransactionNames } from '../common/common';
 
 export async function verifySetup(agentId: string, setupId: string) {
     const transactions = await readTemplates(agentId, setupId);

@@ -4,8 +4,8 @@ import { bigintFromBytes, bigintToBufferBE, bytesFromBigint, cat, padHex, tagged
 
 import * as bitcoin from 'bitcoinjs-lib';
 import * as ecc from 'tiny-secp256k1';
-import { array, last } from './common';
 import assert from 'node:assert';
+import { array, last } from './array-utils';
 
 export const DEAD_ROOT = Buffer.from([0x6a, 0x6a, 0x6a, 0x6a, 0x6a, 0x6a, 0x6a, 0x6a]);
 

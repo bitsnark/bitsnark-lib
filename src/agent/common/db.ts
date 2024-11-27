@@ -6,11 +6,12 @@ and it would be fragile for changes.
 
 Most of the objects passed to params are simple types, but some are parsed to any with JSON.parse, so we can't be sure of the type.
 */
-import { AgentRoles, jsonParseCustom, jsonStringifyCustom } from './common';
 import { Transaction } from './transactions';
 import { Client, connect } from 'ts-postgres';
 import { agentConf } from '../agent.conf';
 import { RawTransaction } from 'bitcoin-core';
+import { jsonStringifyCustom, jsonParseCustom } from './json';
+import { AgentRoles } from './types';
 
 // DB utils
 function jsonizeObject<T>(obj: T): T {
