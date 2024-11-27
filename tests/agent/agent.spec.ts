@@ -2,34 +2,31 @@
 import { JoinMessage, Message, StartMessage, toJson } from '../../src/agent/messages';
 import { Agent } from '../../src/agent/agent';
 import { AgentRoles } from '../../src/agent/common';
-import { ONE_BITCOIN } from '../../src/agent/agent.conf';
-
+import { agentConf } from '../../src/agent/agent.conf';
+import { SimpleContext, TelegrafContext } from '../../src/agent/telegram';
 
 export const mockAgent = {
     signMessageAndSend: jest.fn(),
     verifyMessage: jest.fn()
 };
 
-export const mockCtx = {
+export const mockContext: SimpleContext = {
     send: jest.fn(),
-    ctx: {
-        send: jest.fn()
-    }
+    context: {} as TelegrafContext
 };
 
 const lockedFunds = {
-    txId: '000',
+    txId: '0000000000000000000000000000000000000000000000000000000000000000',
     outputIndex: 0,
-    amount: ONE_BITCOIN,
+    amount: agentConf.payloadAmount,
     external: true
 };
 const proverStake = {
-    txId: '111',
+    txId: '1111111111111111111111111111111111111111111111111111111111111111',
     outputIndex: 0,
-    amount: ONE_BITCOIN,
+    amount: agentConf.proverStakeAmount,
     external: true
 };
-
 
 //Focuses on agent message signatures; setup is checked in emulate-setups.
 describe('Agents message signatures check', () => {
@@ -43,7 +40,7 @@ describe('Agents message signatures check', () => {
         const spyStart = jest.spyOn(prover, 'start');
         const message = `/start`;
 
-        await prover.messageReceived(message, mockCtx as any);
+        await prover.messageReceived(message, mockContext);
 
         expect(spyStart).toHaveBeenCalledTimes(1);
 
@@ -62,17 +59,17 @@ describe('Agents message signatures check', () => {
         expect(counter).toBe(1);
 
         messageStart.setupId = setupId;
-        signedMessage = prover.signMessage(mockCtx as any, messageStart);
+        signedMessage = prover.signMessage(mockContext, messageStart);
 
         expect(spySignMessageAndSend).toHaveBeenCalledTimes(1);
-        expect(mockCtx.send).toHaveBeenCalledWith(signedMessage);
+        expect(mockContext.send).toHaveBeenCalledWith(signedMessage);
     });
 
     it('Verifier on eccepting the start message, should verify it, set its setupId and send a join message', async () => {
         const spySignMessageAndSend = jest.spyOn(verifier, 'signMessageAndSend');
         const spySOntart = jest.spyOn(verifier, 'on_start');
 
-        await verifier.messageReceived(toJson(signedMessage), mockCtx as any);
+        await verifier.messageReceived(toJson(signedMessage), mockContext);
 
         expect(spySignMessageAndSend).toHaveBeenCalledTimes(1);
         expect(verifier.instances.get(setupId)).toBeDefined();
@@ -81,19 +78,18 @@ describe('Agents message signatures check', () => {
 
         const messageJoin = new JoinMessage(verifier);
         messageJoin.setupId = setupId;
-        signedMessage = verifier.signMessage(mockCtx as any, messageJoin);
-        expect(mockCtx.send).toHaveBeenCalledWith(signedMessage);
+        signedMessage = verifier.signMessage(mockContext, messageJoin);
+        expect(mockContext.send).toHaveBeenCalledWith(signedMessage);
     });
 
     it('Prover on eccepting the join message, should verify it', async () => {
         const spySignMessageAndSend = jest.spyOn(prover, 'signMessageAndSend');
         const spyVerifyMessage = jest.spyOn(prover, 'verifyMessage');
 
-        await prover.messageReceived(toJson(signedMessage), mockCtx as any);
+        await prover.messageReceived(toJson(signedMessage), mockContext);
 
         expect(verifier.instances.get(setupId)).toBeDefined();
         expect(spySignMessageAndSend).toHaveBeenCalledTimes(2);
         expect(spyVerifyMessage).not.toThrow('Invalid signature');
     });
-
 });

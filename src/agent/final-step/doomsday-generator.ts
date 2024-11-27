@@ -33,7 +33,6 @@ import { bigintToNibblesLS } from './nibbles';
 import { bufferToBigintBE } from '../common/encoding';
 import { TransactionNames } from '../common/types';
 
-
 export enum RefutationType {
     INSTR,
     HASH

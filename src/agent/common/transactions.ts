@@ -482,8 +482,8 @@ export function mergeWots(role: AgentRoles, mine: Transaction[], theirs: Transac
                 wotsPublicKeys: !sc.wotsSpec
                     ? undefined
                     : sc.nextRole == role
-                        ? notNull(sc.wotsPublicKeys)
-                        : notNull(
+                      ? notNull(sc.wotsPublicKeys)
+                      : notNull(
                             theirs[transactionIndex].outputs[outputIndex].spendingConditions[scIndex].wotsPublicKeys
                         )
             }))
