@@ -1,7 +1,11 @@
-import { readExpectedIncoming, updatedListenerHeightBySetupsIds, writeIncomingTransaction } from '../../src/agent/common/db';
-import { BitcoinListener } from '../../src/agent/bitcoin-listener';
+import {
+    readExpectedIncoming,
+    updatedListenerHeightBySetupsIds,
+    writeIncomingTransaction
+} from '../../src/agent/common/db';
+import { BitcoinListener } from '../../src/agent/protocol-logic/bitcoin-listener';
 import Client from 'bitcoin-core';
-import { AgentRoles, TransactionNames } from '../../src/agent/common';
+import { AgentRoles, TransactionNames } from '../../src/agent/common/types';
 import { getmockExpected, getMockRawChallengeTx, txIdBySetupAndName } from './bitcoin-listener-test-data';
 
 jest.mock('../../src/agent/common/db', () => ({

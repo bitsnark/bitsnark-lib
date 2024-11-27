@@ -2,9 +2,13 @@ import { Transaction } from '../common/transactions';
 import { agentConf } from '../agent.conf';
 import { BitcoinNode } from '../common/bitcoin-node';
 import { RawTransaction } from 'bitcoin-core';
-import { Pending, readExpectedIncoming, writeIncomingTransaction, updatedListenerHeightBySetupsIds } from '../common/db';
+import {
+    Pending,
+    readExpectedIncoming,
+    writeIncomingTransaction,
+    updatedListenerHeightBySetupsIds
+} from '../common/db';
 
-const checkNodeInterval = 60000;
 export interface expectByInputs {
     setupId: string;
     name: string;
@@ -12,32 +16,15 @@ export interface expectByInputs {
     vins: { outputTxid: string; outputIndex: number; vin: number }[];
 }
 
-export class BitcoinNodeListener {
+export class BitcoinListener {
     private agentId: string;
-    private scheduler: NodeJS.Timeout | null = null;
     private tipHeight: number = 0;
     private tipHash: string = '';
-    private isCrawling: boolean = false;
     public client;
 
     constructor(agentId: string) {
         this.client = new BitcoinNode().client;
         this.agentId = agentId;
-    }
-
-    async setMonitorSchedule() {
-        this.scheduler = setInterval(async () => {
-            try {
-                if (this.isCrawling) return;
-                this.isCrawling = true;
-                await this.checkForNewBlock().catch((error) => console.error(error));
-            } catch (error) {
-                console.error(error);
-            } finally {
-                this.isCrawling = false;
-            }
-        }, checkNodeInterval);
-        await this.checkForNewBlock();
     }
 
     async checkForNewBlock() {
@@ -57,13 +44,14 @@ export class BitcoinNodeListener {
 
         let blockHeight = pending[0].listenerBlockHeight + 1;
 
+        // No reorganization isupport, just wait for the block to be finalized
         while (blockHeight <= this.tipHeight - agentConf.blocksUntilFinalized) {
             const blockHash = await this.client.getBlockHash(blockHeight);
 
             for (const pendingTx of pending) {
                 try {
                     let transmittedTx: RawTransaction | undefined;
-                    if (!pendingTx.object.mulableTxid)
+                    if (!pendingTx.object.temporaryTxId)
                         transmittedTx = await this.client.getRawTransaction(pendingTx.txId, true, blockHash);
                     else
                         transmittedTx = await this.getTransactionByInputs(
@@ -124,16 +112,9 @@ export class BitcoinNodeListener {
             return undefined;
         }
     }
-
-    destroy() {
-        if (this.scheduler) {
-            clearInterval(this.scheduler);
-            this.scheduler = null;
-        }
-    }
 }
 
-if (process.argv[1] == __filename) {
+if (require.main === module) {
     (async () => {
         const setupsTemplates = await readExpectedIncoming('bitsnark_prover_1');
         console.log(setupsTemplates.map((tx) => tx.listenerBlockHeight));

@@ -1,6 +1,6 @@
-import { Pending } from '@src/agent/db';
-import { TransactionNames } from '@src/agent/common';
-import { Input } from '@src/agent/transactions-new';
+import { Pending } from '@src/agent/common/db';
+import { TransactionNames } from '@src/agent/common/types';
+import { Input } from '@src/agent/common/transactions';
 
 const templates = [
     TransactionNames.LOCKED_FUNDS,
