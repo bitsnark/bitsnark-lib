@@ -16,7 +16,7 @@
     "dist/"
   ],
   "scripts": {
-    "test": "jest",
+    "test": "npm run emulate-setup && jest",
     "py-install": "./python/run-in-venv.sh echo done",
     "generate-tx": "ts-node ./src/agent/setup/init-templates.ts",
     "generate-tx-clear": "ts-node ./src/agent/setup/init-templates.ts --clear",

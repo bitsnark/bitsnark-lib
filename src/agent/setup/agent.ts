@@ -151,7 +151,7 @@ export class Agent {
         // Temporary solution - will be replaced with a proper verification against the contract
         const verifiedPubKey = agentConf.keyPairs[senderAgentId].schnorrPublic;
         if (verifiedPubKey != senderPubKey) throw new Error('Invalid public key');
-        console.log('Publick key is valid');
+        console.log('Public key is valid');
         return true;
     }
 
@@ -234,13 +234,13 @@ export class Agent {
     }
 
     // prover receives join message, generates transactions
-    async on_join(context: SimpleContext, message: StartMessage) {
+    async on_join(context: SimpleContext, message: JoinMessage) {
         const i = this.getInstance(message.setupId);
         if (i.state != SetupState.HELLO) throw new Error('Invalid state');
 
         if (i.verifier) throw new Error('Verifier agent already registered');
 
-        this.verifyPubKey((message as JoinMessage).schnorrPublicKey, message.agentId);
+        this.verifyPubKey(message.schnorrPublicKey, message.agentId);
 
         i.verifier = {
             agentId: message.agentId,
