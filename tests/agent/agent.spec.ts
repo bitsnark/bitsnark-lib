@@ -1,9 +1,9 @@
 // agent.spec.ts
-import { JoinMessage, Message, StartMessage, toJson } from '../../src/agent/messages';
-import { Agent } from '../../src/agent/agent';
-import { AgentRoles } from '../../src/agent/common';
+import { JoinMessage, Message, StartMessage, toJson } from '../../src/agent/setup/messages';
+import { Agent } from '../../src/agent/setup/agent';
+import { AgentRoles } from '../../src/agent/common/types';
 import { agentConf } from '../../src/agent/agent.conf';
-import { SimpleContext, TelegrafContext } from '../../src/agent/telegram';
+import { SimpleContext, TelegrafContext } from '../../src/agent/setup/telegram';
 
 export const mockAgent = {
     signMessageAndSend: jest.fn(),
