@@ -2,7 +2,6 @@ import { bigintToBufferBE } from '../common/encoding';
 import {
     getTransactionByName,
     makeProtocolSteps,
-    PROTOCOL_VERSION,
     getSpendingConditionByInput,
     findOutputByInput,
     SignatureType,
@@ -15,6 +14,8 @@ import { AgentRoles, FundingUtxo, TransactionNames } from '../common/types';
 import { agentConf } from '../agent.conf';
 import { dev_ClearTemplates, SetupStatus, writeSetupStatus, writeTemplates } from '../common/db';
 import { generateWotsPublicKeys } from './wots-keys';
+
+const PROTOCOL_VERSION = '1.1';
 
 export async function initializeTemplates(
     agentId: string,

@@ -33,7 +33,7 @@ interface AgentConf {
     postgresBigints: boolean;
     postgresKeepAlive: boolean;
     blocksUntilFinalized: number;
-    protocolVersion: number;
+    protocolVersion: string;
     useMockProgram: boolean;
     protocolIntervalMs: number;
 }
@@ -69,7 +69,7 @@ export const agentConf: AgentConf = {
             ),
             schnorrPrivate: parse.string(
                 'PROVER_SCHNORR_PRIVATE',
-                'd4067af1132afcb352b0edef53d8aa2a5fc713df61dee31b1d937e69ece0ebf0'
+                '415c69b837f4146019574f59c223054c8c144ac61b6ae87bc26824c0f8d034e2'
             )
         },
         bitsnark_verifier_1: {
@@ -95,7 +95,7 @@ export const agentConf: AgentConf = {
     postgresBigints: parse.boolean('POSTGRES_BIGINTS', true),
     postgresKeepAlive: parse.boolean('POSTGRES_KEEP_ALIVE', true),
     blocksUntilFinalized: parse.integer('BLOCKS_UNTIL_FINALIZED', 0), // 6
-    protocolVersion: parse.integer('PROTOCOL_VERSION', 1),
+    protocolVersion: parse.string('PROTOCOL_VERSION', '0.2'),
     useMockProgram: parse.boolean('USE_MOCK_PROGRAM', false),
     protocolIntervalMs: parse.integer('PROTOCOL_INTERVAL_MS', 30000)
 };

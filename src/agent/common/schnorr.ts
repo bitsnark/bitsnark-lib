@@ -31,7 +31,6 @@ export function verifyMessage(message: string, signature: string, publicKey: str
     const msgHash = crypto.createHash('sha256').update(message).digest();
     const signatureBuffer = Buffer.from(signature, 'hex');
     const publicKeyBuffer = Buffer.from(publicKey, 'hex');
-    console.log('Public key:', publicKeyBuffer, publicKeyBuffer.length);
     return secp256k1.verifySchnorr(msgHash, publicKeyBuffer, signatureBuffer);
 }
 

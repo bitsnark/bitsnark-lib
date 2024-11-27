@@ -5,8 +5,6 @@ import { array } from './array-utils';
 
 export const twoDigits = (n: number) => (n < 10 ? `0${n}` : `${n}`);
 
-export const PROTOCOL_VERSION = 0.2;
-
 export enum SignatureType {
     NONE = 'NONE',
     PROVER = 'PROVER',
@@ -53,7 +51,7 @@ export interface Output {
 export interface Transaction {
     templateId?: number;
     setupId?: string;
-    protocolVersion?: number;
+    protocolVersion?: string;
     role: AgentRoles;
     transactionName: string;
     ordinal?: number;
@@ -61,6 +59,7 @@ export interface Transaction {
     inputs: Input[];
     outputs: Output[];
     external?: boolean;
+    temporaryTxId?: boolean;
 }
 
 export const protocolStart: Transaction[] = [
@@ -144,6 +143,7 @@ export const protocolStart: Transaction[] = [
     {
         role: AgentRoles.VERIFIER,
         transactionName: TransactionNames.CHALLENGE,
+        temporaryTxId: true,
         inputs: [
             {
                 transactionName: TransactionNames.PROOF,
@@ -245,6 +245,7 @@ export const protocolEnd: Transaction[] = [
     {
         role: AgentRoles.VERIFIER,
         transactionName: TransactionNames.PROOF_REFUTED,
+        temporaryTxId: true,
         inputs: [
             {
                 transactionName: TransactionNames.ARGUMENT,

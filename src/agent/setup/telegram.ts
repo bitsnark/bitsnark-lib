@@ -5,21 +5,21 @@ import axios from 'axios';
 import { Update } from 'telegraf/types';
 import { Message, toJson } from './messages';
 
-type TelegrafContext = NarrowedContext<Context<Update>, Update.ChannelPostUpdate>;
-
+export type TelegrafContext = NarrowedContext<Context<Update>, Update.ChannelPostUpdate>;
+const TELEGRAM_MAX_TEXT_MSG_LENGTH = 4096;
 export class SimpleContext {
-    ctx: TelegrafContext;
+    context: TelegrafContext;
 
-    constructor(ctx: TelegrafContext) {
-        this.ctx = ctx;
+    constructor(context: TelegrafContext) {
+        this.context = context;
     }
 
     async send(data: Message) {
         const text = toJson(data);
-        if (text.length < 10 * 1024) {
-            await this.ctx.reply(text);
+        if (text.length < TELEGRAM_MAX_TEXT_MSG_LENGTH) {
+            await this.context.reply(text);
         } else {
-            await this.ctx.sendDocument({
+            await this.context.sendDocument({
                 source: Buffer.from(text, 'ascii'),
                 filename: `${data.constructor.name}.txt`
             });
@@ -28,7 +28,7 @@ export class SimpleContext {
 }
 
 export abstract class ITelegramClient {
-    abstract messageReceived(data: string, ctx: SimpleContext): void;
+    abstract messageReceived(data: string, context: SimpleContext): void;
 }
 
 export class TelegramBot {
@@ -43,25 +43,25 @@ export class TelegramBot {
         this.bot = new Telegraf(this.token);
         this.client = client;
 
-        this.bot.on(message('text'), async (ctx) => {
-            console.log(ctx.message.from.username, ctx.message.text);
+        this.bot.on(message('text'), async (context) => {
+            console.log(context.message.from.username, context.message.text);
         });
 
-        this.bot.on(channelPost(), async (ctx) => {
-            console.log(ctx.update.channel_post);
-            const channelPost = ctx.update.channel_post;
+        this.bot.on(channelPost(), async (context) => {
+            console.log(context.update.channel_post);
+            const channelPost = context.update.channel_post;
             const text = 'text' in channelPost ? channelPost.text : undefined;
             const file = 'document' in channelPost ? channelPost.document : undefined;
 
             try {
                 if (text) {
                     console.log('!!! text !!!', text);
-                    this.client.messageReceived(text, new SimpleContext(ctx));
+                    this.client.messageReceived(text, new SimpleContext(context));
                 } else if (file) {
-                    ctx.telegram.getFileLink(file.file_id).then((url) => {
+                    context.telegram.getFileLink(file.file_id).then((url) => {
                         axios({ url: url.toString(), responseType: 'text' }).then((response) => {
                             console.log('!!! file !!!', response.data.length);
-                            this.client.messageReceived(response.data, new SimpleContext(ctx));
+                            this.client.messageReceived(response.data, new SimpleContext(context));
                         });
                     });
                 }
