@@ -49,8 +49,6 @@ export function parseInput(transactions: Transaction[], input: Input, data: Buff
         const keys = sc.wotsPublicKeys[i];
         const nibbleCount = WOTS_NIBBLES[spec];
         if (keys.length != nibbleCount) throw new Error('Wrong number of keys');
-        // remove later
-        if (sc.exampleWitness![i].length != nibbleCount) throw new Error('Wrong number of Values');
         result[resultIndex++] = decodeWinternitz(spec, hashes.slice(hashesIndex, hashesIndex + nibbleCount), keys);
         hashesIndex += nibbleCount;
     }

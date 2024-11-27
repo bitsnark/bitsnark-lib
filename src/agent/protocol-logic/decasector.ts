@@ -86,8 +86,9 @@ export class Decasector {
 
     constructor(proof?: bigint[]) {
         step1_vm.reset();
+        const key = Key.fromSnarkjs(vKey);
         this.proof = proof ? Step1_Proof.fromWitness(proof) : Step1_Proof.fromSnarkjs(proofConst);
-        groth16Verify(Key.fromSnarkjs(vKey), this.proof);
+        groth16Verify(key, this.proof);
         if (!step1_vm.success?.value) throw new Error('Failed.');
         const program = step1_vm.instructions;
         this.savedVm = step1_vm.save();

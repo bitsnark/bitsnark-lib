@@ -107,6 +107,15 @@ export class Argument {
         return outputs;
     }
 
+    public checkIndex() {
+        // lets make sure it's correct for sanity sake
+        let tempIndex = 0;
+        for (const selection of this.selectionPath) {
+            tempIndex = tempIndex * 10 + selection;
+        }
+        return tempIndex == this.index;
+    }
+
     public async refute(
         transactions: Transaction[],
         argData: bigint[][],
@@ -118,15 +127,7 @@ export class Argument {
         this.selectionPath = argData[0].slice(0, 6).map((n) => Number(n));
         this.index = Number(argData[6]);
 
-        // lets make sure it's correct for sanity sake
-        let tempIndex = 0;
-        for (const selection of this.selectionPath) {
-            tempIndex = tempIndex * 10 + selection;
-        }
-        if (tempIndex != this.index) {
-            // This should never happen!
-            throw new Error('Selection path error.');
-        }
+        if (!this.checkIndex()) throw new Error('Invalid selection path or index');
 
         // second input is the params a, b, c, and d
         const [a, b, c, d] = argData[1];
@@ -182,24 +183,4 @@ export class Argument {
 
         return { data, script: script!, controlBlock: controlBlock! };
     }
-}
-
-async function testFatMerkleProof() {
-    // get actual registers from the middle of the program
-    const decasector = new Decasector();
-
-    // make fat merkle proof
-    const mp = await FatMerkleProof.fromRegs(decasector.stateCommitmentByLine[150000].getValues(), 32);
-
-    const r = await mp.verify();
-    assert(r);
-}
-
-async function main() {
-    await testFatMerkleProof();
-}
-
-const scriptName = __filename;
-if (process.argv[1] == scriptName) {
-    main().catch(console.error);
 }

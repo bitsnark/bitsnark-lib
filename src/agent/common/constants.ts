@@ -20,6 +20,19 @@ export const proof = {
         '5182492167196517803964084985226343839022108025654500361628202698319357889198'
     ]
 };
+
+let t = [
+    proof.pi_a[0],
+    proof.pi_a[1],
+    proof.pi_b[0][1],
+    proof.pi_b[0][0],
+    proof.pi_b[1][1],
+    proof.pi_b[1][0],
+    proof.pi_c[0],
+    proof.pi_c[1]
+];
+export const proofBigint = t.map((s) => BigInt(s));
+
 export const publicSignals = ['19820469076730107577691234630797803937210158605698999776717232705083708883456', '11'];
 
 export const internalPublicKey = 0x55adf4e8967fbd2e29f20ac896e60c3b0f1d5b0efa9d34941b5958c7b0a0312dn;
