@@ -1,6 +1,12 @@
 import { agentConf } from '../agent.conf';
 import { addAmounts } from './amounts';
-import { dev_ClearTemplates, SetupStatus, writeSetupStatus, writeTemplates } from '../common/db';
+import {
+    dev_ClearTemplates,
+    SetupStatus,
+    updatedListenerHeightBySetupsIds,
+    writeSetupStatus,
+    writeTemplates
+} from '../common/db';
 import { generateAllScripts } from './generate-scripts';
 import { signTransactions } from './sign-transactions';
 import { initializeTransactions, mergeWots, getSpendingConditionByInput, SignatureType } from '../common/transactions';
@@ -98,6 +104,9 @@ export async function emulateSetup(
     }
     await writeTemplates(proverAgentId, setupId, proverTemplates);
     await writeTemplates(verifierAgentId, setupId, verifierTemplates);
+
+    console.log('update listener data...');
+    await updatedListenerHeightBySetupsIds([setupId], 100);
 
     console.log('checking...');
 

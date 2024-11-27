@@ -70,7 +70,7 @@ class Setups(Base):
     __tablename__ = 'setups'
     setup_id: Mapped[str] = mapped_column(String, primary_key=True, nullable=False)
     status: Mapped[str] = mapped_column(Enum(SetupStatus), nullable=False)
-    protocolVersion: Mapped[int] = mapped_column(Integer, nullable=False)
+    protocolVersion: Mapped[str] = mapped_column(String, nullable=False)
 
 
 class TxJson(TypedDict):
@@ -79,7 +79,7 @@ class TxJson(TypedDict):
     inputs: list[TxInJson]
     outputs: list[TxOutJson]
     ordinal: int
-    protocolVersion: float
+    protocolVersion: str
 
 
 class TxInJson(TypedDict):
