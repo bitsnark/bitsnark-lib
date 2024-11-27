@@ -339,9 +339,3 @@ export async function readIncomingTransactions(setupId: string, agentId?: string
         setupId: row[5]
     }));
 }
-
-if (process.argv[1] == __filename) {
-    (async () => {
-        // await updateSetup('test_setup', { status: SetupStatus.PENDING });
-    })().catch(console.error);
-}

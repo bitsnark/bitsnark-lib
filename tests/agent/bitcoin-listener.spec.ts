@@ -1,8 +1,8 @@
-import { BitcoinNodeListener } from '../../src/agent/protocol-logic/node-listener';
 import { readExpectedIncoming, updatedListenerHeightBySetupsIds, writeIncomingTransaction } from '../../src/agent/common/db';
+import { BitcoinListener } from '../../src/agent/bitcoin-listener';
 import Client from 'bitcoin-core';
 import { AgentRoles, TransactionNames } from '../../src/agent/common';
-import { getmockExpected, getMockRawChallengeTx, txIdBySetupAndName } from './bitcoin-node-listener-test-data';
+import { getmockExpected, getMockRawChallengeTx, txIdBySetupAndName } from './bitcoin-listener-test-data';
 
 jest.mock('../../src/agent/common/db', () => ({
     readExpectedIncoming: jest.fn(),
@@ -27,8 +27,8 @@ jest.mock('../../src/agent/agent.conf', () => ({
     }
 }));
 
-describe('BitcoinNodeListener', () => {
-    let nodeListener: BitcoinNodeListener;
+describe('BitcoinListener', () => {
+    let nodeListener: BitcoinListener;
     let clientMock: Client;
 
     beforeEach(() => {
@@ -39,7 +39,7 @@ describe('BitcoinNodeListener', () => {
             host: 'localhost',
             port: 5432
         });
-        nodeListener = new BitcoinNodeListener(AgentRoles.PROVER);
+        nodeListener = new BitcoinListener(AgentRoles.PROVER);
         nodeListener.client = clientMock;
     });
 
@@ -47,7 +47,7 @@ describe('BitcoinNodeListener', () => {
         jest.clearAllMocks();
     });
 
-    const setupLastBlockProperties = (nodeListener: BitcoinNodeListener, hash: string, height: number) => {
+    const setupLastBlockProperties = (nodeListener: BitcoinListener, hash: string, height: number) => {
         Object.defineProperty(nodeListener, 'tipHash', {
             value: hash,
             writable: true
