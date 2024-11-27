@@ -1,4 +1,5 @@
-import { taggedHash, cat } from '../encoding/encoding';
+import { cat } from '../../src/agent/common/encoding';
+import { taggedHash } from 'bitcoinjs-lib/src/crypto';
 
 export const taprootVersion = 0xc0;
 

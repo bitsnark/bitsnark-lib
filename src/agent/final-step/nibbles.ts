@@ -1,11 +1,5 @@
 import { StackItem } from '../../generator/btc_vm/stack';
 
-export const prime_bigint = 21888242871839275222246405745257275088696311157297823662689037894645226208583n;
-
-export function teaPot() {
-    throw new Error("I'm a teapot");
-}
-
 export function nibblesToBigintLS(s: StackItem[]): bigint {
     let result = 0n;
     for (let i = 0; i < s.length; i++) {
@@ -20,6 +14,6 @@ export function bigintToNibblesLS(n: bigint, c?: number): number[] {
         result.push(Number(n & 0x7n));
         n = n >> 3n;
     }
-    if (n > 0) teaPot();
+    if (n > 0) throw new Error('Numeric remainder');
     return result;
 }

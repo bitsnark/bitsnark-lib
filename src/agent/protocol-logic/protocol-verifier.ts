@@ -1,7 +1,6 @@
 import { RawTransaction } from 'bitcoin-core';
 import { agentConf } from '../agent.conf';
-import { BitcoinNode } from '../bitcoin-node';
-import { AgentRoles, last, TransactionNames, twoDigits } from '../common';
+import { BitcoinNode } from '../common/bitcoin-node';
 import {
     Incoming,
     OutgoingStatus,
@@ -13,15 +12,23 @@ import {
     writeOutgoing,
     writeSetupStatus,
     writeTemplate
-} from '../db';
-import { createUniqueDataId, getTransactionByName, SpendingCondition, Transaction } from '../transactions-new';
+} from '../common/db';
+import {
+    createUniqueDataId,
+    getTransactionByName,
+    SpendingCondition,
+    Transaction,
+    twoDigits
+} from '../common/transactions';
 import { parseInput } from './parser';
 import { step1_vm } from '../../generator/ec_vm/vm/vm';
 import { vKey } from '../../generator/ec_vm/constants';
 import groth16Verify, { Key, Proof as Step1_Proof } from '../../generator/ec_vm/verifier';
 import { findErrorState } from './states';
-import { encodeWinternitz24, encodeWinternitz256_4 } from '../winternitz';
+import { encodeWinternitz24, encodeWinternitz256_4 } from '../common/winternitz';
 import { Argument } from './argument';
+import { last } from '../common/array-utils';
+import { TransactionNames, AgentRoles } from '../common/types';
 
 export class ProtocolVerifier {
     agentId: string;

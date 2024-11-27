@@ -1,7 +1,8 @@
 import { Bitcoin } from '../../generator/btc_vm/bitcoin';
 import { StackItem } from '../../generator/btc_vm/stack';
+import { prime_bigint } from '../common/constants';
 import { BtcArithmetic } from './btc-arithmetic';
-import { bigintToNibblesLS, prime_bigint } from './common';
+import { bigintToNibblesLS } from './nibbles';
 
 function getBitFromA(bitcoin: Bitcoin, a: StackItem[], bit: number): StackItem {
     const table: StackItem[] = [];

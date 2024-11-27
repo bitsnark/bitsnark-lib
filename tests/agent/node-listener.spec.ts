@@ -1,8 +1,8 @@
-import { NodeListener } from '../../src/agent/node-listener';
-import { readExpectedIncoming, writeIncomingTransaction } from '../../src/agent/db';
+import { NodeListener } from '../../src/agent/protocol-logic/node-listener';
+import { readExpectedIncoming, writeIncomingTransaction } from '../../src/agent/common/db';
 import Client from 'bitcoin-core';
 
-jest.mock('../../src/agent/db', () => ({
+jest.mock('../../src/agent/common/db', () => ({
     readExpectedIncoming: jest.fn(),
     writeIncomingTransaction: jest.fn()
 }));

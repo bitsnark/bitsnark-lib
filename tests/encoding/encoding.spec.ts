@@ -1,18 +1,18 @@
 import { describe, expect, it } from '@jest/globals';
 import {
-    _32To256BE,
-    _32To256LE,
     _256To32BE,
     _256To32LE,
+    _32To256BE,
+    _32To256LE,
     bigintToBufferBE,
     bitsToBigint,
     bufferToBigints256BE,
+    bytesFromBigint,
     hash,
     hashPair,
     padHex,
-    strToBigint,
-    bytesFromBigint
-} from '../../src/encoding/encoding';
+    strToBigint
+} from '../../src/agent/common/encoding';
 
 describe('strToBigint', () => {
     it('should convert a string to a bigint', () => {
@@ -27,10 +27,10 @@ describe('strToBigint', () => {
 
 describe('bigintToBufferBE', () => {
     it('should convert a bigint to a Buffer in big-endian order', () => {
-        expect(bigintToBufferBE(0n, 1)).toEqual(Buffer.from('00', 'hex'));
-        expect(bigintToBufferBE(123n, 2)).toEqual(Buffer.from('007b', 'hex'));
-        expect(bigintToBufferBE(123456789n, 4)).toEqual(Buffer.from('075bcd15', 'hex'));
-        expect(bigintToBufferBE(12345678901234567890n, 8)).toEqual(Buffer.from('ab54a98ceb1f0ad2', 'hex'));
+        expect(bigintToBufferBE(0n, 8)).toEqual(Buffer.from('00', 'hex'));
+        expect(bigintToBufferBE(123n, 16)).toEqual(Buffer.from('007b', 'hex'));
+        expect(bigintToBufferBE(123456789n, 32)).toEqual(Buffer.from('075bcd15', 'hex'));
+        expect(bigintToBufferBE(12345678901234567890n, 64)).toEqual(Buffer.from('ab54a98ceb1f0ad2', 'hex'));
     });
 });
 

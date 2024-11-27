@@ -1,7 +1,7 @@
 import { describe, expect, it } from '@jest/globals';
 
-import { DEAD_ROOT, SimpleTapTree } from '../../src/agent/simple-taptree';
-import { stringToBigint } from '../../src/encoding/encoding';
+import { DEAD_ROOT, SimpleTapTree } from '../../src/agent/common/taptree';
+import { stringToBigint } from '../../src/agent/common/encoding';
 
 describe('SimpleTapTree', () => {
     type Testcase = {

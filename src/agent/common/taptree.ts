@@ -1,11 +1,11 @@
-import { hasEvenY, lift_x, pointAdd, pointMul } from '../common/point';
-import { G, SECP256K1_ORDER, combineHashes, getHash, taprootVersion } from '../common/taproot-common';
-import { bigintFromBytes, bigintToBufferBE, bytesFromBigint, cat, padHex, taggedHash } from '../encoding/encoding';
+import { hasEvenY, lift_x, pointAdd, pointMul } from '../../common/point';
+import { G, SECP256K1_ORDER, combineHashes, getHash, taprootVersion } from '../../common/taproot-common';
+import { bigintFromBytes, bigintToBufferBE, bytesFromBigint, cat, padHex, taggedHash } from './encoding';
 
 import * as bitcoin from 'bitcoinjs-lib';
 import * as ecc from 'tiny-secp256k1';
-import { array, last } from './common';
 import assert from 'node:assert';
+import { array, last } from './array-utils';
 
 export const DEAD_ROOT = Buffer.from([0x6a, 0x6a, 0x6a, 0x6a, 0x6a, 0x6a, 0x6a, 0x6a]);
 
@@ -18,7 +18,7 @@ function toBinStringPad(n: number, l: number): string {
 }
 
 function taprootTweakPubkey(pubkey: bigint, h: Buffer): [bigint, Buffer | null] {
-    const t = bigintFromBytes(taggedHash('TapTweak', cat([bigintToBufferBE(pubkey, 32), h])));
+    const t = bigintFromBytes(taggedHash('TapTweak', cat([bigintToBufferBE(pubkey, 256), h])));
     if (t >= SECP256K1_ORDER) throw new Error('t >= SECP256K1_ORDER');
     const P = lift_x(pubkey);
     const Q = pointAdd(P, pointMul(G, t));
@@ -81,7 +81,7 @@ export class SimpleTapTree {
 
     public getScriptPubkey(): Buffer {
         const taproot = bitcoin.payments.p2tr({
-            internalPubkey: bigintToBufferBE(this.internalPubkey, 32),
+            internalPubkey: bigintToBufferBE(this.internalPubkey, 256),
             hash: this.getRoot(),
             network: bitcoin.networks.bitcoin
         });
@@ -174,7 +174,7 @@ export class Compressor {
 
     public static toPubKey(internalPubkey: bigint, root: Buffer): Buffer {
         const taproot = bitcoin.payments.p2tr({
-            internalPubkey: bigintToBufferBE(internalPubkey, 32),
+            internalPubkey: bigintToBufferBE(internalPubkey, 256),
             hash: root,
             network: bitcoin.networks.bitcoin
         });

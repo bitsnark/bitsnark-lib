@@ -1,12 +1,13 @@
 import assert from 'node:assert';
 import { FatMerkleProof } from './fat-merkle';
-import { bigintToBufferBE, bufferToBigintBE, encodeWinternitz24, encodeWinternitz256_4 } from '../winternitz';
-import { createUniqueDataId, Transaction } from '../transactions-new';
-import { TransactionNames } from '../common';
+import { encodeWinternitz24, encodeWinternitz256_4 } from '../common/winternitz';
+import { createUniqueDataId, Transaction } from '../common/transactions';
 import { InstrCode, Instruction } from '../../generator/ec_vm/vm/types';
 import { Decasector, StateCommitment } from './decasector';
 import { DoomsdayGenerator, RefutationType } from '../final-step/doomsday-generator';
-import { prime_bigint } from '../final-step/common';
+import { prime_bigint } from '../common/constants';
+import { bigintToBufferBE, bufferToBigintBE } from '../common/encoding';
+import { TransactionNames } from '../common/types';
 
 function calculateD(a: bigint, b: bigint): bigint {
     return (a * b) / prime_bigint;

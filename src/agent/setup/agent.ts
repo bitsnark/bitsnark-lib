@@ -1,8 +1,6 @@
-import { agentConf, ONE_BITCOIN } from './agent.conf';
-import { AgentRoles, FundingUtxo } from './common';
-import { bigintToString, stringToBigint } from '../encoding/encoding';
+import { agentConf, ONE_BITCOIN } from '../agent.conf';
+import { bigintToString, stringToBigint } from '../common/encoding';
 import { generateAllScripts } from './generate-scripts';
-import { addAmounts } from './amounts';
 import {
     DoneMessage,
     fromJson,
@@ -15,10 +13,12 @@ import {
     TransactionsMessage
 } from './messages';
 import { SimpleContext, TelegramBot } from './telegram';
-import { getTransactionByName, initializeTransactions, mergeWots, Transaction } from './transactions-new';
-import { signTransactions } from './sign-transactions';
+import { getTransactionByName, initializeTransactions, mergeWots, Transaction } from '../common/transactions';
 import { verifySetup } from './verify-setup';
-import { signMessage, verifyMessage } from './schnorr';
+import { signMessage, verifyMessage } from '../common/schnorr';
+import { addAmounts } from './amounts';
+import { signTransactions } from './sign-transactions';
+import { AgentRoles, FundingUtxo } from '../common/types';
 
 interface AgentInfo {
     agentId: string;

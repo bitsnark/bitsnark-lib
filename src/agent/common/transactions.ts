@@ -1,7 +1,11 @@
-import { TransactionNames, AgentRoles, FundingUtxo, iterations, twoDigits, random, array } from './common';
-import { bigintToBufferBE, encodeWinternitz, getWinternitzPublicKeys, WOTS_NIBBLES, WotsType } from './winternitz';
-import { agentConf } from './agent.conf';
+import { encodeWinternitz, getWinternitzPublicKeys, WOTS_NIBBLES, WotsType } from './winternitz';
+import { agentConf } from '../agent.conf';
 import { dev_ClearTemplates, SetupStatus, writeSetupStatus, writeTemplates } from './db';
+import { bigintToBufferBE } from './encoding';
+import { AgentRoles, FundingUtxo, iterations, TransactionNames } from './types';
+import { array } from './array-utils';
+
+export const twoDigits = (n: number) => (n < 10 ? `0${n}` : `${n}`);
 
 export const PROTOCOL_VERSION = 0.2;
 
@@ -453,6 +457,15 @@ function makeProtocolSteps(): Transaction[] {
     return result;
 }
 
+export function random(bytes: number): bigint {
+    let n = 0n;
+    for (let i = 0; i < bytes; i++) {
+        n = n << 8n;
+        n += BigInt(Math.round(255 * Math.random()) & 0xff);
+    }
+    return n;
+}
+
 export function mergeWots(role: AgentRoles, mine: Transaction[], theirs: Transaction[]): Transaction[] {
     const notNull = (t: Buffer[][] | undefined) => {
         if (!t) throw new Error('Null error');
@@ -679,10 +692,10 @@ export async function initializeTransactions(
             if (!spend) throw new Error('Invalid spending condition: ' + input.spendingConditionIndex);
             spend.signaturesPublicKeys = [];
             if (spend.signatureType == SignatureType.PROVER || spend.signatureType == SignatureType.BOTH) {
-                spend.signaturesPublicKeys.push(bigintToBufferBE(proverPublicKey, 32));
+                spend.signaturesPublicKeys.push(bigintToBufferBE(proverPublicKey, 256));
             }
             if (spend.signatureType == SignatureType.VERIFIER || spend.signatureType == SignatureType.BOTH) {
-                spend.signaturesPublicKeys.push(bigintToBufferBE(verifierPublicKey, 32));
+                spend.signaturesPublicKeys.push(bigintToBufferBE(verifierPublicKey, 256));
             }
         }
     }

@@ -1,6 +1,7 @@
-import { bigintToNibblesLS, nibblesToBigintLS, prime_bigint } from './common';
 import { BtcArithmetic } from './btc-arithmetic';
 import { Bitcoin } from '../../generator/btc_vm/bitcoin';
+import { prime_bigint } from '../common/constants';
+import { bigintToNibblesLS, nibblesToBigintLS } from './nibbles';
 
 export function verifyAddMod(bitcoin: Bitcoin, a: bigint, b: bigint, c: bigint): BtcArithmetic {
     console.log('a', a);
