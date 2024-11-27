@@ -18,8 +18,8 @@
   "scripts": {
     "test": "jest",
     "py-install": "./python/run-in-venv.sh echo done",
-    "generate-tx": "ts-node ./src/agent/common/transactions.ts",
-    "generate-tx-clear": "ts-node ./src/agent/common/transactions.ts --clear",
+    "generate-tx": "ts-node ./src/agent/setup/init-templates.ts",
+    "generate-tx-clear": "ts-node ./src/agent/setup/init-templates.ts --clear",
     "generate-scripts": "ts-node ./src/agent/setup/generate-scripts.ts",
     "add-amounts": "ts-node ./src/agent/setup/amounts.ts",
     "sign-tx": "./python/run-in-venv.sh ts-node ./src/agent/setup/sign-transactions.ts",

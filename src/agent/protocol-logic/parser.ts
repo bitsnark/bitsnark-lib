@@ -3,8 +3,8 @@ import { decodeWinternitz, WOTS_NIBBLES } from '../common/winternitz';
 
 function hashesFromBuffer(data: Buffer): Buffer[] {
     const result: Buffer[] = [];
-    for (let i = 0; i < data.length; i++) {
-        result.push(data.subarray(i * 20, (i + 1) * 20));
+    for (let i = 0; i < data.length; i += 20) {
+        result.push(data.subarray(i, i + 20));
     }
     return result;
 }

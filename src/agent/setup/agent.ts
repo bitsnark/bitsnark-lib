@@ -13,13 +13,14 @@ import {
     TransactionsMessage
 } from './messages';
 import { SimpleContext, TelegramBot } from './telegram';
-import { getTransactionByName, initializeTransactions, mergeWots, Transaction } from '../common/transactions';
+import { getTransactionByName, Transaction } from '../common/transactions';
 import { verifySetup } from './verify-setup';
 import { signMessage, verifyMessage } from '../common/schnorr';
 import { addAmounts } from './amounts';
 import { signTransactions } from './sign-transactions';
-import { setWotsPublicKeysForArgument } from './wots-keys';
 import { AgentRoles, FundingUtxo } from '../common/types';
+import { initializeTemplates } from './init-templates';
+import { mergeWots, setWotsPublicKeysForArgument } from './wots-keys';
 
 interface AgentInfo {
     agentId: string;
@@ -201,7 +202,7 @@ export class Agent {
 
         this.verifyMessage(message, i);
 
-        i.transactions = await initializeTransactions(
+        i.transactions = await initializeTemplates(
             this.agentId,
             AgentRoles.VERIFIER,
             i.setupId,
@@ -238,7 +239,7 @@ export class Agent {
 
         this.verifyMessage(message, i);
 
-        i.transactions = await initializeTransactions(
+        i.transactions = await initializeTemplates(
             this.agentId,
             AgentRoles.PROVER,
             i.setupId,
@@ -256,12 +257,7 @@ export class Agent {
     private async sendTransactions(ctx: SimpleContext, setupId: string) {
         const i = this.getInstance(setupId);
 
-        const transactionsMessage = new TransactionsMessage({
-            setupId,
-            transactions: i.transactions,
-            agentId: this.agentId
-        });
-
+        const transactionsMessage = TransactionsMessage.make(this.agentId, i.setupId, i.transactions!);
         await this.signMessageAndSend(ctx, transactionsMessage);
     }
 
@@ -278,7 +274,7 @@ export class Agent {
 
         // copy their wots pubkeys to ours
         i.transactions = mergeWots(i.myRole, i.transactions!, message.transactions!);
-        if (this.role == AgentRoles.PROVER) setWotsPublicKeysForArgument( i.transactions!);
+        setWotsPublicKeysForArgument(i.transactions!);
 
         i.state = SetupState.SIGNATURES;
 

@@ -1,4 +1,3 @@
-import assert from 'node:assert';
 import { FatMerkleProof } from './fat-merkle';
 import { encodeWinternitz24, encodeWinternitz256_4 } from '../common/winternitz';
 import { createUniqueDataId, Transaction } from '../common/transactions';
@@ -25,28 +24,17 @@ export class Argument {
         this.proof = proof;
     }
 
-    private makeIndexWitness(outputIndex: number): Buffer[] {
+    private makeIndexWitness(): Buffer[] {
         return [
             ...this.selectionPathUnparsed,
             encodeWinternitz24(
                 BigInt(this.index),
-                createUniqueDataId(
-                    this.setupId,
-                    TransactionNames.ARGUMENT,
-                    outputIndex,
-                    0,
-                    this.selectionPathUnparsed.length
-                )
+                createUniqueDataId(this.setupId, TransactionNames.ARGUMENT, 0, 0, this.selectionPathUnparsed.length)
             )
         ].flat();
     }
 
-    private makeAbcdWitness(
-        scBefore: StateCommitment,
-        scAfter: StateCommitment,
-        instr: Instruction,
-        outputIndex: number
-    ): Buffer[] {
+    private makeAbcdWitness(scBefore: StateCommitment, scAfter: StateCommitment, instr: Instruction): Buffer[] {
         const aValue = scBefore.getValueForRuntimeIndex(instr.param1);
         const bValue = instr.param2 ? scBefore.getValueForRuntimeIndex(instr.param2) : 0n;
         const cValue = scAfter.getValueForRuntimeIndex(instr.target);
@@ -54,17 +42,15 @@ export class Argument {
             instr.name == InstrCode.MULMOD || instr.name == InstrCode.DIVMOD ? calculateD(aValue, bValue) : 0n;
         return [aValue, bValue, cValue, dValue]
             .map((n, dataIndex) =>
-                encodeWinternitz256_4(
-                    n,
-                    createUniqueDataId(this.setupId, TransactionNames.ARGUMENT, outputIndex, 0, dataIndex)
-                )).flat();
+                encodeWinternitz256_4(n, createUniqueDataId(this.setupId, TransactionNames.ARGUMENT, 1, 0, dataIndex))
+            )
+            .flat();
     }
 
     private async makeMerkleProofsWitness(
         scBefore: StateCommitment,
         scAfter: StateCommitment,
-        instr: Instruction,
-        outputIndex: number
+        instr: Instruction
     ): Promise<Buffer[][]> {
         const valuesBefore = scBefore.getValues();
         const valuesAfter = scAfter.getValues();
@@ -79,11 +65,15 @@ export class Argument {
 
         const hashes = [merkleProofA.toArgument(), merkleProofB.toArgument(), merkleProofC.toArgument()];
         const encoded = hashes.map((o, oi) =>
-            o.map((b, dataIndex) =>
-                encodeWinternitz256_4(
-                    bufferToBigintBE(b),
-                    createUniqueDataId(this.setupId, TransactionNames.ARGUMENT, outputIndex + oi, 0, dataIndex)
-                )).flat());
+            o
+                .map((b, dataIndex) =>
+                    encodeWinternitz256_4(
+                        bufferToBigintBE(b),
+                        createUniqueDataId(this.setupId, TransactionNames.ARGUMENT, 2 + oi, 0, dataIndex)
+                    )
+                )
+                .flat()
+        );
         return encoded;
     }
 
@@ -100,9 +90,9 @@ export class Argument {
         const scAfter = decasector.stateCommitmentByLine[this.index];
         const instr = decasector.savedVm.program[this.index];
         const outputs: Buffer[][] = [
-            this.makeIndexWitness(0),
-            this.makeAbcdWitness(scBefore, scAfter, instr, 1),
-            ...(await this.makeMerkleProofsWitness(scBefore, scAfter, instr, 2))
+            this.makeIndexWitness(),
+            this.makeAbcdWitness(scBefore, scAfter, instr),
+            ...(await this.makeMerkleProofsWitness(scBefore, scAfter, instr))
         ];
         return outputs;
     }
@@ -121,7 +111,6 @@ export class Argument {
         argData: bigint[][],
         states: Buffer[][]
     ): Promise<{ data: bigint[]; script: Buffer; controlBlock: Buffer }> {
-
         // first input is the selection path, 6 selections and then the index
         // the selection path can't be wrong, becaue of the winternitz signature on it
         this.selectionPath = argData[0].slice(0, 6).map((n) => Number(n));

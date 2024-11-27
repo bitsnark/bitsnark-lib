@@ -21,7 +21,7 @@ export const proof = {
     ]
 };
 
-let t = [
+const t = [
     proof.pi_a[0],
     proof.pi_a[1],
     proof.pi_b[0][1],

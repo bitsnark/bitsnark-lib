@@ -3,10 +3,11 @@ import { addAmounts } from './amounts';
 import { dev_ClearTemplates, SetupStatus, writeSetupStatus, writeTemplates } from '../common/db';
 import { generateAllScripts } from './generate-scripts';
 import { signTransactions } from './sign-transactions';
-import { initializeTransactions, mergeWots, getSpendingConditionByInput, SignatureType } from '../common/transactions';
+import { getSpendingConditionByInput, SignatureType } from '../common/transactions';
 import { verifySetup } from './verify-setup';
-import { setWotsPublicKeysForArgument } from './wots-keys';
+import { mergeWots, setWotsPublicKeysForArgument } from './wots-keys';
 import { AgentRoles } from '../common/types';
+import { initializeTemplates } from './init-templates';
 
 export async function emulateSetup(
     proverAgentId: string,
@@ -35,7 +36,7 @@ export async function emulateSetup(
 
     console.log('generating templates...');
 
-    let proverTemplates = await initializeTransactions(
+    let proverTemplates = await initializeTemplates(
         proverAgentId,
         AgentRoles.PROVER,
         setupId,
@@ -44,7 +45,7 @@ export async function emulateSetup(
         mockLockedFunds,
         mockPayload
     );
-    let verifierTemplates = await initializeTransactions(
+    let verifierTemplates = await initializeTemplates(
         verifierAgentId,
         AgentRoles.VERIFIER,
         setupId,
@@ -59,9 +60,10 @@ export async function emulateSetup(
     if (proverTemplates.length != verifierTemplates.length) throw new Error('Invalid length of template list?');
 
     proverTemplates = mergeWots(AgentRoles.PROVER, proverTemplates, verifierTemplates);
-    setWotsPublicKeysForArgument(proverTemplates);
-    
     verifierTemplates = mergeWots(AgentRoles.VERIFIER, verifierTemplates, proverTemplates);
+
+    setWotsPublicKeysForArgument(proverTemplates);
+    setWotsPublicKeysForArgument(verifierTemplates);
 
     console.log('generating scripts...');
 
