@@ -14,7 +14,7 @@ export function verifyMerkleProof(proof: _256[], index: number) {
     }
     sha256.free();
     for (let i = 0; i < 8; i++) {
-        step2_vm.assertEq(proof[0][i], proof[proof.length-1][i]);
-        if (proof[0][i] != proof[proof.length-1][i]) break;
+        step2_vm.assertEq(proof[0][i], proof[proof.length - 1][i]);
+        if (proof[0][i] != proof[proof.length - 1][i]) break;
     }
 }
