@@ -51,8 +51,8 @@ def btc_rpc(docker_compose) -> BitcoinRPC:
         rpc.mine_blocks(required)
 
     # This is not there :(
-    #blockchaininfo = rpc.call('getblockchaininfo')
-    #assert blockchaininfo['bip9_softforks']['segwit']['status'] == 'active'
+    # blockchaininfo = rpc.call('getblockchaininfo')
+    # assert blockchaininfo['bip9_softforks']['segwit']['status'] == 'active'
 
     return rpc
 
