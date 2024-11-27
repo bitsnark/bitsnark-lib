@@ -41,7 +41,11 @@ async function runQuery(sql: string, params: any[] = []) {
         const result = await client.query(sql, params);
         return result;
     } catch (e) {
-        console.error(e);
+        if (e instanceof Error) {
+            console.error(e.message);
+        } else {
+            console.error(e);
+        }
         throw e;
     } finally {
         await client.end();
@@ -59,7 +63,11 @@ async function runDBTransaction(queries: [string, (string | number | boolean)[]]
         return true;
     } catch (e) {
         await client.query('ROLLBACK');
-        console.error(e);
+        if (e instanceof Error) {
+            console.error(e.message);
+        } else {
+            console.error(e);
+        }
         throw e;
     } finally {
         await client.end();
@@ -219,7 +227,6 @@ export async function readTemplates(agentId: string, setupId?: string): Promise<
             agent_id = $1 ` +
             (setupId ? ` AND setup_id = $2` : '') +
             ` ORDER BY ordinal ASC `,
-
         [agentId, setupId]
     );
     const results = [...result];
