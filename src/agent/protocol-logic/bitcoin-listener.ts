@@ -2,7 +2,7 @@ import { Transaction } from '../common/transactions';
 import { agentConf } from '../agent.conf';
 import { BitcoinNode } from '../common/bitcoin-node';
 import { RawTransaction } from 'bitcoin-core';
-import { AgentDb, EnrichedTemplate } from '../common/db';
+import { AgentDb, ExpectedTemplate } from '../common/db';
 
 export interface expectByInputs {
     setupId: string;
@@ -35,12 +35,11 @@ export class BitcoinListener {
     }
 
     async monitorTransmitted(): Promise<void> {
-        const pending = await this.db.getExpectedTemplates();
+        const templates = await this.db.getExpectedTemplates();
+        const pending = templates.filter((template) => template.blockHash === null);
         if (pending.length === 0) return;
 
-        let blockHeight = (pending[0].lastCheckedBlockHeight ?? pending[0].signedAtBlockHeight ?? 0) + 1;
-
-        const setups = await this.db.getActiveSetups();
+        let blockHeight = (pending[0].lastCheckedBlockHeight ?? 0) + 1;
 
         // No re-organization support - we just wait for blocks to be finalized.
         while (blockHeight <= this.tipHeight - agentConf.blocksUntilFinalized) {
@@ -54,7 +53,7 @@ export class BitcoinListener {
                     else
                         transmittedTx = await this.getTransactionByInputs(
                             pendingTx.object,
-                            setups.find((setup) => setup.id === pendingTx.setupId)!.templates,
+                            templates.filter((template) => template.setupId === pendingTx.setupId),
                             blockHash
                         );
 
@@ -84,21 +83,21 @@ export class BitcoinListener {
 
     private async getTransactionByInputs(
         pendingTx: Transaction,
-        setupTemplates: EnrichedTemplate[],
+        setupTemplates: ExpectedTemplate[],
         blockHash: string
     ): Promise<RawTransaction | undefined> {
         try {
             const searchBy: [string, number][] = [];
             for (const input of pendingTx.inputs) {
                 const parentTemplate = setupTemplates.find(
-                    (template) => input.transactionName === template.name && template.transactionHash
+                    (template) => input.transactionName === template.name && template.txId
                 );
 
                 if (parentTemplate === undefined) return undefined;
 
-                const utxo = await this.client.getTxOut(parentTemplate.transactionHash!, input.outputIndex, false);
+                const utxo = await this.client.getTxOut(parentTemplate.txId!, input.outputIndex, false);
                 if (utxo !== null) return undefined;
-                searchBy.push([parentTemplate.transactionHash!, input.outputIndex]);
+                searchBy.push([parentTemplate.txId!, input.outputIndex]);
             }
 
             const blockTxs = (await this.client.getBlock(blockHash)).tx;

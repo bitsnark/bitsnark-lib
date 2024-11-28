@@ -2,7 +2,6 @@ CREATE TABLE setups (
     id CHARACTER VARYING PRIMARY KEY,
     protocol_version CHARACTER VARYING NOT NULL,
     status CHARACTER VARYING NOT NULL,
-    signed_at_block_height INTEGER NULL,
     last_checked_block_height INTEGER NULL,
     created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );

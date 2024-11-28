@@ -38,15 +38,6 @@ describe('BitcoinListener', () => {
         jest.spyOn(nodeListener.db, 'getExpectedTemplates').mockImplementation(jest.fn());
         jest.spyOn(nodeListener.db, 'markReceived').mockImplementation(jest.fn());
         jest.spyOn(nodeListener.db, 'updateLastCheckedBlockHeightBatch').mockImplementation(jest.fn());
-        jest.spyOn(nodeListener.db, 'getActiveSetups').mockResolvedValue([
-            {
-                id: 'setup_id',
-                protocolVersion: '0.2',
-                status: 5,
-                lastCheckedBlockHeight: 100,
-                templates: getmockExpected()
-            }
-        ]);
     });
 
     afterEach(() => {
@@ -177,7 +168,7 @@ describe('BitcoinListener', () => {
             tx: [txIdBySetupAndName('test_setup_1', TransactionNames.CHALLENGE)]
         });
         (clientMock.getRawTransaction as jest.Mock).mockImplementationOnce(() =>
-            Promise.resolve(getMockRawChallengeTx('test_setup_1'))
+            Promise.resolve(getMockRawChallengeTx('test_setup_1', 'hash101'))
         );
 
         await nodeListener.monitorTransmitted();
@@ -194,10 +185,16 @@ describe('BitcoinListener', () => {
         (clientMock.getTxOut as jest.Mock).mockResolvedValue(null);
         (clientMock.getRawTransaction as jest.Mock)
             .mockImplementationOnce(() =>
-                Promise.resolve({ txid: txIdBySetupAndName('test_setup_1', TransactionNames.LOCKED_FUNDS) })
+                Promise.resolve({
+                    txid: txIdBySetupAndName('test_setup_1', TransactionNames.LOCKED_FUNDS),
+                    blockhash: 'hash101'
+                })
             )
             .mockImplementationOnce(() =>
-                Promise.resolve({ txid: txIdBySetupAndName('test_setup_1', TransactionNames.PROVER_STAKE) })
+                Promise.resolve({
+                    txid: txIdBySetupAndName('test_setup_1', TransactionNames.PROVER_STAKE),
+                    blockhash: 'hash101'
+                })
             );
 
         await nodeListener.monitorTransmitted();
@@ -206,14 +203,21 @@ describe('BitcoinListener', () => {
         jest.spyOn(nodeListener.db, 'markReceived').mockImplementation(jest.fn());
         expect(nodeListener.db.markReceived).toHaveBeenCalledTimes(2);
         expect(nodeListener.db.markReceived).toHaveBeenCalledWith(
-            { txid: txIdBySetupAndName('test_setup_1', TransactionNames.LOCKED_FUNDS) },
+            'test_setup_1',
+            TransactionNames.LOCKED_FUNDS,
+            txIdBySetupAndName('test_setup_1', TransactionNames.LOCKED_FUNDS),
+            'hash101',
             101,
-            0
+            { txid: txIdBySetupAndName('test_setup_1', TransactionNames.LOCKED_FUNDS), blockhash: 'hash101' }
         );
+
         expect(nodeListener.db.markReceived).toHaveBeenCalledWith(
-            { txid: txIdBySetupAndName('test_setup_1', TransactionNames.PROVER_STAKE) },
+            'test_setup_1',
+            TransactionNames.PROVER_STAKE,
+            txIdBySetupAndName('test_setup_1', TransactionNames.PROVER_STAKE),
+            'hash101',
             101,
-            1
+            { txid: txIdBySetupAndName('test_setup_1', TransactionNames.PROVER_STAKE), blockhash: 'hash101' }
         );
     });
 
@@ -233,7 +237,7 @@ describe('BitcoinListener', () => {
             tx: [txIdBySetupAndName('test_setup_1', TransactionNames.CHALLENGE)]
         });
         (clientMock.getRawTransaction as jest.Mock).mockImplementationOnce(() =>
-            Promise.resolve(getMockRawChallengeTx('test_setup_1'))
+            Promise.resolve(getMockRawChallengeTx('test_setup_1', 'hash101'))
         );
 
         await nodeListener.monitorTransmitted();
@@ -241,7 +245,14 @@ describe('BitcoinListener', () => {
         expect(clientMock.getRawTransaction).toHaveBeenCalledTimes(2);
         jest.spyOn(nodeListener.db, 'markReceived').mockImplementation(jest.fn());
         expect(nodeListener.db.markReceived).toHaveBeenCalledTimes(1);
-        expect(nodeListener.db.markReceived).toHaveBeenCalledWith(getMockRawChallengeTx('test_setup_1'), 101, 3);
+        expect(nodeListener.db.markReceived).toHaveBeenCalledWith(
+            'test_setup_1',
+            TransactionNames.CHALLENGE,
+            txIdBySetupAndName('test_setup_1', TransactionNames.CHALLENGE),
+            'hash101',
+            101,
+            getMockRawChallengeTx('test_setup_1', 'hash101')
+        );
     });
 
     it('Should update listener height in setups', async () => {

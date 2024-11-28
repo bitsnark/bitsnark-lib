@@ -90,7 +90,6 @@ export interface Setup {
     id: string;
     protocolVersion: string;
     status: SetupStatus;
-    signedAtBlockHeight?: number;
     lastCheckedBlockHeight?: number;
 }
 
@@ -100,15 +99,15 @@ export interface EnrichedTemplate {
     isExternal: boolean;
     ordinal: number;
     object: Transaction;
-    outgoingStatus?: OutgoingStatus;
-    transactionHash?: string;
-    blockHash?: string;
-    blockHeight?: number;
-    rawTransaction?: RawTransaction;
+    outgoingStatus: OutgoingStatus | null;
+    txId: string | null;
+    blockHash: string | null;
+    blockHeight: number | null;
+    rawTransaction: RawTransaction | null;
 }
 
 export interface ReceivedTransaction extends EnrichedTemplate {
-    transactionHash: string;
+    txId: string;
     blockHash: string;
     blockHeight: number;
     rawTransaction: RawTransaction;
@@ -141,8 +140,8 @@ export class AgentDb extends Db {
 
     private static expectedTemplatesFields = `
         ${AgentDb.enrichedTemplatesFields},
-        setups.id, setups.protocol_version, setups.status,
-        setups.signed_at_block_height, setups.last_checked_block_height`;
+        setups.id, setups.protocol_version,
+        setups.status, setups.last_checked_block_height`;
 
     private static enrichedTemplateReader(row: ResultRow<ResultRecord>): EnrichedTemplate {
         const template: EnrichedTemplate = {
@@ -151,14 +150,12 @@ export class AgentDb extends Db {
             isExternal: row[2] as boolean,
             ordinal: row[3] as number,
             object: jsonParseCustom(JSON.stringify(row[4])),
-            outgoingStatus: row[5] ? OutgoingStatus[row[5] as keyof typeof OutgoingStatus] : undefined
+            outgoingStatus: row[5] ? OutgoingStatus[row[5] as keyof typeof OutgoingStatus] : null,
+            txId: row[6] as string | null,
+            rawTransaction: row[7] ? JSON.parse(row[7] as string) : null,
+            blockHash: row[8] as string | null,
+            blockHeight: row[9] as number | null
         };
-        if (row[6]) {
-            template.transactionHash = row[6] as string;
-            template.rawTransaction = JSON.parse(row[7] as string);
-            template.blockHash = row[8] as string;
-            template.blockHeight = row[9] as number;
-        }
         return template;
     }
 
@@ -168,8 +165,7 @@ export class AgentDb extends Db {
             setupId: row[10] as string,
             protocolVersion: row[11] as string,
             setupStatus: SetupStatus[row[12] as keyof typeof SetupStatus],
-            signedAtBlockHeight: row[13] as number,
-            lastCheckedBlockHeight: row[14] as number
+            lastCheckedBlockHeight: row[13] as number
         };
     }
 
@@ -189,8 +185,9 @@ export class AgentDb extends Db {
                 args: [setupId, agentConf.protocolVersion, SetupStatus[SetupStatus.PENDING]]
             },
             ...templates.map((template) => ({
-                sql: `INSERT INTO templates (setup_id, name, role, is_external, ordinal, object, outgoing_status)
-                VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+                sql: `
+                    INSERT INTO templates (setup_id, name, role, is_external, ordinal, object, outgoing_status)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7)`,
                 args: [
                     setupId,
                     template.transactionName,
@@ -242,10 +239,11 @@ export class AgentDb extends Db {
     public async upsertTemplates(setupId: string, templates: Transaction[]) {
         await this.session(
             templates.map((template) => ({
-                sql: `INSERT INTO templates (setup_id, name, role, is_external, ordinal, object, outgoing_status)
-                VALUES ($1, $2, $3, $4, $5, $6, $7)
-                ON CONFLICT(setup_id, name) DO UPDATE SET
-                    role = $3, is_external = $4, ordinal = $5, object = $6, updated_at = NOW()`,
+                sql: `
+                    INSERT INTO templates (setup_id, name, role, is_external, ordinal, object, outgoing_status)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7)
+                    ON CONFLICT(setup_id, name) DO UPDATE SET
+                        role = $3, is_external = $4, ordinal = $5, object = $6, updated_at = NOW()`,
                 args: [
                     setupId,
                     template.transactionName,
@@ -262,10 +260,10 @@ export class AgentDb extends Db {
     public async markToSend(setupId: string, templateName: string, data?: Buffer[][]) {
         await this.query(
             `
-            UPDATE templates
-            SET updated = NOW(), data = $1, status = $2
-            WHERE setup_id = $3 AND name = $4
-        `,
+                UPDATE templates
+                SET updated = NOW(), data = $1, status = $2
+                WHERE setup_id = $3 AND name = $4
+            `,
             [
                 data ? JSON.stringify(data.map((data) => data.map((buffer) => buffer.toString('hex')))) : null,
                 OutgoingStatus[OutgoingStatus.READY],
@@ -294,9 +292,9 @@ export class AgentDb extends Db {
 
         await this.query(
             `
-            INSERT INTO received (template_id, transaction_hash, block_hash, block_height, raw_transaction)
-            VALUES ((SELECT id FROM templates WHERE setup_id = $1 AND name = $2), $3, $4, $5, $6)
-        `,
+                INSERT INTO received (template_id, transaction_hash, block_hash, block_height, raw_transaction)
+                VALUES ((SELECT id FROM templates WHERE setup_id = $1 AND name = $2), $3, $4, $5, $6)
+            `,
             [setupId, transactionName, txId, blockHash, blockHeight, JSON.stringify(rawTransaction)]
         );
     }
@@ -305,11 +303,11 @@ export class AgentDb extends Db {
         return (
             await this.query<EnrichedTemplate>(
                 `
-            SELECT ${AgentDb.enrichedTemplatesFields}
-            FROM templates
-            LEFT JOIN received ON templates.id = received.template_id
-            WHERE setup_id = $1 AND name = $2
-        `,
+                SELECT ${AgentDb.enrichedTemplatesFields}
+                FROM templates
+                LEFT JOIN received ON templates.id = received.template_id
+                WHERE setup_id = $1 AND name = $2
+            `,
                 [setupId, name]
             )
         ).rows.map(AgentDb.enrichedTemplateReader)[0];
@@ -350,6 +348,7 @@ export class AgentDb extends Db {
             FROM templates
             LEFT JOIN received ON templates.id = received.template_id
             JOIN setups ON templates.setup_id = setups.id
+            WHERE received.template_id IS NULL
             ORDER BY last_checked_block_height ASC, ordinal ASC
         `)
         ).rows.map(AgentDb.expectedTemplateReader);
@@ -359,12 +358,12 @@ export class AgentDb extends Db {
         return (
             await this.query<EnrichedTemplate>(
                 `
-            SELECT ${AgentDb.enrichedTemplatesFields}
-            FROM templates
-            LEFT JOIN received ON templates.id = received.template_id
-            WHERE templates.setup_id = $1
-            ORDER BY ordinal ASC
-        `,
+                    SELECT ${AgentDb.enrichedTemplatesFields}
+                    FROM templates
+                    LEFT JOIN received ON templates.id = received.template_id
+                    WHERE templates.setup_id = $1
+                    ORDER BY ordinal ASC
+                `,
                 [setupId]
             )
         ).rows.map(AgentDb.enrichedTemplateReader);
@@ -374,12 +373,12 @@ export class AgentDb extends Db {
         return (
             await this.query<EnrichedTemplate>(
                 `
-            SELECT ${AgentDb.enrichedTemplatesFields}
-            FROM templates
-            JOIN received ON templates.id = received.template_id
-            WHERE templates.setup_id = $1
-            ORDER BY ordinal ASC
-        `,
+                    SELECT ${AgentDb.enrichedTemplatesFields}
+                    FROM templates
+                    JOIN received ON templates.id = received.template_id
+                    WHERE templates.setup_id = $1
+                    ORDER BY ordinal ASC
+                `,
                 [setupId]
             )
         ).rows.map(AgentDb.enrichedTemplateReader) as ReceivedTransaction[];
@@ -391,10 +390,10 @@ export class AgentDb extends Db {
         const setup = (
             await this.query<Setup>(
                 `
-            SELECT id, protocol_version, status, signed_at_block_height, last_checked_block_height
-            FROM setups
-            WHERE id = $1
-        `,
+                    SELECT id, protocol_version, status, last_checked_block_height
+                    FROM setups
+                    WHERE id = $1
+                `,
                 [setupId]
             )
         ).rows[0];
@@ -402,8 +401,7 @@ export class AgentDb extends Db {
             id: setup[0] as string,
             protocolVersion: setup[1] as string,
             status: SetupStatus[setup[2] as keyof typeof SetupStatus],
-            signedAtBlockHeight: setup[3] as number,
-            lastCheckedBlockHeight: setup[4] as number,
+            lastCheckedBlockHeight: setup[3] as number,
             templates,
             received
         };

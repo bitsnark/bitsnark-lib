@@ -10,11 +10,10 @@ const templates = [
     TransactionNames.PROOF_UNCONTESTED
 ];
 
-const IncomingTransactionsBaseRow = {
+const IncomingTransactionsBaseRow: ExpectedTemplate = {
     setupId: 'setup_id',
-    setupStatus: SetupStatus?.ACTIVE,
+    setupStatus: SetupStatus.ACTIVE,
     protocolVersion: '0.2',
-    signedAtBlockHeight: undefined,
     lastCheckedBlockHeight: 100,
     name: 'name',
     role: AgentRoles.PROVER,
@@ -30,30 +29,14 @@ const IncomingTransactionsBaseRow = {
         protocolVersion: '0.2',
         transactionName: 'transaction_name'
     },
-    outgoingStatus: OutgoingStatus?.PENDING,
-    transactionHash: 'transaction_hash',
-    blockHash: 'block_hash',
-    blockHeight: 100,
-    rawTransaction: {
-        txid: 'tx_id',
-        hash: 'hash',
-        hex: 'hex',
-        size: 100,
-        vsize: 100,
-        weight: 100,
-        version: 1,
-        locktime: 1,
-        vin: [],
-        vout: [],
-        hexWithWitness: 'hex_with_witness',
-        blockhash: 'block_hash',
-        confirmations: 100,
-        time: 100,
-        blocktime: 100
-    }
+    outgoingStatus: OutgoingStatus.PENDING,
+    rawTransaction: null,
+    txId: null,
+    blockHash: null,
+    blockHeight: null
 };
 
-const setups = ['setup_id'];
+const setups = ['test_setup_1'];
 
 export function txIdBySetupAndName(setupId: string, transactionName: string) {
     return `${setupId}_tx_${transactionName}`;
@@ -64,7 +47,7 @@ export const mockExpected = (function createSetupsIncomingTransactions(): Expect
         return templates.map((templateName, index) => {
             return {
                 ...IncomingTransactionsBaseRow,
-                transactionName: templateName,
+                name: templateName,
                 setupId: setupId,
                 object: {
                     ...IncomingTransactionsBaseRow.object,
@@ -74,7 +57,8 @@ export const mockExpected = (function createSetupsIncomingTransactions(): Expect
                     setupId: setupId,
                     transactionName: templateName,
                     temporaryTxId: templateName === TransactionNames.CHALLENGE
-                }
+                },
+                outgoingStatus: OutgoingStatus.PENDING
             };
         });
     });
@@ -108,10 +92,28 @@ function getInputs(templateName: string): Input[] {
 
 export function getmockExpected(markIncoming?: Set<string>) {
     return mockExpected.map((expectedTx) => {
-        if (markIncoming?.has(expectedTx.transactionHash!)) {
+        if (markIncoming?.has(expectedTx.object.txId!)) {
             return {
                 ...expectedTx,
-                incomingTxId: expectedTx.transactionHash
+                txId: expectedTx.object.txId ?? null,
+                blockHash: 'block_hash',
+                blockHeight: 100,
+                rawTransaction: {
+                    txid: '',
+                    hash: 'hash',
+                    hex: 'hex',
+                    size: 100,
+                    vsize: 100,
+                    weight: 100,
+                    version: 1,
+                    locktime: 1,
+                    vin: [],
+                    vout: [],
+                    blockhash: 'block_hash',
+                    confirmations: 100,
+                    time: 100,
+                    blocktime: 100
+                }
             };
         } else {
             return expectedTx;
@@ -119,12 +121,13 @@ export function getmockExpected(markIncoming?: Set<string>) {
     });
 }
 
-export function getMockRawChallengeTx(setupId: string) {
+export function getMockRawChallengeTx(setupId: string, blockhash: string) {
     return {
-        txid: `chalange_tx_${setupId}`,
+        txid: txIdBySetupAndName(setupId, TransactionNames.CHALLENGE),
+        blockhash: blockhash,
         vin: [
             {
-                txid: 'test_setup_1_tx_proof',
+                txid: txIdBySetupAndName(setupId, TransactionNames.PROOF),
                 vout: 1
             }
         ]

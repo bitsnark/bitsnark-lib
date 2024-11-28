@@ -29,4 +29,8 @@ docker run --name "$CONTAINER_NAME" -dp 5432:5432 \
     -e POSTGRES_PASSWORD=1234 \
     postgres
 
+until docker exec "$CONTAINER_NAME" pg_isready -U postgres; do
+  sleep 1
+done
+
 rm "$sql_file"
