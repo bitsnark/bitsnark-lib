@@ -9,13 +9,14 @@ import {
 import { AgentRoles, TransactionNames, iterations } from '../common/types';
 import {
     encodeWinternitz,
+    encodeWinternitz24,
     getWinternitzPublicKeys,
     getWinternitzPublicKeysDebug,
     WotsType
 } from '../common/winternitz';
 import { TransactionWithWotsKeys } from './messages';
 
-export function setWotsPublicKeysForArgument(templates: Transaction[]) {
+export function setWotsPublicKeysForArgument(setupId: string, templates: Transaction[]) {
     const template = getTransactionByName(templates, TransactionNames.ARGUMENT);
     // there should be 5 inputs
     if (template.inputs.length != 5) throw new Error('Wrong number of inputs');
@@ -41,6 +42,14 @@ export function setWotsPublicKeysForArgument(templates: Transaction[]) {
     actualWotsKeys.push(sc.wotsPublicKeys![6]);
     sc.wotsPublicKeys = actualWotsKeys;
     input.wotsPublicKeys = sc.wotsPublicKeys;
+
+    const argumentSelectionPath = [ 1n, 2n, 3n, 4n, 5n, 6n ];
+    sc.exampleWitness = argumentSelectionPath.map((n, i) => encodeWinternitz24(n, createUniqueDataId(
+        setupId, TransactionNames.SELECT + '_' + twoDigits(i), 0, 0, 0
+    )));
+    sc.exampleWitness[6] = encodeWinternitz24(123456n, createUniqueDataId(
+        setupId, TransactionNames.ARGUMENT, 0, 0, 6
+    ));
 }
 
 export function generateWotsPublicKeys(setupId: string, templates: Transaction[], role: AgentRoles) {
@@ -50,6 +59,18 @@ export function generateWotsPublicKeys(setupId: string, templates: Transaction[]
 
             if (sc.wotsSpec && sc.nextRole == role) {
                 sc.wotsPublicKeys = sc.wotsSpec!.map((wt, dataIndex) =>
+                    getWinternitzPublicKeys(
+                        wt,
+                        createUniqueDataId(
+                            setupId,
+                            template.transactionName,
+                            input.outputIndex,
+                            input.spendingConditionIndex,
+                            dataIndex
+                        )
+                    )
+                );                
+                sc.wotsSpec!.map((wt, dataIndex) =>
                     getWinternitzPublicKeys(
                         wt,
                         createUniqueDataId(
@@ -75,12 +96,10 @@ export function generateWotsPublicKeys(setupId: string, templates: Transaction[]
                     )
                 );
 
-                const values = array(sc.wotsSpec.length, 0n);
-
                 sc.exampleWitness = sc.wotsSpec.map((spec, dataIndex) => {
                     return encodeWinternitz(
                         spec,
-                        values[dataIndex],
+                        0n,
                         createUniqueDataId(
                             setupId,
                             template.transactionName,

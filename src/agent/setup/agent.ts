@@ -284,7 +284,7 @@ export class Agent {
 
         // copy their wots pubkeys to ours
         i.transactions = mergeWots(i.myRole, i.transactions!, message.transactions!);
-        setWotsPublicKeysForArgument(i.transactions!);
+        setWotsPublicKeysForArgument(i.setupId, i.transactions!);
 
         i.state = SetupState.SIGNATURES;
 
