@@ -1,24 +1,8 @@
 import { RawTransaction } from 'bitcoin-core';
 import { agentConf } from '../agent.conf';
 import { BitcoinNode } from '../common/bitcoin-node';
-import {
-    Incoming,
-    OutgoingStatus,
-    readActiveSetups,
-    readIncomingTransactions,
-    readOutgingByTemplateId,
-    readTemplates,
-    SetupStatus,
-    writeOutgoing,
-    writeSetupStatus
-} from '../common/db';
-import {
-    createUniqueDataId,
-    getTransactionByName,
-    SpendingCondition,
-    Transaction,
-    twoDigits
-} from '../common/transactions';
+import { AgentDb, ReceivedTransaction } from '../common/db';
+import { createUniqueDataId, SpendingCondition, Transaction, twoDigits } from '../common/transactions';
 import { encodeWinternitz256_4 } from '../common/winternitz';
 import { calculateStates } from './states';
 import { Argument } from './argument';
@@ -32,11 +16,13 @@ export class ProtocolProver {
     setupId: string;
     bitcoinClient: BitcoinNode;
     templates: Transaction[] = [];
+    db: AgentDb;
 
     constructor(agentId: string, setupId: string) {
         this.agentId = agentId;
         this.setupId = setupId;
         this.bitcoinClient = new BitcoinNode();
+        this.db = new AgentDb(this.agentId);
     }
 
     public async pegOut(proof: bigint[]) {
@@ -45,48 +31,39 @@ export class ProtocolProver {
 
     public async process() {
         if (!this.templates) {
-            this.templates = await readTemplates(this.agentId, this.setupId);
+            this.templates = await this.db.getTransactions(this.setupId);
         }
 
         // read all incoming transactions
-        const incoming = await readIncomingTransactions(this.setupId);
-        if (incoming.length == 0) {
+        const setup = await this.db.getSetup(this.setupId);
+        const incomings = setup.received ?? [];
+        if (incomings.length == 0) {
             // nothing to do
             return;
         }
-
-        // pair them
-        const pairs = incoming
-            .map((it) => {
-                const template = this.templates.find((t) => t.templateId === it.templateId);
-                if (!template) throw new Error('Missing template for incoming transaction: ' + it.templateId);
-                return { incoming: it, template };
-            })
-            // order logically
-            .sort((p1, p2) => p1.template.ordinal! - p2.template.ordinal!);
 
         const selectionPathUnparsed: Buffer[][] = [];
         const selectionPath: number[] = [];
         let proof: bigint[] = [];
 
         // examine each one
-        for (const pair of pairs) {
-            const lastFlag = pair === last(pairs);
+        for (const incoming of incomings) {
+            const lastFlag = incoming == last(incomings);
 
-            switch (pair.template.transactionName) {
+            switch (incoming.name) {
                 case TransactionNames.PROOF:
                     if (lastFlag) {
                         // did the timeout expire?
-                        const timeoutSc = await this.checkTimeout(pair.incoming, pair.template);
+                        const timeoutSc = await this.checkTimeout(incoming);
                         if (timeoutSc) await this.sendProofUncontested();
                     } else {
                         // let's get the proof so we can run the verifier on it
-                        proof = this.parseProof(pair.incoming, pair.template);
+                        proof = this.parseProof(incoming);
                     }
                     break;
                 case TransactionNames.PROOF_UNCONTESTED:
                     // we won, mark it
-                    await this.updateSetupStatus(SetupStatus.PEGOUT_SUCCESSFUL);
+                    await this.db.markSetupPeggoutSuccessful(this.setupId);
                     break;
                 case TransactionNames.CHALLENGE:
                     if (lastFlag) {
@@ -95,57 +72,53 @@ export class ProtocolProver {
                     break;
                 case TransactionNames.CHALLENGE_UNCONTESTED:
                     // we lost, mark it
-                    await this.updateSetupStatus(SetupStatus.PEGOUT_FAILED);
+                    await this.db.markSetupPeggoutFailed(this.setupId);
                     break;
                 case TransactionNames.ARGUMENT:
                     if (lastFlag) {
                         // did the timeout expire?
-                        const timeoutSc = await this.checkTimeout(pair.incoming, pair.template);
+                        const timeoutSc = await this.checkTimeout(incoming);
                         if (timeoutSc) await this.sendArgumentUncontested();
                     }
                     break;
                 case TransactionNames.ARGUMENT_UNCONTESTED:
                     // we won, mark it
-                    await this.updateSetupStatus(SetupStatus.PEGOUT_SUCCESSFUL);
+                    await this.db.markSetupPeggoutSuccessful(this.setupId);
                     break;
             }
 
-            if (pair.template.transactionName.startsWith(TransactionNames.STATE)) {
+            if (incoming.name.startsWith(TransactionNames.STATE)) {
                 if (lastFlag) {
                     // did the timeout expire?
-                    const timeoutSc = await this.checkTimeout(pair.incoming, pair.template);
+                    const timeoutSc = await this.checkTimeout(incoming);
                     if (timeoutSc) await this.sendStateUncontested(selectionPath.length);
                 }
             }
-            if (pair.template.transactionName.startsWith(TransactionNames.STATE_UNCONTESTED)) {
+            if (incoming.name.startsWith(TransactionNames.STATE_UNCONTESTED)) {
                 // we won, mark it
-                await this.updateSetupStatus(SetupStatus.PEGOUT_SUCCESSFUL);
+                await this.db.markSetupPeggoutSuccessful(this.setupId);
                 break;
             }
-            if (pair.template.transactionName.startsWith(TransactionNames.SELECT)) {
-                const rawTx = pair.incoming.rawTransaction as RawTransaction;
+            if (incoming.name.startsWith(TransactionNames.SELECT)) {
+                const rawTx = incoming.rawTransaction as RawTransaction;
                 selectionPathUnparsed.push(rawTx.vin[0].txinwitness!.map((s) => Buffer.from(s, 'hex')));
-                const selection = this.parseSelection(pair.incoming, pair.template);
+                const selection = this.parseSelection(incoming);
                 selectionPath.push(selection);
                 if (lastFlag) {
                     if (selectionPath.length + 1 < iterations) await this.sendState(proof, selectionPath);
                     else await this.sendArgument(proof, selectionPath, selectionPathUnparsed);
                 }
             }
-            if (pair.template.transactionName.startsWith(TransactionNames.SELECT_UNCONTESTED)) {
+            if (incoming.name.startsWith(TransactionNames.SELECT_UNCONTESTED)) {
                 // we lost, mark it
-                await this.updateSetupStatus(SetupStatus.PEGOUT_FAILED);
+                await this.db.markSetupPeggoutFailed(this.setupId);
                 break;
             }
         }
     }
 
     private async sendTransaction(name: string, data?: Buffer[][]) {
-        const template = getTransactionByName(this.templates, name);
-        // find the pre-signed message
-        const presigned = await readOutgingByTemplateId(template.templateId!);
-        if (!presigned) throw new Error('Outgoing transaction not found: ' + template.templateId);
-        await writeOutgoing(presigned.template_id, data, OutgoingStatus.READY);
+        this.db.markToSend(this.setupId, name, data);
     }
 
     private async sendProof(proof: bigint[]) {
@@ -161,18 +134,14 @@ export class ProtocolProver {
         await this.sendTransaction(TransactionNames.PROOF_UNCONTESTED);
     }
 
-    private parseProof(incoming: Incoming, template: Transaction): bigint[] {
+    private parseProof(incoming: ReceivedTransaction): bigint[] {
         const rawTx = incoming.rawTransaction as RawTransaction;
         const proof = parseInput(
             this.templates,
-            template.inputs[0],
+            incoming.object.inputs[0],
             rawTx.vin[0].txinwitness!.map((s) => Buffer.from(s, 'hex'))
         );
         return proof;
-    }
-
-    private async updateSetupStatus(status: SetupStatus) {
-        await writeSetupStatus(this.setupId, status);
     }
 
     private async sendArgument(proof: bigint[], selectionPath: number[], selectionPathUnparsed: Buffer[][]) {
@@ -189,11 +158,11 @@ export class ProtocolProver {
         await this.sendTransaction(TransactionNames.STATE_UNCONTESTED + '_' + twoDigits(iteration));
     }
 
-    private parseSelection(incoming: Incoming, template: Transaction): number {
+    private parseSelection(incoming: ReceivedTransaction): number {
         const rawTx = incoming.rawTransaction as RawTransaction;
         const data = parseInput(
             this.templates,
-            template.inputs[0],
+            incoming.object.inputs[0],
             rawTx.vin[0].txinwitness!.map((s) => Buffer.from(s, 'hex'))
         );
         return Number(data[0]);
@@ -215,10 +184,10 @@ export class ProtocolProver {
         return await this.bitcoinClient.getBlockCount();
     }
 
-    private async checkTimeout(incoming: Incoming, template: Transaction): Promise<SpendingCondition | null> {
+    private async checkTimeout(incoming: ReceivedTransaction): Promise<SpendingCondition | null> {
         // check if any spending condition has a timeout that already expired
         const currentBlockHeight = await this.getCurrentBlockHeight();
-        for (const output of template.outputs) {
+        for (const output of incoming.object.outputs) {
             for (const sc of output.spendingConditions) {
                 if (sc.nextRole != AgentRoles.PROVER) continue;
                 if (sc.timeoutBlocks && incoming.blockHeight + sc.timeoutBlocks <= currentBlockHeight) {
@@ -232,10 +201,11 @@ export class ProtocolProver {
 }
 
 export async function main(agentId: string) {
-    const setups = await readActiveSetups();
+    const db = new AgentDb(agentId);
+    const setups = await db.getPeggedSetups();
     const doit = async () => {
         for (const setup of setups) {
-            const protocol = new ProtocolProver(agentId, setup.setup_id);
+            const protocol = new ProtocolProver(agentId, setup.id);
             try {
                 await protocol.process();
             } catch (e) {
@@ -249,6 +219,7 @@ export async function main(agentId: string) {
         await new Promise((r) => setTimeout(r, agentConf.protocolIntervalMs));
         /*eslint no-constant-condition: "off"*/
     } while (true);
+    db.disconnect();
 }
 
 const scriptName = __filename;

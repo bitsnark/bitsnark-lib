@@ -1,12 +1,6 @@
 import { agentConf } from '../agent.conf';
 import { addAmounts } from './amounts';
-import {
-    dev_ClearTemplates,
-    SetupStatus,
-    updatedListenerHeightBySetupsIds,
-    writeSetupStatus,
-    writeTemplates
-} from '../common/db';
+import { AgentDb } from '../common/db';
 import { generateAllScripts } from './generate-scripts';
 import { signTransactions } from './sign-transactions';
 import { getSpendingConditionByInput, SignatureType } from '../common/transactions';
@@ -21,11 +15,12 @@ export async function emulateSetup(
     setupId: string,
     generateFinal: boolean
 ) {
-    console.log('Deleting template...');
-    await dev_ClearTemplates(setupId);
+    const proverDb = new AgentDb(proverAgentId);
+    const verifierDb = new AgentDb(verifierAgentId);
 
-    console.log('Creating or updating setup status...');
-    await writeSetupStatus(setupId, SetupStatus.PENDING);
+    console.log('Deleting template...');
+    await proverDb.deleteSetup(setupId);
+    await verifierDb.deleteSetup(setupId);
 
     const mockLockedFunds = {
         txId: '0000000000000000000000000000000000000000000000000000000000000000',
@@ -87,14 +82,12 @@ export async function emulateSetup(
     proverTemplates = await addAmounts(proverAgentId, AgentRoles.PROVER, setupId, proverTemplates);
     verifierTemplates = await addAmounts(verifierAgentId, AgentRoles.VERIFIER, setupId, verifierTemplates);
 
-    console.log('writing templates and setting setup status to READY...');
+    console.log('Creating setup...');
 
-    await writeTemplates(proverAgentId, setupId, proverTemplates);
-    await writeTemplates(verifierAgentId, setupId, verifierTemplates);
-    await writeSetupStatus(setupId, SetupStatus.READY);
+    await proverDb.insertNewSetup(setupId, proverTemplates);
+    await verifierDb.insertNewSetup(setupId, verifierTemplates);
 
-    console.log('signing - this will create outgoing and overwrite templates...');
-    // FIXME: It shouldn't really overwrite templates.
+    console.log('Signing transactions - this will overwrite templates...');
 
     proverTemplates = await signTransactions(AgentRoles.PROVER, proverAgentId, setupId, proverTemplates);
     verifierTemplates = await signTransactions(AgentRoles.VERIFIER, verifierAgentId, setupId, verifierTemplates);
@@ -113,18 +106,23 @@ export async function emulateSetup(
             }
         }
     }
-    await writeTemplates(proverAgentId, setupId, proverTemplates);
-    await writeTemplates(verifierAgentId, setupId, verifierTemplates);
+    await proverDb.upsertTemplates(setupId, proverTemplates);
+    await verifierDb.upsertTemplates(setupId, verifierTemplates);
 
-    console.log('update listener data...');
-    await updatedListenerHeightBySetupsIds([setupId], 100);
+    console.log('Update listener data...');
 
-    console.log('checking...');
+    await proverDb.updateLastCheckedBlockHeight(setupId, 100);
+    await verifierDb.updateLastCheckedBlockHeight(setupId, 100);
+
+    console.log('Verify setups...');
 
     await verifySetup(proverAgentId, setupId, AgentRoles.PROVER);
     await verifySetup(verifierAgentId, setupId, AgentRoles.VERIFIER);
 
     console.log('done.');
+
+    proverDb.disconnect();
+    verifierDb.disconnect();
 }
 
 if (require.main === module) {

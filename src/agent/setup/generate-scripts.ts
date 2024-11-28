@@ -13,7 +13,7 @@ import {
     SpendingCondition,
     Transaction
 } from '../common/transactions';
-import { readTemplates, writeTemplates } from '../common/db';
+import { AgentDb } from '../common/db';
 import { DoomsdayGenerator } from '../final-step/doomsday-generator';
 import { AgentRoles, TransactionNames } from '../common/types';
 
@@ -217,9 +217,11 @@ async function main() {
     const agentId = process.argv[2] ?? 'bitsnark_prover_1';
     const setupId = 'test_setup';
     const generateFinal = process.argv.some((s) => s == '--final');
-    const bareTransactions = await readTemplates(agentId, setupId);
+    const db = new AgentDb(agentId);
+    const bareTransactions = await db.getTransactions(setupId);
     const transactions = await generateAllScripts(AgentRoles.PROVER, bareTransactions, generateFinal);
-    await writeTemplates(agentId, setupId, transactions);
+    await db.upsertTemplates(setupId, transactions);
+    await db.disconnect();
 }
 
 if (require.main === module) {

@@ -10,7 +10,7 @@ import { Compressor } from '../common/taptree';
 import { agentConf } from '../agent.conf';
 import { BLAKE3, Register } from './blake-3-4u';
 import { Decasector } from '../protocol-logic/decasector';
-import { readTemplates } from '../common/db';
+import { AgentDb } from '../common/db';
 import { blake3 as blake3_wasm } from 'hash-wasm';
 import { modInverse } from '../../generator/common/math-utils';
 import { prime_bigint } from '../common/constants';
@@ -429,7 +429,8 @@ export class DoomsdayGenerator {
 
 async function main() {
     const ddg = new DoomsdayGenerator();
-    const transactions = await readTemplates('bitsnark_prover_1', 'test_setup');
+    const db = new AgentDb('bitsnark_prover_1');
+    const transactions = await db.getTransactions('test_setup');
     const r = await ddg.generateFinalStepTaproot(transactions);
     console.log(r);
 }

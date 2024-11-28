@@ -1,6 +1,6 @@
 import { Transaction } from '../common/transactions';
 import { execFileSync } from 'node:child_process';
-import { readTemplates } from '../common/db';
+import { AgentDb } from '../common/db';
 import { AgentRoles, TransactionNames } from '../common/types';
 
 export async function signTransactions(
@@ -42,7 +42,9 @@ export async function signTransactions(
         throw error;
     }
 
-    transactions = await readTemplates(agentId, setupId);
+    const db = new AgentDb(agentId);
+    transactions = await db.getTransactions(setupId);
+    await db.disconnect();
     for (const transaction of transactions) {
         if (transaction.transactionName == TransactionNames.PROOF_REFUTED) {
             console.warn('Manually skipping script generation for transaction', transaction.transactionName);
@@ -61,7 +63,9 @@ export async function signTransactions(
 async function main() {
     const agentId = 'bitsnark_prover_1';
     const setupId = 'test_setup';
-    const transactions = await readTemplates(agentId, setupId);
+    const db = new AgentDb(agentId);
+    const transactions = await db.getTransactions(setupId);
+    db.disconnect();
     signTransactions(AgentRoles.PROVER, agentId, setupId, transactions).catch(console.error);
 }
 

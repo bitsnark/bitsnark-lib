@@ -1,6 +1,6 @@
-import { Pending } from '@src/agent/common/db';
-import { TransactionNames } from '@src/agent/common/types';
-import { Input } from '@src/agent/common/transactions';
+import { ExpectedTemplate, SetupStatus, OutgoingStatus } from '../../src/agent/common/db';
+import { TransactionNames, AgentRoles } from '../../src/agent/common/types';
+import { Input } from '../../src/agent/common/transactions';
 
 const templates = [
     TransactionNames.LOCKED_FUNDS,
@@ -11,38 +11,59 @@ const templates = [
 ];
 
 const IncomingTransactionsBaseRow = {
-    txId: '',
-    templateId: 0,
-    setupId: '',
-    listenerBlockHeight: 100,
-    transactionName: TransactionNames.LOCKED_FUNDS,
+    setupId: 'setup_id',
+    setupStatus: SetupStatus?.PEGGED,
+    protocolVersion: '0.2',
+    signedAtBlockHeight: undefined,
+    lastCheckedBlockHeight: 100,
+    name: 'name',
+    role: AgentRoles.PROVER,
+    isExternal: false,
+    ordinal: 4,
     object: {
-        txId: '',
-        role: '',
+        txId: 'tx_id',
+        role: AgentRoles.PROVER,
         inputs: [],
         outputs: [],
-        setupId: '',
+        setupId: 'setup_id',
         templateId: 0,
         protocolVersion: '0.2',
-        transactionName: ''
+        transactionName: 'transaction_name'
     },
-    protocolVersion: '0.2',
-    incomingTxId: null
+    outgoingStatus: OutgoingStatus?.PENDING,
+    transactionHash: 'transaction_hash',
+    blockHash: 'block_hash',
+    blockHeight: 100,
+    rawTransaction: {
+        txid: 'tx_id',
+        hash: 'hash',
+        hex: 'hex',
+        size: 100,
+        vsize: 100,
+        weight: 100,
+        version: 1,
+        locktime: 1,
+        vin: [],
+        vout: [],
+        hexWithWitness: 'hex_with_witness',
+        blockhash: 'block_hash',
+        confirmations: 100,
+        time: 100,
+        blocktime: 100
+    }
 };
 
-const setups = ['test_setup_1'];
+const setups = ['setup_id'];
 
 export function txIdBySetupAndName(setupId: string, transactionName: string) {
     return `${setupId}_tx_${transactionName}`;
 }
 
-export const mockExpected = (function createSetupsIncomingTransactions(): Pending[] {
+export const mockExpected = (function createSetupsIncomingTransactions(): ExpectedTemplate[] {
     return setups.flatMap((setupId, setupIndex) => {
         return templates.map((templateName, index) => {
             return {
                 ...IncomingTransactionsBaseRow,
-                txId: txIdBySetupAndName(setupId, templateName),
-                templateId: setupIndex * 100 + index,
                 transactionName: templateName,
                 setupId: setupId,
                 object: {
@@ -87,10 +108,10 @@ function getInputs(templateName: string): Input[] {
 
 export function getmockExpected(markIncoming?: Set<string>) {
     return mockExpected.map((expectedTx) => {
-        if (markIncoming?.has(expectedTx.txId)) {
+        if (markIncoming?.has(expectedTx.transactionHash!)) {
             return {
                 ...expectedTx,
-                incomingTxId: expectedTx.txId
+                incomingTxId: expectedTx.transactionHash
             };
         } else {
             return expectedTx;

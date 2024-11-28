@@ -1,11 +1,12 @@
-import { readTemplates } from '../common/db';
+import { AgentDb } from '../common/db';
 import { getSpendingConditionByInput, SignatureType } from '../common/transactions';
 import { AgentRoles, TransactionNames } from '../common/types';
 import { decodeWinternitz } from '../common/winternitz';
 import { validateTransactionFees } from './amounts';
 
 export async function verifySetup(agentId: string, setupId: string, role: AgentRoles) {
-    const transactions = await readTemplates(agentId, setupId);
+    const db = new AgentDb(agentId);
+    const transactions = await db.getTransactions(setupId);
     console.log('Loaded ', transactions.length, 'transactions');
 
     console.log('check that all outputs have taproot keys');
@@ -86,6 +87,8 @@ export async function verifySetup(agentId: string, setupId: string, role: AgentR
     }
 
     console.log('Success');
+
+    db.disconnect();
 }
 
 const scriptName = __filename;

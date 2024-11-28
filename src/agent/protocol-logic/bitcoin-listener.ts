@@ -2,12 +2,7 @@ import { Transaction } from '../common/transactions';
 import { agentConf } from '../agent.conf';
 import { BitcoinNode } from '../common/bitcoin-node';
 import { RawTransaction } from 'bitcoin-core';
-import {
-    Pending,
-    readExpectedIncoming,
-    writeIncomingTransaction,
-    updatedListenerHeightBySetupsIds
-} from '../common/db';
+import { AgentDb, EnrichedTemplate } from '../common/db';
 
 export interface expectByInputs {
     setupId: string;
@@ -21,10 +16,12 @@ export class BitcoinListener {
     private tipHeight: number = 0;
     private tipHash: string = '';
     public client;
+    public db: AgentDb;
 
     constructor(agentId: string) {
         this.client = new BitcoinNode().client;
         this.agentId = agentId;
+        this.db = new AgentDb(this.agentId);
     }
 
     async checkForNewBlock() {
@@ -38,13 +35,14 @@ export class BitcoinListener {
     }
 
     async monitorTransmitted(): Promise<void> {
-        const setupsTemplates = await readExpectedIncoming(this.agentId);
-        const pending = setupsTemplates.filter((tx) => tx.incomingTxId === null);
+        const pending = await this.db.getExpectedTemplates();
         if (pending.length === 0) return;
 
-        let blockHeight = pending[0].listenerBlockHeight + 1;
+        let blockHeight = (pending[0].lastCheckedBlockHeight ?? pending[0].signedAtBlockHeight ?? 0) + 1;
 
-        // No reorganization isupport, just wait for the block to be finalized
+        const setups = await this.db.getPeggedSetups();
+
+        // No re-organization support - we just wait for blocks to be finalized.
         while (blockHeight <= this.tipHeight - agentConf.blocksUntilFinalized) {
             const blockHash = await this.client.getBlockHash(blockHeight);
 
@@ -52,15 +50,23 @@ export class BitcoinListener {
                 try {
                     let transmittedTx: RawTransaction | undefined;
                     if (!pendingTx.object.temporaryTxId)
-                        transmittedTx = await this.client.getRawTransaction(pendingTx.txId, true, blockHash);
+                        transmittedTx = await this.client.getRawTransaction(pendingTx.object.txId!, true, blockHash);
                     else
                         transmittedTx = await this.getTransactionByInputs(
                             pendingTx.object,
-                            setupsTemplates.filter((tx) => tx.setupId === pendingTx.setupId),
+                            setups.find((setup) => setup.id === pendingTx.setupId)!.templates,
                             blockHash
                         );
 
-                    if (transmittedTx) await writeIncomingTransaction(transmittedTx, blockHeight, pendingTx.templateId);
+                    if (transmittedTx)
+                        await this.db.markReceived(
+                            pendingTx.setupId,
+                            pendingTx.name,
+                            transmittedTx.txid,
+                            transmittedTx.blockhash,
+                            blockHeight,
+                            transmittedTx
+                        );
                 } catch (error) {
                     console.error(error);
                     continue;
@@ -69,27 +75,30 @@ export class BitcoinListener {
 
             blockHeight++;
 
-            await updatedListenerHeightBySetupsIds(Array.from(new Set(pending.map((tx) => tx.setupId))), blockHeight);
+            await this.db.updateLastCheckedBlockHeightBatch(
+                [...pending.reduce((setupIds, template) => setupIds.add(template.setupId), new Set<string>())],
+                blockHeight
+            );
         }
     }
 
     private async getTransactionByInputs(
         pendingTx: Transaction,
-        setupTemplates: Pending[],
+        setupTemplates: EnrichedTemplate[],
         blockHash: string
     ): Promise<RawTransaction | undefined> {
         try {
             const searchBy: [string, number][] = [];
             for (const input of pendingTx.inputs) {
                 const parentTemplate = setupTemplates.find(
-                    (template) => input.transactionName === template.transactionName && template.incomingTxId !== null
+                    (template) => input.transactionName === template.name && template.transactionHash
                 );
 
                 if (parentTemplate === undefined) return undefined;
 
-                const utxo = await this.client.getTxOut(parentTemplate.incomingTxId!, input.outputIndex, false);
+                const utxo = await this.client.getTxOut(parentTemplate.transactionHash!, input.outputIndex, false);
                 if (utxo !== null) return undefined;
-                searchBy.push([parentTemplate.incomingTxId!, input.outputIndex]);
+                searchBy.push([parentTemplate.transactionHash!, input.outputIndex]);
             }
 
             const blockTxs = (await this.client.getBlock(blockHash)).tx;
@@ -116,7 +125,11 @@ export class BitcoinListener {
 
 if (require.main === module) {
     (async () => {
-        const setupsTemplates = await readExpectedIncoming('bitsnark_prover_1');
-        console.log(setupsTemplates.map((tx) => tx.listenerBlockHeight));
-    })().catch(console.error);
+        const db = new AgentDb('bitsnark_prover_1');
+        const pending = await db.getExpectedTemplates();
+        console.log(pending.map((tx) => tx.lastCheckedBlockHeight));
+        db.disconnect();
+    })().catch((error) => {
+        throw error;
+    });
 }
