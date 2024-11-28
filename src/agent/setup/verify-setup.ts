@@ -1,9 +1,10 @@
 import { readTemplates } from '../common/db';
 import { getSpendingConditionByInput, SignatureType } from '../common/transactions';
-import { TransactionNames } from '../common/types';
+import { AgentRoles, TransactionNames } from '../common/types';
+import { decodeWinternitz } from '../common/winternitz';
 import { validateTransactionFees } from './amounts';
 
-export async function verifySetup(agentId: string, setupId: string) {
+export async function verifySetup(agentId: string, setupId: string, role: AgentRoles) {
     const transactions = await readTemplates(agentId, setupId);
     console.log('Loaded ', transactions.length, 'transactions');
 
@@ -53,16 +54,41 @@ export async function verifySetup(agentId: string, setupId: string) {
         }
     }
 
-    console.log('Success');
+    console.log('Check that all example witness parses correctly...');
+    for (const transaction of transactions) {
+        for (const input of transaction.inputs) {
+            const sc = getSpendingConditionByInput(transactions, input);
+            if (!sc.wotsSpec || sc.nextRole != role) continue;
+            console.log(transaction.transactionName, input.index);
+            if (!sc.exampleWitness) {
+                console.log('example witness is missing');
+                continue;
+            }
+            if (!sc.wotsPublicKeys) {
+                console.log('public keys missing');
+                continue;
+            }
+            let flag = true;
+            for (let dataIndex = 0; dataIndex < sc.wotsSpec.length && flag; dataIndex++) {
+                try {
+                    decodeWinternitz(
+                        sc.wotsSpec[dataIndex],
+                        sc.exampleWitness![dataIndex],
+                        sc.wotsPublicKeys![dataIndex]
+                    );
+                } catch (e) {
+                    console.log(e);
+                    flag = false;
+                }
+            }
+            if (flag) console.log('OK');
+        }
+    }
 
-    transactions.forEach((t) => {
-        let total = 0;
-        t.inputs.forEach((i) => (total += i.script?.length ?? 0));
-        console.log(`${t.transactionName}: ${total}`);
-    });
+    console.log('Success');
 }
 
 const scriptName = __filename;
 if (process.argv[1] == scriptName) {
-    verifySetup('bitsnark_prover_1', 'test_setup').catch(console.error);
+    verifySetup('bitsnark_prover_1', 'test_setup', AgentRoles.PROVER).catch(console.error);
 }

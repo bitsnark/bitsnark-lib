@@ -29,13 +29,14 @@ import { encodeWinternitz24, encodeWinternitz256_4 } from '../common/winternitz'
 import { Argument } from './argument';
 import { last } from '../common/array-utils';
 import { TransactionNames, AgentRoles } from '../common/types';
+import { bigintToBufferBE } from '../common/encoding';
 
 export class ProtocolVerifier {
     agentId: string;
     setupId: string;
     bitcoinClient: BitcoinNode;
     templates: Transaction[] = [];
-    states: bigint[][] = [];
+    states: Buffer[][] = [];
 
     constructor(agentId: string, setupId: string) {
         this.agentId = agentId;
@@ -147,7 +148,7 @@ export class ProtocolVerifier {
             )
         );
         const argument = new Argument(this.setupId, proof);
-        const refutation = await argument.refute(this.templates, argData);
+        const refutation = await argument.refute(this.templates, argData, this.states);
 
         template.inputs[0].script = refutation.script;
         template.inputs[0].controlBlock = refutation.controlBlock;
@@ -163,14 +164,14 @@ export class ProtocolVerifier {
         this.sendTransaction(TransactionNames.PROOF_REFUTED, [data]);
     }
 
-    private parseState(incoming: Incoming, template: Transaction) {
+    private parseState(incoming: Incoming, template: Transaction): Buffer[] {
         const rawTx = incoming.rawTransaction as RawTransaction;
         const state = parseInput(
             this.templates,
             template.inputs[0],
             rawTx.vin[0].txinwitness!.map((s) => Buffer.from(s, 'hex'))
         );
-        return state;
+        return state.map((n) => bigintToBufferBE(n, 256));
     }
 
     private async sendSelect(proof: bigint[], states: Buffer[][], selectionPath: number[]) {

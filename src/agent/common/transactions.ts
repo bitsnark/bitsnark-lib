@@ -1,8 +1,6 @@
-import { encodeWinternitz, getWinternitzPublicKeys, WOTS_NIBBLES, WotsType } from './winternitz';
+import { WotsType } from './winternitz';
 import { agentConf } from '../agent.conf';
-import { dev_ClearTemplates, SetupStatus, writeSetupStatus, writeTemplates } from './db';
-import { bigintToBufferBE } from './encoding';
-import { AgentRoles, FundingUtxo, iterations, TransactionNames } from './types';
+import { AgentRoles, iterations, TransactionNames } from './types';
 import { array } from './array-utils';
 
 export const twoDigits = (n: number) => (n < 10 ? `0${n}` : `${n}`);
@@ -25,7 +23,6 @@ export interface SpendingCondition {
     script?: Buffer;
     exampleWitness?: Buffer[][];
     wotsPublicKeysDebug?: string[][];
-    exampleWitnessDebug?: string[][];
     controlBlock?: Buffer;
 }
 
@@ -41,6 +38,7 @@ export interface Input {
     controlBlock?: Buffer;
     proverSignature?: string;
     verifierSignature?: string;
+    wotsPublicKeys?: Buffer[][];
 }
 
 export interface Output {
@@ -64,7 +62,7 @@ export interface Transaction {
     temporaryTxId?: boolean;
 }
 
-const protocolStart: Transaction[] = [
+export const protocolStart: Transaction[] = [
     {
         role: AgentRoles.PROVER,
         transactionName: TransactionNames.LOCKED_FUNDS,
@@ -219,7 +217,7 @@ const protocolStart: Transaction[] = [
     }
 ];
 
-const protocolEnd: Transaction[] = [
+export const protocolEnd: Transaction[] = [
     {
         role: AgentRoles.PROVER,
         transactionName: TransactionNames.ARGUMENT,
@@ -299,7 +297,7 @@ const protocolEnd: Transaction[] = [
     }
 ];
 
-function makeProtocolSteps(): Transaction[] {
+export function makeProtocolSteps(): Transaction[] {
     const result: Transaction[] = [];
     for (let i = 0; i < iterations; i++) {
         const state: Transaction = {
@@ -458,39 +456,6 @@ function makeProtocolSteps(): Transaction[] {
     return result;
 }
 
-export function random(bytes: number): bigint {
-    let n = 0n;
-    for (let i = 0; i < bytes; i++) {
-        n = n << 8n;
-        n += BigInt(Math.round(255 * Math.random()) & 0xff);
-    }
-    return n;
-}
-
-export function mergeWots(role: AgentRoles, mine: Transaction[], theirs: Transaction[]): Transaction[] {
-    const notNull = (t: Buffer[][] | undefined) => {
-        if (!t) throw new Error('Null error');
-        return t;
-    };
-
-    return mine.map((transaction, transactionIndex) => ({
-        ...transaction,
-        outputs: transaction.outputs.map((output, outputIndex) => ({
-            ...output,
-            spendingConditions: output.spendingConditions.map((sc, scIndex) => ({
-                ...sc,
-                wotsPublicKeys: !sc.wotsSpec
-                    ? undefined
-                    : sc.nextRole == role
-                      ? notNull(sc.wotsPublicKeys)
-                      : notNull(
-                            theirs[transactionIndex].outputs[outputIndex].spendingConditions[scIndex].wotsPublicKeys
-                        )
-            }))
-        }))
-    }));
-}
-
 export function getTransactionByName(transactions: Transaction[], name: string): Transaction {
     const tx = transactions.find((t) => t.transactionName == name);
     if (!tx) throw new Error('Transaction not found: ' + name);
@@ -531,7 +496,7 @@ export function getSpendingConditionByInput(transactions: Transaction[], input: 
     return tx.outputs[input.outputIndex].spendingConditions[input.spendingConditionIndex];
 }
 
-function assertOrder(transactions: Transaction[]) {
+export function assertOrder(transactions: Transaction[]) {
     const map: { [key: string]: Transaction } = {};
 
     for (const t of transactions) {
@@ -552,206 +517,4 @@ export function createUniqueDataId(
     dataIndex: number
 ) {
     return `${setupId}/${transactionName}/${outputIndex}/${scIndex}/${dataIndex}`;
-}
-
-export async function initializeTransactions(
-    agentId: string,
-    role: AgentRoles,
-    setupId: string,
-    proverPublicKey: bigint,
-    verifierPublicKey: bigint,
-    payloadUtxo: FundingUtxo,
-    proverUtxo: FundingUtxo
-): Promise<Transaction[]> {
-    const transactions = [...protocolStart, ...makeProtocolSteps(), ...protocolEnd];
-    assertOrder(transactions);
-
-    for (const t of transactions) {
-        t.inputs.forEach((input, i) => (input.index = i));
-        t.outputs.forEach((output, i) => {
-            output.index = i;
-            output.spendingConditions.forEach((sc, i) => (sc.index = i));
-        });
-    }
-
-    const payload = getTransactionByName(transactions, TransactionNames.LOCKED_FUNDS);
-    payload.txId = payloadUtxo.txId;
-    payload.outputs[0].amount = payloadUtxo.amount;
-
-    const proverStake = getTransactionByName(transactions, TransactionNames.PROVER_STAKE);
-    proverStake.txId = proverUtxo.txId;
-    proverStake.outputs[0].amount = proverUtxo.amount;
-
-    // set ordinal, setup id and protocol version
-    for (const [i, t] of transactions.entries()) {
-        t.protocolVersion = t.protocolVersion ?? agentConf.protocolVersion;
-        t.setupId = setupId;
-        t.ordinal = i;
-    }
-
-    // generate wots keys
-    for (const transaction of transactions) {
-        for (const input of transaction.inputs) {
-            const output = findOutputByInput(transactions, input);
-            const sc = getSpendingConditionByInput(transactions, input);
-            const prevTx = getTransactionByInput(transactions, input);
-
-            if (sc.wotsSpec && sc.nextRole == role) {
-                sc.wotsPublicKeys = sc.wotsSpec!.map((wt, dataIndex) =>
-                    getWinternitzPublicKeys(
-                        wt,
-                        createUniqueDataId(
-                            setupId,
-                            prevTx.transactionName,
-                            input.outputIndex,
-                            input.spendingConditionIndex,
-                            dataIndex
-                        )
-                    )
-                );
-
-                let values: bigint[];
-                if (transaction.transactionName == TransactionNames.ARGUMENT && input.index == 0) {
-                    values = [1n, 2n, 3n, 4n, 5n, 6n];
-                    values.push(values.reduce((p, c) => p * 10n + c, 0n));
-                } else {
-                    values = sc.wotsSpec.map((spec) => random(32) % 2n ** BigInt(3 * WOTS_NIBBLES[spec]));
-                }
-
-                sc.exampleWitness = sc.wotsSpec.map((spec, dataIndex) => {
-                    return encodeWinternitz(
-                        spec,
-                        values[dataIndex],
-                        createUniqueDataId(
-                            setupId,
-                            prevTx.transactionName,
-                            input.outputIndex,
-                            input.spendingConditionIndex,
-                            dataIndex
-                        )
-                    );
-                });
-
-                sc.exampleWitnessDebug = sc.wotsSpec.map((spec, dataIndex) =>
-                    new Array(WOTS_NIBBLES[spec])
-                        .fill(0)
-                        .map(
-                            (_, i) =>
-                                createUniqueDataId(
-                                    setupId,
-                                    prevTx.transactionName,
-                                    input.outputIndex,
-                                    input.spendingConditionIndex,
-                                    dataIndex
-                                ) +
-                                '/' +
-                                i
-                        )
-                );
-            }
-        }
-    }
-
-    for (const transaction of transactions) {
-        for (const [outputIndex, output] of transaction.outputs.entries()) {
-            for (const [scIndex, sc] of output.spendingConditions.entries()) {
-                if (sc.wotsSpec && sc.nextRole == role) {
-                    sc.wotsPublicKeysDebug = sc.wotsSpec!.map((spec, dataIndex) =>
-                        new Array(WOTS_NIBBLES[spec])
-                            .fill(0)
-                            .map(
-                                (_, i) =>
-                                    createUniqueDataId(
-                                        setupId,
-                                        transaction.transactionName,
-                                        outputIndex,
-                                        scIndex,
-                                        dataIndex
-                                    ) +
-                                    '/' +
-                                    i
-                            )
-                    );
-                }
-            }
-        }
-    }
-
-    // Copy timeouts from spending conditions to their inputs, so CHECKSEQUENCEVERIFY can verify the nSequence.
-    for (const t of transactions) {
-        for (const input of t.inputs) {
-            input.nSequence = getSpendingConditionByInput(transactions, input).timeoutBlocks;
-        }
-    }
-
-    // put schnorr keys where needed
-
-    for (const t of transactions) {
-        for (const [inputIndex, input] of t.inputs.entries()) {
-            const output = findOutputByInput(transactions, input);
-            const spend = output.spendingConditions[input.spendingConditionIndex];
-            if (!spend) throw new Error('Invalid spending condition: ' + input.spendingConditionIndex);
-            spend.signaturesPublicKeys = [];
-            if (spend.signatureType == SignatureType.PROVER || spend.signatureType == SignatureType.BOTH) {
-                spend.signaturesPublicKeys.push(bigintToBufferBE(proverPublicKey, 256));
-            }
-            if (spend.signatureType == SignatureType.VERIFIER || spend.signatureType == SignatureType.BOTH) {
-                spend.signaturesPublicKeys.push(bigintToBufferBE(verifierPublicKey, 256));
-            }
-        }
-    }
-
-    // put index in each object to make it easier later!
-    transactions.forEach((t) => t.inputs.forEach((i, index) => (i.index = index)));
-    transactions.forEach((t) =>
-        t.outputs.forEach((o, index) => {
-            o.index = index;
-            o.spendingConditions.forEach((sc, index) => (sc.index = index));
-        })
-    );
-
-    return transactions;
-}
-
-async function main() {
-    const agentId = process.argv[2] ?? 'bitsnark_prover_1';
-    const setupId = 'test_setup';
-
-    if (process.argv.some((s) => s == '--clear')) {
-        console.log('Deleting transactions for agent: ', agentId, ' setup: ', setupId);
-        await dev_ClearTemplates(setupId, agentId);
-    }
-
-    console.log('Create / Update setup...');
-    await writeSetupStatus(setupId, SetupStatus.PENDING);
-
-    console.log('Initializing transactions...');
-    const transactions = await initializeTransactions(
-        agentId,
-        AgentRoles.PROVER,
-        setupId,
-        1n,
-        2n,
-        {
-            txId: '0000000000000000000000000000000000000000000000000000000000000000',
-            outputIndex: 0,
-            amount: agentConf.payloadAmount,
-            external: true
-        },
-        {
-            txId: '1111111111111111111111111111111111111111111111111111111111111111',
-            outputIndex: 0,
-            amount: agentConf.proverStakeAmount,
-            external: true
-        }
-    );
-
-    await writeTemplates(agentId, setupId, transactions);
-    console.log('Done.');
-}
-
-if (require.main === module) {
-    main().catch((error) => {
-        throw error;
-    });
 }

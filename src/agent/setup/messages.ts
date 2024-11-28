@@ -39,12 +39,40 @@ export class JoinMessage {
     }
 }
 
+export interface SpendingConditionWithWotsKeys {
+    wotsPublicKeys?: Buffer[][];
+}
+
+export interface OutputWithWotsKeys {
+    spendingConditions: SpendingConditionWithWotsKeys[];
+}
+
+export interface TransactionWithWotsKeys {
+    transactionName: string;
+    outputs: OutputWithWotsKeys[];
+}
+
 export class TransactionsMessage {
     messageType: MessageType = 'transactions';
     setupId: string = '';
     agentId: string = '';
-    transactions: Transaction[] = [];
+    transactions: TransactionWithWotsKeys[] = [];
     telegramMessageSig: string = '';
+
+    static make(agentId: string, setupId: string, templates: Transaction[]): TransactionsMessage {
+        const thus = new TransactionsMessage();
+        thus.setupId = setupId;
+        thus.agentId = agentId;
+        thus.transactions = templates.map((t) => ({
+            transactionName: t.transactionName,
+            outputs: t.outputs.map((o) => ({
+                spendingConditions: o.spendingConditions.map((sc) => ({
+                    wotsPublicKeys: sc.wotsPublicKeys!
+                }))
+            }))
+        }));
+        return thus;
+    }
 
     constructor(obj?: Partial<TransactionsMessage>) {
         _assign(this, obj);

@@ -13,14 +13,16 @@ import {
     TransactionsMessage
 } from './messages';
 import { SimpleContext, TelegramBot } from './telegram';
-import { getTransactionByName, initializeTransactions, mergeWots, Transaction } from '../common/transactions';
+import { getTransactionByName, Transaction } from '../common/transactions';
 import { verifySetup } from './verify-setup';
 import { signMessage, verifyMessage } from '../common/schnorr';
 import { addAmounts } from './amounts';
 import { signTransactions } from './sign-transactions';
 import { AgentRoles, FundingUtxo } from '../common/types';
+import { initializeTemplates } from './init-templates';
+import { mergeWots, setWotsPublicKeysForArgument } from './wots-keys';
+import { SetupStatus, updatedListenerHeightBySetupsIds, writeSetupStatus, writeTemplates } from '../common/db';
 import { BitcoinNode } from '../common/bitcoin-node';
-import { SetupStatus, writeSetupStatus, writeTemplates, updatedListenerHeightBySetupsIds } from '../common/db';
 
 interface AgentInfo {
     agentId: string;
@@ -149,7 +151,7 @@ export class Agent {
         // Temporary solution - will be replaced with a proper verification against the contract
         const verifiedPubKey = agentConf.keyPairs[senderAgentId].schnorrPublic;
         if (verifiedPubKey != senderPubKey) throw new Error('Invalid public key');
-        console.log('Publick key is valid');
+        console.log('Public key is valid');
         return true;
     }
 
@@ -210,7 +212,7 @@ export class Agent {
 
         this.verifyMessage(message, i);
 
-        i.transactions = await initializeTransactions(
+        i.transactions = await initializeTemplates(
             this.agentId,
             AgentRoles.VERIFIER,
             i.setupId,
@@ -232,13 +234,13 @@ export class Agent {
     }
 
     // prover receives join message, generates transactions
-    async on_join(context: SimpleContext, message: StartMessage) {
+    async on_join(context: SimpleContext, message: JoinMessage) {
         const i = this.getInstance(message.setupId);
         if (i.state != SetupState.HELLO) throw new Error('Invalid state');
 
         if (i.verifier) throw new Error('Verifier agent already registered');
 
-        this.verifyPubKey((message as JoinMessage).schnorrPublicKey, message.agentId);
+        this.verifyPubKey(message.schnorrPublicKey, message.agentId);
 
         i.verifier = {
             agentId: message.agentId,
@@ -247,7 +249,7 @@ export class Agent {
 
         this.verifyMessage(message, i);
 
-        i.transactions = await initializeTransactions(
+        i.transactions = await initializeTemplates(
             this.agentId,
             AgentRoles.PROVER,
             i.setupId,
@@ -265,12 +267,7 @@ export class Agent {
     private async sendTransactions(context: SimpleContext, setupId: string) {
         const i = this.getInstance(setupId);
 
-        const transactionsMessage = new TransactionsMessage({
-            setupId,
-            transactions: i.transactions,
-            agentId: this.agentId
-        });
-
+        const transactionsMessage = TransactionsMessage.make(this.agentId, i.setupId, i.transactions!);
         await this.signMessageAndSend(context, transactionsMessage);
     }
 
@@ -287,6 +284,7 @@ export class Agent {
 
         // copy their wots pubkeys to ours
         i.transactions = mergeWots(i.myRole, i.transactions!, message.transactions!);
+        setWotsPublicKeysForArgument(i.setupId, i.transactions!);
 
         i.state = SetupState.SIGNATURES;
 
@@ -353,7 +351,7 @@ export class Agent {
         }
 
         if (this.role == AgentRoles.PROVER) {
-            await verifySetup(this.agentId, i.setupId);
+            await verifySetup(this.agentId, i.setupId, this.role);
             await this.signMessageAndSend(context, new DoneMessage({ setupId: i.setupId, agentId: this.agentId }));
         } else {
             await this.sendSignatures(context, i.setupId);
@@ -367,7 +365,7 @@ export class Agent {
         this.verifyMessage(message, i);
 
         if (this.role == AgentRoles.VERIFIER) {
-            await verifySetup(this.agentId, i.setupId);
+            await verifySetup(this.agentId, i.setupId, this.role);
             await this.signMessageAndSend(context, new DoneMessage({ setupId: i.setupId, agentId: this.agentId }));
         }
     }

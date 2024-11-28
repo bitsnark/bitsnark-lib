@@ -3,8 +3,8 @@ import { decodeWinternitz, WOTS_NIBBLES } from '../common/winternitz';
 
 function hashesFromBuffer(data: Buffer): Buffer[] {
     const result: Buffer[] = [];
-    for (let i = 0; i < data.length; i++) {
-        result.push(data.subarray(i * 20, (i + 1) * 20));
+    for (let i = 0; i < data.length; i += 20) {
+        result.push(data.subarray(i, i + 20));
     }
     return result;
 }
@@ -45,12 +45,12 @@ export function parseInput(transactions: Transaction[], input: Input, data: Buff
     let resultIndex = 0;
     const result: bigint[] = [];
     for (let i = 0; i < sc.wotsSpec.length; i++) {
+        console.log('FOOOOOO ', i);
+
         const spec = sc.wotsSpec[i];
         const keys = sc.wotsPublicKeys[i];
         const nibbleCount = WOTS_NIBBLES[spec];
         if (keys.length != nibbleCount) throw new Error('Wrong number of keys');
-        // remove later
-        if (sc.exampleWitness![i].length != nibbleCount) throw new Error('Wrong number of Values');
         result[resultIndex++] = decodeWinternitz(spec, hashes.slice(hashesIndex, hashesIndex + nibbleCount), keys);
         hashesIndex += nibbleCount;
     }

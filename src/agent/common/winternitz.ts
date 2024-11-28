@@ -72,6 +72,14 @@ export function getWinternitzPublicKeys(wotsType: WotsType, unique: string): Buf
     return t;
 }
 
+export function getWinternitzPublicKeysDebug(wotsType: WotsType, unique: string): string[] {
+    const t: string[] = [];
+    for (let i = 0; i < WOTS_NIBBLES[wotsType]; i++) {
+        t.push(unique + '/' + i);
+    }
+    return t;
+}
+
 export function toNibbles(input: bigint, count: number): number[] {
     const nibbles: number[] = [];
     for (let i = 0; i < count; i++) {

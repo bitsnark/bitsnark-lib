@@ -1,4 +1,3 @@
-import assert from 'node:assert';
 import { FatMerkleProof } from './fat-merkle';
 import { encodeWinternitz24, encodeWinternitz256_4 } from '../common/winternitz';
 import { createUniqueDataId, Transaction } from '../common/transactions';
@@ -25,28 +24,17 @@ export class Argument {
         this.proof = proof;
     }
 
-    private makeIndexWitness(outputIndex: number): Buffer[] {
+    private makeIndexWitness(): Buffer[] {
         return [
             ...this.selectionPathUnparsed,
             encodeWinternitz24(
                 BigInt(this.index),
-                createUniqueDataId(
-                    this.setupId,
-                    TransactionNames.ARGUMENT,
-                    outputIndex,
-                    0,
-                    this.selectionPathUnparsed.length
-                )
+                createUniqueDataId(this.setupId, TransactionNames.ARGUMENT, 0, 0, this.selectionPathUnparsed.length)
             )
         ].flat();
     }
 
-    private makeAbcdWitness(
-        scBefore: StateCommitment,
-        scAfter: StateCommitment,
-        instr: Instruction,
-        outputIndex: number
-    ): Buffer[] {
+    private makeAbcdWitness(scBefore: StateCommitment, scAfter: StateCommitment, instr: Instruction): Buffer[] {
         const aValue = scBefore.getValueForRuntimeIndex(instr.param1);
         const bValue = instr.param2 ? scBefore.getValueForRuntimeIndex(instr.param2) : 0n;
         const cValue = scAfter.getValueForRuntimeIndex(instr.target);
@@ -54,10 +42,7 @@ export class Argument {
             instr.name == InstrCode.MULMOD || instr.name == InstrCode.DIVMOD ? calculateD(aValue, bValue) : 0n;
         return [aValue, bValue, cValue, dValue]
             .map((n, dataIndex) =>
-                encodeWinternitz256_4(
-                    n,
-                    createUniqueDataId(this.setupId, TransactionNames.ARGUMENT, outputIndex, 0, dataIndex)
-                )
+                encodeWinternitz256_4(n, createUniqueDataId(this.setupId, TransactionNames.ARGUMENT, 1, 0, dataIndex))
             )
             .flat();
     }
@@ -65,8 +50,7 @@ export class Argument {
     private async makeMerkleProofsWitness(
         scBefore: StateCommitment,
         scAfter: StateCommitment,
-        instr: Instruction,
-        outputIndex: number
+        instr: Instruction
     ): Promise<Buffer[][]> {
         const valuesBefore = scBefore.getValues();
         const valuesAfter = scAfter.getValues();
@@ -85,7 +69,7 @@ export class Argument {
                 .map((b, dataIndex) =>
                     encodeWinternitz256_4(
                         bufferToBigintBE(b),
-                        createUniqueDataId(this.setupId, TransactionNames.ARGUMENT, outputIndex + oi, 0, dataIndex)
+                        createUniqueDataId(this.setupId, TransactionNames.ARGUMENT, 2 + oi, 0, dataIndex)
                     )
                 )
                 .flat()
@@ -106,31 +90,33 @@ export class Argument {
         const scAfter = decasector.stateCommitmentByLine[this.index];
         const instr = decasector.savedVm.program[this.index];
         const outputs: Buffer[][] = [
-            this.makeIndexWitness(0),
-            this.makeAbcdWitness(scBefore, scAfter, instr, 1),
-            ...(await this.makeMerkleProofsWitness(scBefore, scAfter, instr, 2))
+            this.makeIndexWitness(),
+            this.makeAbcdWitness(scBefore, scAfter, instr),
+            ...(await this.makeMerkleProofsWitness(scBefore, scAfter, instr))
         ];
         return outputs;
     }
 
+    public checkIndex() {
+        // lets make sure it's correct for sanity sake
+        let tempIndex = 0;
+        for (const selection of this.selectionPath) {
+            tempIndex = tempIndex * 10 + selection;
+        }
+        return tempIndex == this.index;
+    }
+
     public async refute(
         transactions: Transaction[],
-        argData: bigint[][]
+        argData: bigint[][],
+        states: Buffer[][]
     ): Promise<{ data: bigint[]; script: Buffer; controlBlock: Buffer }> {
         // first input is the selection path, 6 selections and then the index
         // the selection path can't be wrong, becaue of the winternitz signature on it
         this.selectionPath = argData[0].slice(0, 6).map((n) => Number(n));
         this.index = Number(argData[6]);
 
-        // lets make sure it's correct for sanity sake
-        let tempIndex = 0;
-        for (const selection of this.selectionPath) {
-            tempIndex = tempIndex * 10 + selection;
-        }
-        if (tempIndex != this.index) {
-            // This should never happen!
-            throw new Error('Selection path error.');
-        }
+        if (!this.checkIndex()) throw new Error('Invalid selection path or index');
 
         // second input is the params a, b, c, and d
         const [a, b, c, d] = argData[1];
@@ -154,20 +140,19 @@ export class Argument {
         // 3 merkle proofs are in input 2, 3, and 4
         const decasector = new Decasector(this.proof);
         const instr = decasector.savedVm.program[this.index];
-        const merkleProofA = await FatMerkleProof.fromArgument(
-            argData[2].map((n) => bigintToBufferBE(n, 256)),
-            this.index
-        );
-        const merkleProofB = instr.param2
-            ? await FatMerkleProof.fromArgument(
-                  argData[3].map((n) => bigintToBufferBE(n, 256)),
-                  this.index
-              )
-            : merkleProofA;
-        const merkleProofC = await FatMerkleProof.fromArgument(
-            argData[4].map((n) => bigintToBufferBE(n, 256)),
-            this.index
-        );
+
+        const makeProof = async (i: number) => {
+            const hashes = argData[2 + i].map((n) => bigintToBufferBE(n, 256));
+            const iter = decasector.stateCommitmentByLine[this.index].iteration;
+            const which = decasector.stateCommitmentByLine[this.index].selection;
+            const root = states[iter][which];
+            const leaf = bigintToBufferBE([a, b, c, d][i], 256);
+            return await FatMerkleProof.fromArgument(hashes, leaf, root, this.index);
+        };
+
+        const merkleProofA = await makeProof(0);
+        const merkleProofB = instr.param2 ? await makeProof(1) : merkleProofA;
+        const merkleProofC = await makeProof(2);
         const proofs = [merkleProofA, merkleProofB, merkleProofC];
         const whichProof = proofs.findIndex((p) => !p.verify());
         if (whichProof < 0) {
@@ -187,24 +172,4 @@ export class Argument {
 
         return { data, script: script!, controlBlock: controlBlock! };
     }
-}
-
-async function testFatMerkleProof() {
-    // get actual registers from the middle of the program
-    const decasector = new Decasector();
-
-    // make fat merkle proof
-    const mp = await FatMerkleProof.fromRegs(decasector.stateCommitmentByLine[150000].getValues(), 32);
-
-    const r = await mp.verify();
-    assert(r);
-}
-
-async function main() {
-    await testFatMerkleProof();
-}
-
-const scriptName = __filename;
-if (process.argv[1] == scriptName) {
-    main().catch(console.error);
 }

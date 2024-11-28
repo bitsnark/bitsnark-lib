@@ -9,9 +9,11 @@ import {
 } from '../common/db';
 import { generateAllScripts } from './generate-scripts';
 import { signTransactions } from './sign-transactions';
-import { initializeTransactions, mergeWots, getSpendingConditionByInput, SignatureType } from '../common/transactions';
+import { getSpendingConditionByInput, SignatureType } from '../common/transactions';
 import { verifySetup } from './verify-setup';
+import { generateWotsPublicKeys, mergeWots, setWotsPublicKeysForArgument } from './wots-keys';
 import { AgentRoles } from '../common/types';
+import { initializeTemplates } from './init-templates';
 
 export async function emulateSetup(
     proverAgentId: string,
@@ -40,7 +42,7 @@ export async function emulateSetup(
 
     console.log('generating templates...');
 
-    let proverTemplates = await initializeTransactions(
+    let proverTemplates = await initializeTemplates(
         proverAgentId,
         AgentRoles.PROVER,
         setupId,
@@ -49,7 +51,7 @@ export async function emulateSetup(
         mockLockedFunds,
         mockPayload
     );
-    let verifierTemplates = await initializeTransactions(
+    let verifierTemplates = await initializeTemplates(
         verifierAgentId,
         AgentRoles.VERIFIER,
         setupId,
@@ -63,8 +65,14 @@ export async function emulateSetup(
 
     if (proverTemplates.length != verifierTemplates.length) throw new Error('Invalid length of template list?');
 
+    generateWotsPublicKeys(setupId, proverTemplates, AgentRoles.PROVER);
+    generateWotsPublicKeys(setupId, verifierTemplates, AgentRoles.VERIFIER);
+
     proverTemplates = mergeWots(AgentRoles.PROVER, proverTemplates, verifierTemplates);
     verifierTemplates = mergeWots(AgentRoles.VERIFIER, verifierTemplates, proverTemplates);
+
+    setWotsPublicKeysForArgument(setupId, proverTemplates);
+    setWotsPublicKeysForArgument(setupId, verifierTemplates);
 
     console.log('generating scripts...');
 
@@ -110,8 +118,8 @@ export async function emulateSetup(
 
     console.log('checking...');
 
-    await verifySetup(proverAgentId, setupId);
-    await verifySetup(verifierAgentId, setupId);
+    await verifySetup(proverAgentId, setupId, AgentRoles.PROVER);
+    await verifySetup(verifierAgentId, setupId, AgentRoles.VERIFIER);
 
     console.log('done.');
 }
