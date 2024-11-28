@@ -17,7 +17,7 @@ import { generateWotsPublicKeys } from './wots-keys';
 
 const PROTOCOL_VERSION = '1.1';
 
-export async function initializeTemplates(
+export function initializeTemplates(
     agentId: string,
     role: AgentRoles,
     setupId: string,
@@ -25,7 +25,7 @@ export async function initializeTemplates(
     verifierPublicKey: bigint,
     payloadUtxo: FundingUtxo,
     proverUtxo: FundingUtxo
-): Promise<Transaction[]> {
+): Transaction[] {
     const transactions = [...protocolStart, ...makeProtocolSteps(), ...protocolEnd];
     assertOrder(transactions);
 
@@ -103,7 +103,7 @@ async function main() {
     await writeSetupStatus(setupId, SetupStatus.PENDING);
 
     console.log('Initializing transactions...');
-    const transactions = await initializeTemplates(
+    const transactions = initializeTemplates(
         agentId,
         AgentRoles.PROVER,
         setupId,
