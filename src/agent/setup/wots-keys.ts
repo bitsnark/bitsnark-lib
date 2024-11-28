@@ -1,4 +1,3 @@
-import { array } from '../common/array-utils';
 import {
     createUniqueDataId,
     getSpendingConditionByInput,
@@ -43,13 +42,11 @@ export function setWotsPublicKeysForArgument(setupId: string, templates: Transac
     sc.wotsPublicKeys = actualWotsKeys;
     input.wotsPublicKeys = sc.wotsPublicKeys;
 
-    const argumentSelectionPath = [ 1n, 2n, 3n, 4n, 5n, 6n ];
-    sc.exampleWitness = argumentSelectionPath.map((n, i) => encodeWinternitz24(n, createUniqueDataId(
-        setupId, TransactionNames.SELECT + '_' + twoDigits(i), 0, 0, 0
-    )));
-    sc.exampleWitness[6] = encodeWinternitz24(123456n, createUniqueDataId(
-        setupId, TransactionNames.ARGUMENT, 0, 0, 6
-    ));
+    const argumentSelectionPath = [1n, 2n, 3n, 4n, 5n, 6n];
+    sc.exampleWitness = argumentSelectionPath.map((n, i) =>
+        encodeWinternitz24(n, createUniqueDataId(setupId, TransactionNames.SELECT + '_' + twoDigits(i), 0, 0, 0))
+    );
+    sc.exampleWitness[6] = encodeWinternitz24(123456n, createUniqueDataId(setupId, TransactionNames.ARGUMENT, 0, 0, 6));
 }
 
 export function generateWotsPublicKeys(setupId: string, templates: Transaction[], role: AgentRoles) {
@@ -69,7 +66,7 @@ export function generateWotsPublicKeys(setupId: string, templates: Transaction[]
                             dataIndex
                         )
                     )
-                );                
+                );
                 sc.wotsSpec!.map((wt, dataIndex) =>
                     getWinternitzPublicKeys(
                         wt,

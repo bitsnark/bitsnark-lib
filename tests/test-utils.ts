@@ -45,8 +45,8 @@ export function initTemplatesForTest(): { prover: Transaction[]; verifier: Trans
     generateWotsPublicKeys(setupId, verifier, AgentRoles.VERIFIER);
     prover = mergeWots(AgentRoles.PROVER, prover, verifier);
     verifier = mergeWots(AgentRoles.VERIFIER, verifier, prover);
-    setWotsPublicKeysForArgument(prover);
-    setWotsPublicKeysForArgument(verifier);
+    setWotsPublicKeysForArgument(setupId, prover);
+    setWotsPublicKeysForArgument(setupId, verifier);
     return { prover, verifier };
 }
 

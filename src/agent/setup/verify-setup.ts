@@ -71,7 +71,8 @@ export async function verifySetup(agentId: string, setupId: string, role: AgentR
             let flag = true;
             for (let dataIndex = 0; dataIndex < sc.wotsSpec.length && flag; dataIndex++) {
                 try {
-                    decodeWinternitz(sc.wotsSpec[dataIndex],
+                    decodeWinternitz(
+                        sc.wotsSpec[dataIndex],
                         sc.exampleWitness![dataIndex],
                         sc.wotsPublicKeys![dataIndex]
                     );

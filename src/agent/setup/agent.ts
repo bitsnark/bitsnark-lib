@@ -351,7 +351,7 @@ export class Agent {
         }
 
         if (this.role == AgentRoles.PROVER) {
-            await verifySetup(this.agentId, i.setupId);
+            await verifySetup(this.agentId, i.setupId, this.role);
             await this.signMessageAndSend(context, new DoneMessage({ setupId: i.setupId, agentId: this.agentId }));
         } else {
             await this.sendSignatures(context, i.setupId);
@@ -365,7 +365,7 @@ export class Agent {
         this.verifyMessage(message, i);
 
         if (this.role == AgentRoles.VERIFIER) {
-            await verifySetup(this.agentId, i.setupId);
+            await verifySetup(this.agentId, i.setupId, this.role);
             await this.signMessageAndSend(context, new DoneMessage({ setupId: i.setupId, agentId: this.agentId }));
         }
     }
