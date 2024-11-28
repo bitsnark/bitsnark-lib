@@ -112,7 +112,7 @@ export function generateWotsPublicKeys(setupId: string, templates: Transaction[]
 }
 
 export function mergeWots(role: AgentRoles, mine: Transaction[], theirs: TransactionWithWotsKeys[]): Transaction[] {
-    const notNull = (t: Buffer[][] | undefined) => {
+    const wotsNotNull = (t: Buffer[][] | undefined) => {
         if (!t) throw new Error('Null error');
         return t;
     };
@@ -126,8 +126,8 @@ export function mergeWots(role: AgentRoles, mine: Transaction[], theirs: Transac
                 wotsPublicKeys: !sc.wotsSpec
                     ? undefined
                     : sc.nextRole == role
-                      ? notNull(sc.wotsPublicKeys)
-                      : notNull(
+                      ? wotsNotNull(sc.wotsPublicKeys)
+                      : wotsNotNull(
                             theirs[transactionIndex].outputs[outputIndex].spendingConditions[scIndex].wotsPublicKeys
                         )
             }))
