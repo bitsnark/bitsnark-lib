@@ -38,7 +38,7 @@ describe('BitcoinListener', () => {
         jest.spyOn(nodeListener.db, 'getExpectedTemplates').mockImplementation(jest.fn());
         jest.spyOn(nodeListener.db, 'markReceived').mockImplementation(jest.fn());
         jest.spyOn(nodeListener.db, 'updateLastCheckedBlockHeightBatch').mockImplementation(jest.fn());
-        jest.spyOn(nodeListener.db, 'getPeggedSetups').mockResolvedValue([
+        jest.spyOn(nodeListener.db, 'getActiveSetups').mockResolvedValue([
             {
                 id: 'setup_id',
                 protocolVersion: '0.2',

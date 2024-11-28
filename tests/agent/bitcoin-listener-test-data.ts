@@ -12,7 +12,7 @@ const templates = [
 
 const IncomingTransactionsBaseRow = {
     setupId: 'setup_id',
-    setupStatus: SetupStatus?.PEGGED,
+    setupStatus: SetupStatus?.ACTIVE,
     protocolVersion: '0.2',
     signedAtBlockHeight: undefined,
     lastCheckedBlockHeight: 100,

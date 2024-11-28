@@ -1,7 +1,7 @@
 CREATE TABLE setups (
     id CHARACTER VARYING PRIMARY KEY,
     protocol_version CHARACTER VARYING NOT NULL,
-    status CHARACTER VARYING NULL,
+    status CHARACTER VARYING NOT NULL,
     signed_at_block_height INTEGER NULL,
     last_checked_block_height INTEGER NULL,
     created_at TIMESTAMP NOT NULL DEFAULT NOW()
@@ -16,7 +16,7 @@ CREATE TABLE templates (
     is_external BOOLEAN NOT NULL,
     ordinal INTEGER NOT NULL,
     object JSONB NOT NULL,
-    outgoing_status CHARACTER VARYING NULL,
+    outgoing_status CHARACTER VARYING NOT NULL,
     data JSONB NULL,
     updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
     UNIQUE (setup_id, name)

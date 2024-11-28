@@ -40,7 +40,7 @@ export class BitcoinListener {
 
         let blockHeight = (pending[0].lastCheckedBlockHeight ?? pending[0].signedAtBlockHeight ?? 0) + 1;
 
-        const setups = await this.db.getPeggedSetups();
+        const setups = await this.db.getActiveSetups();
 
         // No re-organization support - we just wait for blocks to be finalized.
         while (blockHeight <= this.tipHeight - agentConf.blocksUntilFinalized) {

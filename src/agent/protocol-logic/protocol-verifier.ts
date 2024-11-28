@@ -216,7 +216,7 @@ export class ProtocolVerifier {
 
 export async function main(agentId: string) {
     const db = new AgentDb(agentId);
-    const setups = await db.getPeggedSetups();
+    const setups = await db.getActiveSetups();
     const doit = async () => {
         for (const setup of setups) {
             const protocol = new ProtocolVerifier(agentId, setup.id);

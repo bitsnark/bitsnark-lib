@@ -71,11 +71,10 @@ class Db {
 
 export enum SetupStatus {
     PENDING,
-    READY,
+    UNSIGNED,
     SIGNED,
-    MERGED,
     FAILED,
-    PEGGED,
+    ACTIVE,
     PEGOUT_SUCCESSFUL,
     PEGOUT_FAILED
 }
@@ -186,30 +185,35 @@ export class AgentDb extends Db {
     public async insertNewSetup(setupId: string, templates: Transaction[]) {
         await this.session([
             {
-                sql: 'INSERT INTO setups (id, protocol_version) VALUES ($1, $2)',
-                args: [setupId, agentConf.protocolVersion]
+                sql: 'INSERT INTO setups (id, protocol_version, status) VALUES ($1, $2, $3)',
+                args: [setupId, agentConf.protocolVersion, SetupStatus[SetupStatus.PENDING]]
             },
             ...templates.map((template) => ({
-                sql: `INSERT INTO templates (setup_id, name, role, is_external, ordinal, object)
-                VALUES ($1, $2, $3, $4, $5, $6)`,
+                sql: `INSERT INTO templates (setup_id, name, role, is_external, ordinal, object, outgoing_status)
+                VALUES ($1, $2, $3, $4, $5, $6, $7)`,
                 args: [
                     setupId,
                     template.transactionName,
                     template.role,
                     template.external,
                     template.ordinal,
-                    AgentDb.jsonizeObject(template)
+                    AgentDb.jsonizeObject(template),
+                    OutgoingStatus[OutgoingStatus.PENDING]
                 ]
             })),
             {
                 sql: 'UPDATE setups SET status = $1 WHERE id = $2',
-                args: [SetupStatus[SetupStatus.READY], setupId]
+                args: [SetupStatus[SetupStatus.UNSIGNED], setupId]
             }
         ]);
     }
 
     private async markSetupStatus(setupId: string, status: SetupStatus) {
         await this.query('UPDATE setups SET status = $1 WHERE id = $2', [SetupStatus[status], setupId]);
+    }
+
+    public async markSetupPeggoutActive(setupId: string) {
+        await this.markSetupStatus(setupId, SetupStatus.ACTIVE);
     }
 
     public async markSetupPeggoutSuccessful(setupId: string) {
@@ -238,8 +242,8 @@ export class AgentDb extends Db {
     public async upsertTemplates(setupId: string, templates: Transaction[]) {
         await this.session(
             templates.map((template) => ({
-                sql: `INSERT INTO templates (setup_id, name, role, is_external, ordinal, object)
-                VALUES ($1, $2, $3, $4, $5, $6)
+                sql: `INSERT INTO templates (setup_id, name, role, is_external, ordinal, object, outgoing_status)
+                VALUES ($1, $2, $3, $4, $5, $6, $7)
                 ON CONFLICT(setup_id, name) DO UPDATE SET
                     role = $3, is_external = $4, ordinal = $5, object = $6, updated_at = NOW()`,
                 args: [
@@ -248,7 +252,8 @@ export class AgentDb extends Db {
                     template.role,
                     template.external ?? false,
                     template.ordinal,
-                    AgentDb.jsonizeObject(template)
+                    AgentDb.jsonizeObject(template),
+                    OutgoingStatus[OutgoingStatus.PENDING]
                 ]
             }))
         );
@@ -278,11 +283,13 @@ export class AgentDb extends Db {
         blockHeight: number,
         rawTransaction: RawTransaction
     ) {
-        // Assert that the setup is pegged.
+        // Assert that the setup is active.
         const status = (await this.query('SELECT status FROM setups WHERE id = $1', [setupId]))
             .rows[0]?.[0] as SetupStatus;
-        if (status != SetupStatus.PEGGED) {
-            throw new Error(`Status of ${setupId} is ${SetupStatus[status]} instead of PEGGED`);
+        if (status != SetupStatus.ACTIVE) {
+            throw new Error(
+                `Status of ${setupId} is ${SetupStatus[status]} instead of ${SetupStatus[SetupStatus.ACTIVE]}`
+            );
         }
 
         await this.query(
@@ -343,7 +350,6 @@ export class AgentDb extends Db {
             FROM templates
             LEFT JOIN received ON templates.id = received.template_id
             JOIN setups ON templates.setup_id = setups.id
-            WHERE received.template_id IS NULL
             ORDER BY last_checked_block_height ASC, ordinal ASC
         `)
         ).rows.map(AgentDb.expectedTemplateReader);
@@ -403,9 +409,9 @@ export class AgentDb extends Db {
         };
     }
 
-    public async getPeggedSetups(): Promise<EnrichedSetup[]> {
+    public async getActiveSetups(): Promise<EnrichedSetup[]> {
         return Promise.all(
-            (await this.query('SELECT id FROM setups WHERE status = $1', [SetupStatus[SetupStatus.PEGGED]])).rows.map(
+            (await this.query('SELECT id FROM setups WHERE status = $1', [SetupStatus[SetupStatus.ACTIVE]])).rows.map(
                 (row) => this.getSetup(row[0] as string)
             )
         );
