@@ -19,7 +19,7 @@
     "test": "jest",
     "py-install": "./python/run-in-venv.sh echo done",
     "generate-tx": "ts-node ./src/agent/setup/init-templates.ts",
-    "generate-tx-clear": "ts-node ./src/agent/setup/init-templates.ts --clear",
+    "generate-tx-clear": "npm run start-db && ts-node ./src/agent/setup/init-templates.ts",
     "generate-scripts": "ts-node ./src/agent/setup/generate-scripts.ts",
     "add-amounts": "ts-node ./src/agent/setup/amounts.ts",
     "sign-tx": "./python/run-in-venv.sh ts-node ./src/agent/setup/sign-transactions.ts",
@@ -36,8 +36,11 @@
     "start-regtest": "./scripts/start-regtest.sh",
     "stop-node": "docker stop bitcoin-node",
     "emulate-setup": "./python/run-in-venv.sh ts-node ./src/agent/setup/emulate-setup.ts",
+    "emulate-setup-clear": "npm run start-db && ./python/run-in-venv.sh ts-node ./src/agent/setup/emulate-setup.ts",
     "emulate-setup-final": "./python/run-in-venv.sh ts-node ./src/agent/setup/emulate-setup.ts --final",
-    "python-test": "cd python && ./run-in-venv.sh pytest"
+    "emulate-setup-final-clear": "npm run start-db && ./python/run-in-venv.sh ts-node ./src/agent/setup/emulate-setup.ts --final",
+    "python-test": "cd python && ./run-in-venv.sh pytest",
+    "create-setup-id": "ts-node ./src/agent/setup/create-setup-id.ts"
   },
   "config": {
     "commitizen": {
@@ -55,6 +58,7 @@
     "dotenv": "16.4.5",
     "ecpair": "2.1.0",
     "hash-wasm": "4.11.0",
+    "minimist": "1.2.8",
     "pg-format": "1.0.4",
     "sitka": "1.1.1",
     "snarkjs": "0.7.4",
@@ -70,6 +74,7 @@
     "@types/crypto-js": "4.2.2",
     "@types/eslint__js": "8.42.3",
     "@types/jest": "29.5.12",
+    "@types/minimist": "1.2.5",
     "@types/node": "20.16.10",
     "@types/pg-format": "1.0.5",
     "@types/sinon": "17.0.3",

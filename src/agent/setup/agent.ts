@@ -21,14 +21,8 @@ import { signTransactions } from './sign-transactions';
 import { AgentRoles, FundingUtxo } from '../common/types';
 import { initializeTemplates } from './init-templates';
 import { mergeWots, setWotsPublicKeysForArgument } from './wots-keys';
-import {
-    readSetup,
-    SetupStatus,
-    updatedListenerHeightBySetupsIds,
-    writeSetupStatus,
-    writeTemplates
-} from '../common/db';
 import { BitcoinNode } from '../common/bitcoin-node';
+import { AgentDb } from '../common/db';
 
 interface AgentInfo {
     agentId: string;
@@ -78,6 +72,7 @@ export class Agent {
     schnorrPublicKey: string;
     bot: TelegramBot;
     bitcoinClient: BitcoinNode;
+    db: AgentDb;
 
     constructor(agentId: string, role: AgentRoles) {
         this.agentId = agentId;
@@ -85,6 +80,7 @@ export class Agent {
         this.schnorrPublicKey = agentConf.keyPairs[this.agentId].schnorrPublic;
         this.bot = new TelegramBot(agentId, this);
         this.bitcoinClient = new BitcoinNode();
+        this.db = new AgentDb(this.agentId);
     }
 
     async launch() {
@@ -170,7 +166,7 @@ export class Agent {
     public async start(context: SimpleContext, setupId: string, payloadUtxo: FundingUtxo, proverUtxo: FundingUtxo) {
         if (this.role != AgentRoles.PROVER) throw new Error("I'm not a prover");
 
-        const setup = await readSetup(setupId);
+        const setup = await this.db.getSetup(setupId);
 
         const i = new SetupInstance(
             setupId,
@@ -205,7 +201,7 @@ export class Agent {
 
         this.verifyPubKey((message as StartMessage).schnorrPublicKey, message.agentId);
 
-        const setup = await readSetup(message.setupId);
+        const setup = await this.db.getSetup(message.setupId);
 
         i = new SetupInstance(
             message.setupId,
@@ -319,8 +315,7 @@ export class Agent {
         const i = this.getInstance(setupId);
         if (!i.transactions) throw new Error('No transactions');
 
-        await writeSetupStatus(setupId, SetupStatus.PENDING);
-        await writeTemplates(this.agentId, setupId, i.transactions);
+        await this.db.insertNewSetup(setupId, i.transactions);
 
         i.transactions = await signTransactions(this.role, this.agentId, i.setupId, i.transactions!);
 
@@ -335,7 +330,7 @@ export class Agent {
         });
 
         const currentTip = await this.bitcoinClient.getBlockCount();
-        updatedListenerHeightBySetupsIds([i.setupId], currentTip - 1);
+        await this.db.updateLastCheckedBlockHeight(setupId, currentTip - 1);
 
         const signaturesMessage = new SignaturesMessage({
             setupId: i.setupId,

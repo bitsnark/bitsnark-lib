@@ -1,6 +1,6 @@
 import { agentConf } from '../agent.conf';
 import { findOutputByInput, getTransactionByName, Transaction } from '../common/transactions';
-import { readTemplates, writeTemplates } from '../common/db';
+import { AgentDb } from '../common/db';
 import { TransactionNames, AgentRoles } from '../common/types';
 
 const externallyFundedTxs: string[] = [
@@ -117,11 +117,8 @@ async function main() {
     const agentId = process.argv[2] ?? 'bitsnark_prover_1';
     const role = process.argv[2] === 'bitsnark_prover_1' || !process.argv[2] ? AgentRoles.PROVER : AgentRoles.VERIFIER;
     const setupId = 'test_setup';
-    await writeTemplates(
-        agentId,
-        setupId,
-        await addAmounts(agentId, role, setupId, await readTemplates(agentId, setupId))
-    );
+    const db = new AgentDb(agentId);
+    await db.upsertTemplates(setupId, await addAmounts(agentId, role, setupId, await db.getTransactions(setupId)));
 }
 
 if (require.main === module) {

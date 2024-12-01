@@ -24,14 +24,18 @@ class NPMCommandRunner:
         }
 
     def run(self, command: str, *args: str) -> str:
-        ret = subprocess.check_output(
-            ['npm', 'run', command, *args],
-            cwd=self.cwd,
-            env={
-                **os.environ,
-                **self.env,
-            },
-            text=True,
-        )
+        try:
+            ret = subprocess.check_output(
+                ['npm', 'run', command, *args],
+                cwd=self.cwd,
+                env={
+                    **os.environ,
+                    **self.env,
+                },
+                text=True,
+            )
+        except subprocess.CalledProcessError as e:
+            logger.error("Failed to run npm command %s %s: %s", command, args, e.output)
+            raise
         logger.debug("Ran npm command %s %s: %s", command, args, ret)
         return ret

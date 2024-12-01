@@ -11,9 +11,9 @@ from sqlalchemy import create_engine, select, update
 from sqlalchemy.orm.session import Session
 from sqlalchemy.orm.attributes import flag_modified
 
-from bitsnark.conf import POSTGRES_URL
+from bitsnark.conf import POSTGRES_BASE_URL
 from bitsnark.core.parsing import parse_bignum, parse_hex_bytes, serialize_hex
-from .models import TransactionTemplate, Outgoing, Setups, OutgoingStatus, SetupStatus
+from .models import TransactionTemplate, Setups, OutgoingStatus, SetupStatus
 from .signing import sign_input
 
 Role = Literal['prover', 'verifier']
@@ -76,41 +76,33 @@ for keypairs in KEYPAIRS.values():
 
 def main(argv: Sequence[str] = None):
     parser = argparse.ArgumentParser()
-    parser.add_argument('--db', default=POSTGRES_URL)
-    parser.add_argument('--all', action='store_true',
-                        help='Process all transaction templates (get role from agent id)')
-    parser.add_argument('--setup-id', required=False,
-                        help='Process only transactions with this setup ID. Required if --all is not set')
-    parser.add_argument('--agent-id', required=False,
-                        help='Process only transactions with this agent ID. Required if --all is not set')
-    parser.add_argument('--role', required=False, choices=['prover', 'verifier'],
-                        help='Role of the agent (prover or verifier). Required if --all is not set')
+    parser.add_argument('--db', default=POSTGRES_BASE_URL)
+    parser.add_argument('--setup-id', required=True,
+                        help='Process only transactions with this setup ID')
+    parser.add_argument('--agent-id', required=True,
+                        help='Process only transactions with this agent ID')
+    parser.add_argument('--role', required=True, choices=['prover', 'verifier'],
+                        help='Role of the agent (prover or verifier)')
     parser.add_argument('--no-mocks', default=False, action='store_true', help="Don't use mock inputs")
 
     args = parser.parse_args(argv)
 
-    if args.all:
-        if args.setup_id or args.agent_id:
-            parser.error("Cannot use --all together with --setup-id or --agent-id")
-    else:
-        if not args.setup_id:
-            parser.error("Must specify --setup-id if --all is not set")
-        if not args.agent_id:
-            parser.error("Must specify --agent-id if --all is not set")
-        if not args.role:
-            parser.error("Must specify --role if --all is not set")
+    if not args.setup_id:
+        parser.error("Must specify --setup-id")
+    if not args.agent_id:
+        parser.error("Must specify --agent-id")
+    if not args.role:
+        parser.error("Must specify --role")
 
-    engine = create_engine(args.db)
+    engine = create_engine(f"{args.db}/{args.agent_id}")
     dbsession = Session(engine)
     successes = []
 
     tx_template_query = (select(TransactionTemplate).order_by(TransactionTemplate.ordinal))
 
-    if not args.all:
-        tx_template_query = tx_template_query.filter(
-            TransactionTemplate.setup_id == args.setup_id,
-            TransactionTemplate.agent_id == args.agent_id,
-        )
+    tx_template_query = tx_template_query.filter(
+        TransactionTemplate.setup_id == args.setup_id
+    )
 
     with dbsession.begin():
         tx_templates = dbsession.execute(tx_template_query).scalars().all()
@@ -121,33 +113,18 @@ def main(argv: Sequence[str] = None):
 
         for tx in tx_templates:
 
-            if args.all:
-                if 'verifier' in tx.agent_id:
-                    role = 'verifier'
-                elif 'prover' in tx.agent_id:
-                    role = 'prover'
-                else:
-                    raise ValueError(f"Cannot determine role from agent ID {tx.agent_id}")
-            else:
-                role = args.role
+            role = args.role
 
             print(f"Processing transaction #{tx.ordinal}: {tx.name}...")
             success = _handle_tx_template(
                 tx_template=tx,
                 role=role,
+                agent_id=args.agent_id,
                 tx_template_map=tx_template_map,
                 use_mocked_inputs=not args.no_mocks,
             )
             if success:
                 successes.append(tx.name)
-                dbsession.add(
-                    Outgoing(
-                        template_id=tx.template_id,
-                        transaction_id=tx.tx_id,
-                        status=OutgoingStatus.PENDING,
-                        raw_tx=tx.object,
-                        data={})
-                )
                 print(f"OK! {tx.tx_id}")
             else:
                 # The script that will be used in the proof_refuted tx is undetermined at this point.
@@ -161,7 +138,7 @@ def main(argv: Sequence[str] = None):
 
         dbsession.execute(
             update(Setups)
-            .where(Setups.setup_id == args.setup_id)
+            .where(Setups.id == args.setup_id)
             .values(status=SetupStatus.SIGNED)
         )
 
@@ -177,6 +154,7 @@ def _handle_tx_template(
     *,
     tx_template: TransactionTemplate,
     role: Role,
+    agent_id: str,
     tx_template_map: dict[int, TransactionTemplate],
     use_mocked_inputs: bool = True,
 ):
@@ -304,7 +282,7 @@ def _handle_tx_template(
             tx=tx,
             input_index=i,
             spent_outputs=spent_outputs,
-            private_key=KEYPAIRS[tx_template.agent_id]['private'],
+            private_key=KEYPAIRS[agent_id]['private'],
         )
         if len(tx_template.object['inputs']) <= i:
             # HACK: the hardcoded initial transactions have an empty list of inputs

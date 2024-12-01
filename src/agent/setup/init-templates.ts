@@ -12,7 +12,7 @@ import {
 } from '../common/transactions';
 import { AgentRoles, FundingUtxo, TransactionNames } from '../common/types';
 import { agentConf } from '../agent.conf';
-import { dev_ClearTemplates, SetupStatus, writeSetupStatus, writeTemplates } from '../common/db';
+import { AgentDb } from '../common/db';
 import { generateWotsPublicKeys } from './wots-keys';
 
 const PROTOCOL_VERSION = '1.1';
@@ -93,14 +93,7 @@ export function initializeTemplates(
 async function main() {
     const agentId = process.argv[2] ?? 'bitsnark_prover_1';
     const setupId = 'test_setup';
-
-    if (process.argv.some((s) => s == '--clear')) {
-        console.log('Deleting transactions for agent: ', agentId, ' setup: ', setupId);
-        await dev_ClearTemplates(setupId, agentId);
-    }
-
-    console.log('Create / Update setup...');
-    await writeSetupStatus(setupId, SetupStatus.PENDING);
+    const db = new AgentDb(agentId);
 
     console.log('Initializing transactions...');
     const transactions = initializeTemplates(
@@ -123,7 +116,9 @@ async function main() {
         }
     );
 
-    await writeTemplates(agentId, setupId, transactions);
+    console.log('Creating setup...');
+    await db.insertNewSetup(setupId, transactions);
+
     console.log('Done.');
 }
 

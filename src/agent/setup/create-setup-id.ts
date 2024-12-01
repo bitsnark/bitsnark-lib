@@ -6,7 +6,7 @@ import { encodeWinternitz, getWinternitzPublicKeys, WotsType } from '../common/w
 import { array } from '../common/array-utils';
 import { SimpleTapTree } from '../common/taptree';
 import { createUniqueDataId } from './wots-keys';
-import { createSetup } from '../common/db';
+import { AgentDb } from '../common/db';
 
 export async function createSetupId(proverAgentId: string, verifierAgentId: string): Promise<string> {
     const uuid = uuidv4();
@@ -49,13 +49,17 @@ export async function createSetupId(proverAgentId: string, verifierAgentId: stri
     const stt = new SimpleTapTree(agentConf.internalPubkey, scripts);
     const setupId = stt.getScriptPubkey().toString('hex');
 
-    await createSetup(setupId, wotsSalt);
+    const db = new AgentDb(proverAgentId);
+    await db.createSetup(setupId, wotsSalt);
 
     return setupId;
 }
 
-if (require.main === module) {
-    const setupId = createSetupId('bitsnark_prover_1', 'bitsnark_verifier_1');
-
+async function main() {
+    const setupId = await createSetupId('bitsnark_prover_1', 'bitsnark_verifier_1');
     console.log('setupId: ', setupId);
+}
+
+if (require.main === module) {
+    main();
 }

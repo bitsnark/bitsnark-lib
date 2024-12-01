@@ -10,7 +10,7 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm.session import Session
 from sqlalchemy.orm.attributes import flag_modified
 
-from bitsnark.conf import POSTGRES_URL
+from bitsnark.conf import POSTGRES_BASE_URL
 from bitsnark.core.parsing import parse_bignum, parse_hex_bytes, serialize_hex
 from .models import TransactionTemplate
 from ..btc.rpc import BitcoinRPC
@@ -18,7 +18,7 @@ from ..btc.rpc import BitcoinRPC
 
 def main(argv: Sequence[str] = None):
     parser = argparse.ArgumentParser()
-    parser.add_argument('--db', default=POSTGRES_URL)
+    parser.add_argument('--db', default=POSTGRES_BASE_URL)
     parser.add_argument('--rpc', required=True, help='Bitcoin RPC url including the wallet',
                         default='http://rpcuser:rpcpassword@localhost:18443/wallet/testwallet')
     parser.add_argument('--setup-id', required=True,
@@ -34,7 +34,7 @@ def main(argv: Sequence[str] = None):
 
     args = parser.parse_args(argv)
 
-    engine = create_engine(args.db)
+    engine = create_engine(f"{args.db}/{args.agent_id}")
     dbsession = Session(engine, autobegin=False)
 
     bitcoin_rpc = BitcoinRPC(args.rpc)

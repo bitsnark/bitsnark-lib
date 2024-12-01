@@ -22,7 +22,8 @@ VERIFIER_PRIVKEY = CKey.fromhex('d4067af1132afcb352b0edef53d8aa2a5fc713df61dee31
 
 
 def test_transaction_template_scripts(
-    dbsession: sa.orm.Session,
+    dbsession_prover: sa.orm.Session,
+    dbsession_verifier: sa.orm.Session,
     btc_rpc: BitcoinRPC,
     btc_wallet: BitcoinWallet,
     npm: NPMCommandRunner,
@@ -30,22 +31,18 @@ def test_transaction_template_scripts(
     logger.info("Running emulate-setup")
     npm.run('emulate-setup')
 
-    with dbsession.begin():
+    with dbsession_prover.begin(), dbsession_verifier.begin():
         prover_test_cases = collect_script_test_cases(
-            tx_templates=dbsession.scalars(
-                sa.select(TransactionTemplate).filter_by(
-                    agent_id=PROVER_AGENT_ID,
-                )
+            tx_templates=dbsession_prover.scalars(
+                sa.select(TransactionTemplate)
             ).all(),
             role='PROVER',
         )
         assert len(prover_test_cases) > 0, "No prover test cases found"
 
         verifier_test_cases = collect_script_test_cases(
-            tx_templates=dbsession.scalars(
-                sa.select(TransactionTemplate).filter_by(
-                    agent_id=VERIFIER_AGENT_ID,
-                )
+            tx_templates=dbsession_verifier.scalars(
+                sa.select(TransactionTemplate)
             ).all(),
             role='VERIFIER',
         )
@@ -86,4 +83,4 @@ def test_transaction_template_scripts(
         failures = [r for r in results if not r.success]
         logger.info("Successes: %s, Failures: %s", len(successes), len(failures))
 
-    assert not failures, "The following script test cases failed: {}".format(", ".join(str(t) for t in failures))
+        assert not failures, "The following script test cases failed: {}".format(", ".join(str(t) for t in failures))

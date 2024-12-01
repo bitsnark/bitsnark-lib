@@ -10,8 +10,6 @@ export default tseslint.config(
             'unused-imports-ts': unusedImports,
         },
         rules: {
-            'unused-imports-ts/no-unused-imports': 'error',
-            '@typescript-eslint/no-require-imports': 'off',
             '@typescript-eslint/no-unused-vars': 'off'
         },
         languageOptions: {

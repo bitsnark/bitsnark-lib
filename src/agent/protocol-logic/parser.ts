@@ -45,8 +45,6 @@ export function parseInput(transactions: Transaction[], input: Input, data: Buff
     let resultIndex = 0;
     const result: bigint[] = [];
     for (let i = 0; i < sc.wotsSpec.length; i++) {
-        console.log('FOOOOOO ', i);
-
         const spec = sc.wotsSpec[i];
         const keys = sc.wotsPublicKeys[i];
         const nibbleCount = WOTS_NIBBLES[spec];
