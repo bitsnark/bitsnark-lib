@@ -144,7 +144,7 @@ export async function generateAllScripts(
     generateFinal: boolean
 ): Promise<Transaction[]> {
     for (const t of transactions.filter((t) => !t.external)) {
-        console.log('transaction name: ', t.transactionName);
+        console.log('generating scripts for: ', t.transactionName);
 
         // check that all sc have wots public keys if they need them
         for (const output of t.outputs) {
