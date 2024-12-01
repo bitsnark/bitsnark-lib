@@ -95,11 +95,6 @@ async function main() {
     const setupId = 'test_setup';
     const db = new AgentDb(agentId);
 
-    if (process.argv.some((s) => s == '--clear')) {
-        console.log('Deleting transactions for agent: ', agentId, ' setup: ', setupId);
-        await db.deleteSetup(setupId);
-    }
-
     console.log('Initializing transactions...');
     const transactions = initializeTemplates(
         agentId,

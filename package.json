@@ -19,7 +19,7 @@
     "test": "jest",
     "py-install": "./python/run-in-venv.sh echo done",
     "generate-tx": "ts-node ./src/agent/setup/init-templates.ts",
-    "generate-tx-clear": "ts-node ./src/agent/setup/init-templates.ts --clear",
+    "generate-tx-clear": "npm run start-db && ts-node ./src/agent/setup/init-templates.ts",
     "generate-scripts": "ts-node ./src/agent/setup/generate-scripts.ts",
     "add-amounts": "ts-node ./src/agent/setup/amounts.ts",
     "sign-tx": "./python/run-in-venv.sh ts-node ./src/agent/setup/sign-transactions.ts",

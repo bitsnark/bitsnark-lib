@@ -18,10 +18,6 @@ export async function emulateSetup(
     const proverDb = new AgentDb(proverAgentId);
     const verifierDb = new AgentDb(verifierAgentId);
 
-    console.log('Deleting template...');
-    await proverDb.deleteSetup(setupId);
-    await verifierDb.deleteSetup(setupId);
-
     const mockLockedFunds = {
         txId: '0000000000000000000000000000000000000000000000000000000000000000',
         outputIndex: 0,

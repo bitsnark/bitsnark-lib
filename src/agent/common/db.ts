@@ -232,10 +232,6 @@ export class AgentDb extends Db {
         ]);
     }
 
-    public async deleteSetup(setupId: string) {
-        await this.query('DELETE FROM setups WHERE id = $1', [setupId]);
-    }
-
     public async upsertTemplates(setupId: string, templates: Transaction[]) {
         await this.session(
             templates.map((template) => ({
