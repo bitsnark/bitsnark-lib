@@ -1,4 +1,5 @@
 import {
+    dev_ClearIncoming,
     Outgoing,
     OutgoingStatus,
     readReadyOutgoing,
@@ -124,7 +125,7 @@ export class MockPublisher {
                 console.error(e);
                 this.isRunning = false;
             }
-        }, 1000);
+        }, 3000);
     }
 
     async generateBlocks(blocksToGenerate: number) {
@@ -153,7 +154,7 @@ export class MockPublisher {
                         ...mockVin,
                         txid: getTransactionByName(this.templates, input.transactionName).txId ?? '',
                         vout: input.outputIndex,
-                        txinwitness: template.data[index].map((witnessElement: string) =>
+                        txinwitness: template.data[index]?.map((witnessElement: string) =>
                             Buffer.from(witnessElement).toString('hex')
                         )
                     };
@@ -173,9 +174,18 @@ if (require.main === module) {
         const proverId = 'bitsnark_prover_1';
         const verrifirId = 'bitsnark_verifier_1';
         const setupId = 'test_setup';
+        await dev_ClearIncoming(setupId);
+
         const prover = new ProtocolProver(proverId, setupId);
-        await prover.pegOut(proofBigint);
-        console.log('proof sent');
+        //Bad
+        const boojum = proofBigint;
+        console.log('proof before:', boojum);
+        boojum[0] = boojum[0] + 1n;
+        console.log('proof after:', boojum);
+        await prover.pegOut(boojum);
+        // Good
+        //await prover.pegOut(proofBigint);
+        console.log('proof sent:', proofBigint);
         new MockPublisher(proverId, verrifirId, setupId).start();
     })();
 }

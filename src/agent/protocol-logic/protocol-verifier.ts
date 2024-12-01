@@ -118,7 +118,7 @@ export class ProtocolVerifier {
 
     private checkProof(proof: bigint[]): boolean {
         step1_vm.reset();
-        groth16Verify(Key.fromSnarkjs(vKey), Step1_Proof.fromSnarkjs(proof));
+        groth16Verify(Key.fromSnarkjs(vKey), Step1_Proof.fromWitness(proof));
         return step1_vm.success?.value === 1n;
     }
 
