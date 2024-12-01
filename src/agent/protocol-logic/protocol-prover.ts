@@ -29,17 +29,22 @@ export class ProtocolProver {
         this.db = new ListenerDb(this.agentId);
     }
 
-    public async pegOut(proof: bigint[]) {
-        await this.sendProof(proof);
-    }
-
-    public async process() {
-        if (!this.templates) {
+    private async setTemplates() {
+        if (!this.templates || !this.templates.length) {
             this.templates = await this.db.getTemplates(this.setupId);
         }
         if (!this.setup) {
             this.setup = await this.db.getSetup(this.setupId);
         }
+    }
+
+    public async pegOut(proof: bigint[]) {
+        await this.setTemplates();
+        await this.sendProof(proof);
+    }
+
+    public async process() {
+        await this.setTemplates();
 
         // read all incoming transactions
         const setup = await this.db.getReceivedSetups(this.setupId);
