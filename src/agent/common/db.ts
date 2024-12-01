@@ -122,6 +122,7 @@ export interface Setup {
     status: SetupStatus;
     listenerBlockHeight: number;
     protocolVersion: string;
+    wotsSalt: string;
 }
 
 export interface Pending {
@@ -160,6 +161,14 @@ export async function dev_ClearTemplates(setupId: string, agentId?: string) {
     ]);
 }
 
+export async function createSetup(setupId: string, wotsSalt: string) {
+    const result = await runQuery(
+        `INSERT INTO setups
+            (setup_id, status, protocol_version, wots_salt) VALUES ($1, $2::TEXT::setup_status, $3, $4)`,
+        [setupId, SetupStatus.PENDING, agentConf.protocolVersion, wotsSalt]
+    );
+}
+
 export async function writeSetupStatus(setupId: string, status: SetupStatus) {
     const result = await runQuery(
         `INSERT INTO setups
@@ -172,8 +181,7 @@ export async function writeSetupStatus(setupId: string, status: SetupStatus) {
 
 export async function readActiveSetups(status: SetupStatus = SetupStatus.READY): Promise<Setup[]> {
     const result = await runQuery(
-        `
-        SELECT setup_id, status::TEXT, protocol_version, listener_last_crawled_height
+        `SELECT setup_id, status::TEXT, protocol_version, listener_last_crawled_height, wots_salt
         FROM setups
         WHERE status = $1::TEXT::setup_status`,
         [status]
@@ -182,8 +190,25 @@ export async function readActiveSetups(status: SetupStatus = SetupStatus.READY):
         setup_id: row[0],
         status: row[1],
         protocolVersion: row[2],
-        listenerBlockHeight: row[3]
+        listenerBlockHeight: row[3],
+        wotsSalt: row[4]
     }));
+}
+
+export async function readSetup(setupId: string): Promise<Setup> {
+    const result = await runQuery(
+        `SELECT setup_id, status::TEXT, protocol_version, listener_last_crawled_height, wots_salt
+        FROM setups WHERE setup_id = $1`,
+        [setupId]
+    );
+    if (result.rows.length != 1) throw new Error(`Setup not found: ${setupId}`);
+    return {
+        setup_id: result.rows[0][0],
+        status: result.rows[0][1],
+        protocolVersion: result.rows[0][2],
+        listenerBlockHeight: result.rows[0][3],
+        wotsSalt: result.rows[0][4]
+    };
 }
 
 export async function updatedListenerHeightBySetupsIds(setupIds: string[], newCrawledHeight: number) {

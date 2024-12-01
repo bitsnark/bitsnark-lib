@@ -512,13 +512,3 @@ export function assertOrder(transactions: Transaction[]) {
         map[t.transactionName] = t;
     }
 }
-
-export function createUniqueDataId(
-    setupId: string,
-    transactionName: string,
-    outputIndex: number,
-    scIndex: number,
-    dataIndex: number
-) {
-    return `${setupId}/${transactionName}/${outputIndex}/${scIndex}/${dataIndex}`;
-}

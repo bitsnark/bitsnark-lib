@@ -1,12 +1,13 @@
 import { FatMerkleProof } from './fat-merkle';
 import { encodeWinternitz24, encodeWinternitz256_4 } from '../common/winternitz';
-import { createUniqueDataId, Transaction } from '../common/transactions';
+import { Transaction } from '../common/transactions';
 import { InstrCode, Instruction } from '../../generator/ec_vm/vm/types';
 import { Decasector, StateCommitment } from './decasector';
 import { DoomsdayGenerator, RefutationType } from '../final-step/doomsday-generator';
 import { prime_bigint } from '../common/constants';
 import { bigintToBufferBE, bufferToBigintBE } from '../common/encoding';
 import { TransactionNames } from '../common/types';
+import { createUniqueDataId } from '../setup/wots-keys';
 
 function calculateD(a: bigint, b: bigint): bigint {
     return (a * b) / prime_bigint;
@@ -14,13 +15,15 @@ function calculateD(a: bigint, b: bigint): bigint {
 
 export class Argument {
     setupId: string;
+    wotsSalt: string;
     selectionPath: number[] = [];
     selectionPathUnparsed: Buffer[][] = [];
     index: number = 0;
     proof: bigint[];
 
-    constructor(setupId: string, proof: bigint[]) {
+    constructor(setupId: string, wotsSalt: string, proof: bigint[]) {
         this.setupId = setupId;
+        this.wotsSalt = wotsSalt;
         this.proof = proof;
     }
 
@@ -29,7 +32,7 @@ export class Argument {
             ...this.selectionPathUnparsed,
             encodeWinternitz24(
                 BigInt(this.index),
-                createUniqueDataId(this.setupId, TransactionNames.ARGUMENT, 0, 0, this.selectionPathUnparsed.length)
+                createUniqueDataId(this.wotsSalt, TransactionNames.ARGUMENT, 0, 0, this.selectionPathUnparsed.length)
             )
         ].flat();
     }
@@ -42,7 +45,7 @@ export class Argument {
             instr.name == InstrCode.MULMOD || instr.name == InstrCode.DIVMOD ? calculateD(aValue, bValue) : 0n;
         return [aValue, bValue, cValue, dValue]
             .map((n, dataIndex) =>
-                encodeWinternitz256_4(n, createUniqueDataId(this.setupId, TransactionNames.ARGUMENT, 1, 0, dataIndex))
+                encodeWinternitz256_4(n, createUniqueDataId(this.wotsSalt, TransactionNames.ARGUMENT, 1, 0, dataIndex))
             )
             .flat();
     }
@@ -69,7 +72,7 @@ export class Argument {
                 .map((b, dataIndex) =>
                     encodeWinternitz256_4(
                         bufferToBigintBE(b),
-                        createUniqueDataId(this.setupId, TransactionNames.ARGUMENT, 2 + oi, 0, dataIndex)
+                        createUniqueDataId(this.wotsSalt, TransactionNames.ARGUMENT, 2 + oi, 0, dataIndex)
                     )
                 )
                 .flat()

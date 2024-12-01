@@ -1,6 +1,7 @@
 import { agentConf } from '../agent.conf';
 import { addAmounts } from './amounts';
 import {
+    createSetup,
     dev_ClearTemplates,
     SetupStatus,
     updatedListenerHeightBySetupsIds,
@@ -25,7 +26,7 @@ export async function emulateSetup(
     await dev_ClearTemplates(setupId);
 
     console.log('Creating or updating setup status...');
-    await writeSetupStatus(setupId, SetupStatus.PENDING);
+    await createSetup(setupId, 'salt');
 
     const mockLockedFunds = {
         txId: '0000000000000000000000000000000000000000000000000000000000000000',

@@ -1,10 +1,4 @@
-import {
-    createUniqueDataId,
-    getSpendingConditionByInput,
-    getTransactionByName,
-    Transaction,
-    twoDigits
-} from '../common/transactions';
+import { getSpendingConditionByInput, getTransactionByName, Transaction, twoDigits } from '../common/transactions';
 import { AgentRoles, TransactionNames, iterations } from '../common/types';
 import {
     encodeWinternitz,
@@ -15,7 +9,17 @@ import {
 } from '../common/winternitz';
 import { TransactionWithWotsKeys } from './messages';
 
-export function setWotsPublicKeysForArgument(setupId: string, templates: Transaction[]) {
+export function createUniqueDataId(
+    wotsSalt: string,
+    transactionName: string,
+    outputIndex: number,
+    scIndex: number,
+    dataIndex: number
+) {
+    return `${wotsSalt}/${transactionName}/${outputIndex}/${scIndex}/${dataIndex}`;
+}
+
+export function setWotsPublicKeysForArgument(wotsSalt: string, templates: Transaction[]) {
     const template = getTransactionByName(templates, TransactionNames.ARGUMENT);
     // there should be 5 inputs
     if (template.inputs.length != 5) throw new Error('Wrong number of inputs');
@@ -44,12 +48,15 @@ export function setWotsPublicKeysForArgument(setupId: string, templates: Transac
 
     const argumentSelectionPath = [1n, 2n, 3n, 4n, 5n, 6n];
     sc.exampleWitness = argumentSelectionPath.map((n, i) =>
-        encodeWinternitz24(n, createUniqueDataId(setupId, TransactionNames.SELECT + '_' + twoDigits(i), 0, 0, 0))
+        encodeWinternitz24(n, createUniqueDataId(wotsSalt, TransactionNames.SELECT + '_' + twoDigits(i), 0, 0, 0))
     );
-    sc.exampleWitness[6] = encodeWinternitz24(123456n, createUniqueDataId(setupId, TransactionNames.ARGUMENT, 0, 0, 6));
+    sc.exampleWitness[6] = encodeWinternitz24(
+        123456n,
+        createUniqueDataId(wotsSalt, TransactionNames.ARGUMENT, 0, 0, 6)
+    );
 }
 
-export function generateWotsPublicKeys(setupId: string, templates: Transaction[], role: AgentRoles) {
+export function generateWotsPublicKeys(wotsSalt: string, templates: Transaction[], role: AgentRoles) {
     for (const template of templates) {
         for (const input of template.inputs) {
             const sc = getSpendingConditionByInput(templates, input);
@@ -59,7 +66,7 @@ export function generateWotsPublicKeys(setupId: string, templates: Transaction[]
                     getWinternitzPublicKeys(
                         wt,
                         createUniqueDataId(
-                            setupId,
+                            wotsSalt,
                             template.transactionName,
                             input.outputIndex,
                             input.spendingConditionIndex,
@@ -71,7 +78,7 @@ export function generateWotsPublicKeys(setupId: string, templates: Transaction[]
                     getWinternitzPublicKeys(
                         wt,
                         createUniqueDataId(
-                            setupId,
+                            wotsSalt,
                             template.transactionName,
                             input.outputIndex,
                             input.spendingConditionIndex,
@@ -84,7 +91,7 @@ export function generateWotsPublicKeys(setupId: string, templates: Transaction[]
                     getWinternitzPublicKeysDebug(
                         wt,
                         createUniqueDataId(
-                            setupId,
+                            wotsSalt,
                             template.transactionName,
                             input.outputIndex,
                             input.spendingConditionIndex,
@@ -98,7 +105,7 @@ export function generateWotsPublicKeys(setupId: string, templates: Transaction[]
                         spec,
                         0n,
                         createUniqueDataId(
-                            setupId,
+                            wotsSalt!,
                             template.transactionName,
                             input.outputIndex,
                             input.spendingConditionIndex,

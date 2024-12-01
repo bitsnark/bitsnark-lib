@@ -7,19 +7,15 @@ import {
     readActiveSetups,
     readIncomingTransactions,
     readOutgingByTemplateId,
+    readSetup,
     readTemplates,
+    Setup,
     SetupStatus,
     writeOutgoing,
     writeSetupStatus,
     writeTemplate
 } from '../common/db';
-import {
-    createUniqueDataId,
-    getTransactionByName,
-    SpendingCondition,
-    Transaction,
-    twoDigits
-} from '../common/transactions';
+import { getTransactionByName, SpendingCondition, Transaction, twoDigits } from '../common/transactions';
 import { parseInput } from './parser';
 import { step1_vm } from '../../generator/ec_vm/vm/vm';
 import { vKey } from '../../generator/ec_vm/constants';
@@ -30,13 +26,15 @@ import { Argument } from './argument';
 import { last } from '../common/array-utils';
 import { TransactionNames, AgentRoles } from '../common/types';
 import { bigintToBufferBE } from '../common/encoding';
+import { createUniqueDataId } from '../setup/wots-keys';
 
 export class ProtocolVerifier {
     agentId: string;
     setupId: string;
     bitcoinClient: BitcoinNode;
-    templates: Transaction[] = [];
+    templates?: Transaction[];
     states: Buffer[][] = [];
+    setup?: Setup;
 
     constructor(agentId: string, setupId: string) {
         this.agentId = agentId;
@@ -47,6 +45,9 @@ export class ProtocolVerifier {
     public async process() {
         if (!this.templates) {
             this.templates = await readTemplates(this.agentId, this.setupId);
+        }
+        if (!this.setup) {
+            this.setup = await readSetup(this.setupId);
         }
 
         // read all incoming transactions
@@ -59,7 +60,7 @@ export class ProtocolVerifier {
         // pair them
         const pairs = incoming
             .map((it) => {
-                const template = this.templates.find((t) => t.templateId === it.templateId);
+                const template = this.templates!.find((t) => t.templateId === it.templateId);
                 if (!template) throw new Error('Missing template for incoming transaction: ' + it.templateId);
                 return { incoming: it, template };
             })
@@ -142,13 +143,13 @@ export class ProtocolVerifier {
         const rawTx = incoming.rawTransaction as RawTransaction;
         const argData = rawTx.vin.map((vin, i) =>
             parseInput(
-                this.templates,
+                this.templates!,
                 template.inputs[i],
                 vin.txinwitness!.map((s) => Buffer.from(s, 'hex'))
             )
         );
-        const argument = new Argument(this.setupId, proof);
-        const refutation = await argument.refute(this.templates, argData, this.states);
+        const argument = new Argument(this.setupId, this.setup!.wotsSalt, proof);
+        const refutation = await argument.refute(this.templates!, argData, this.states);
 
         template.inputs[0].script = refutation.script;
         template.inputs[0].controlBlock = refutation.controlBlock;
@@ -157,7 +158,7 @@ export class ProtocolVerifier {
             .map((n, dataIndex) =>
                 encodeWinternitz256_4(
                     n,
-                    createUniqueDataId(this.setupId, TransactionNames.PROOF_REFUTED, 0, 0, dataIndex)
+                    createUniqueDataId(this.setup!.wotsSalt, TransactionNames.PROOF_REFUTED, 0, 0, dataIndex)
                 )
             )
             .flat();
@@ -167,7 +168,7 @@ export class ProtocolVerifier {
     private parseState(incoming: Incoming, template: Transaction): Buffer[] {
         const rawTx = incoming.rawTransaction as RawTransaction;
         const state = parseInput(
-            this.templates,
+            this.templates!,
             template.inputs[0],
             rawTx.vin[0].txinwitness!.map((s) => Buffer.from(s, 'hex'))
         );
@@ -178,12 +179,15 @@ export class ProtocolVerifier {
         const iteration = selectionPath.length;
         const txName = TransactionNames.SELECT + '_' + twoDigits(iteration);
         const selection = await findErrorState(proof, last(states), selectionPath);
-        const selectionWi = encodeWinternitz24(BigInt(selection), createUniqueDataId(this.setupId, txName, 0, 0, 0));
+        const selectionWi = encodeWinternitz24(
+            BigInt(selection),
+            createUniqueDataId(this.setup!.wotsSalt, txName, 0, 0, 0)
+        );
         this.sendTransaction(txName, [selectionWi]);
     }
 
     private async sendTransaction(name: string, data?: Buffer[][]) {
-        const template = getTransactionByName(this.templates, name);
+        const template = getTransactionByName(this.templates!, name);
         // find the pre-signed message
         const presigned = await readOutgingByTemplateId(template.templateId!);
         if (!presigned) throw new Error('Outgoing transaction not found: ' + template.templateId);
@@ -193,7 +197,7 @@ export class ProtocolVerifier {
     private parseProof(incoming: Incoming, template: Transaction): bigint[] {
         const rawTx = incoming.rawTransaction as RawTransaction;
         const proof = parseInput(
-            this.templates,
+            this.templates!,
             template.inputs[0],
             rawTx.vin[0].txinwitness!.map((s) => Buffer.from(s, 'hex'))
         );
@@ -203,7 +207,7 @@ export class ProtocolVerifier {
     private parseSelection(incoming: Incoming, template: Transaction): number {
         const rawTx = incoming.rawTransaction as RawTransaction;
         const data = parseInput(
-            this.templates,
+            this.templates!,
             template.inputs[0],
             rawTx.vin[0].txinwitness!.map((s) => Buffer.from(s, 'hex'))
         );

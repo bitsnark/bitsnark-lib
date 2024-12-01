@@ -2,6 +2,7 @@ CREATE TYPE public.setup_status AS ENUM ( 'PENDING', 'READY', 'SIGNED', 'FAILED'
 
 CREATE TABLE public.setups (
     setup_id CHARACTER VARYING PRIMARY KEY,
+    wots_salt CHARACTER VARYING,
     protocol_version CHARACTER VARYING NOT NULL,
     status public.setup_status NOT NULL DEFAULT 'PENDING',
     listener_last_crawled_height INTEGER NOT NULL DEFAULT 0
@@ -41,7 +42,6 @@ CREATE TABLE public.outgoing (
 CREATE INDEX outgoing_transaction_id_idx ON public.outgoing (transaction_id);
 CREATE INDEX outgoing_status_idx ON public.outgoing (status);
 CREATE INDEX outgoing_updated_idx ON public.outgoing (updated);
-
 
 CREATE TABLE public.incoming (
     template_id INTEGER PRIMARY KEY REFERENCES public.templates(template_id),

@@ -21,7 +21,13 @@ import { signTransactions } from './sign-transactions';
 import { AgentRoles, FundingUtxo } from '../common/types';
 import { initializeTemplates } from './init-templates';
 import { mergeWots, setWotsPublicKeysForArgument } from './wots-keys';
-import { SetupStatus, updatedListenerHeightBySetupsIds, writeSetupStatus, writeTemplates } from '../common/db';
+import {
+    readSetup,
+    SetupStatus,
+    updatedListenerHeightBySetupsIds,
+    writeSetupStatus,
+    writeTemplates
+} from '../common/db';
 import { BitcoinNode } from '../common/bitcoin-node';
 
 interface AgentInfo {
@@ -38,6 +44,7 @@ enum SetupState {
 
 class SetupInstance {
     setupId: string;
+    wotsSalt?: string;
     state: SetupState = SetupState.HELLO;
     myRole: AgentRoles;
     prover?: AgentInfo;
@@ -48,12 +55,14 @@ class SetupInstance {
 
     constructor(
         setupId: string,
+        wotsSalt: string,
         myRole: AgentRoles,
         me: AgentInfo,
         proverFundingUtxo?: FundingUtxo,
         payloadUtxo?: FundingUtxo
     ) {
         this.setupId = setupId;
+        this.wotsSalt = wotsSalt;
         this.myRole = myRole;
         this.prover = myRole == AgentRoles.PROVER ? me : undefined;
         this.verifier = myRole == AgentRoles.VERIFIER ? me : undefined;
@@ -61,6 +70,7 @@ class SetupInstance {
         this.payloadUtxo = payloadUtxo;
     }
 }
+
 export class Agent {
     agentId: string;
     role: AgentRoles;
@@ -160,8 +170,11 @@ export class Agent {
     public async start(context: SimpleContext, setupId: string, payloadUtxo: FundingUtxo, proverUtxo: FundingUtxo) {
         if (this.role != AgentRoles.PROVER) throw new Error("I'm not a prover");
 
+        const setup = await readSetup(setupId);
+
         const i = new SetupInstance(
             setupId,
+            setup.wotsSalt,
             AgentRoles.PROVER,
             {
                 agentId: this.agentId,
@@ -192,8 +205,11 @@ export class Agent {
 
         this.verifyPubKey((message as StartMessage).schnorrPublicKey, message.agentId);
 
+        const setup = await readSetup(message.setupId);
+
         i = new SetupInstance(
             message.setupId,
+            setup.wotsSalt,
             AgentRoles.VERIFIER,
             {
                 agentId: this.agentId,

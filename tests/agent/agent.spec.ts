@@ -29,7 +29,7 @@ const proverStake = {
 };
 
 //Focuses on agent message signatures; setup is checked in emulate-setups.
-describe('Agents message signatures check', () => {
+describe('Agent message signatures check', () => {
     const prover = new Agent('bitsnark_prover_1', AgentRoles.PROVER);
     const verifier = new Agent('bitsnark_verifier_1', AgentRoles.VERIFIER);
     let setupId: string;
@@ -65,7 +65,7 @@ describe('Agents message signatures check', () => {
         expect(mockContext.send).toHaveBeenCalledWith(signedMessage);
     });
 
-    it('Verifier on eccepting the start message, should verify it, set its setupId and send a join message', async () => {
+    it('Verifier on accepting the start message, should verify it, set its setupId and send a join message', async () => {
         const spySignMessageAndSend = jest.spyOn(verifier, 'signMessageAndSend');
         const spySOntart = jest.spyOn(verifier, 'on_start');
 
@@ -82,7 +82,7 @@ describe('Agents message signatures check', () => {
         expect(mockContext.send).toHaveBeenCalledWith(signedMessage);
     });
 
-    it('Prover on eccepting the join message, should verify it', async () => {
+    it('Prover on accepting the join message, should verify it', async () => {
         const spySignMessageAndSend = jest.spyOn(prover, 'signMessageAndSend');
         const spyVerifyMessage = jest.spyOn(prover, 'verifyMessage');
 

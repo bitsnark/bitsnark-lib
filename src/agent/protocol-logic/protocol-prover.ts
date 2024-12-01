@@ -7,18 +7,14 @@ import {
     readActiveSetups,
     readIncomingTransactions,
     readOutgingByTemplateId,
+    readSetup,
     readTemplates,
+    Setup,
     SetupStatus,
     writeOutgoing,
     writeSetupStatus
 } from '../common/db';
-import {
-    createUniqueDataId,
-    getTransactionByName,
-    SpendingCondition,
-    Transaction,
-    twoDigits
-} from '../common/transactions';
+import { getTransactionByName, SpendingCondition, Transaction, twoDigits } from '../common/transactions';
 import { encodeWinternitz256_4 } from '../common/winternitz';
 import { calculateStates } from './states';
 import { Argument } from './argument';
@@ -26,12 +22,14 @@ import { parseInput } from './parser';
 import { bufferToBigintBE } from '../common/encoding';
 import { last } from '../common/array-utils';
 import { TransactionNames, iterations, AgentRoles } from '../common/types';
+import { createUniqueDataId } from '../setup/wots-keys';
 
 export class ProtocolProver {
     agentId: string;
     setupId: string;
     bitcoinClient: BitcoinNode;
-    templates: Transaction[] = [];
+    templates?: Transaction[];
+    setup?: Setup;
 
     constructor(agentId: string, setupId: string) {
         this.agentId = agentId;
@@ -47,6 +45,9 @@ export class ProtocolProver {
         if (!this.templates) {
             this.templates = await readTemplates(this.agentId, this.setupId);
         }
+        if (!this.setup) {
+            this.setup = await readSetup(this.setupId);
+        }
 
         // read all incoming transactions
         const incoming = await readIncomingTransactions(this.setupId);
@@ -58,7 +59,7 @@ export class ProtocolProver {
         // pair them
         const pairs = incoming
             .map((it) => {
-                const template = this.templates.find((t) => t.templateId === it.templateId);
+                const template = this.templates!.find((t) => t.templateId === it.templateId);
                 if (!template) throw new Error('Missing template for incoming transaction: ' + it.templateId);
                 return { incoming: it, template };
             })
@@ -141,7 +142,7 @@ export class ProtocolProver {
     }
 
     private async sendTransaction(name: string, data?: Buffer[][]) {
-        const template = getTransactionByName(this.templates, name);
+        const template = getTransactionByName(this.templates!, name);
         // find the pre-signed message
         const presigned = await readOutgingByTemplateId(template.templateId!);
         if (!presigned) throw new Error('Outgoing transaction not found: ' + template.templateId);
@@ -151,7 +152,10 @@ export class ProtocolProver {
     private async sendProof(proof: bigint[]) {
         const data = proof
             .map((n, dataIndex) =>
-                encodeWinternitz256_4(n, createUniqueDataId(this.setupId, TransactionNames.PROOF, 0, 0, dataIndex))
+                encodeWinternitz256_4(
+                    n,
+                    createUniqueDataId(this.setup!.wotsSalt, TransactionNames.PROOF, 0, 0, dataIndex)
+                )
             )
             .flat();
         await this.sendTransaction(TransactionNames.PROOF, [data]);
@@ -164,7 +168,7 @@ export class ProtocolProver {
     private parseProof(incoming: Incoming, template: Transaction): bigint[] {
         const rawTx = incoming.rawTransaction as RawTransaction;
         const proof = parseInput(
-            this.templates,
+            this.templates!,
             template.inputs[0],
             rawTx.vin[0].txinwitness!.map((s) => Buffer.from(s, 'hex'))
         );
@@ -176,7 +180,7 @@ export class ProtocolProver {
     }
 
     private async sendArgument(proof: bigint[], selectionPath: number[], selectionPathUnparsed: Buffer[][]) {
-        const argument = new Argument(this.setupId, proof);
+        const argument = new Argument(this.setupId, this.setup!.wotsSalt, proof);
         const argumentData = await argument.makeArgument(selectionPath, selectionPathUnparsed);
         await this.sendTransaction(TransactionNames.ARGUMENT, argumentData);
     }
@@ -192,7 +196,7 @@ export class ProtocolProver {
     private parseSelection(incoming: Incoming, template: Transaction): number {
         const rawTx = incoming.rawTransaction as RawTransaction;
         const data = parseInput(
-            this.templates,
+            this.templates!,
             template.inputs[0],
             rawTx.vin[0].txinwitness!.map((s) => Buffer.from(s, 'hex'))
         );
@@ -205,7 +209,10 @@ export class ProtocolProver {
         const txName = TransactionNames.STATE + '_' + twoDigits(iteration);
         const statesWi = states
             .map((s, dataIndex) =>
-                encodeWinternitz256_4(bufferToBigintBE(s), createUniqueDataId(this.setupId, txName, 0, 0, dataIndex))
+                encodeWinternitz256_4(
+                    bufferToBigintBE(s),
+                    createUniqueDataId(this.setup!.wotsSalt, txName, 0, 0, dataIndex)
+                )
             )
             .flat();
         await this.sendTransaction(txName, [statesWi]);
