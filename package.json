@@ -52,7 +52,7 @@
     "bitcoinjs-lib": "6.1.6",
     "bscript-parser": "0.1.0",
     "crypto-js": "4.2.0",
-    "dotenv": "^16.4.5",
+    "dotenv": "16.4.5",
     "ecpair": "2.1.0",
     "hash-wasm": "4.11.0",
     "pg-format": "1.0.4",
@@ -62,6 +62,7 @@
     "tiny-secp256k1": "2.2.3",
     "ts-graphviz": "2.1.4",
     "ts-postgres": "2.0.4",
+    "uuid": "11.0.3",
     "websnark": "git+https://github.com/tornadocash/websnark.git#4c0af6a8b65aabea3c09f377f63c44e7a58afa6d"
   },
   "devDependencies": {

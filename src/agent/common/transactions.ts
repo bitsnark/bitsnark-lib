@@ -89,6 +89,10 @@ export const protocolStart: Transaction[] = [
                 spendingConditions: [
                     {
                         nextRole: AgentRoles.PROVER,
+                        signatureType: SignatureType.BOTH
+                    },
+                    {
+                        nextRole: AgentRoles.PROVER,
                         signatureType: SignatureType.BOTH,
                         wotsSpec: array(8, WotsType._256_4)
                     }
@@ -103,7 +107,7 @@ export const protocolStart: Transaction[] = [
             {
                 transactionName: TransactionNames.PROVER_STAKE,
                 outputIndex: 0,
-                spendingConditionIndex: 0
+                spendingConditionIndex: 1
             }
         ],
         outputs: [

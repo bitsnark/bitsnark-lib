@@ -62,7 +62,7 @@ function setTaprootKey(transactions: Transaction[]) {
     }
 }
 
-function generateBoilerplate(transations: Transaction[], myRole: AgentRoles, input: Input): Buffer {
+export function generateBoilerplate(transations: Transaction[], myRole: AgentRoles, input: Input): Buffer {
     const bitcoin = new Bitcoin();
 
     const prevTx = getTransactionByInput(transations, input);
