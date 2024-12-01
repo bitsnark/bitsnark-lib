@@ -119,7 +119,6 @@ async function main() {
     const setupId = 'test_setup';
     const db = new AgentDb(agentId);
     await db.upsertTemplates(setupId, await addAmounts(agentId, role, setupId, await db.getTransactions(setupId)));
-    db.disconnect();
 }
 
 if (require.main === module) {

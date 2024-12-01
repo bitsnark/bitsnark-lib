@@ -41,7 +41,6 @@ async function main() {
     const db = new AgentDb(agentId);
     const transactions = await db.getTransactions(setupId);
     emulateTransactionScripts(transactions);
-    db.disconnect();
 }
 
 const scriptName = __filename;

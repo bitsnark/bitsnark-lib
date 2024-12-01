@@ -116,9 +116,6 @@ export async function emulateSetup(
     await verifySetup(verifierAgentId, setupId, AgentRoles.VERIFIER);
 
     console.log('done.');
-
-    proverDb.disconnect();
-    verifierDb.disconnect();
 }
 
 if (require.main === module) {

@@ -127,7 +127,6 @@ if (require.main === module) {
         const db = new AgentDb('bitsnark_prover_1');
         const pending = await db.getExpectedTemplates();
         console.log(pending.map((tx) => tx.lastCheckedBlockHeight));
-        db.disconnect();
     })().catch((error) => {
         throw error;
     });

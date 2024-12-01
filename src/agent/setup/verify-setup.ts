@@ -87,8 +87,6 @@ export async function verifySetup(agentId: string, setupId: string, role: AgentR
     }
 
     console.log('Success');
-
-    db.disconnect();
 }
 
 const scriptName = __filename;

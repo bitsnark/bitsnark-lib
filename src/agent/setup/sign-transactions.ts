@@ -44,7 +44,6 @@ export async function signTransactions(
 
     const db = new AgentDb(agentId);
     transactions = await db.getTransactions(setupId);
-    await db.disconnect();
     for (const transaction of transactions) {
         if (transaction.transactionName == TransactionNames.PROOF_REFUTED) {
             console.warn('Manually skipping script generation for transaction', transaction.transactionName);
@@ -65,7 +64,6 @@ async function main() {
     const setupId = 'test_setup';
     const db = new AgentDb(agentId);
     const transactions = await db.getTransactions(setupId);
-    db.disconnect();
     signTransactions(AgentRoles.PROVER, agentId, setupId, transactions).catch(console.error);
 }
 

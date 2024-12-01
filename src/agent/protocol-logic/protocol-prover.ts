@@ -219,7 +219,6 @@ export async function main(agentId: string) {
         await new Promise((r) => setTimeout(r, agentConf.protocolIntervalMs));
         /*eslint no-constant-condition: "off"*/
     } while (true);
-    db.disconnect();
 }
 
 const scriptName = __filename;

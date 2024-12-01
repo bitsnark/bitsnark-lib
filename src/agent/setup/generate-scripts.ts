@@ -221,7 +221,6 @@ async function main() {
     const bareTransactions = await db.getTransactions(setupId);
     const transactions = await generateAllScripts(AgentRoles.PROVER, bareTransactions, generateFinal);
     await db.upsertTemplates(setupId, transactions);
-    await db.disconnect();
 }
 
 if (require.main === module) {

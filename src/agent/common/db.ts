@@ -18,7 +18,6 @@ class Db {
     user: string;
     password: string;
     database: string;
-    connection?: Client;
     constructor(
         host: string = agentConf.postgresHost,
         port: number = agentConf.postgresPort,
@@ -34,7 +33,7 @@ class Db {
     }
 
     protected async connect() {
-        this.connection = await connect({
+        return await connect({
             user: this.user,
             host: this.host,
             port: this.port,
@@ -46,8 +45,13 @@ class Db {
     }
 
     protected async query<Row>(sql: string, params?: QueryArgs) {
-        if (this.connection === undefined || this.connection?.closed) await this.connect();
-        return await this.connection!.query<Row>(sql, params ?? []);
+        // Re-creating the client for each query.
+        const client = await this.connect();
+        try {
+            return await client.query<Row>(sql, params ?? []);
+        } finally {
+            await client.end();
+        }
     }
 
     protected async session(queries: Query[]): Promise<void> {
@@ -61,11 +65,6 @@ class Db {
             throw error;
         }
         this.query('COMMIT');
-    }
-
-    protected async disconnect() {
-        await this.connection?.end();
-        delete this.connection;
     }
 }
 
@@ -409,10 +408,6 @@ export class AgentDb extends Db {
                 (row) => this.getSetup(row[0] as string)
             )
         );
-    }
-
-    public async disconnect() {
-        await super.disconnect();
     }
 
     // To assist mocking the DB in tests.
