@@ -1,4 +1,4 @@
-import { ExpectedTemplate, SetupStatus, OutgoingStatus } from '../../src/agent/common/db';
+import { Template, SetupStatus, OutgoingStatus } from '../../src/agent/common/db';
 import { TransactionNames, AgentRoles } from '../../src/agent/common/types';
 import { Input } from '../../src/agent/common/transactions';
 
@@ -10,7 +10,7 @@ const templates = [
     TransactionNames.PROOF_UNCONTESTED
 ];
 
-const IncomingTransactionsBaseRow: ExpectedTemplate = {
+const IncomingTransactionsBaseRow: Template = {
     setupId: 'setup_id',
     setupStatus: SetupStatus.ACTIVE,
     protocolVersion: '0.2',
@@ -29,7 +29,6 @@ const IncomingTransactionsBaseRow: ExpectedTemplate = {
         protocolVersion: '0.2',
         transactionName: 'transaction_name'
     },
-    outgoingStatus: OutgoingStatus.PENDING,
     rawTransaction: null,
     txId: null,
     blockHash: null,
@@ -42,7 +41,7 @@ export function txIdBySetupAndName(setupId: string, transactionName: string) {
     return `${setupId}_tx_${transactionName}`;
 }
 
-export const mockExpected = (function createSetupsIncomingTransactions(): ExpectedTemplate[] {
+export const mockExpected = (function createSetupsIncomingTransactions(): Template[] {
     return setups.flatMap((setupId, setupIndex) => {
         return templates.map((templateName, index) => {
             return {

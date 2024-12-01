@@ -1,7 +1,7 @@
 import { RawTransaction } from 'bitcoin-core';
 import { agentConf } from '../agent.conf';
 import { BitcoinNode } from '../common/bitcoin-node';
-import { AgentDb, ReceivedTransaction } from '../common/db';
+import { AgentDb, ReceivedTemplate } from '../common/db';
 import { createUniqueDataId, SpendingCondition, Transaction, twoDigits } from '../common/transactions';
 import { parseInput } from './parser';
 import { step1_vm } from '../../generator/ec_vm/vm/vm';
@@ -114,7 +114,7 @@ export class ProtocolVerifier {
         return step1_vm.success?.value === 1n;
     }
 
-    private async refuteArgument(proof: bigint[], incoming: ReceivedTransaction) {
+    private async refuteArgument(proof: bigint[], incoming: ReceivedTemplate) {
         const rawTx = incoming.rawTransaction as RawTransaction;
         const argData = rawTx.vin.map((vin, i) =>
             parseInput(
@@ -140,7 +140,7 @@ export class ProtocolVerifier {
         this.sendTransaction(TransactionNames.PROOF_REFUTED, [data]);
     }
 
-    private parseState(incoming: ReceivedTransaction): Buffer[] {
+    private parseState(incoming: ReceivedTemplate): Buffer[] {
         const rawTx = incoming.rawTransaction as RawTransaction;
         const state = parseInput(
             this.templates,
@@ -162,7 +162,7 @@ export class ProtocolVerifier {
         this.db.markToSend(this.setupId, name, data);
     }
 
-    private parseProof(incoming: ReceivedTransaction): bigint[] {
+    private parseProof(incoming: ReceivedTemplate): bigint[] {
         const rawTx = incoming.rawTransaction as RawTransaction;
         const proof = parseInput(
             this.templates,
@@ -172,7 +172,7 @@ export class ProtocolVerifier {
         return proof;
     }
 
-    private parseSelection(incoming: ReceivedTransaction): number {
+    private parseSelection(incoming: ReceivedTemplate): number {
         const rawTx = incoming.rawTransaction as RawTransaction;
         const data = parseInput(
             this.templates,
@@ -198,7 +198,7 @@ export class ProtocolVerifier {
         return await this.bitcoinClient.getBlockCount();
     }
 
-    private async checkTimeout(incoming: ReceivedTransaction): Promise<SpendingCondition | null> {
+    private async checkTimeout(incoming: ReceivedTemplate): Promise<SpendingCondition | null> {
         // check if any spending condition has a timeout that already expired
         const currentBlockHeight = await this.getCurrentBlockHeight();
         for (const output of incoming.object.outputs) {

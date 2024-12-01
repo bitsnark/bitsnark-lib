@@ -49,6 +49,9 @@ class Db {
         const client = await this.connect();
         try {
             return await client.query<Row>(sql, params ?? []);
+        } catch (error) {
+            console.error('Failed to execute query:', sql, params);
+            throw error;
         } finally {
             await client.end();
         }
@@ -85,87 +88,78 @@ export enum OutgoingStatus {
     REJECTED
 }
 
-export interface Setup {
+interface SetupRow {
     id: string;
     protocolVersion: string;
     status: SetupStatus;
     lastCheckedBlockHeight?: number;
 }
 
-export interface EnrichedTemplate {
+interface TemplateRow {
     name: string;
     role: AgentRoles;
     isExternal: boolean;
     ordinal: number;
     object: Transaction;
-    outgoingStatus: OutgoingStatus | null;
+}
+
+// Template row, with optional received fields and setup data.
+export interface Template extends TemplateRow, Omit<SetupRow, 'id' | 'status'> {
+    setupId: string;
+    setupStatus: SetupStatus;
     txId: string | null;
     blockHash: string | null;
     blockHeight: number | null;
     rawTransaction: RawTransaction | null;
 }
 
-export interface ReceivedTransaction extends EnrichedTemplate {
+// Template row, with mandatory received fields.
+export interface ReceivedTemplate extends TemplateRow {
     txId: string;
     blockHash: string;
     blockHeight: number;
     rawTransaction: RawTransaction;
 }
 
-export interface ExpectedTemplate extends EnrichedTemplate, Omit<Setup, 'id' | 'status'> {
-    setupId: string;
-    setupStatus: SetupStatus;
-}
-
-export interface EnrichedSetup extends Setup {
-    templates: EnrichedTemplate[];
-    received?: ReceivedTransaction[];
-}
-
-export interface RequiredUtxo {
-    txId: string;
-    vout: number;
-    spendingCondition: SpendingCondition;
-    nSequence?: number;
+// Setup row, with templates and received templates.
+export interface Setup extends SetupRow {
+    templates: Template[];
+    received: ReceivedTemplate[];
 }
 
 export class AgentDb extends Db {
-    private static enrichedTemplatesFields = `
-        templates.name, templates.role,
-        templates.is_external, templates.ordinal,
-        templates.object, templates.outgoing_status,
-        received.transaction_hash, received.raw_transaction,
-        received.block_hash, received.block_height`;
-
-    private static expectedTemplatesFields = `
-        ${AgentDb.enrichedTemplatesFields},
+    private static templateFields = `
+        templates.name, templates.role, templates.is_external, templates.ordinal, templates.object,
+        received.transaction_hash, received.raw_transaction, received.block_hash, received.block_height,
         setups.id, setups.protocol_version,
         setups.status, setups.last_checked_block_height`;
 
-    private static enrichedTemplateReader(row: ResultRow<ResultRecord>): EnrichedTemplate {
-        const template: EnrichedTemplate = {
-            name: row[0] as string,
-            role: row[1] as AgentRoles,
-            isExternal: row[2] as boolean,
-            ordinal: row[3] as number,
+    private static templateReader(row: ResultRow<ResultRecord>): Template {
+        return {
+            name: row[0],
+            role: row[1],
+            isExternal: row[2],
+            ordinal: row[3],
             object: jsonParseCustom(JSON.stringify(row[4])),
-            outgoingStatus: row[5] ? OutgoingStatus[row[5] as keyof typeof OutgoingStatus] : null,
-            txId: row[6] as string | null,
-            rawTransaction: row[7] ? JSON.parse(row[7] as string) : null,
-            blockHash: row[8] as string | null,
-            blockHeight: row[9] as number | null
+            txId: row[5],
+            rawTransaction: row[6],
+            blockHash: row[7],
+            blockHeight: row[8],
+            setupId: row[10],
+            protocolVersion: row[11],
+            setupStatus: SetupStatus[row[12] as keyof typeof SetupStatus],
+            lastCheckedBlockHeight: row[13]
         };
-        return template;
     }
 
-    private static expectedTemplateReader(row: ResultRow<ResultRecord>): ExpectedTemplate {
-        return {
-            ...AgentDb.enrichedTemplateReader(row),
-            setupId: row[10] as string,
-            protocolVersion: row[11] as string,
-            setupStatus: SetupStatus[row[12] as keyof typeof SetupStatus],
-            lastCheckedBlockHeight: row[13] as number
-        };
+    private static receivedTemplateReader(row: ResultRow<ResultRecord>): ReceivedTemplate {
+        const receivedTemplate = AgentDb.templateReader(row) as ReceivedTemplate;
+        for (const property of ['txId', 'blockHash', 'blockHeight', 'rawTransaction']) {
+            if (receivedTemplate[property as keyof typeof receivedTemplate] === null) {
+                throw new Error(`Received template does not have a ${property}`);
+            }
+        }
+        return receivedTemplate;
     }
 
     constructor(agentId: string) {
@@ -294,94 +288,43 @@ export class AgentDb extends Db {
         );
     }
 
-    private async getTemplate(setupId: string, name: string): Promise<EnrichedTemplate> {
+    public async getTemplates(setupId?: string): Promise<Template[]> {
+        const setupFilter = setupId ? 'WHERE setups.id = $1' : '';
         return (
-            await this.query<EnrichedTemplate>(
+            await this.query<Template>(
                 `
-                SELECT ${AgentDb.enrichedTemplatesFields}
-                FROM templates
-                LEFT JOIN received ON templates.id = received.template_id
-                WHERE setup_id = $1 AND name = $2
-            `,
-                [setupId, name]
-            )
-        ).rows.map(AgentDb.enrichedTemplateReader)[0];
-    }
-
-    public async getRequiredUtxos(setupId: string, name: string): Promise<RequiredUtxo[]> {
-        const template = await this.getTemplate(setupId, name);
-        return Promise.all(
-            template.object.inputs.map(async (input) => {
-                const funder = await this.getTemplate(setupId, input.transactionName);
-                if (funder.object.temporaryTxId) throw new Error('Temporary txId encountered');
-                if (!funder.object.txId) throw new Error('Missing txId');
-                return {
-                    txId: funder.object.txId,
-                    vout: input.outputIndex,
-                    nSequence: input.nSequence,
-                    spendingCondition:
-                        funder.object.outputs[input.outputIndex].spendingConditions[input.spendingConditionIndex]
-                };
-            })
-        );
-    }
-
-    public async getReceivedTemplates(): Promise<ReceivedTransaction[]> {
-        return (
-            await this.query<ReceivedTransaction>(`
-            SELECT ${AgentDb.enrichedTemplatesFields}
-            FROM templates
-            JOIN received ON templates.id = received.template_id
-        `)
-        ).rows.map(AgentDb.enrichedTemplateReader) as ReceivedTransaction[];
-    }
-
-    public async getExpectedTemplates(): Promise<ExpectedTemplate[]> {
-        return (
-            await this.query<ExpectedTemplate>(`
-            SELECT ${AgentDb.expectedTemplatesFields}
-            FROM templates
-            LEFT JOIN received ON templates.id = received.template_id
-            JOIN setups ON templates.setup_id = setups.id
-            WHERE received.template_id IS NULL
-            ORDER BY last_checked_block_height ASC, ordinal ASC
-        `)
-        ).rows.map(AgentDb.expectedTemplateReader);
-    }
-
-    private async getSetupTemplates(setupId: string): Promise<EnrichedTemplate[]> {
-        return (
-            await this.query<EnrichedTemplate>(
-                `
-                    SELECT ${AgentDb.enrichedTemplatesFields}
+                    SELECT ${AgentDb.templateFields}
                     FROM templates
+                    JOIN setups ON templates.setup_id = setups.id
                     LEFT JOIN received ON templates.id = received.template_id
-                    WHERE templates.setup_id = $1
-                    ORDER BY ordinal ASC
+                    ${setupFilter}
+                    ORDER BY last_checked_block_height ASC, ordinal ASC
                 `,
                 [setupId]
             )
-        ).rows.map(AgentDb.enrichedTemplateReader);
+        ).rows.map(AgentDb.templateReader);
     }
 
-    private async getSetupReceivedTemplates(setupId: string): Promise<ReceivedTransaction[]> {
+    public async getReceivedTemplates(setupId: string): Promise<ReceivedTemplate[]> {
         return (
-            await this.query<EnrichedTemplate>(
+            await this.query<ReceivedTemplate>(
                 `
-                    SELECT ${AgentDb.enrichedTemplatesFields}
+                    SELECT ${AgentDb.templateFields}
                     FROM templates
+                    JOIN setups ON templates.setup_id = setups.id
                     JOIN received ON templates.id = received.template_id
-                    WHERE templates.setup_id = $1
+                    WHERE setups.id = $1
                     ORDER BY ordinal ASC
-                `,
+            `,
                 [setupId]
             )
-        ).rows.map(AgentDb.enrichedTemplateReader) as ReceivedTransaction[];
+        ).rows.map(AgentDb.receivedTemplateReader);
     }
 
-    public async getSetup(setupId: string): Promise<EnrichedSetup> {
-        const templates = await this.getSetupTemplates(setupId);
-        const received = await this.getSetupReceivedTemplates(setupId);
+    public async getSetup(setupId: string): Promise<Setup> {
+        const templates = await this.getTemplates(setupId);
+        const received = await this.getReceivedTemplates(setupId);
+        console.log('rs', received.length);
         const setup = (
             await this.query<Setup>(
                 `
@@ -402,7 +345,7 @@ export class AgentDb extends Db {
         };
     }
 
-    public async getActiveSetups(): Promise<EnrichedSetup[]> {
+    public async getActiveSetups(): Promise<Setup[]> {
         return Promise.all(
             (await this.query('SELECT id FROM setups WHERE status = $1', [SetupStatus[SetupStatus.ACTIVE]])).rows.map(
                 (row) => this.getSetup(row[0] as string)

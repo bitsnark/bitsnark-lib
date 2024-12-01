@@ -1,7 +1,7 @@
 import { RawTransaction } from 'bitcoin-core';
 import { agentConf } from '../agent.conf';
 import { BitcoinNode } from '../common/bitcoin-node';
-import { AgentDb, ReceivedTransaction } from '../common/db';
+import { AgentDb, ReceivedTemplate } from '../common/db';
 import { createUniqueDataId, SpendingCondition, Transaction, twoDigits } from '../common/transactions';
 import { encodeWinternitz256_4 } from '../common/winternitz';
 import { calculateStates } from './states';
@@ -134,7 +134,7 @@ export class ProtocolProver {
         await this.sendTransaction(TransactionNames.PROOF_UNCONTESTED);
     }
 
-    private parseProof(incoming: ReceivedTransaction): bigint[] {
+    private parseProof(incoming: ReceivedTemplate): bigint[] {
         const rawTx = incoming.rawTransaction as RawTransaction;
         const proof = parseInput(
             this.templates,
@@ -158,7 +158,7 @@ export class ProtocolProver {
         await this.sendTransaction(TransactionNames.STATE_UNCONTESTED + '_' + twoDigits(iteration));
     }
 
-    private parseSelection(incoming: ReceivedTransaction): number {
+    private parseSelection(incoming: ReceivedTemplate): number {
         const rawTx = incoming.rawTransaction as RawTransaction;
         const data = parseInput(
             this.templates,
@@ -184,7 +184,7 @@ export class ProtocolProver {
         return await this.bitcoinClient.getBlockCount();
     }
 
-    private async checkTimeout(incoming: ReceivedTransaction): Promise<SpendingCondition | null> {
+    private async checkTimeout(incoming: ReceivedTemplate): Promise<SpendingCondition | null> {
         // check if any spending condition has a timeout that already expired
         const currentBlockHeight = await this.getCurrentBlockHeight();
         for (const output of incoming.object.outputs) {

@@ -35,7 +35,7 @@ describe('BitcoinListener', () => {
         nodeListener = new BitcoinListener(AgentRoles.PROVER);
         nodeListener.client = clientMock;
         jest.spyOn(nodeListener.db, 'query').mockImplementation(jest.fn());
-        jest.spyOn(nodeListener.db, 'getExpectedTemplates').mockImplementation(jest.fn());
+        jest.spyOn(nodeListener.db, 'getTemplates').mockImplementation(jest.fn());
         jest.spyOn(nodeListener.db, 'markReceived').mockImplementation(jest.fn());
         jest.spyOn(nodeListener.db, 'updateLastCheckedBlockHeightBatch').mockImplementation(jest.fn());
     });
@@ -73,7 +73,7 @@ describe('BitcoinListener', () => {
     });
 
     it("Won't query for raw transaction if no pending transactions were found", async () => {
-        jest.spyOn(nodeListener.db, 'getExpectedTemplates').mockResolvedValue([]);
+        jest.spyOn(nodeListener.db, 'getTemplates').mockResolvedValue([]);
 
         await nodeListener.monitorTransmitted();
 
@@ -83,7 +83,7 @@ describe('BitcoinListener', () => {
 
     it("Won't crawel if a new block exsists but iy isn't finalizes", async () => {
         setupLastBlockProperties(nodeListener, 'hash103', 103);
-        jest.spyOn(nodeListener.db, 'getExpectedTemplates').mockResolvedValue(getmockExpected());
+        jest.spyOn(nodeListener.db, 'getTemplates').mockResolvedValue(getmockExpected());
 
         await nodeListener.monitorTransmitted();
 
@@ -95,7 +95,7 @@ describe('BitcoinListener', () => {
 
     it('Will crawel if a new finalized block exsists', async () => {
         setupLastBlockProperties(nodeListener, 'hash107', 107);
-        jest.spyOn(nodeListener.db, 'getExpectedTemplates').mockResolvedValue(getmockExpected());
+        jest.spyOn(nodeListener.db, 'getTemplates').mockResolvedValue(getmockExpected());
 
         await nodeListener.monitorTransmitted();
 
@@ -105,7 +105,7 @@ describe('BitcoinListener', () => {
     it('Will serach for all unpublished not temporaryTxId txs by transactions id', async () => {
         setupLastBlockProperties(nodeListener, 'hash107', 107);
         const mockExpected = getmockExpected();
-        jest.spyOn(nodeListener.db, 'getExpectedTemplates').mockResolvedValue(mockExpected);
+        jest.spyOn(nodeListener.db, 'getTemplates').mockResolvedValue(mockExpected);
         (clientMock.getBlockHash as jest.Mock).mockResolvedValue('hash101');
 
         await nodeListener.monitorTransmitted();
@@ -125,7 +125,7 @@ describe('BitcoinListener', () => {
                 txIdBySetupAndName('test_setup_1', TransactionNames.PROOF)
             ])
         );
-        jest.spyOn(nodeListener.db, 'getExpectedTemplates').mockResolvedValue(mockExpected);
+        jest.spyOn(nodeListener.db, 'getTemplates').mockResolvedValue(mockExpected);
         (clientMock.getBlockHash as jest.Mock).mockResolvedValue('hash101');
 
         await nodeListener.monitorTransmitted();
@@ -142,7 +142,7 @@ describe('BitcoinListener', () => {
                 txIdBySetupAndName('test_setup_1', TransactionNames.PROOF)
             ])
         );
-        jest.spyOn(nodeListener.db, 'getExpectedTemplates').mockResolvedValue(mockExpected);
+        jest.spyOn(nodeListener.db, 'getTemplates').mockResolvedValue(mockExpected);
         (clientMock.getBlockHash as jest.Mock).mockResolvedValue('hash101');
         (clientMock.getTxOut as jest.Mock).mockResolvedValue({});
 
@@ -161,7 +161,7 @@ describe('BitcoinListener', () => {
                 txIdBySetupAndName('test_setup_1', TransactionNames.PROOF)
             ])
         );
-        jest.spyOn(nodeListener.db, 'getExpectedTemplates').mockResolvedValue(mockExpected);
+        jest.spyOn(nodeListener.db, 'getTemplates').mockResolvedValue(mockExpected);
         (clientMock.getBlockHash as jest.Mock).mockResolvedValue('hash101');
         (clientMock.getTxOut as jest.Mock).mockResolvedValue(null);
         (clientMock.getBlock as jest.Mock).mockResolvedValue({
@@ -180,7 +180,7 @@ describe('BitcoinListener', () => {
     it('should save new published transactions found by transaction ids', async () => {
         setupLastBlockProperties(nodeListener, 'hash107', 107);
         const mockExpected = getmockExpected();
-        jest.spyOn(nodeListener.db, 'getExpectedTemplates').mockResolvedValue(mockExpected);
+        jest.spyOn(nodeListener.db, 'getTemplates').mockResolvedValue(mockExpected);
         (clientMock.getBlockHash as jest.Mock).mockResolvedValue('hash101');
         (clientMock.getTxOut as jest.Mock).mockResolvedValue(null);
         (clientMock.getRawTransaction as jest.Mock)
@@ -230,7 +230,7 @@ describe('BitcoinListener', () => {
                 txIdBySetupAndName('test_setup_1', TransactionNames.PROOF)
             ])
         );
-        jest.spyOn(nodeListener.db, 'getExpectedTemplates').mockResolvedValue(mockExpected);
+        jest.spyOn(nodeListener.db, 'getTemplates').mockResolvedValue(mockExpected);
         (clientMock.getBlockHash as jest.Mock).mockResolvedValue('hash101');
         (clientMock.getTxOut as jest.Mock).mockResolvedValue(null);
         (clientMock.getBlock as jest.Mock).mockResolvedValue({
@@ -258,7 +258,7 @@ describe('BitcoinListener', () => {
     it('Should update listener height in setups', async () => {
         setupLastBlockProperties(nodeListener, 'hash109', 109);
         const mockExpected = getmockExpected();
-        jest.spyOn(nodeListener.db, 'getExpectedTemplates').mockResolvedValue(mockExpected);
+        jest.spyOn(nodeListener.db, 'getTemplates').mockResolvedValue(mockExpected);
 
         await nodeListener.monitorTransmitted();
 

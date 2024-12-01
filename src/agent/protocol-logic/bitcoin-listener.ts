@@ -2,7 +2,7 @@ import { Transaction } from '../common/transactions';
 import { agentConf } from '../agent.conf';
 import { BitcoinNode } from '../common/bitcoin-node';
 import { RawTransaction } from 'bitcoin-core';
-import { AgentDb, ExpectedTemplate } from '../common/db';
+import { AgentDb, Template } from '../common/db';
 
 export interface expectByInputs {
     setupId: string;
@@ -35,7 +35,7 @@ export class BitcoinListener {
     }
 
     async monitorTransmitted(): Promise<void> {
-        const templates = await this.db.getExpectedTemplates();
+        const templates = await this.db.getTemplates();
         const pending = templates.filter((template) => template.blockHash === null);
         if (pending.length === 0) return;
 
@@ -83,7 +83,7 @@ export class BitcoinListener {
 
     private async getTransactionByInputs(
         pendingTx: Transaction,
-        setupTemplates: ExpectedTemplate[],
+        setupTemplates: Template[],
         blockHash: string
     ): Promise<RawTransaction | undefined> {
         try {
@@ -125,7 +125,7 @@ export class BitcoinListener {
 if (require.main === module) {
     (async () => {
         const db = new AgentDb('bitsnark_prover_1');
-        const pending = await db.getExpectedTemplates();
+        const pending = await db.getTemplates();
         console.log(pending.map((tx) => tx.lastCheckedBlockHeight));
     })().catch((error) => {
         throw error;

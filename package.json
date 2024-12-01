@@ -35,8 +35,10 @@
     "start-verifier": "./python/run-in-venv.sh ts-node ./src/agent/setup/agent.ts bitsnark_verifier_1",
     "start-regtest": "./scripts/start-regtest.sh",
     "stop-node": "docker stop bitcoin-node",
-    "emulate-setup": "npm run start-db && ./python/run-in-venv.sh ts-node ./src/agent/setup/emulate-setup.ts",
-    "emulate-setup-final": "npm run start-db && ./python/run-in-venv.sh ts-node ./src/agent/setup/emulate-setup.ts --final",
+    "emulate-setup": "./python/run-in-venv.sh ts-node ./src/agent/setup/emulate-setup.ts",
+    "emulate-setup-clear": "npm run start-db && ./python/run-in-venv.sh ts-node ./src/agent/setup/emulate-setup.ts",
+    "emulate-setup-final": "./python/run-in-venv.sh ts-node ./src/agent/setup/emulate-setup.ts --final",
+    "emulate-setup-final-clear": "npm run start-db && ./python/run-in-venv.sh ts-node ./src/agent/setup/emulate-setup.ts --final",
     "python-test": "cd python && ./run-in-venv.sh pytest"
   },
   "config": {
