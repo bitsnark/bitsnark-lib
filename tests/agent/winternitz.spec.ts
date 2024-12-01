@@ -7,7 +7,7 @@ import {
     WotsType
 } from '../../src/agent/common/winternitz';
 import { StackItem } from '../../src/generator/btc_vm/stack';
-import { nibblesToBigintLS } from '../../src/agent/final-step/nibbles';
+import { nibblesToBigint_3 } from '../../src/agent/final-step/nibbles';
 
 function bitcoinWinernitzCheck(wotsType: WotsType, encoded: Buffer[], keys: Buffer[]) {
     const bitcoin = new Bitcoin();
@@ -56,7 +56,7 @@ function testWotsType(wotsType: WotsType) {
 
         it('bitcoin decode', () => {
             const target = bitcoinWinernitzDecode(wotsType, encoded, keys);
-            expect(nibblesToBigintLS(target)).toEqual(test1);
+            expect(nibblesToBigint_3(target)).toEqual(test1);
         });
     });
 }

@@ -1,8 +1,8 @@
 import assert from 'assert';
 import { Bitcoin } from '../../generator/btc_vm/bitcoin';
 import { StackItem } from '../../generator/btc_vm/stack';
-import { bigintToNibblesLS } from './nibbles';
 import { _256To32BE, _32To256BE, hash, hashPair } from '../common/encoding';
+import { bigintToNibbles_3 } from './nibbles';
 
 export type Register = StackItem[];
 
@@ -330,7 +330,7 @@ export class SHA256 {
     }
 
     mov_hc(target: Register, x: number) {
-        const xa = bigintToNibblesLS(BigInt(x), 11);
+        const xa = bigintToNibbles_3(BigInt(x), 11);
         target.forEach((t, i) => {
             this.bitcoin.DATA(xa[i]);
             this.bitcoin.replaceWithTop(t);

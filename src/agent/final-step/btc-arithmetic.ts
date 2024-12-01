@@ -1,7 +1,7 @@
 import { Bitcoin } from '../../generator/btc_vm/bitcoin';
 import { StackItem } from '../../generator/btc_vm/stack';
 import { last } from '../common/array-utils';
-import { nibblesToBigintLS } from './nibbles';
+import { nibblesToBigint_3 } from './nibbles';
 
 export function teaPot() {
     throw new Error("I'm a teapot");
@@ -101,7 +101,7 @@ export class BtcArithmetic {
         this.bitcoin.OP_FROMALTSTACK();
         this.bitcoin.replaceWithTop(result[l]); //
 
-        if (nibblesToBigintLS(a) + nibblesToBigintLS(b) != nibblesToBigintLS(result)) teaPot();
+        if (nibblesToBigint_3(a) + nibblesToBigint_3(b) != nibblesToBigint_3(result)) teaPot();
 
         return result;
     }
@@ -109,8 +109,8 @@ export class BtcArithmetic {
     public subtractFromA(a: StackItem[], b: StackItem[]) {
         if (a.length < b.length) teaPot();
 
-        const savedA = nibblesToBigintLS(a);
-        const savedB = nibblesToBigintLS(b);
+        const savedA = nibblesToBigint_3(a);
+        const savedB = nibblesToBigint_3(b);
 
         const stack = this.bitcoin.stack.items;
 
@@ -151,7 +151,7 @@ export class BtcArithmetic {
             this.bitcoin.replaceWithTop(a[i]); //
         }
 
-        if (savedA - savedB != nibblesToBigintLS(a)) teaPot();
+        if (savedA - savedB != nibblesToBigint_3(a)) teaPot();
     }
 
     public naiiveMult(a: StackItem[], b: StackItem[]): StackItem[] {
@@ -179,7 +179,7 @@ export class BtcArithmetic {
             this.bitcoin.replaceWithTop(result[i + b.length]);
         }
 
-        if (nibblesToBigintLS(a) * nibblesToBigintLS(b) != nibblesToBigintLS(result)) teaPot();
+        if (nibblesToBigint_3(a) * nibblesToBigint_3(b) != nibblesToBigint_3(result)) teaPot();
 
         return result;
     }
@@ -189,8 +189,8 @@ export class BtcArithmetic {
 
         if (maxDepth == 0) return this.naiiveMult(a, b);
 
-        const origA = nibblesToBigintLS(a);
-        const origB = nibblesToBigintLS(b);
+        const origA = nibblesToBigint_3(a);
+        const origB = nibblesToBigint_3(b);
 
         const l = Math.floor(a.length / 2);
 
@@ -248,7 +248,7 @@ export class BtcArithmetic {
             this.bitcoin.replaceWithTop(result[i]);
         }
 
-        const c = nibblesToBigintLS(result);
+        const c = nibblesToBigint_3(result);
         if (origA * origB != c) teaPot();
 
         return result;
