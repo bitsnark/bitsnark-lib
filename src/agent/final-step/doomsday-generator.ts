@@ -6,21 +6,6 @@ import { getSpendingConditionByInput, getTransactionByName, Transaction, twoDigi
 import { encodeWinternitz24, encodeWinternitz256_4, getWinternitzPublicKeys, WotsType } from '../common/winternitz';
 import { step1_vm } from '../../generator/ec_vm/vm/vm';
 import { StackItem } from '../../generator/btc_vm/stack';
-import {
-    verifyAddMod,
-    verifyAnd,
-    verifyAndBit,
-    verifyAndNotBit,
-    verifyAssertOne,
-    verifyAssertZero,
-    verifyDivMod,
-    verifyEqual,
-    verifyMov,
-    verifyMulMod,
-    verifyNot,
-    verifyOr,
-    verifySubMod
-} from './step1_btc';
 import { Compressor } from '../common/taptree';
 import { agentConf } from '../agent.conf';
 import { BLAKE3, Register } from './blake-3-4u';
@@ -29,9 +14,10 @@ import { readTemplates } from '../common/db';
 import { blake3 as blake3_wasm } from 'hash-wasm';
 import { modInverse } from '../../generator/common/math-utils';
 import { prime_bigint } from '../common/constants';
-import { bigintToNibblesLS } from './nibbles';
 import { bufferToBigintBE } from '../common/encoding';
 import { TransactionNames } from '../common/types';
+import { bigintToNibbles_3 } from './nibbles';
+import { NegifyFinalStep } from './negify-final-step';
 
 export enum RefutationType {
     INSTR,
@@ -58,7 +44,7 @@ export class DoomsdayGenerator {
     }
 
     private renderTemplateWithIndex(template: Template, index: number): Buffer {
-        const nibbles = bigintToNibblesLS(BigInt(index), 8);
+        const nibbles = bigintToNibbles_3(BigInt(index), 8);
         const map: { [key: string]: number } = {};
         for (let i = 0; i < nibbles.length; i++) {
             map[`indexNibbles_${i}`] = nibbles[i];
@@ -124,45 +110,47 @@ export class DoomsdayGenerator {
         c: StackItem[],
         d?: StackItem[]
     ) {
+        const negifier = new NegifyFinalStep(bitcoin);
+
         switch (line.name) {
             case InstrCode.ADDMOD:
-                verifyAddMod(bitcoin, a, b, c);
+                negifier.negifyAddMod(a, b, c);
                 break;
             case InstrCode.ANDBIT:
-                verifyAndBit(bitcoin, a, b, c, line.bit!);
+                negifier.negifyAndBit(a, b, c, line.bit!);
                 break;
             case InstrCode.ANDNOTBIT:
-                verifyAndNotBit(bitcoin, a, b, c, line.bit!);
+                negifier.negifyAndNotBit(a, b, c, line.bit!);
                 break;
             case InstrCode.MOV:
-                verifyMov(bitcoin, a, c);
+                negifier.negifyMov(a, c);
                 break;
             case InstrCode.EQUAL:
-                verifyEqual(bitcoin, a, b, c);
+                negifier.negifyEqual(a, b, c);
                 break;
             case InstrCode.MULMOD:
-                verifyMulMod(bitcoin, a, b, c, d!);
+                negifier.negifyMulMod(a, b, c, d!);
                 break;
             case InstrCode.OR:
-                verifyOr(bitcoin, a, b, c);
+                negifier.negifyOr(a, b, c);
                 break;
             case InstrCode.AND:
-                verifyAnd(bitcoin, a, b, c);
+                negifier.negifyAnd(a, b, c);
                 break;
             case InstrCode.NOT:
-                verifyNot(bitcoin, a, c);
+                negifier.negifyNot(a, c);
                 break;
             case InstrCode.SUBMOD:
-                verifySubMod(bitcoin, a, b, c);
+                negifier.negifySubMod(a, b, c);
                 break;
             case InstrCode.DIVMOD:
-                verifyDivMod(bitcoin, a, b, c, d!);
+                negifier.negifyDivMod(a, b, c, d!);
                 break;
             case InstrCode.ASSERTONE:
-                verifyAssertOne(bitcoin, a);
+                negifier.negifyNumOne(a);
                 break;
             case InstrCode.ASSERTZERO:
-                verifyAssertZero(bitcoin, a);
+                negifier.negifyNumZero(a);
                 break;
         }
     }
@@ -214,29 +202,29 @@ export class DoomsdayGenerator {
                 bitcoin.verifyIndex(
                     indexWitness,
                     lastSelect.outputs[0].spendingConditions[0].wotsPublicKeys![0],
-                    bigintToNibblesLS(BigInt(index), 8)
+                    bigintToNibbles_3(BigInt(index), 8)
                 );
                 bitcoin.drop(indexWitness);
 
                 // a is the first element of the merkle proof in the second output
-                const a = bigintToNibblesLS(0n, 86).map((b) => bitcoin.addWitness(b));
+                const a = bigintToNibbles_3(0n, 86).map((b) => bitcoin.addWitness(b));
                 bitcoin.winternitzDecode256_4(a, w_a, lastSelect.outputs[1].spendingConditions[0].wotsPublicKeys![0]);
                 bitcoin.drop(w_a);
 
                 // b is the second element of the merkle proof in the second output
-                const b = bigintToNibblesLS(0n, 86).map((b) => bitcoin.addWitness(b));
+                const b = bigintToNibbles_3(0n, 86).map((b) => bitcoin.addWitness(b));
                 bitcoin.winternitzDecode256_4(b, w_b, lastSelect.outputs[1].spendingConditions[0].wotsPublicKeys![1]);
                 bitcoin.drop(w_b);
 
                 // c is the third element of the merkle proof in the second output
-                const c = bigintToNibblesLS(0n, 86).map((b) => bitcoin.addWitness(b));
+                const c = bigintToNibbles_3(0n, 86).map((b) => bitcoin.addWitness(b));
                 bitcoin.winternitzDecode256_4(c, w_c, lastSelect.outputs[1].spendingConditions[0].wotsPublicKeys![2]);
                 bitcoin.drop(w_c);
 
                 // d is the fourth element second output
                 let d: StackItem[];
                 if (w_d) {
-                    d = bigintToNibblesLS(0n, 86).map((b) => bitcoin.addWitness(b));
+                    d = bigintToNibbles_3(0n, 86).map((b) => bitcoin.addWitness(b));
                     bitcoin.winternitzDecode256_4(
                         d,
                         w_d,
@@ -345,12 +333,15 @@ export class DoomsdayGenerator {
             const stateCommitmentIndexBefore = stateCommitmentBefore.selection;
             const stateCommitmentIndexAfter = stateCommitmentAfter.selection;
 
+            if (beforeStateIteration < 0) continue;
+
             const stateTxBefore = getTransactionByName(
                 transactions,
                 `${TransactionNames.STATE}_${twoDigits(beforeStateIteration)}`
             );
             const scBefore = getSpendingConditionByInput(transactions, stateTxBefore.inputs[0]);
             const beforeRootKeys = scBefore.wotsPublicKeys![stateCommitmentIndexBefore];
+
             const stateTxAfter = getTransactionByName(
                 transactions,
                 `${TransactionNames.STATE}_${twoDigits(afterStateIteration)}`
@@ -368,8 +359,8 @@ export class DoomsdayGenerator {
                 const sc = getSpendingConditionByInput(transactions, input);
                 merkleProofKeysAll.push(...sc.wotsPublicKeys!);
             }
-            // divide these into 3 sets of 13
-            const merkleProofKeys: Buffer[][][] = [0, 1, 2].map((i) => merkleProofKeysAll.slice(i * 12, (i + 1) * 12));
+            // divide these into 3 sets of 11
+            const merkleProofKeys: Buffer[][][] = [0, 1, 2].map((i) => merkleProofKeysAll.slice(i * 11, (i + 1) * 11));
 
             // now add the value before the proof, and the root after it
             {

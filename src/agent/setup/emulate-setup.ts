@@ -74,6 +74,9 @@ export async function emulateSetup(
     setWotsPublicKeysForArgument(setupId, proverTemplates);
     setWotsPublicKeysForArgument(setupId, verifierTemplates);
 
+    await writeTemplates(proverAgentId, setupId, proverTemplates);
+    await writeTemplates(verifierAgentId, setupId, verifierTemplates);
+
     console.log('generating scripts...');
 
     proverTemplates = await generateAllScripts(AgentRoles.PROVER, proverTemplates, generateFinal);

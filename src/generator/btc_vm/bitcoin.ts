@@ -27,6 +27,7 @@ export class Bitcoin {
     success = true;
     public maxStack = 0;
     public throwOnFail = false;
+    lastTemplateItemId = 0;
 
     constructor() {}
 
@@ -53,6 +54,10 @@ export class Bitcoin {
                 throw new Error(`Stack too big: ${this.stack.items.length + this.altStack.length}`);
         }
         return si;
+    }
+
+    hardcode(value: number | Buffer): StackItem {
+        return this.newStackItem(value);
     }
 
     newNibbles32(): StackItem[] {
@@ -100,10 +105,6 @@ export class Bitcoin {
         this.maxStack = Math.max(this.maxStack, this.stack.items.length);
         this.witness.push(n);
         return si;
-    }
-
-    hardcode(n: number | Buffer): StackItem {
-        return this.newStackItem(n);
     }
 
     getTopStackItam(): StackItem {
@@ -581,7 +582,13 @@ export class Bitcoin {
         this.replaceWithTop(target);
     }
 
-    assertZero(a: StackItem) {
+    // assert that this one nibble is zero
+    // if it's an array, all of them should be zero
+    assertZero(a: StackItem | StackItem[]) {
+        if (Array.isArray(a)) {
+            a.forEach((si) => this.assertZero(si));
+            return;
+        }
         this.pick(a);
         this.OP_0_16(0);
         this.OP_NUMEQUALVERIFY();
@@ -677,86 +684,10 @@ export class Bitcoin {
         }
     }
 
-    /********* step 1 *********/
-
-    assertZeroMany(si: StackItem[]) {
-        for (let i = 0; i < si.length; i++) {
-            this.assertZero(si[i]);
-        }
-    }
-
-    assertEqualMany(a: StackItem[], b: StackItem[], c: StackItem[]) {
-        this.assertZeroMany(c.slice(1));
-
-        this.OP_0_16(1);
-        for (let i = 0; i < Math.max(a.length, b.length); i++) {
-            if (a[i]) this.pick(a[i]);
-            else this.OP_0_16(0);
-            if (b[i]) this.pick(b[i]);
-            else this.OP_0_16(0);
-            this.OP_NUMEQUAL();
-            this.OP_BOOLAND();
-        }
-        this.pick(c[0]);
-        this.OP_NUMEQUALVERIFY();
-    }
-
-    assertOrMany(a: StackItem[], b: StackItem[], c: StackItem[]) {
-        this.assertZeroMany(c.slice(1));
-
-        this.OP_0_16(0);
-        for (let i = 0; i < Math.max(a.length, b.length); i++) {
-            if (a[i]) this.pick(a[i]);
-            else this.OP_0_16(0);
-            if (b[i]) this.pick(b[i]);
-            else this.OP_0_16(0);
-            this.OP_BOOLOR();
-            this.OP_BOOLOR();
-        }
-        this.pick(c[0]);
-        this.OP_NUMEQUALVERIFY();
-    }
-
-    assertAndMany(a: StackItem[], b: StackItem[], c: StackItem[]) {
-        this.assertZeroMany(c.slice(1));
-
-        this.OP_0_16(1);
-        for (let i = 0; i < Math.max(a.length, b.length); i++) {
-            if (a[i]) this.pick(a[i]);
-            else this.OP_0_16(0);
-            if (b[i]) this.pick(b[i]);
-            else this.OP_0_16(0);
-            this.OP_BOOLAND();
-            this.OP_BOOLAND();
-        }
-        this.pick(c[0]);
-        this.OP_NUMEQUALVERIFY();
-    }
-
-    assertNotMany(a: StackItem[], c: StackItem[]) {
-        this.assertZeroMany(c.slice(1));
-
-        this.OP_0_16(0);
-        for (let i = 0; i < a.length; i++) {
-            this.pick(a[i]);
-            this.OP_BOOLOR();
-        }
-
-        this.pick(c[0]);
-        this.OP_NUMEQUALVERIFY();
-    }
-
-    assertOneMany(a: StackItem[]) {
-        this.assertZeroMany(a.slice(1));
-        this.pick(a[0]);
-        this.OP_0_16(1);
-        this.OP_NUMEQUALVERIFY();
-    }
-
     /***  Witness decoding ***/
 
     winternitzDecodeNibble(target: StackItem, witness: StackItem, publicKey: Buffer, iterations: number = 8) {
-        const pk = this.hardcode(publicKey);
+        const pk = this.DATA(publicKey, `${this.lastTemplateItemId++}`);
         this.pick(witness); // witness
         for (let i = 0; i < iterations; i++) {
             this.OP_HASH160(); // hash
@@ -1402,7 +1333,7 @@ export class Bitcoin {
                 if (opcode.data && opcode.data instanceof Buffer) {
                     byteArray.push(opcode.data.length);
                     byteArray.push(...opcode.data);
-                    items.push({ itemId: opcode.templateItemId!, index: byteArray.length });
+                    if (opcode.templateItemId) items.push({ itemId: opcode.templateItemId!, index: byteArray.length });
                 } else if (typeof opcode.data == 'number') {
                     if (opcode.data <= 16) {
                         byteArray.push(opcodeValues[hardcode(opcode.data)]);

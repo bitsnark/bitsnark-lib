@@ -116,6 +116,14 @@ export class Decasector {
                 _sc(left + i * d, left + (i + 1) * d, iter + 1);
             }
         };
+        this.stateCommitmentByLine[0] = new StateCommitment({
+            left: 0,
+            right: this.total,
+            iteration: 1,
+            selection: 0,
+            line: 0,
+            savedVm: this.savedVm
+        });
         _sc(0, this.total, 1);
     }
 
