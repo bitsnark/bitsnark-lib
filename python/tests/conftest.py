@@ -1,6 +1,7 @@
 import logging
 import pytest
-from sqlalchemy import create_engine, Engine
+import sqlalchemy as sa
+import sqlalchemy_utils
 from sqlalchemy.orm import Session
 from bitcointx import ChainParams
 
@@ -8,7 +9,14 @@ from bitsnark.btc.rpc import BitcoinRPC
 from .utils.docker_compose import start_stop_docker_compose
 from .utils.bitcoin_wallet import BitcoinWallet
 from .utils.npm import NPMCommandRunner
-from .constants import POSTGRES_URL, BITCOIN_RPC_URL
+from .constants import (
+    POSTGRES_URL_ROOT,
+    POSTGRES_DATABASE_PROVER,
+    POSTGRES_URL_PROVER,
+    POSTGRES_DATABASE_VERIFIER,
+    POSTGRES_URL_VERIFIER,
+    BITCOIN_RPC_URL, DB_SCHEMA_FILE,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -30,14 +38,42 @@ def docker_compose():
         yield
 
 
-@pytest.fixture()
-def db_engine(docker_compose) -> Engine:
-    return create_engine(POSTGRES_URL)
+def _create_agent_db(db_url: str) -> sa.Engine:
+    sqlalchemy_utils.create_database(db_url)
+    engine = sa.create_engine(db_url, echo=True)
+    with open(DB_SCHEMA_FILE) as f:
+        schema = f.read()
+    with engine.connect() as conn:
+        with conn.begin():
+            conn.execute(sa.text(schema))
+    return engine
 
 
 @pytest.fixture()
-def dbsession(db_engine) -> Session:
-    return Session(bind=db_engine, autobegin=False)
+def db_engine_root(docker_compose) -> sa.Engine:
+    # Everything depends on all DBs being here, so we'll roll with it
+    root_engine = sa.create_engine(POSTGRES_URL_ROOT)
+    _create_agent_db(POSTGRES_URL_PROVER)
+    _create_agent_db(POSTGRES_URL_VERIFIER)
+    return root_engine
+
+
+@pytest.fixture()
+def dbsession(db_engine_root) -> Session:
+    # Root dbsession
+    return Session(bind=db_engine_root, autobegin=False)
+
+
+@pytest.fixture()
+def dbsession_prover(db_engine_root) -> Session:
+    engine = sa.create_engine(POSTGRES_URL_PROVER)
+    return Session(bind=engine, autobegin=False)
+
+
+@pytest.fixture()
+def dbsession_verifier(db_engine_root) -> Session:
+    engine = sa.create_engine(POSTGRES_URL_VERIFIER)
+    return Session(bind=engine, autobegin=False)
 
 
 @pytest.fixture()
@@ -51,8 +87,8 @@ def btc_rpc(docker_compose) -> BitcoinRPC:
         rpc.mine_blocks(required)
 
     # This is not there :(
-    #blockchaininfo = rpc.call('getblockchaininfo')
-    #assert blockchaininfo['bip9_softforks']['segwit']['status'] == 'active'
+    # blockchaininfo = rpc.call('getblockchaininfo')
+    # assert blockchaininfo['bip9_softforks']['segwit']['status'] == 'active'
 
     return rpc
 

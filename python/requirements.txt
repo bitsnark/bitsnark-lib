@@ -25,6 +25,7 @@ python-bitcointx==1.1.5
 requests==2.32.3
 six==1.16.0
 SQLAlchemy==2.0.35
+SQLAlchemy-Utils==0.41.2
 stack-data==0.6.3
 tomli==2.0.2
 traitlets==5.14.3

@@ -1,348 +1,366 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-/*
-Since client.query accepts any as a parameter and also returns any, we have to disable this rule.
-It could be possible to create a custom type for the query result and params, but it would be a lot of work for no real benefit,
-and it would be fragile for changes.
-
-Most of the objects passed to params are simple types, but some are parsed to any with JSON.parse, so we can't be sure of the type.
-*/
-import { Transaction } from '../common/transactions';
-import { Client, connect } from 'ts-postgres';
+import { Client, ResultRow, ResultRecord, connect } from 'ts-postgres';
+import { Transaction, SpendingCondition } from '../common/transactions';
 import { agentConf } from '../agent.conf';
 import { RawTransaction } from 'bitcoin-core';
 import { jsonStringifyCustom, jsonParseCustom } from './json';
 import { AgentRoles } from './types';
 
-// DB utils
-function jsonizeObject<T>(obj: T): T {
-    const json = jsonStringifyCustom(obj);
-    return JSON.parse(json) as T;
+type DbValue = string | number | boolean | object | null | undefined;
+type QueryArgs = DbValue[];
+interface Query {
+    sql: string;
+    args?: QueryArgs;
 }
 
-function unjsonizeObject<T>(obj: T): T {
-    const json = JSON.stringify(obj);
-    return jsonParseCustom(json) as T;
-}
-
-async function getConnection(): Promise<Client> {
-    return await connect({
-        user: agentConf.postgresUser,
-        host: agentConf.postgresHost,
-        port: agentConf.postgresPort,
-        password: agentConf.postgresPassword,
-        bigints: agentConf.postgresBigints,
-        keepAlive: agentConf.postgresKeepAlive
-    });
-}
-
-async function runQuery(sql: string, params: any[] = []) {
-    const client = await getConnection();
-    try {
-        const result = await client.query(sql, params);
-        return result;
-    } catch (e) {
-        if (e instanceof Error) {
-            console.error(e.message);
-        } else {
-            console.error(e);
-        }
-        throw e;
-    } finally {
-        await client.end();
+class Db {
+    host: string;
+    port: number;
+    user: string;
+    password: string;
+    database: string;
+    constructor(
+        host: string = agentConf.postgresHost,
+        port: number = agentConf.postgresPort,
+        user: string = agentConf.postgresUser,
+        password: string = agentConf.postgresPassword,
+        database: string = 'postgres'
+    ) {
+        this.host = host;
+        this.port = port;
+        this.user = user;
+        this.password = password;
+        this.database = database;
     }
-}
 
-async function runDBTransaction(queries: [string, (string | number | boolean)[]][]) {
-    const client = await getConnection();
-    try {
-        await client.query('BEGIN');
-        for (const [sql, params] of queries) {
-            await client.query(sql, params as any);
+    protected async connect() {
+        return await connect({
+            user: this.user,
+            host: this.host,
+            port: this.port,
+            password: this.password,
+            database: this.database,
+            bigints: true,
+            keepAlive: agentConf.postgresKeepAlive
+        });
+    }
+
+    protected async query<Row>(sql: string, params?: QueryArgs) {
+        // Re-creating the client for each query.
+        const client = await this.connect();
+        try {
+            return await client.query<Row>(sql, params ?? []);
+        } catch (error) {
+            console.error('Failed to execute query:', sql, params);
+            throw error;
+        } finally {
+            await client.end();
         }
-        await client.query('COMMIT');
-        return true;
-    } catch (e) {
-        await client.query('ROLLBACK');
-        if (e instanceof Error) {
-            console.error(e.message);
-        } else {
-            console.error(e);
+    }
+
+    protected async session(queries: Query[]): Promise<void> {
+        this.query('BEGIN');
+        try {
+            for (const query of queries) {
+                await this.query(query.sql, query.args);
+            }
+        } catch (error) {
+            this.query('ROLLBACK');
+            throw error;
         }
-        throw e;
-    } finally {
-        await client.end();
+        this.query('COMMIT');
     }
 }
 
 export enum SetupStatus {
-    PENDING = 'PENDING',
-    READY = 'READY',
-    SIGNED = 'SIGNED',
-    FAILED = 'FAILED',
-    PEGOUT_SUCCESSFUL = 'PEGOUT_SUCCESSFUL',
-    PEGOUT_FAILED = 'PEGOUT_FAILED'
+    PENDING,
+    UNSIGNED,
+    SIGNED,
+    FAILED,
+    ACTIVE,
+    PEGOUT_SUCCESSFUL,
+    PEGOUT_FAILED
 }
 
 export enum OutgoingStatus {
-    PENDING = 'PENDING',
-    READY = 'READY',
-    PUBLISHED = 'PUBLISHED',
-    REJECTED = 'REJECTED'
+    PENDING,
+    READY,
+    PUBLISHED,
+    REJECTED
 }
 
-export interface Outgoing {
-    transaction_id: string;
-    template_id: number;
-    raw_tx: any;
-    data: any;
-    status: OutgoingStatus;
-    timestamp: string;
-}
-export interface Incoming {
-    txId: string;
-    templateId: number;
-    rawTransaction: any;
-    blockHeight: number;
-    name: string;
-    setupId: string;
-}
-export interface Templates {
-    template_id: number;
-    name: string;
-    setup_id: string;
-    agent_id: string;
-    role: AgentRoles;
-    is_external: boolean;
-    ordinal: number;
-    object: any;
-}
-
-export interface Setup {
-    setup_id: string;
+interface SetupRow {
+    id: string;
+    protocolVersion: string;
     status: SetupStatus;
-    listenerBlockHeight: number;
-    protocolVersion: string;
+    lastCheckedBlockHeight?: number;
 }
 
-export interface Pending {
-    txId: string;
-    templateId: number;
+interface TemplateRow {
+    name: string;
+    role: AgentRoles;
+    isExternal: boolean;
+    ordinal: number;
+    object: Transaction;
+}
+
+// Template row, with optional received fields and setup data.
+export interface Template extends TemplateRow, Omit<SetupRow, 'id' | 'status'> {
     setupId: string;
-    listenerBlockHeight: number;
-    transactionName: string;
-    object: any;
-    protocolVersion: string;
-    incomingTxId: string | null;
+    setupStatus: SetupStatus;
+    txId: string | null;
+    blockHash: string | null;
+    blockHeight: number | null;
+    rawTransaction: RawTransaction | null;
 }
 
-// DB functions
-
-// This is used for development purposes only and will be removed once every agent gets his own setup.
-export async function dev_ClearTemplates(setupId: string, agentId?: string) {
-    //delete all outgoing, incoming and templates
-    const params = agentId ? [setupId, agentId] : [setupId];
-    await runDBTransaction([
-        [
-            `DELETE FROM outgoing WHERE template_id IN (
-            SELECT template_id FROM templates WHERE setup_id = $1 ` +
-                (agentId ? ` AND agent_id = $2` : '') +
-                `);`,
-            params
-        ],
-        [
-            `DELETE FROM incoming WHERE template_id IN (
-            SELECT template_id FROM templates WHERE setup_id = $1 ` +
-                (agentId ? ` AND agent_id = $2` : '') +
-                `);`,
-            params
-        ],
-        [`DELETE FROM templates WHERE setup_id = $1 ` + (agentId ? ` AND agent_id = $2` : '') + `;`, params]
-    ]);
+// Template row, with mandatory received fields.
+export interface ReceivedTemplate extends TemplateRow {
+    txId: string;
+    blockHash: string;
+    blockHeight: number;
+    rawTransaction: RawTransaction;
 }
 
-export async function writeSetupStatus(setupId: string, status: SetupStatus) {
-    const result = await runQuery(
-        `INSERT INTO setups
-            (setup_id, status, protocol_version) VALUES ($1, $2::TEXT::setup_status, $3)
-        ON CONFLICT(setup_id) DO
-            UPDATE SET status = $2::TEXT::setup_status`,
-        [setupId, status, agentConf.protocolVersion]
-    );
+// Setup row, with templates and received templates.
+export interface Setup extends SetupRow {
+    templates: Template[];
+    received: ReceivedTemplate[];
 }
 
-export async function readActiveSetups(status: SetupStatus = SetupStatus.READY): Promise<Setup[]> {
-    const result = await runQuery(
-        `
-        SELECT setup_id, status::TEXT, protocol_version, listener_last_crawled_height
-        FROM setups
-        WHERE status = $1::TEXT::setup_status`,
-        [status]
-    );
-    return result.rows.map((row) => ({
-        setup_id: row[0],
-        status: row[1],
-        protocolVersion: row[2],
-        listenerBlockHeight: row[3]
-    }));
-}
+export class AgentDb extends Db {
+    private static templateFields = `
+        templates.name, templates.role, templates.is_external, templates.ordinal, templates.object,
+        received.transaction_hash, received.raw_transaction, received.block_hash, received.block_height,
+        setups.id, setups.protocol_version,
+        setups.status, setups.last_checked_block_height`;
 
-export async function updatedListenerHeightBySetupsIds(setupIds: string[], newCrawledHeight: number) {
-    const result = await runQuery(
-        `UPDATE setups
-            SET listener_last_crawled_height = $1
-        WHERE setup_id = ANY($2::TEXT[])`,
-        [newCrawledHeight, setupIds]
-    );
-}
+    private static templateReader(row: ResultRow<ResultRecord>): Template {
+        return {
+            name: row[0],
+            role: row[1],
+            isExternal: row[2],
+            ordinal: row[3],
+            object: jsonParseCustom(JSON.stringify(row[4])),
+            txId: row[5],
+            rawTransaction: row[6],
+            blockHash: row[7],
+            blockHeight: row[8],
+            setupId: row[10],
+            protocolVersion: row[11],
+            setupStatus: SetupStatus[row[12] as keyof typeof SetupStatus],
+            lastCheckedBlockHeight: row[13]
+        };
+    }
 
-export async function writeTemplate(agentId: string, setupId: string, transaction: Transaction) {
-    const jsonizedObject = jsonizeObject(transaction);
-    const result = await runQuery(
-        `INSERT INTO templates
-        (name, setup_id, agent_id, role, is_external, ordinal, object)
-        VALUES($1, $2, $3, $4:: TEXT:: role, $5, $6, $7)
-        ON CONFLICT(agent_id, setup_id, name) DO UPDATE SET
-            object = $7`,
-        [
-            transaction.transactionName,
-            setupId,
-            agentId,
-            transaction.role,
-            transaction?.external ?? false,
-            transaction.ordinal,
-            jsonizedObject
-        ]
-    );
-}
+    private static receivedTemplateReader(row: ResultRow<ResultRecord>): ReceivedTemplate {
+        const receivedTemplate = AgentDb.templateReader(row) as ReceivedTemplate;
+        for (const property of ['txId', 'blockHash', 'blockHeight', 'rawTransaction']) {
+            if (receivedTemplate[property as keyof typeof receivedTemplate] === null) {
+                throw new Error(`Received template does not have a ${property}`);
+            }
+        }
+        return receivedTemplate;
+    }
 
-export async function writeTemplates(agentId: string, setupId: string, transactions: Transaction[]) {
-    for (const t of transactions) await writeTemplate(agentId, setupId, t);
-}
+    constructor(agentId: string) {
+        super();
+        this.database = agentId;
+    }
 
-export async function readTemplates(agentId: string, setupId?: string): Promise<Transaction[]> {
-    const result = await runQuery(
-        `
-        SELECT * FROM templates
-        WHERE
-            agent_id = $1 ` +
-            (setupId ? ` AND setup_id = $2` : '') +
-            ` ORDER BY ordinal ASC `,
-        [agentId, setupId]
-    );
-    const results = [...result];
-    return results.map((r) => {
-        const obj = unjsonizeObject(r['object']);
-        obj.templateId = r['template_id'];
-        return obj;
-    });
-}
+    private static jsonizeObject<T>(obj: T): T {
+        return JSON.parse(jsonStringifyCustom(obj));
+    }
 
-export async function readTemplatesOfOutging(agentId: string, setupId?: string): Promise<Transaction[]> {
-    const result = await runQuery(
-        `
-        SELECT templates.*, outgoing.transaction_id FROM templates
-        INNER JOIN outgoing
-        ON templates.template_id = outgoing.template_id
-        WHERE
-            agent_id = $1 ` +
-            (setupId ? ` AND setup_id = $2` : '') +
-            ` ORDER BY ordinal ASC `,
-        [agentId, setupId]
-    );
-    const results = [...result];
-    return results.map((r) => unjsonizeObject(r['object']));
-}
+    public async insertNewSetup(setupId: string, templates: Transaction[]) {
+        await this.session([
+            {
+                sql: 'INSERT INTO setups (id, protocol_version, status) VALUES ($1, $2, $3)',
+                args: [setupId, agentConf.protocolVersion, SetupStatus[SetupStatus.PENDING]]
+            },
+            ...templates.map((template) => ({
+                sql: `
+                    INSERT INTO templates (setup_id, name, role, is_external, ordinal, object, outgoing_status)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+                args: [
+                    setupId,
+                    template.transactionName,
+                    template.role,
+                    template.external,
+                    template.ordinal,
+                    AgentDb.jsonizeObject(template),
+                    OutgoingStatus[OutgoingStatus.PENDING]
+                ]
+            })),
+            {
+                sql: 'UPDATE setups SET status = $1 WHERE id = $2',
+                args: [SetupStatus[SetupStatus.UNSIGNED], setupId]
+            }
+        ]);
+    }
 
-export async function readOutgingByTemplateId(templateId: number): Promise<Outgoing | undefined> {
-    const result = await runQuery(
-        `
-        SELECT * FROM outgoing
-        WHERE
-            template_id = $1`,
-        [templateId]
-    );
-    const results = [...result];
-    return results[0] as Outgoing;
-}
+    private async markSetupStatus(setupId: string, status: SetupStatus) {
+        await this.query('UPDATE setups SET status = $1 WHERE id = $2', [SetupStatus[status], setupId]);
+    }
 
-export async function writeOutgoing(templateId: number, data: any, status: OutgoingStatus) {
-    await runQuery(`UPDATE outgoing SET data = $1, status = $2 WHERE template_id = $3`, [data, status, templateId]);
-}
+    public async markSetupPeggoutActive(setupId: string) {
+        await this.markSetupStatus(setupId, SetupStatus.ACTIVE);
+    }
 
-export async function readExpectedIncoming(agent_id: string): Promise<Pending[]> {
-    const result = await runQuery(
-        `
-        SELECT outgoing.transaction_id,
-            outgoing.template_id,
-            setups.setup_id,
-            setups.listener_last_crawled_height,
-            templates.name,
-            templates.object,
-            setups.protocol_version,
-            incoming.transaction_id
-        FROM outgoing
-        INNER JOIN templates
-            ON outgoing.template_id = templates.template_id
-        INNER JOIN setups
-            ON templates.setup_id = setups.setup_id
-        LEFT JOIN incoming
-            ON outgoing.template_id = incoming.template_id
-        WHERE
-            templates.agent_id = $1
-            AND outgoing.status in ('PENDING', 'PUBLISHED')
-            AND setups.status = 'SIGNED'
-        ORDER BY
-            listener_last_crawled_height,
-            setups.setup_id,
-            outgoing.template_id`,
-        [agent_id]
-    );
+    public async markSetupPeggoutSuccessful(setupId: string) {
+        await this.markSetupStatus(setupId, SetupStatus.PEGOUT_SUCCESSFUL);
+    }
 
-    return result.rows.map((row) => ({
-        txId: row[0],
-        templateId: row[1],
-        setupId: row[2],
-        listenerBlockHeight: row[3],
-        transactionName: row[4],
-        object: unjsonizeObject(row[5]),
-        protocolVersion: row[6],
-        incomingTxId: row[7]
-    }));
-}
+    public async markSetupPeggoutFailed(setupId: string) {
+        await this.markSetupStatus(setupId, SetupStatus.PEGOUT_FAILED);
+    }
 
-export async function writeIncomingTransaction(
-    transmittedRaw: RawTransaction,
-    blockHeight: number,
-    templateId: number
-) {
-    const result = await runQuery(
-        `INSERT INTO incoming(
-	        transaction_id, template_id, raw_tx, block_height)
-        VALUES ($1, $2, $3, $4)
-        ON CONFLICT DO NOTHING`,
-        [transmittedRaw.txid, templateId, jsonizeObject(transmittedRaw), blockHeight]
-    );
-}
+    public async updateLastCheckedBlockHeight(setupId: string, blockHeight: number) {
+        await this.query('UPDATE setups SET last_checked_block_height = $1 WHERE id = $2', [blockHeight, setupId]);
+    }
 
-export async function readIncomingTransactions(setupId: string, agentId?: string): Promise<Incoming[]> {
-    const result = await runQuery(
-        `SELECT incoming.transaction_id,
-            incoming.template_id,
-            incoming.block_height,
-            raw_tx,
-            templates.name,
-            templates.setup_id
-        FROM incoming INNER JOIN templates
-        ON incoming.template_id = templates.template_id
-        WHERE templates.setup_id = $1` + (agentId ? ` AND templates.agent_id = $2` : ''),
-        [setupId, agentId]
-    );
-    return result.rows.map((row) => ({
-        txId: row[0],
-        templateId: row[1],
-        blockHeight: row[2],
-        rawTransaction: unjsonizeObject(row[3]),
-        name: row[4],
-        setupId: row[5]
-    }));
+    public async updateLastCheckedBlockHeightBatch(setupIds: string[], blockHeight: number) {
+        await this.query('UPDATE setups SET last_checked_block_height = $1 WHERE id = ANY($2)', [
+            blockHeight,
+            setupIds
+        ]);
+    }
+
+    public async upsertTemplates(setupId: string, templates: Transaction[]) {
+        await this.session(
+            templates.map((template) => ({
+                sql: `
+                    INSERT INTO templates (setup_id, name, role, is_external, ordinal, object, outgoing_status)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7)
+                    ON CONFLICT(setup_id, name) DO UPDATE SET
+                        role = $3, is_external = $4, ordinal = $5, object = $6, updated_at = NOW()`,
+                args: [
+                    setupId,
+                    template.transactionName,
+                    template.role,
+                    template.external ?? false,
+                    template.ordinal,
+                    AgentDb.jsonizeObject(template),
+                    OutgoingStatus[OutgoingStatus.PENDING]
+                ]
+            }))
+        );
+    }
+
+    public async markToSend(setupId: string, templateName: string, data?: Buffer[][]) {
+        await this.query(
+            `
+                UPDATE templates
+                SET updated = NOW(), data = $1, status = $2
+                WHERE setup_id = $3 AND name = $4
+            `,
+            [
+                data ? JSON.stringify(data.map((data) => data.map((buffer) => buffer.toString('hex')))) : null,
+                OutgoingStatus[OutgoingStatus.READY],
+                setupId,
+                templateName
+            ]
+        );
+    }
+
+    public async markReceived(
+        setupId: string,
+        transactionName: string,
+        txId: string,
+        blockHash: string,
+        blockHeight: number,
+        rawTransaction: RawTransaction
+    ) {
+        // Assert that the setup is active.
+        const status = (await this.query('SELECT status FROM setups WHERE id = $1', [setupId]))
+            .rows[0]?.[0] as SetupStatus;
+        if (status != SetupStatus.ACTIVE) {
+            throw new Error(
+                `Status of ${setupId} is ${SetupStatus[status]} instead of ${SetupStatus[SetupStatus.ACTIVE]}`
+            );
+        }
+
+        await this.query(
+            `
+                INSERT INTO received (template_id, transaction_hash, block_hash, block_height, raw_transaction)
+                VALUES ((SELECT id FROM templates WHERE setup_id = $1 AND name = $2), $3, $4, $5, $6)
+            `,
+            [setupId, transactionName, txId, blockHash, blockHeight, JSON.stringify(rawTransaction)]
+        );
+    }
+
+    public async getTemplates(setupId?: string): Promise<Template[]> {
+        const setupFilter = setupId ? 'WHERE setups.id = $1' : '';
+        return (
+            await this.query<Template>(
+                `
+                    SELECT ${AgentDb.templateFields}
+                    FROM templates
+                    JOIN setups ON templates.setup_id = setups.id
+                    LEFT JOIN received ON templates.id = received.template_id
+                    ${setupFilter}
+                    ORDER BY last_checked_block_height ASC, ordinal ASC
+                `,
+                [setupId]
+            )
+        ).rows.map(AgentDb.templateReader);
+    }
+
+    public async getReceivedTemplates(setupId: string): Promise<ReceivedTemplate[]> {
+        return (
+            await this.query<ReceivedTemplate>(
+                `
+                    SELECT ${AgentDb.templateFields}
+                    FROM templates
+                    JOIN setups ON templates.setup_id = setups.id
+                    JOIN received ON templates.id = received.template_id
+                    WHERE setups.id = $1
+                    ORDER BY ordinal ASC
+            `,
+                [setupId]
+            )
+        ).rows.map(AgentDb.receivedTemplateReader);
+    }
+
+    public async getSetup(setupId: string): Promise<Setup> {
+        const templates = await this.getTemplates(setupId);
+        const received = await this.getReceivedTemplates(setupId);
+        console.log('rs', received.length);
+        const setup = (
+            await this.query<Setup>(
+                `
+                    SELECT id, protocol_version, status, last_checked_block_height
+                    FROM setups
+                    WHERE id = $1
+                `,
+                [setupId]
+            )
+        ).rows[0];
+        return {
+            id: setup[0] as string,
+            protocolVersion: setup[1] as string,
+            status: SetupStatus[setup[2] as keyof typeof SetupStatus],
+            lastCheckedBlockHeight: setup[3] as number,
+            templates,
+            received
+        };
+    }
+
+    public async getActiveSetups(): Promise<Setup[]> {
+        return Promise.all(
+            (await this.query('SELECT id FROM setups WHERE status = $1', [SetupStatus[SetupStatus.ACTIVE]])).rows.map(
+                (row) => this.getSetup(row[0] as string)
+            )
+        );
+    }
+
+    // To assist mocking the DB in tests.
+    public async query<Row>(sql: string, params?: QueryArgs) {
+        return super.query<Row>(sql, params);
+    }
+
+    // Backward compatibility.
+
+    public async getTransactions(setupId: string): Promise<Transaction[]> {
+        return (await this.getSetup(setupId)).templates.map((template) => template.object);
+    }
 }

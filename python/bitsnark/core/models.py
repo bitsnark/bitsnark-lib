@@ -26,21 +26,20 @@ Base = declarative_base()
 
 class TransactionTemplate(Base):
     __tablename__ = 'templates'
-    template_id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    name: Mapped[str] = mapped_column(String, nullable=False)
-    agent_id: Mapped[str] = mapped_column(String, nullable=False)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
     setup_id: Mapped[str] = mapped_column(String, nullable=False)
+    name: Mapped[str] = mapped_column(String, nullable=False)
     role: Mapped[str] = mapped_column(String, nullable=False)
     is_external: Mapped[bool] = mapped_column(Boolean, nullable=False)
     ordinal: Mapped[Optional[int]] = Column(Integer)
     object: Mapped[dict] = mapped_column(JSON, nullable=False)
-
-    tx_id: ClassVar[Optional[str]] = None
+    outgoing_status: Mapped[str] = mapped_column(Enum(OutgoingStatus), nullable=False)
+    updated_at: Mapped[datetime.datetime] = mapped_column(TIMESTAMP, server_default=FetchedValue(), nullable=False)
 
     def __repr__(self):
         return (
-            f"<TransactionTemplate(name={self.name}, agent_id={self.agent_id}, "
-            f"setup_id={self.setup_id}, template_id={self.template_id}, ordinal={self.ordinal}, "
+            f"<TransactionTemplate(name={self.name}, "
+            f"setup_id={self.setup_id}, id={self.id}, ordinal={self.ordinal}, "
             f"role={self.role}, is_external={self.is_external}, object=...)>")
 
     @property
@@ -56,21 +55,13 @@ JsonHexStr = str
 JsonBigNum = str
 
 
-class Outgoing(Base):
-    __tablename__ = 'outgoing'
-    template_id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    transaction_id: Mapped[str] = mapped_column(String, nullable=False)
-    status: Mapped[str] = mapped_column(Enum(OutgoingStatus), nullable=False)
-    raw_tx: Mapped[dict] = mapped_column(JSON, nullable=False)
-    data: Mapped[dict] = mapped_column(JSON, nullable=False)
-    updated: Mapped[datetime.datetime] = mapped_column(TIMESTAMP, server_default=FetchedValue(), nullable=False)
-
-
 class Setups(Base):
     __tablename__ = 'setups'
-    setup_id: Mapped[str] = mapped_column(String, primary_key=True, nullable=False)
+    id: Mapped[str] = mapped_column(String, primary_key=True, nullable=False)
+    protocol_version: Mapped[str] = mapped_column(String, nullable=False)
     status: Mapped[str] = mapped_column(Enum(SetupStatus), nullable=False)
-    protocolVersion: Mapped[str] = mapped_column(String, nullable=False)
+    last_checked_block_height: Mapped[Optional[int]] = mapped_column(Integer)
+    created_at: Mapped[datetime.datetime] = mapped_column(TIMESTAMP, server_default=FetchedValue(), nullable=False)
 
 
 class TxJson(TypedDict):

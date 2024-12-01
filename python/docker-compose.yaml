@@ -4,8 +4,6 @@
       environment:
         POSTGRES_PASSWORD: testpostgres
 
-      volumes:
-        - ../db/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
       ports:
         # Expose a different port, and disable connections outside of localhost
         - 127.0.0.1:5433:5432
