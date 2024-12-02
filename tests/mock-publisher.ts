@@ -1,12 +1,4 @@
-import {
-    dev_ClearIncoming,
-    Outgoing,
-    OutgoingStatus,
-    readReadyOutgoing,
-    readTemplates,
-    writeIncomingTransaction,
-    writeOutgoing
-} from '../src/agent/common/db';
+import { AgentDb, Template } from '../src/agent/common/db';
 import { BitcoinNode } from '../src/agent/common/bitcoin-node';
 import { ProtocolProver } from '../src/agent/protocol-logic/protocol-prover';
 import { proofBigint } from '../src/agent/common/constants';
@@ -59,67 +51,86 @@ const mockVout = {
 };
 
 export class MockPublisher {
-    proverId: string;
-    verifierId: string;
+    agents: { prover: string, verifier: string };
+    dbs: { prover: AgentDb, verifier: AgentDb };
     setupId: string;
-    templates: Transaction[] = [];
+    templates: { prover: Template[], verifier: Template[] } = { prover: [], verifier: [] };
     bitcoinClient: BitcoinNode;
     scheduler: NodeJS.Timeout | undefined;
     isRunning: boolean = false;
 
     constructor(proverId: string, verifierId: string, setupId: string) {
-        this.proverId = proverId;
-        this.verifierId = verifierId;
+        this.agents = { prover: proverId, verifier: verifierId };
         this.setupId = setupId;
         this.bitcoinClient = new BitcoinNode();
+        this.dbs = { prover: new AgentDb(proverId), verifier: new AgentDb(verifierId) };
     }
 
     async start() {
-        if (!this.templates.length) this.templates = await readTemplates(this.proverId, this.setupId);
-        this.templates = this.templates.concat(await readTemplates(this.verifierId, this.setupId));
+        if (!this.templates.prover.length || !this.templates.verifier.length) {
+            this.templates.prover = await this.dbs.prover.getTemplates(this.setupId)
+            this.templates.verifier = (await this.dbs.verifier.getTemplates(this.setupId));
+        }
 
         if (this.scheduler) clearInterval(this.scheduler);
+
         this.scheduler = setInterval(async () => {
             try {
                 await this.generateBlocks(1);
                 if (this.isRunning) return;
                 this.isRunning = true;
-                const readyOutgoings = await readReadyOutgoing([this.proverId, this.verifierId], this.setupId);
 
-                if (readyOutgoings.length === 0) throw new Error(`No templates to publish`);
+                const readyToSendTemplates = {
+                    prover: await this.dbs.prover.dev_readReadyToSendTemplates(this.setupId),
+                    verifier: await this.dbs.verifier.dev_readReadyToSendTemplates(this.setupId)
+                }
 
-                //await this.bitcoinClient.client.generate(6);
-                //console.log(this.agentId, 'generated 6 blocks');
-                const tip = await this.bitcoinClient.getBlockCount();
-                console.log('tip', tip);
+                if (readyToSendTemplates.prover.length === 0 && readyToSendTemplates.verifier.length)
+                    throw new Error(`No templates to publish`);
 
-                for (const readyTx of readyOutgoings) {
-                    const rawTx: RawTransaction = {
-                        ...mockRawTransaction,
-                        txid: readyTx.transaction_id,
-                        vin: this.mockInputs(readyTx)
-                    };
+                const tip = await this.bitcoinClient.client.getBlockCount();
+                const hash = await this.bitcoinClient.client.getBlockHash(tip);
+                console.log('Curent blockchain tip', tip);
 
-                    await writeIncomingTransaction(rawTx, tip, readyTx.template_id);
-                    console.log('Inserted incoming transaction', readyTx.template_id, readyTx.raw_tx.transactionName);
-                    const otherAgentTemplateID =
-                        this.templates.find(
-                            (tx) =>
-                                tx.transactionName === readyTx.raw_tx.transactionName &&
-                                tx.templateId !== readyTx.template_id
-                        )?.templateId ?? -1;
+                for (const agent of ['prover', 'verifier'] as const) {
+                    const otherAgent = agent === 'prover' ? 'verifier' : 'prover';
+                    const agentReadyTemplates = readyToSendTemplates[agent];
 
-                    console.log('Other agent template id', otherAgentTemplateID);
-                    await writeIncomingTransaction(rawTx, tip, otherAgentTemplateID);
-                    console.log('Inserted incoming transaction', otherAgentTemplateID, readyTx.raw_tx.transactionName);
+                    for (const readyTx of agentReadyTemplates) {
+                        const rawTx: RawTransaction = {
+                            ...mockRawTransaction,
+                            txid: readyTx.object.txId!,
+                            vin: this.mockInputs(readyTx, this.templates[agent]),
+                        };
 
-                    await writeOutgoing(readyTx.template_id, readyTx.data, OutgoingStatus.PUBLISHED);
-                    console.log('Updated outgoing transaction', readyTx.template_id, readyTx.raw_tx.transactionName);
 
-                    await writeOutgoing(otherAgentTemplateID, readyTx.data, OutgoingStatus.PUBLISHED);
-                    console.log('Updated outgoing transaction', otherAgentTemplateID, readyTx.raw_tx.transactionName);
+                        await this.dbs[agent].markReceived(this.setupId,
+                            readyTx.name,
+                            readyTx.object.txId!,
+                            hash,
+                            tip,
+                            rawTx)
 
-                    this.isRunning = false;
+
+                        console.log('Inserted incoming transaction:', agent, readyTx.object.txId, readyTx.name);
+
+                        await this.dbs[otherAgent].markReceived(this.setupId,
+                            readyTx.name,
+                            readyTx.object.txId!,
+                            hash,
+                            tip,
+                            rawTx)
+
+                        console.log('Inserted incoming transaction', otherAgent, readyTx.object.txId, readyTx.name);
+
+                        await this.dbs[agent].dev_markPublished(this.setupId, readyTx.name);
+                        console.log('Updated outgoing transaction', agent, readyTx.object.txId, readyTx.name);
+
+                        await this.dbs[otherAgent].dev_markPublished(this.setupId, readyTx.name);
+                        console.log('Updated outgoing transaction', agent, readyTx.object.txId, readyTx.name);
+
+                        this.isRunning = false;
+                    }
                 }
             } catch (e) {
                 console.error(e);
@@ -145,18 +156,19 @@ export class MockPublisher {
         }
     }
 
-    private mockInputs(template: Outgoing): Input[] {
+
+    private mockInputs(template: Template, templates: Template[]): Input[] {
         return (
-            this.templates
-                .find((t) => t.templateId === template.template_id)
+            templates.find((t) => t.name === template.name)?.object
                 ?.inputs.map((input, index) => {
                     return {
                         ...mockVin,
-                        txid: getTransactionByName(this.templates, input.transactionName).txId ?? '',
+                        txid: getTransactionByName(templates.map(t => t.object), input.transactionName).txId ?? '',
                         vout: input.outputIndex,
-                        txinwitness: template.data[index]?.map((witnessElement: string) =>
-                            Buffer.from(witnessElement).toString('hex')
-                        )
+                        txinwitness: template.data && template.data[index] ?
+                            template.data[index].map((witnessElement: Buffer) =>
+                                witnessElement.toString('hex')
+                            ) : []
                     };
                 }) || []
         );
@@ -174,16 +186,15 @@ if (require.main === module) {
         const proverId = 'bitsnark_prover_1';
         const verrifirId = 'bitsnark_verifier_1';
         const setupId = 'test_setup';
-        await dev_ClearIncoming(setupId);
 
         const prover = new ProtocolProver(proverId, setupId);
         //Bad
-        const boojum = proofBigint;
-        boojum[0] = boojum[0] + 1n;
-        await prover.pegOut(boojum);
+        // const boojum = proofBigint;
+        // boojum[0] = boojum[0] + 1n;
+        // await prover.pegOut(boojum);
         // Good
-        //await prover.pegOut(proofBigint);
+        await prover.pegOut(proofBigint);
         console.log('proof sent:', proofBigint);
-        new MockPublisher(proverId, verrifirId, setupId).start();
+        //new MockPublisher(proverId, verrifirId, setupId).start();
     })();
 }
