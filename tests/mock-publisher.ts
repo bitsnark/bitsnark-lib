@@ -179,9 +179,7 @@ if (require.main === module) {
         const prover = new ProtocolProver(proverId, setupId);
         //Bad
         const boojum = proofBigint;
-        console.log('proof before:', boojum);
         boojum[0] = boojum[0] + 1n;
-        console.log('proof after:', boojum);
         await prover.pegOut(boojum);
         // Good
         //await prover.pegOut(proofBigint);
