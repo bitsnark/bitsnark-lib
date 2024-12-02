@@ -16,7 +16,8 @@ export function createUniqueDataId(
     scIndex: number,
     dataIndex: number
 ) {
-    return `${wotsSalt}/${transactionName}/${outputIndex}/${scIndex}/${dataIndex}`;
+    const u = `${wotsSalt}/${transactionName}/${outputIndex}/${scIndex}/${dataIndex}`;
+    return u;
 }
 
 export function setWotsPublicKeysForArgument(wotsSalt: string, templates: Transaction[]) {

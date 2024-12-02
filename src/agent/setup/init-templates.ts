@@ -18,9 +18,9 @@ import { generateWotsPublicKeys } from './wots-keys';
 const PROTOCOL_VERSION = '1.1';
 
 export function initializeTemplates(
-    agentId: string,
     role: AgentRoles,
     setupId: string,
+    wotdSalt: string,
     proverPublicKey: bigint,
     verifierPublicKey: bigint,
     payloadUtxo: FundingUtxo,
@@ -52,7 +52,7 @@ export function initializeTemplates(
         t.ordinal = i;
     }
 
-    generateWotsPublicKeys(setupId, transactions, role);
+    generateWotsPublicKeys(wotdSalt, transactions, role);
 
     // Copy timeouts from spending conditions to their inputs, so CHECKSEQUENCEVERIFY can verify the nSequence.
     for (const t of transactions) {
@@ -97,9 +97,9 @@ async function main() {
 
     console.log('Initializing transactions...');
     const transactions = initializeTemplates(
-        agentId,
         AgentRoles.PROVER,
         setupId,
+        'salt',
         1n,
         2n,
         {

@@ -153,7 +153,7 @@ export class ProtocolProver {
     }
 
     private async sendArgument(proof: bigint[], selectionPath: number[], selectionPathUnparsed: Buffer[][]) {
-        const argument = new Argument(this.setupId, this.setup!.wotsSalt, proof);
+        const argument = new Argument(this.setup!.wotsSalt, proof);
         const argumentData = await argument.makeArgument(selectionPath, selectionPathUnparsed);
         await this.sendTransaction(TransactionNames.ARGUMENT, argumentData);
     }

@@ -14,15 +14,13 @@ function calculateD(a: bigint, b: bigint): bigint {
 }
 
 export class Argument {
-    setupId: string;
     wotsSalt: string;
     selectionPath: number[] = [];
     selectionPathUnparsed: Buffer[][] = [];
     index: number = 0;
     proof: bigint[];
 
-    constructor(setupId: string, wotsSalt: string, proof: bigint[]) {
-        this.setupId = setupId;
+    constructor(wotsSalt: string, proof: bigint[]) {
         this.wotsSalt = wotsSalt;
         this.proof = proof;
     }
@@ -32,7 +30,7 @@ export class Argument {
             ...this.selectionPathUnparsed,
             encodeWinternitz24(
                 BigInt(this.index),
-                createUniqueDataId(this.wotsSalt, TransactionNames.ARGUMENT, 0, 0, this.selectionPathUnparsed.length)
+                createUniqueDataId(this.wotsSalt, TransactionNames.ARGUMENT, 0, 0, 6)
             )
         ].flat();
     }

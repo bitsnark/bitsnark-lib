@@ -4,6 +4,8 @@ import { initializeTemplates } from '../src/agent/setup/init-templates';
 import { Transaction } from '../src/agent/common/transactions';
 import { generateWotsPublicKeys, mergeWots, setWotsPublicKeysForArgument } from '../src/agent/setup/wots-keys';
 
+export const TEST_WOTS_SALT = 'salt';
+
 const payloadUtxo = {
     txId: '0000000000000000000000000000000000000000000000000000000000000000',
     outputIndex: 0,
@@ -24,29 +26,27 @@ export const setupId = 'test_setup';
 
 export function initTemplatesForTest(): { prover: Transaction[]; verifier: Transaction[] } {
     let prover = initializeTemplates(
-        proverAgentId,
         AgentRoles.PROVER,
         setupId,
+        TEST_WOTS_SALT,
         BigInt('0x' + agentConf.keyPairs[proverAgentId].schnorrPublic),
         BigInt('0x' + agentConf.keyPairs[verifierAgentId].schnorrPublic),
         payloadUtxo,
         proverUtxo
     );
-    generateWotsPublicKeys(setupId, prover, AgentRoles.VERIFIER);
     let verifier = initializeTemplates(
-        verifierAgentId,
         AgentRoles.VERIFIER,
         setupId,
+        TEST_WOTS_SALT,
         BigInt('0x' + agentConf.keyPairs[proverAgentId].schnorrPublic),
         BigInt('0x' + agentConf.keyPairs[verifierAgentId].schnorrPublic),
         payloadUtxo,
         proverUtxo
     );
-    generateWotsPublicKeys(setupId, verifier, AgentRoles.VERIFIER);
     prover = mergeWots(AgentRoles.PROVER, prover, verifier);
     verifier = mergeWots(AgentRoles.VERIFIER, verifier, prover);
-    setWotsPublicKeysForArgument(setupId, prover);
-    setWotsPublicKeysForArgument(setupId, verifier);
+    setWotsPublicKeysForArgument(TEST_WOTS_SALT, prover);
+    setWotsPublicKeysForArgument(TEST_WOTS_SALT, verifier);
     return { prover, verifier };
 }
 

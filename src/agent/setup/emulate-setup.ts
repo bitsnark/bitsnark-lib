@@ -8,6 +8,7 @@ import { generateWotsPublicKeys, mergeWots, setWotsPublicKeysForArgument } from 
 import { AgentRoles } from '../common/types';
 import { initializeTemplates } from './init-templates';
 import { AgentDb } from '../common/db';
+import { TEST_WOTS_SALT } from '@tests/test-utils';
 
 export async function emulateSetup(
     proverAgentId: string,
@@ -34,18 +35,18 @@ export async function emulateSetup(
     console.log('generating templates...');
 
     let proverTemplates = await initializeTemplates(
-        proverAgentId,
         AgentRoles.PROVER,
         setupId,
+        TEST_WOTS_SALT,
         BigInt('0x' + agentConf.keyPairs[proverAgentId].schnorrPublic),
         BigInt('0x' + agentConf.keyPairs[verifierAgentId].schnorrPublic),
         mockLockedFunds,
         mockPayload
     );
     let verifierTemplates = await initializeTemplates(
-        verifierAgentId,
         AgentRoles.VERIFIER,
         setupId,
+        TEST_WOTS_SALT,
         BigInt('0x' + agentConf.keyPairs[proverAgentId].schnorrPublic),
         BigInt('0x' + agentConf.keyPairs[verifierAgentId].schnorrPublic),
         mockLockedFunds,

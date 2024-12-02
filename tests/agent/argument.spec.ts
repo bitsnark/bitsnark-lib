@@ -4,21 +4,21 @@ import { Argument } from '../../src/agent/protocol-logic/argument';
 import { getTransactionByName, twoDigits } from '../../src/agent/common/transactions';
 import { parseInput } from '../../src/agent/protocol-logic/parser';
 import { TransactionNames } from '../../src/agent/common/types';
-import { initTemplatesForTest, setupId } from '../test-utils';
+import { initTemplatesForTest, TEST_WOTS_SALT } from '../test-utils';
 import { createUniqueDataId } from '../../src/agent/setup/wots-keys';
 
 function makeSelectionPathUnparsed(selectionPath: number[]) {
     const spu: Buffer[][] = [];
     for (let i = 0; i < selectionPath.length; i++) {
         const tn = selectionPath[i];
-        const unique = createUniqueDataId('salt', TransactionNames.SELECT + '_' + twoDigits(i), 0, 0, 0);
+        const unique = createUniqueDataId(TEST_WOTS_SALT, TransactionNames.SELECT + '_' + twoDigits(i), 0, 0, 0);
         spu.push(encodeWinternitz24(BigInt(tn), unique));
     }
     return spu;
 }
 
 async function init() {
-    const argument = new Argument(setupId, 'salt', proofBigint);
+    const argument = new Argument(TEST_WOTS_SALT, proofBigint);
     const selectionPath = [1, 2, 3, 4, 5, 6];
     const argWitness = await argument.makeArgument(selectionPath, makeSelectionPathUnparsed(selectionPath));
     return { argument, selectionPath, argWitness };

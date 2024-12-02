@@ -225,9 +225,9 @@ export class Agent {
         this.verifyMessage(message, i);
 
         i.transactions = await initializeTemplates(
-            this.agentId,
             AgentRoles.VERIFIER,
             i.setupId,
+            i.wotsSalt!,
             i.prover!.schnorrPublicKey!,
             i.verifier!.schnorrPublicKey!,
             i.payloadUtxo!,
@@ -262,9 +262,9 @@ export class Agent {
         this.verifyMessage(message, i);
 
         i.transactions = await initializeTemplates(
-            this.agentId,
             AgentRoles.PROVER,
             i.setupId,
+            i.wotsSalt!,
             i.prover!.schnorrPublicKey!,
             i.verifier!.schnorrPublicKey!,
             i.payloadUtxo!,

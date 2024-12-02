@@ -128,7 +128,7 @@ export class ProtocolVerifier {
                 vin.txinwitness!.map((s) => Buffer.from(s, 'hex'))
             )
         );
-        const argument = new Argument(this.setupId, this.setup!.wotsSalt, proof);
+        const argument = new Argument(this.setup!.wotsSalt, proof);
         const refutation = await argument.refute(this.templates!, argData, this.states);
 
         incoming.object.inputs[0].script = refutation.script;
