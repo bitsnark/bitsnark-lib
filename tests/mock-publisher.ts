@@ -51,10 +51,10 @@ const mockVout = {
 };
 
 export class MockPublisher {
-    agents: { prover: string, verifier: string };
-    dbs: { prover: AgentDb, verifier: AgentDb };
+    agents: { prover: string; verifier: string };
+    dbs: { prover: AgentDb; verifier: AgentDb };
     setupId: string;
-    templates: { prover: Template[], verifier: Template[] } = { prover: [], verifier: [] };
+    templates: { prover: Template[]; verifier: Template[] } = { prover: [], verifier: [] };
     bitcoinClient: BitcoinNode;
     scheduler: NodeJS.Timeout | undefined;
     isRunning: boolean = false;
@@ -68,22 +68,21 @@ export class MockPublisher {
 
     async start() {
         if (!this.templates.prover.length || !this.templates.verifier.length) {
-            this.templates.prover = await this.dbs.prover.getTemplates(this.setupId)
-            this.templates.verifier = (await this.dbs.verifier.getTemplates(this.setupId));
+            this.templates.prover = await this.dbs.prover.getTemplates(this.setupId);
+            this.templates.verifier = await this.dbs.verifier.getTemplates(this.setupId);
         }
 
         if (this.scheduler) clearInterval(this.scheduler);
 
         this.scheduler = setInterval(async () => {
             try {
-                await this.generateBlocks(1);
                 if (this.isRunning) return;
                 this.isRunning = true;
 
                 const readyToSendTemplates = {
                     prover: await this.dbs.prover.dev_readReadyToSendTemplates(this.setupId),
                     verifier: await this.dbs.verifier.dev_readReadyToSendTemplates(this.setupId)
-                }
+                };
 
                 if (readyToSendTemplates.prover.length === 0 && readyToSendTemplates.verifier.length)
                     throw new Error(`No templates to publish`);
@@ -100,38 +99,34 @@ export class MockPublisher {
                         const rawTx: RawTransaction = {
                             ...mockRawTransaction,
                             txid: readyTx.object.txId!,
-                            vin: this.mockInputs(readyTx, this.templates[agent]),
+                            vin: this.mockInputs(readyTx, this.templates[agent])
                         };
 
-
-                        await this.dbs[agent].markReceived(this.setupId,
+                        await this.dbs[agent].markReceived(
+                            this.setupId,
                             readyTx.name,
                             readyTx.object.txId!,
                             hash,
                             tip,
-                            rawTx)
-
-
-                        console.log('Inserted incoming transaction:', agent, readyTx.object.txId, readyTx.name);
-
-                        await this.dbs[otherAgent].markReceived(this.setupId,
-                            readyTx.name,
-                            readyTx.object.txId!,
-                            hash,
-                            tip,
-                            rawTx)
-
-                        console.log('Inserted incoming transaction', otherAgent, readyTx.object.txId, readyTx.name);
+                            rawTx
+                        );
 
                         await this.dbs[agent].dev_markPublished(this.setupId, readyTx.name);
-                        console.log('Updated outgoing transaction', agent, readyTx.object.txId, readyTx.name);
 
-                        await this.dbs[otherAgent].dev_markPublished(this.setupId, readyTx.name);
-                        console.log('Updated outgoing transaction', agent, readyTx.object.txId, readyTx.name);
+                        await this.dbs[otherAgent].markReceived(
+                            this.setupId,
+                            readyTx.name,
+                            readyTx.object.txId!,
+                            hash,
+                            tip,
+                            rawTx
+                        );
 
-                        this.isRunning = false;
+                        console.log('Recived incoming transaction', readyTx.object.txId, readyTx.name);
                     }
                 }
+                await this.generateBlocks(1);
+                this.isRunning = false;
             } catch (e) {
                 console.error(e);
                 this.isRunning = false;
@@ -156,19 +151,25 @@ export class MockPublisher {
         }
     }
 
-
     private mockInputs(template: Template, templates: Template[]): Input[] {
         return (
-            templates.find((t) => t.name === template.name)?.object
-                ?.inputs.map((input, index) => {
+            templates
+                .find((t) => t.name === template.name)
+                ?.object?.inputs.map((input, index) => {
                     return {
                         ...mockVin,
-                        txid: getTransactionByName(templates.map(t => t.object), input.transactionName).txId ?? '',
+                        txid:
+                            getTransactionByName(
+                                templates.map((t) => t.object),
+                                input.transactionName
+                            ).txId ?? '',
                         vout: input.outputIndex,
-                        txinwitness: template.data && template.data[index] ?
-                            template.data[index].map((witnessElement: Buffer) =>
-                                witnessElement.toString('hex')
-                            ) : []
+                        txinwitness:
+                            template.data && template.data[index]
+                                ? template.data[index].map((witnessElement: Buffer) =>
+                                      Buffer.from(witnessElement).toString('hex')
+                                  )
+                                : []
                     };
                 }) || []
         );
@@ -187,14 +188,19 @@ if (require.main === module) {
         const verrifirId = 'bitsnark_verifier_1';
         const setupId = 'test_setup';
 
+        const dbProver = new AgentDb(proverId);
+        const dbVerifier = new AgentDb(verrifirId);
+        await dbProver.markSetupPeggoutActive(setupId);
+        await dbVerifier.markSetupPeggoutActive(setupId);
+
         const prover = new ProtocolProver(proverId, setupId);
         //Bad
-        // const boojum = proofBigint;
-        // boojum[0] = boojum[0] + 1n;
-        // await prover.pegOut(boojum);
+        const boojum = proofBigint;
+        boojum[0] = boojum[0] + 1n;
+        await prover.pegOut(boojum);
         // Good
-        await prover.pegOut(proofBigint);
+        //await prover.pegOut(proofBigint);
         console.log('proof sent:', proofBigint);
-        //new MockPublisher(proverId, verrifirId, setupId).start();
+        new MockPublisher(proverId, verrifirId, setupId).start();
     })();
 }
