@@ -2,7 +2,7 @@ import { agentConf } from '../agent.conf';
 import { BitcoinNode } from '../common/bitcoin-node';
 import { RawTransaction } from 'bitcoin-core';
 import { ListenerDb } from './listener-db';
-import { Input, Template } from '../common/types';
+import { Input, Template, TemplateNames } from '../common/types';
 
 export interface expectByInputs {
     setupId: string;
@@ -122,8 +122,38 @@ export class BitcoinListener {
 
 if (require.main === module) {
     (async () => {
-        const listener = new BitcoinListener('bitsnark_prover_1');
-        await listener.monitorTransmitted();
+
+        const dbProver = new ListenerDb('bitsnark_prover_1');
+        const dbVerifier = new ListenerDb('bitsnark_verifier_1');
+
+        const testnetTxs = [{
+            name: TemplateNames.LOCKED_FUNDS,
+            block: 3519980,
+            txId: '64f14028c168c99caf145933ce121b7989051a2042dc7f4bc30a6d1bc793ddf8'
+        },
+        {
+            name: TemplateNames.PROVER_STAKE,
+            block: 3519962,
+            txId: '2844b5d8a0262628b3a31a5b270b89eca93a4b6ae9007481f21a045557515a42'
+        },
+        {
+            name: TemplateNames.PROOF,
+            txId: '34d82044efa0964c9800252d528c93012b4022059ff921485f533ac3fe2d3e13'
+        }]
+
+
+        for (const tx of testnetTxs) {
+            await dbProver.query(`UPDATE templates
+                SET txid = j $1
+                WHERE name = $2;`, [tx.txId, tx.name]);
+            await dbVerifier.query(`UPDATE templates
+                SET txid = j $1
+                WHERE name = $2;`, [tx.txId, tx.name]);
+        }
+
+
+
+
     })().catch((error) => {
         throw error;
     });
