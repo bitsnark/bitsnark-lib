@@ -10,7 +10,8 @@ CREATE TABLE setups (
     payload_amount INTEGER,
     stake_txid CHARACTER VARYING, 
     stake_output_index INTEGER, 
-    stake_amount INTEGER   
+    stake_amount INTEGER
+);
 
 CREATE INDEX setups_status_idx ON setups (status);
 
@@ -22,7 +23,8 @@ CREATE TABLE templates (
     is_external BOOLEAN NOT NULL,
     unknown_txid BOOLEAN DEFAULT FALSE,
     ordinal INTEGER NOT NULL,
-    object JSONB NOT NULL,
+    inputs JSONB NOT NULL,
+    outputs JSONB NOT NULL,
     status CHARACTER VARYING NOT NULL,
     data JSONB NULL,
     updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
@@ -30,14 +32,14 @@ CREATE TABLE templates (
 );
 CREATE INDEX templates_setup_id_idx ON templates (setup_id);
 CREATE INDEX ordinals_idx ON templates (ordinal);
-CREATE INDEX templates_outgoing_status_idx ON templates (outgoing_status);
+CREATE INDEX templates_status_idx ON templates (status);
 
 CREATE TABLE received (
+    template_id INTEGER NOT NULL REFERENCES templates ON DELETE CASCADE,
     transaction_hash CHARACTER VARYING PRIMARY KEY,
     block_hash CHARACTER VARYING NOT NULL,
     block_height INTEGER NOT NULL,
     raw_transaction JSONB NOT NULL,
-    template_id INTEGER NOT NULL REFERENCES templates ON DELETE CASCADE,
     detected_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 CREATE INDEX received_template_id_idx ON received (template_id);

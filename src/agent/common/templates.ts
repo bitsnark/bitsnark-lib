@@ -410,7 +410,7 @@ export function getTemplateByName(templates: Template[], name: string): Template
 }
 
 export function getTemplateByTemplateId(templates: Template[], templateId: number): Template {
-    const tx = templates.find((t) => t.templateId == templateId);
+    const tx = templates.find((t) => t.id == templateId);
     if (!tx) throw new Error('Template not found: ' + templateId);
     return tx;
 }

@@ -124,7 +124,7 @@ export enum TemplateStatus {
 }
 
 export interface Template {
-    templateId?: number;
+    id?: number;
     name: string;
     role: AgentRoles;
     isExternal?: boolean;
@@ -135,5 +135,6 @@ export interface Template {
     txid?: string;
     inputs: Input[];
     outputs: Output[];
+    status?: TemplateStatus;
 }
 
