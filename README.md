@@ -79,6 +79,22 @@ If, however, the prover's argument is correct, the `Proof Refuted` transaction w
 
 Available is also a [TLA+ specification of the protocol](/analysis/BitSnark.pdf), including some basic invariants, all fully tested and verified using the TLA+ Toolbox.
 
+## Multiple Verifiers
+
+In the multi-verifier version of the protocol, we have unified the locked funds with the prover's stake, and both the `locked funds` and the `proof` transactions have separate outputs for each verifier. All of the outputs of the locked funds can be spent by a timelocked `proof accepted` transaction, returning the funds to the prover in the case of an unchallenged proof.
+
+Each verifier can challenge the proof independently by spending his assigned `proof` output (while also paying the prover as part of the `challenge` transaction), and each challenge can lead to a state/select/argument chain possibly ending with a successful refutation. A challenge chain that ends with the verifier's victory - either through refutation or through a timeout - will also spend the verifier's matching `locked funds` output, preventing the prover from ever claiming them back and claiming a proportional part of the funds as reward.
+
+If and only if none of the `locked funds` outputs were successfully spent, can the prover claim them back by publishing the `proof accepted` transaction.
+
+Note that while the verifier transactions all have matching "uncontested" timelocked transactions, forcing the prover to respond with haste, the prover's transactions have no such counterparts. The prover is waiting for a global timeout to claim his funds back, and isn't incentivised to rush any of the other transactions (in fact, he is incentivised to delay them as much as possible).
+
+The diagram below shows the flow of a single verifier's outputs from the `proof` and `locked funds` transactions (in green and magenta, respectively). Withing the challenge chain the prover's transactions are green and the verifier's are blue, except from the ones that claim the reward, which are magenta.
+
+For simplicity, the lines connecting `locked funds` to its spenders within the challenge chain is omitted and the dissection process is shortened to two steps.
+
+![BitSNARK Transactions Flow](/analysis/multiVerifier.svg)
+
 ## A Note About Fees
 
 To generate the transactions, the prover and the verifier agree on a program and prepare keys and UTXOs to be used in this instance of the protocol. The two players then interactively prepare and sign the following graph of interdependant Bitcoin transactions. These transactions are prepared and at least partially signed in advance, likely before the event that the prover will want to prove has occurred, but published only after the prover has generated his proof and is ready to publish it.
