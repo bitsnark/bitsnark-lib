@@ -1,4 +1,5 @@
-import { findOutputByInput, Input, Transaction } from '../common/transactions';
+import { findOutputByInput } from '../common/templates';
+import { Input, Template } from '../common/types';
 import { decodeWinternitz, WOTS_NIBBLES } from '../common/winternitz';
 
 function hashesFromBuffer(data: Buffer): Buffer[] {
@@ -32,8 +33,8 @@ export interface ArgumentData {
     merkleProofs: MerkleProofData;
 }
 
-export function parseInput(transactions: Transaction[], input: Input, data: Buffer[]): bigint[] {
-    const output = findOutputByInput(transactions, input);
+export function parseInput(templates: Template[], input: Input, data: Buffer[]): bigint[] {
+    const output = findOutputByInput(templates, input);
     if (!output) throw new Error('Output not found');
     const sc = output.spendingConditions[input.spendingConditionIndex];
     if (!sc) throw new Error('Spending condition not found');

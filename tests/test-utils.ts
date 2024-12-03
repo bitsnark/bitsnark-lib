@@ -1,30 +1,27 @@
 import { agentConf } from '../src/agent/agent.conf';
-import { AgentRoles } from '../src/agent/common/types';
+import { AgentRoles, Template } from '../src/agent/common/types';
 import { initializeTemplates } from '../src/agent/setup/init-templates';
-import { Transaction } from '../src/agent/common/transactions';
-import { generateWotsPublicKeys, mergeWots, setWotsPublicKeysForArgument } from '../src/agent/setup/wots-keys';
+import { mergeWots, setWotsPublicKeysForArgument } from '../src/agent/setup/wots-keys';
 
 export const TEST_WOTS_SALT = 'salt';
 
 const payloadUtxo = {
-    txId: '0000000000000000000000000000000000000000000000000000000000000000',
+    txid: '0000000000000000000000000000000000000000000000000000000000000000',
     outputIndex: 0,
-    amount: agentConf.payloadAmount,
-    external: true
+    amount: agentConf.payloadAmount
 };
 
 const proverUtxo = {
-    txId: '1111111111111111111111111111111111111111111111111111111111111111',
+    txid: '1111111111111111111111111111111111111111111111111111111111111111',
     outputIndex: 0,
-    amount: agentConf.proverStakeAmount,
-    external: true
+    amount: agentConf.proverStakeAmount
 };
 
 export const proverAgentId = 'bitsnark_prover_1';
 export const verifierAgentId = 'bitsnark_verifier_1';
 export const setupId = 'test_setup';
 
-export function initTemplatesForTest(): { prover: Transaction[]; verifier: Transaction[] } {
+export function initTemplatesForTest(): { prover: Template[]; verifier: Template[] } {
     let prover = initializeTemplates(
         AgentRoles.PROVER,
         setupId,

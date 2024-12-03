@@ -1,16 +1,16 @@
-import { AgentDb } from '../common/db';
-import { getSpendingConditionByInput, SignatureType } from '../common/transactions';
-import { AgentRoles, TransactionNames } from '../common/types';
+import { AgentDb } from '../common/agent-db';
+import { getSpendingConditionByInput } from '../common/templates';
+import { AgentRoles, SignatureType, TemplateNames } from '../common/types';
 import { decodeWinternitz } from '../common/winternitz';
 import { validateTransactionFees } from './amounts';
 
 export async function verifySetup(agentId: string, setupId: string, role: AgentRoles) {
     const db = new AgentDb(agentId);
-    const transactions = await db.getTransactions(setupId);
-    console.log('Loaded ', transactions.length, 'transactions');
+    const templates = await db.getTemplates(setupId);
+    console.log('Loaded ', templates.length, 'templates');
 
     console.log('check that all outputs have taproot keys');
-    const taprootCheck = !transactions.every((t) =>
+    const taprootCheck = !templates.every((t) =>
         t.outputs.every((o) => {
             if (!o.taprootKey) console.log('Missing taproot key', t, o);
             return o.taprootKey;
@@ -20,9 +20,9 @@ export async function verifySetup(agentId: string, setupId: string, role: AgentR
     else console.log('Success');
 
     console.log('check that all outputs have amounts');
-    validateTransactionFees(transactions);
-    const amountCheck = transactions
-        .filter((t) => t.transactionName != TransactionNames.CHALLENGE)
+    validateTransactionFees(templates);
+    const amountCheck = templates
+        .filter((t) => t.name != TemplateNames.CHALLENGE)
         .every((t) =>
             t.outputs.every((o) => {
                 if (!o.amount || o.amount <= 0n) console.log('Missing amount', t, o);
@@ -33,34 +33,34 @@ export async function verifySetup(agentId: string, setupId: string, role: AgentR
     else console.log('Success');
 
     console.log('check that all inputs have signatures');
-    for (const transaction of transactions) {
-        if (transaction.external || transaction.transactionName == TransactionNames.PROOF_REFUTED) {
-            console.warn(`Not checking signatures for ${transaction.transactionName}`);
+    for (const template of templates) {
+        if (template.isExternal || template.name == TemplateNames.PROOF_REFUTED) {
+            console.warn(`Not checking signatures for ${template.name}`);
             continue;
         }
 
-        for (const input of transaction.inputs) {
-            const sc = getSpendingConditionByInput(transactions, input);
+        for (const input of template.inputs) {
+            const sc = getSpendingConditionByInput(templates, input);
             const proverRequired = sc.signatureType === SignatureType.PROVER || sc.signatureType === SignatureType.BOTH;
             const verifierRequired =
                 sc.signatureType === SignatureType.VERIFIER || sc.signatureType === SignatureType.BOTH;
             if (!input.proverSignature && proverRequired) {
-                console.error(`Missing proverSignature for ${transaction.transactionName} input ${input.index}`);
+                console.error(`Missing proverSignature for ${template.name} input ${input.index}`);
                 console.warn(input.proverSignature);
             }
             if (!input.verifierSignature && verifierRequired) {
-                console.error(`Missing verifierSignature for ${transaction.transactionName} input ${input.index}`);
+                console.error(`Missing verifierSignature for ${template.name} input ${input.index}`);
                 console.warn(input.verifierSignature);
             }
         }
     }
 
     console.log('Check that all example witness parses correctly...');
-    for (const transaction of transactions) {
-        for (const input of transaction.inputs) {
-            const sc = getSpendingConditionByInput(transactions, input);
+    for (const template of templates) {
+        for (const input of template.inputs) {
+            const sc = getSpendingConditionByInput(templates, input);
             if (!sc.wotsSpec || sc.nextRole != role) continue;
-            console.log(transaction.transactionName, input.index);
+            console.log(template.name, input.index);
             if (!sc.exampleWitness) {
                 console.log('example witness is missing');
                 continue;

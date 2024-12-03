@@ -1,16 +1,17 @@
 import { Bitcoin, executeProgram } from '../../generator/btc_vm/bitcoin';
-import { AgentDb } from '../common/db';
-import { getSpendingConditionByInput, SignatureType, Transaction } from '../common/transactions';
+import { AgentDb } from '../common/agent-db';
+import { getSpendingConditionByInput } from '../common/templates';
+import { SignatureType, Template } from '../common/types';
 
-export function emulateTransactionScripts(transactions: Transaction[]) {
-    for (const transaction of transactions) {
-        // if (transaction.transactionName != 'state_01') continue;
-        console.log(transaction.transactionName);
+export function emulateTransactionScripts(templates: Template[]) {
+    for (const template of templates) {
+        // if (template.name != 'state_01') continue;
+        console.log(template.name);
 
-        for (const input of transaction.inputs) {
+        for (const input of template.inputs) {
             console.log('input: ', input.index);
 
-            const sc = getSpendingConditionByInput(transactions, input);
+            const sc = getSpendingConditionByInput(templates, input);
             if (!sc.wotsSpec || !sc.script || !sc.exampleWitness) continue;
 
             const bitcoin = new Bitcoin();
@@ -39,8 +40,8 @@ async function main() {
     const agentId = process.argv[2] ?? 'bitsnark_prover_1';
     const setupId = 'test_setup';
     const db = new AgentDb(agentId);
-    const transactions = await db.getTransactions(setupId);
-    emulateTransactionScripts(transactions);
+    const templates = await db.getTemplates(setupId);
+    emulateTransactionScripts(templates);
 }
 
 const scriptName = __filename;

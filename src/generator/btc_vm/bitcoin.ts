@@ -9,7 +9,7 @@ interface Operation {
     templateItemId?: string;
 }
 
-export interface Template {
+export interface ScriptTemplate {
     buffer: Buffer;
     items: { itemId: string; index: number }[];
 }
@@ -1310,7 +1310,7 @@ export class Bitcoin {
         return this.programToTemplate(opts ?? { validateStack: true }).buffer;
     }
 
-    programToTemplate(opts?: ProgramToTemplateOpts): Template {
+    programToTemplate(opts?: ProgramToTemplateOpts): ScriptTemplate {
         opts = opts ?? { validateStack: true };
 
         if (opts.validateStack == true) {

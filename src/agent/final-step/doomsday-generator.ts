@@ -1,8 +1,8 @@
 import groth16Verify, { Key, Proof as Step1_Proof } from '../../generator/ec_vm/verifier';
 import { InstrCode, Instruction } from '../../generator/ec_vm/vm/types';
 import { proof, vKey } from '../../generator/ec_vm/constants';
-import { Bitcoin, Template } from '../../generator/btc_vm/bitcoin';
-import { getSpendingConditionByInput, getTransactionByName, Transaction, twoDigits } from '../common/transactions';
+import { Bitcoin, ScriptTemplate } from '../../generator/btc_vm/bitcoin';
+import { getSpendingConditionByInput, getTemplateByName, twoDigits } from '../common/templates';
 import { encodeWinternitz24, encodeWinternitz256_4, getWinternitzPublicKeys, WotsType } from '../common/winternitz';
 import { step1_vm } from '../../generator/ec_vm/vm/vm';
 import { StackItem } from '../../generator/btc_vm/stack';
@@ -10,14 +10,14 @@ import { Compressor } from '../common/taptree';
 import { agentConf } from '../agent.conf';
 import { BLAKE3, Register } from './blake-3-4u';
 import { Decasector } from '../protocol-logic/decasector';
-import { AgentDb } from '../common/db';
 import { blake3 as blake3_wasm } from 'hash-wasm';
 import { modInverse } from '../../generator/common/math-utils';
 import { prime_bigint } from '../common/constants';
 import { bufferToBigintBE } from '../common/encoding';
-import { TransactionNames } from '../common/types';
 import { bigintToNibbles_3 } from './nibbles';
 import { NegifyFinalStep } from './negify-final-step';
+import { Template, TemplateNames } from '../common/types';
+import { AgentDb } from '../common/agent-db';
 
 export enum RefutationType {
     INSTR,
@@ -43,7 +43,7 @@ export class DoomsdayGenerator {
         this.decasector = new Decasector();
     }
 
-    private renderTemplateWithIndex(template: Template, index: number): Buffer {
+    private renderTemplateWithIndex(template: ScriptTemplate, index: number): Buffer {
         const nibbles = bigintToNibbles_3(BigInt(index), 8);
         const map: { [key: string]: number } = {};
         for (let i = 0; i < nibbles.length; i++) {
@@ -56,13 +56,13 @@ export class DoomsdayGenerator {
         return template.buffer;
     }
 
-    private renderTemplateWithKeys(template: Template, keys: Buffer[][]): Buffer {
+    private renderScriptTemplateWithKeys(scriptTemplate: ScriptTemplate, keys: Buffer[][]): Buffer {
         const keysFlat = keys.flat();
-        template.items.forEach((item, i) => {
+        scriptTemplate.items.forEach((item, i) => {
             const b = keysFlat[i];
-            b.copy(template.buffer, item.index, 0);
+            b.copy(scriptTemplate.buffer, item.index, 0);
         });
-        return template.buffer;
+        return scriptTemplate.buffer;
     }
 
     // return true if the line succeeds!!!
@@ -155,11 +155,11 @@ export class DoomsdayGenerator {
         }
     }
 
-    private generateRefuteInstructionTaproot(compressor: Compressor, transactions: Transaction[]) {
-        const lastSelect = getTransactionByName(transactions, `select_${twoDigits(this.decasector.iterations - 1)}`);
-        const semiFinal = getTransactionByName(transactions, TransactionNames.ARGUMENT);
+    private generateRefuteInstructionTaproot(compressor: Compressor, transactions: Template[]) {
+        const lastSelect = getTemplateByName(transactions, `select_${twoDigits(this.decasector.iterations - 1)}`);
+        const semiFinal = getTemplateByName(transactions, TemplateNames.ARGUMENT);
 
-        const cache: { [key: string]: Template } = {};
+        const cache: { [key: string]: ScriptTemplate } = {};
 
         const started = Date.now();
         let total = 0;
@@ -181,8 +181,8 @@ export class DoomsdayGenerator {
             const cacheKey = `${line.name}/${line.bit ?? 0}`;
             let final = null;
             if (cache[cacheKey]) {
-                const template: Template = cache[cacheKey];
-                final = this.renderTemplateWithIndex(template, index);
+                const scriptTemplate: ScriptTemplate = cache[cacheKey];
+                final = this.renderTemplateWithIndex(scriptTemplate, index);
             } else {
                 const bitcoin = new Bitcoin();
                 bitcoin.throwOnFail = false;
@@ -234,9 +234,9 @@ export class DoomsdayGenerator {
                 }
 
                 this.checkLineBitcoin(bitcoin, line, a, b, c, d!);
-                const template = bitcoin.programToTemplate();
-                cache[cacheKey] = template;
-                final = template.buffer;
+                const scriptTemplate = bitcoin.programToTemplate();
+                cache[cacheKey] = scriptTemplate;
+                final = scriptTemplate.buffer;
             }
 
             total += final.length;
@@ -269,7 +269,7 @@ export class DoomsdayGenerator {
         blake3.bitcoin.drop(temp);
     }
 
-    private async createRefuteHashTemplate(): Promise<Template> {
+    private async createRefuteHashScriptTemplate(): Promise<ScriptTemplate> {
         const bitcoin = new Bitcoin();
         bitcoin.throwOnFail = true;
         const blake3 = new BLAKE3(bitcoin);
@@ -307,8 +307,8 @@ export class DoomsdayGenerator {
         return bitcoin.programToTemplate({ validateStack: true });
     }
 
-    private async generateRefuteMerkleProofTaproot(compressor: Compressor, transactions: Transaction[]) {
-        let template: Template | undefined = undefined;
+    private async generateRefuteMerkleProofTaproot(compressor: Compressor, transactions: Template[]) {
+        let scriptTemplate: ScriptTemplate | undefined = undefined;
 
         const started = Date.now();
         let total = 0;
@@ -335,23 +335,23 @@ export class DoomsdayGenerator {
 
             if (beforeStateIteration < 0) continue;
 
-            const stateTxBefore = getTransactionByName(
+            const stateTxBefore = getTemplateByName(
                 transactions,
-                `${TransactionNames.STATE}_${twoDigits(beforeStateIteration)}`
+                `${TemplateNames.STATE}_${twoDigits(beforeStateIteration)}`
             );
             const scBefore = getSpendingConditionByInput(transactions, stateTxBefore.inputs[0]);
             const beforeRootKeys = scBefore.wotsPublicKeys![stateCommitmentIndexBefore];
 
-            const stateTxAfter = getTransactionByName(
+            const stateTxAfter = getTemplateByName(
                 transactions,
-                `${TransactionNames.STATE}_${twoDigits(afterStateIteration)}`
+                `${TemplateNames.STATE}_${twoDigits(afterStateIteration)}`
             );
             const scAfter = getSpendingConditionByInput(transactions, stateTxAfter.inputs[0]);
             const afterRootKeys = scAfter.wotsPublicKeys![stateCommitmentIndexAfter];
 
             // now let's get the merkle proofs keys, there are 3 proofs
             const merkleProofKeysAll: Buffer[][] = [];
-            const argument = getTransactionByName(transactions, TransactionNames.ARGUMENT);
+            const argument = getTemplateByName(transactions, TemplateNames.ARGUMENT);
 
             // We need all of the inputs except the first two, which are the path and the a, b, c, d values
             for (let i = 2; i < argument.inputs.length; i++) {
@@ -374,7 +374,7 @@ export class DoomsdayGenerator {
                 merkleProofKeys[2].push(afterRootKeys);
             }
 
-            if (!template) template = await this.createRefuteHashTemplate();
+            if (!scriptTemplate) scriptTemplate = await this.createRefuteHashScriptTemplate();
 
             // here's the script to refute one hash
             const refuteHash = async (
@@ -382,7 +382,7 @@ export class DoomsdayGenerator {
                 rightKeys: Buffer[],
                 resultKeys: Buffer[]
             ): Promise<Buffer> => {
-                return this.renderTemplateWithKeys(template!, [leftKeys, rightKeys, resultKeys]);
+                return this.renderScriptTemplateWithKeys(scriptTemplate!, [leftKeys, rightKeys, resultKeys]);
             };
 
             // now there are 3 * 6 possible refutations
@@ -402,7 +402,7 @@ export class DoomsdayGenerator {
     }
 
     async generateFinalStepTaproot(
-        transactions: Transaction[],
+        transactions: Template[],
         scriptDescriptor?: ScriptDescriptor
     ): Promise<{ pubkey: Buffer; script?: Buffer; controlBlock?: Buffer }> {
         let compressor = new Compressor(agentConf.internalPubkey, 20 * 300000);
@@ -430,7 +430,7 @@ export class DoomsdayGenerator {
 async function main() {
     const ddg = new DoomsdayGenerator();
     const db = new AgentDb('bitsnark_prover_1');
-    const transactions = await db.getTransactions('test_setup');
+    const transactions = await db.getTemplates('test_setup');
     const r = await ddg.generateFinalStepTaproot(transactions);
     console.log(r);
 }

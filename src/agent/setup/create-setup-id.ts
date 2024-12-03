@@ -1,14 +1,19 @@
 import { v4 as uuidv4 } from 'uuid';
 import { agentConf } from '../agent.conf';
 import { Bitcoin } from '../../../src/generator/btc_vm/bitcoin';
-import { TransactionNames } from '../common/types';
+import { TemplateNames } from '../common/types';
 import { encodeWinternitz, getWinternitzPublicKeys, WotsType } from '../common/winternitz';
 import { array } from '../common/array-utils';
 import { SimpleTapTree } from '../common/taptree';
 import { createUniqueDataId } from './wots-keys';
-import { AgentDb } from '../common/db';
+import { AgentDb } from '../common/agent-db';
 
-export async function createSetupId(proverAgentId: string, verifierAgentId: string): Promise<string> {
+export async function createSetupId(
+    proverAgentId: string, 
+    verifierAgentId: string,
+
+): Promise<string> {
+
     const uuid = uuidv4();
     const wotsSalt = Buffer.from(uuid, 'ascii').toString('hex');
 
@@ -34,7 +39,7 @@ export async function createSetupId(proverAgentId: string, verifierAgentId: stri
         bitcoin.verifySignature(proverPublicKey);
         bitcoin.verifySignature(verifierPublicKey);
 
-        const uniques = array(8, (dataIndex) => createUniqueDataId(wotsSalt, TransactionNames.PROOF, 0, 1, dataIndex));
+        const uniques = array(8, (dataIndex) => createUniqueDataId(wotsSalt, TemplateNames.PROOF, 0, 1, dataIndex));
         const keys = array(8, (dataIndex) => getWinternitzPublicKeys(WotsType._256, uniques[dataIndex]));
         const witnessSIs = keys
             .map((_, dataIndex) => encodeWinternitz(WotsType._256, 0n, uniques[dataIndex]))

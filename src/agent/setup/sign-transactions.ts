@@ -1,14 +1,13 @@
-import { Transaction } from '../common/transactions';
 import { execFileSync } from 'node:child_process';
-import { AgentDb } from '../common/db';
-import { AgentRoles, TransactionNames } from '../common/types';
+import { AgentRoles, Template, TemplateNames } from '../common/types';
+import { AgentDb } from '../common/agent-db';
 
 export async function signTransactions(
     role: AgentRoles,
     agentId: string,
     setupId: string,
-    transactions: Transaction[]
-): Promise<Transaction[]> {
+    templates: Template[]
+): Promise<Template[]> {
     // On macOS, "System Integrety Protection" clears the DYLD_FALLBACK_LIBRARY_PATH,
     // which leaves the Python executable unable to find the secp256k1 library installed by Homebrew.
     if (!process.env.DYLD_FALLBACK_LIBRARY_PATH) {
@@ -36,35 +35,35 @@ export async function signTransactions(
         const subprocessError = error as { status: number; stdout: Buffer; stderr: Buffer };
         console.error(
             `Python script failed with code ${subprocessError.status}\n` +
-                `stdout:\n${subprocessError.stdout.toString()}\n` +
-                `stderr:\n${subprocessError.stderr.toString()}\n`
+            `stdout:\n${subprocessError.stdout.toString()}\n` +
+            `stderr:\n${subprocessError.stderr.toString()}\n`
         );
         throw error;
     }
 
     const db = new AgentDb(agentId);
-    transactions = await db.getTransactions(setupId);
-    for (const transaction of transactions) {
-        if (transaction.transactionName == TransactionNames.PROOF_REFUTED) {
-            console.warn('Manually skipping script generation for transaction', transaction.transactionName);
+    templates = await db.getTemplates(setupId);
+    for (const template of templates) {
+        if (template.name == TemplateNames.PROOF_REFUTED) {
+            console.warn('Manually skipping script generation for template', template.name);
             continue;
         }
-        if (!transaction.txId) throw new Error('Missing txId');
-        if (role == AgentRoles.PROVER && !transaction.inputs.every((i) => i.proverSignature))
+        if (!template.txid) throw new Error('Missing txid');
+        if (role == AgentRoles.PROVER && !template.inputs.every((i) => i.proverSignature))
             throw new Error('Missing signature');
-        if (role == AgentRoles.VERIFIER && !transaction.inputs.every((i) => i.verifierSignature))
+        if (role == AgentRoles.VERIFIER && !template.inputs.every((i) => i.verifierSignature))
             throw new Error('Missing signature');
     }
 
-    return transactions;
+    return templates;
 }
 
 async function main() {
     const agentId = 'bitsnark_prover_1';
     const setupId = 'test_setup';
     const db = new AgentDb(agentId);
-    const transactions = await db.getTransactions(setupId);
-    signTransactions(AgentRoles.PROVER, agentId, setupId, transactions).catch(console.error);
+    const templates = await db.getTemplates(setupId);
+    signTransactions(AgentRoles.PROVER, agentId, setupId, templates).catch(console.error);
 }
 
 if (require.main === module) {

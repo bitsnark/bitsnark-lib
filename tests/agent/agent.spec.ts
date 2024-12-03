@@ -16,13 +16,13 @@ export const mockContext: SimpleContext = {
 };
 
 const lockedFunds = {
-    txId: '0000000000000000000000000000000000000000000000000000000000000000',
+    txid: '0000000000000000000000000000000000000000000000000000000000000000',
     outputIndex: 0,
     amount: agentConf.payloadAmount,
     external: true
 };
 const proverStake = {
-    txId: '1111111111111111111111111111111111111111111111111111111111111111',
+    txid: '1111111111111111111111111111111111111111111111111111111111111111',
     outputIndex: 0,
     amount: agentConf.proverStakeAmount,
     external: true

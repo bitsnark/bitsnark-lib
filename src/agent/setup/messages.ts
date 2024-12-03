@@ -1,5 +1,4 @@
-import { Transaction } from '../common/transactions';
-import { FundingUtxo } from '../common/types';
+import { FundingUtxo, Template } from '../common/types';
 
 type MessageType = 'start' | 'join' | 'transactions' | 'signatures' | 'done' | 'error';
 
@@ -47,8 +46,8 @@ export interface OutputWithWotsKeys {
     spendingConditions: SpendingConditionWithWotsKeys[];
 }
 
-export interface TransactionWithWotsKeys {
-    transactionName: string;
+export interface TemplateWithWotsKeys {
+    name: string;
     outputs: OutputWithWotsKeys[];
 }
 
@@ -56,15 +55,15 @@ export class TransactionsMessage {
     messageType: MessageType = 'transactions';
     setupId: string = '';
     agentId: string = '';
-    transactions: TransactionWithWotsKeys[] = [];
+    templates: TemplateWithWotsKeys[] = [];
     telegramMessageSig: string = '';
 
-    static make(agentId: string, setupId: string, templates: Transaction[]): TransactionsMessage {
+    static make(agentId: string, setupId: string, templates: Template[]): TransactionsMessage {
         const thus = new TransactionsMessage();
         thus.setupId = setupId;
         thus.agentId = agentId;
-        thus.transactions = templates.map((t) => ({
-            transactionName: t.transactionName,
+        thus.templates = templates.map((t) => ({
+            name: t.name,
             outputs: t.outputs.map((o) => ({
                 spendingConditions: o.spendingConditions.map((sc) => ({
                     wotsPublicKeys: sc.wotsPublicKeys!
@@ -79,9 +78,9 @@ export class TransactionsMessage {
     }
 }
 
-export class Signed {
+export class SignatureTuple {
     transactionName: string = '';
-    txId: string = '';
+    txid: string = '';
     signatures: string[] = [];
 }
 
@@ -89,7 +88,7 @@ export class SignaturesMessage {
     messageType: MessageType = 'signatures';
     setupId: string = '';
     agentId: string = '';
-    signed: Signed[] = [];
+    signatures: SignatureTuple[] = [];
     telegramMessageSig: string = '';
 
     constructor(obj?: Partial<SignaturesMessage>) {

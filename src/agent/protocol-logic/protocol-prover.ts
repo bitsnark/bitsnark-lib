@@ -1,30 +1,30 @@
 import { RawTransaction } from 'bitcoin-core';
 import { agentConf } from '../agent.conf';
 import { BitcoinNode } from '../common/bitcoin-node';
-import { AgentDb, ReceivedTemplate, Setup } from '../common/db';
-import { SpendingCondition, Transaction, twoDigits } from '../common/transactions';
 import { encodeWinternitz256_4 } from '../common/winternitz';
 import { calculateStates } from './states';
 import { Argument } from './argument';
 import { parseInput } from './parser';
 import { bufferToBigintBE } from '../common/encoding';
 import { last } from '../common/array-utils';
-import { TransactionNames, iterations, AgentRoles } from '../common/types';
 import { createUniqueDataId } from '../setup/wots-keys';
+import { AgentRoles, iterations, Setup, SpendingCondition, Template, TemplateNames } from '../common/types';
+import { twoDigits } from '../common/templates';
+import { ListenerDb, ReceivedTemplate } from '../listener/listener-db';
 
 export class ProtocolProver {
     agentId: string;
     setupId: string;
     bitcoinClient: BitcoinNode;
-    templates?: Transaction[];
+    templates?: Template[];
     setup?: Setup;
-    db: AgentDb;
+    db: ListenerDb;
 
     constructor(agentId: string, setupId: string) {
         this.agentId = agentId;
         this.setupId = setupId;
         this.bitcoinClient = new BitcoinNode();
-        this.db = new AgentDb(this.agentId);
+        this.db = new ListenerDb(this.agentId);
     }
 
     public async pegOut(proof: bigint[]) {
@@ -33,14 +33,14 @@ export class ProtocolProver {
 
     public async process() {
         if (!this.templates) {
-            this.templates = await this.db.getTransactions(this.setupId);
+            this.templates = await this.db.getTemplates(this.setupId);
         }
         if (!this.setup) {
             this.setup = await this.db.getSetup(this.setupId);
         }
 
         // read all incoming transactions
-        const setup = await this.db.getSetup(this.setupId);
+        const setup = await this.db.getReceivedSetups(this.setupId);
         const incomings = setup.received ?? [];
         if (incomings.length == 0) {
             // nothing to do
@@ -56,7 +56,7 @@ export class ProtocolProver {
             const lastFlag = incoming == last(incomings);
 
             switch (incoming.name) {
-                case TransactionNames.PROOF:
+                case TemplateNames.PROOF:
                     if (lastFlag) {
                         // did the timeout expire?
                         const timeoutSc = await this.checkTimeout(incoming);
@@ -66,45 +66,45 @@ export class ProtocolProver {
                         proof = this.parseProof(incoming);
                     }
                     break;
-                case TransactionNames.PROOF_UNCONTESTED:
+                case TemplateNames.PROOF_UNCONTESTED:
                     // we won, mark it
-                    await this.db.markSetupPeggoutSuccessful(this.setupId);
+                    await this.db.markSetupPegoutSuccessful(this.setupId);
                     break;
-                case TransactionNames.CHALLENGE:
+                case TemplateNames.CHALLENGE:
                     if (lastFlag) {
                         // send the first state iteration
                     }
                     break;
-                case TransactionNames.CHALLENGE_UNCONTESTED:
+                case TemplateNames.CHALLENGE_UNCONTESTED:
                     // we lost, mark it
-                    await this.db.markSetupPeggoutFailed(this.setupId);
+                    await this.db.markSetupPegoutFailed(this.setupId);
                     break;
-                case TransactionNames.ARGUMENT:
+                case TemplateNames.ARGUMENT:
                     if (lastFlag) {
                         // did the timeout expire?
                         const timeoutSc = await this.checkTimeout(incoming);
                         if (timeoutSc) await this.sendArgumentUncontested();
                     }
                     break;
-                case TransactionNames.ARGUMENT_UNCONTESTED:
+                case TemplateNames.ARGUMENT_UNCONTESTED:
                     // we won, mark it
-                    await this.db.markSetupPeggoutSuccessful(this.setupId);
+                    await this.db.markSetupPegoutSuccessful(this.setupId);
                     break;
             }
 
-            if (incoming.name.startsWith(TransactionNames.STATE)) {
+            if (incoming.name.startsWith(TemplateNames.STATE)) {
                 if (lastFlag) {
                     // did the timeout expire?
                     const timeoutSc = await this.checkTimeout(incoming);
                     if (timeoutSc) await this.sendStateUncontested(selectionPath.length);
                 }
             }
-            if (incoming.name.startsWith(TransactionNames.STATE_UNCONTESTED)) {
+            if (incoming.name.startsWith(TemplateNames.STATE_UNCONTESTED)) {
                 // we won, mark it
-                await this.db.markSetupPeggoutSuccessful(this.setupId);
+                await this.db.markSetupPegoutSuccessful(this.setupId);
                 break;
             }
-            if (incoming.name.startsWith(TransactionNames.SELECT)) {
+            if (incoming.name.startsWith(TemplateNames.SELECT)) {
                 const rawTx = incoming.rawTransaction as RawTransaction;
                 selectionPathUnparsed.push(rawTx.vin[0].txinwitness!.map((s) => Buffer.from(s, 'hex')));
                 const selection = this.parseSelection(incoming);
@@ -114,16 +114,16 @@ export class ProtocolProver {
                     else await this.sendArgument(proof, selectionPath, selectionPathUnparsed);
                 }
             }
-            if (incoming.name.startsWith(TransactionNames.SELECT_UNCONTESTED)) {
+            if (incoming.name.startsWith(TemplateNames.SELECT_UNCONTESTED)) {
                 // we lost, mark it
-                await this.db.markSetupPeggoutFailed(this.setupId);
+                await this.db.markSetupPegoutFailed(this.setupId);
                 break;
             }
         }
     }
 
     private async sendTransaction(name: string, data?: Buffer[][]) {
-        this.db.markToSend(this.setupId, name, data);
+        this.db.markTemplateToSend(this.setupId, name, data);
     }
 
     private async sendProof(proof: bigint[]) {
@@ -131,22 +131,22 @@ export class ProtocolProver {
             .map((n, dataIndex) =>
                 encodeWinternitz256_4(
                     n,
-                    createUniqueDataId(this.setup!.wotsSalt, TransactionNames.PROOF, 0, 0, dataIndex)
+                    createUniqueDataId(this.setup!.wotsSalt, TemplateNames.PROOF, 0, 0, dataIndex)
                 )
             )
             .flat();
-        await this.sendTransaction(TransactionNames.PROOF, [data]);
+        await this.sendTransaction(TemplateNames.PROOF, [data]);
     }
 
     private async sendProofUncontested() {
-        await this.sendTransaction(TransactionNames.PROOF_UNCONTESTED);
+        await this.sendTransaction(TemplateNames.PROOF_UNCONTESTED);
     }
 
     private parseProof(incoming: ReceivedTemplate): bigint[] {
         const rawTx = incoming.rawTransaction as RawTransaction;
         const proof = parseInput(
             this.templates!,
-            incoming.object.inputs[0],
+            incoming.inputs[0],
             rawTx.vin[0].txinwitness!.map((s) => Buffer.from(s, 'hex'))
         );
         return proof;
@@ -155,22 +155,22 @@ export class ProtocolProver {
     private async sendArgument(proof: bigint[], selectionPath: number[], selectionPathUnparsed: Buffer[][]) {
         const argument = new Argument(this.setup!.wotsSalt, proof);
         const argumentData = await argument.makeArgument(selectionPath, selectionPathUnparsed);
-        await this.sendTransaction(TransactionNames.ARGUMENT, argumentData);
+        await this.sendTransaction(TemplateNames.ARGUMENT, argumentData);
     }
 
     private async sendArgumentUncontested() {
-        await this.sendTransaction(TransactionNames.ARGUMENT_UNCONTESTED);
+        await this.sendTransaction(TemplateNames.ARGUMENT_UNCONTESTED);
     }
 
     private async sendStateUncontested(iteration: number) {
-        await this.sendTransaction(TransactionNames.STATE_UNCONTESTED + '_' + twoDigits(iteration));
+        await this.sendTransaction(TemplateNames.STATE_UNCONTESTED + '_' + twoDigits(iteration));
     }
 
     private parseSelection(incoming: ReceivedTemplate): number {
         const rawTx = incoming.rawTransaction as RawTransaction;
         const data = parseInput(
             this.templates!,
-            incoming.object.inputs[0],
+            incoming.inputs[0],
             rawTx.vin[0].txinwitness!.map((s) => Buffer.from(s, 'hex'))
         );
         return Number(data[0]);
@@ -179,7 +179,7 @@ export class ProtocolProver {
     private async sendState(proof: bigint[], selectionPath: number[]) {
         const iteration = selectionPath.length;
         const states = await calculateStates(proof, selectionPath);
-        const txName = TransactionNames.STATE + '_' + twoDigits(iteration);
+        const txName = TemplateNames.STATE + '_' + twoDigits(iteration);
         const statesWi = states
             .map((s, dataIndex) =>
                 encodeWinternitz256_4(
@@ -198,10 +198,10 @@ export class ProtocolProver {
     private async checkTimeout(incoming: ReceivedTemplate): Promise<SpendingCondition | null> {
         // check if any spending condition has a timeout that already expired
         const currentBlockHeight = await this.getCurrentBlockHeight();
-        for (const output of incoming.object.outputs) {
+        for (const output of incoming.outputs) {
             for (const sc of output.spendingConditions) {
                 if (sc.nextRole != AgentRoles.PROVER) continue;
-                if (sc.timeoutBlocks && incoming.blockHeight + sc.timeoutBlocks <= currentBlockHeight) {
+                if (sc.timeoutBlocks && incoming.blockHeight! + sc.timeoutBlocks <= currentBlockHeight) {
                     // found one, send the relevant tx
                     return sc;
                 }
@@ -212,7 +212,7 @@ export class ProtocolProver {
 }
 
 export async function main(agentId: string) {
-    const db = new AgentDb(agentId);
+    const db = new ListenerDb(agentId);
     const setups = await db.getActiveSetups();
     const doit = async () => {
         for (const setup of setups) {

@@ -1,8 +1,6 @@
 import { RawTransaction } from 'bitcoin-core';
 import { agentConf } from '../agent.conf';
 import { BitcoinNode } from '../common/bitcoin-node';
-import { AgentDb, ReceivedTemplate, Setup } from '../common/db';
-import { SpendingCondition, Transaction, twoDigits } from '../common/transactions';
 import { parseInput } from './parser';
 import { step1_vm } from '../../generator/ec_vm/vm/vm';
 import { vKey } from '../../generator/ec_vm/constants';
@@ -11,36 +9,39 @@ import { findErrorState } from './states';
 import { encodeWinternitz24, encodeWinternitz256_4 } from '../common/winternitz';
 import { Argument } from './argument';
 import { last } from '../common/array-utils';
-import { TransactionNames, AgentRoles } from '../common/types';
 import { bigintToBufferBE } from '../common/encoding';
 import { createUniqueDataId } from '../setup/wots-keys';
+import { AgentRoles, Setup, SpendingCondition, Template, TemplateNames } from '../common/types';
+import { AgentDb } from '../common/agent-db';
+import { twoDigits } from '../common/templates';
+import { ListenerDb, ReceivedTemplate } from '../listener/listener-db';
 
 export class ProtocolVerifier {
     agentId: string;
     setupId: string;
     bitcoinClient: BitcoinNode;
-    templates?: Transaction[];
+    templates?: Template[];
     states: Buffer[][] = [];
     setup?: Setup;
-    db: AgentDb;
+    db: ListenerDb;
 
     constructor(agentId: string, setupId: string) {
         this.agentId = agentId;
         this.setupId = setupId;
         this.bitcoinClient = new BitcoinNode();
-        this.db = new AgentDb(this.agentId);
+        this.db = new ListenerDb(this.agentId);
     }
 
     public async process() {
         if (!this.templates) {
-            this.templates = await this.db.getTransactions(this.setupId);
+            this.templates = await this.db.getTemplates(this.setupId);
         }
         if (!this.setup) {
             this.setup = await this.db.getSetup(this.setupId);
         }
 
         // read all incoming transactions
-        const setup = await this.db.getSetup(this.setupId);
+        const setup = await this.db.getReceivedSetups(this.setupId);
         const incomings = setup.received ?? [];
         if (incomings.length == 0) {
             // nothing to do
@@ -57,46 +58,46 @@ export class ProtocolVerifier {
             const lastFlag = incoming == last(incomings);
 
             switch (incoming.name) {
-                case TransactionNames.PROOF:
+                case TemplateNames.PROOF:
                     proof = this.parseProof(incoming);
                     if (lastFlag && !this.checkProof(proof)) {
                         this.sendChallenge();
                     }
                     break;
-                case TransactionNames.PROOF_UNCONTESTED:
+                case TemplateNames.PROOF_UNCONTESTED:
                     // we lost, mark it
-                    await this.db.markSetupPeggoutSuccessful(this.setupId);
+                    await this.db.markSetupPegoutSuccessful(this.setupId);
                     break;
-                case TransactionNames.CHALLENGE:
+                case TemplateNames.CHALLENGE:
                     if (lastFlag) {
                         const timeoutSc = await this.checkTimeout(incoming);
                         if (timeoutSc) await this.sendChallengeUncontested();
                     }
                     break;
-                case TransactionNames.CHALLENGE_UNCONTESTED:
+                case TemplateNames.CHALLENGE_UNCONTESTED:
                     // we won, mark it
-                    await this.db.markSetupPeggoutFailed(this.setupId);
+                    await this.db.markSetupPegoutFailed(this.setupId);
                     break;
-                case TransactionNames.ARGUMENT:
+                case TemplateNames.ARGUMENT:
                     if (lastFlag) {
                         this.refuteArgument(proof, incoming);
                     }
                     break;
-                case TransactionNames.ARGUMENT_UNCONTESTED:
+                case TemplateNames.ARGUMENT_UNCONTESTED:
                     // we lost, mark it
-                    await this.db.markSetupPeggoutSuccessful(this.setupId);
+                    await this.db.markSetupPegoutSuccessful(this.setupId);
                     break;
             }
 
-            if (incoming.name.startsWith(TransactionNames.STATE)) {
+            if (incoming.name.startsWith(TemplateNames.STATE)) {
                 const state = this.parseState(incoming);
                 this.states.push(state);
                 await this.sendSelect(proof, states, selectionPath);
-            } else if (incoming.name.startsWith(TransactionNames.STATE_UNCONTESTED)) {
+            } else if (incoming.name.startsWith(TemplateNames.STATE_UNCONTESTED)) {
                 // we lost, mark it
-                await this.db.markSetupPeggoutSuccessful(this.setupId);
+                await this.db.markSetupPegoutSuccessful(this.setupId);
                 break;
-            } else if (incoming.name.startsWith(TransactionNames.SELECT)) {
+            } else if (incoming.name.startsWith(TemplateNames.SELECT)) {
                 const selection = this.parseSelection(incoming);
                 selectionPath.push(selection);
                 const rawTx = incoming.rawTransaction as RawTransaction;
@@ -105,9 +106,9 @@ export class ProtocolVerifier {
                     const timeoutSc = await this.checkTimeout(incoming);
                     if (timeoutSc) await this.sendSelectUncontested(selectionPath.length);
                 }
-            } else if (incoming.name.startsWith(TransactionNames.SELECT_UNCONTESTED)) {
+            } else if (incoming.name.startsWith(TemplateNames.SELECT_UNCONTESTED)) {
                 // we won, mark it
-                await this.db.markSetupPeggoutFailed(this.setupId);
+                await this.db.markSetupPegoutFailed(this.setupId);
                 break;
             }
         }
@@ -124,32 +125,32 @@ export class ProtocolVerifier {
         const argData = rawTx.vin.map((vin, i) =>
             parseInput(
                 this.templates!,
-                incoming.object.inputs[i],
+                incoming.inputs[i],
                 vin.txinwitness!.map((s) => Buffer.from(s, 'hex'))
             )
         );
         const argument = new Argument(this.setup!.wotsSalt, proof);
         const refutation = await argument.refute(this.templates!, argData, this.states);
 
-        incoming.object.inputs[0].script = refutation.script;
-        incoming.object.inputs[0].controlBlock = refutation.controlBlock;
-        await this.db.upsertTemplates(this.setupId, [incoming.object]);
+        incoming.inputs[0].script = refutation.script;
+        incoming.inputs[0].controlBlock = refutation.controlBlock;
+        await this.db.upsertTemplates(this.setupId, [incoming]);
         const data = refutation.data
             .map((n, dataIndex) =>
                 encodeWinternitz256_4(
                     n,
-                    createUniqueDataId(this.setup!.wotsSalt, TransactionNames.PROOF_REFUTED, 0, 0, dataIndex)
+                    createUniqueDataId(this.setup!.wotsSalt, TemplateNames.PROOF_REFUTED, 0, 0, dataIndex)
                 )
             )
             .flat();
-        this.sendTransaction(TransactionNames.PROOF_REFUTED, [data]);
+        this.sendTransaction(TemplateNames.PROOF_REFUTED, [data]);
     }
 
     private parseState(incoming: ReceivedTemplate): Buffer[] {
         const rawTx = incoming.rawTransaction as RawTransaction;
         const state = parseInput(
             this.templates!,
-            incoming.object.inputs[0],
+            incoming.inputs[0],
             rawTx.vin[0].txinwitness!.map((s) => Buffer.from(s, 'hex'))
         );
         return state.map((n) => bigintToBufferBE(n, 256));
@@ -157,7 +158,7 @@ export class ProtocolVerifier {
 
     private async sendSelect(proof: bigint[], states: Buffer[][], selectionPath: number[]) {
         const iteration = selectionPath.length;
-        const txName = TransactionNames.SELECT + '_' + twoDigits(iteration);
+        const txName = TemplateNames.SELECT + '_' + twoDigits(iteration);
         const selection = await findErrorState(proof, last(states), selectionPath);
         const selectionWi = encodeWinternitz24(
             BigInt(selection),
@@ -167,14 +168,14 @@ export class ProtocolVerifier {
     }
 
     private async sendTransaction(name: string, data?: Buffer[][]) {
-        this.db.markToSend(this.setupId, name, data);
+        this.db.markTemplateToSend(this.setupId, name, data);
     }
 
     private parseProof(incoming: ReceivedTemplate): bigint[] {
         const rawTx = incoming.rawTransaction as RawTransaction;
         const proof = parseInput(
             this.templates!,
-            incoming.object.inputs[0],
+            incoming.inputs[0],
             rawTx.vin[0].txinwitness!.map((s) => Buffer.from(s, 'hex'))
         );
         return proof;
@@ -184,22 +185,22 @@ export class ProtocolVerifier {
         const rawTx = incoming.rawTransaction as RawTransaction;
         const data = parseInput(
             this.templates!,
-            incoming.object.inputs[0],
+            incoming.inputs[0],
             rawTx.vin[0].txinwitness!.map((s) => Buffer.from(s, 'hex'))
         );
         return Number(data[0]);
     }
 
     private async sendChallenge() {
-        await this.sendTransaction(TransactionNames.CHALLENGE);
+        await this.sendTransaction(TemplateNames.CHALLENGE);
     }
 
     private async sendChallengeUncontested() {
-        await this.sendTransaction(TransactionNames.CHALLENGE_UNCONTESTED);
+        await this.sendTransaction(TemplateNames.CHALLENGE_UNCONTESTED);
     }
 
     private async sendSelectUncontested(iteration: number) {
-        await this.sendTransaction(TransactionNames.SELECT_UNCONTESTED + '_' + twoDigits(iteration));
+        await this.sendTransaction(TemplateNames.SELECT_UNCONTESTED + '_' + twoDigits(iteration));
     }
 
     private async getCurrentBlockHeight(): Promise<number> {
@@ -209,10 +210,10 @@ export class ProtocolVerifier {
     private async checkTimeout(incoming: ReceivedTemplate): Promise<SpendingCondition | null> {
         // check if any spending condition has a timeout that already expired
         const currentBlockHeight = await this.getCurrentBlockHeight();
-        for (const output of incoming.object.outputs) {
+        for (const output of incoming.outputs) {
             for (const sc of output.spendingConditions) {
                 if (sc.nextRole != AgentRoles.PROVER) continue;
-                if (sc.timeoutBlocks && incoming.blockHeight + sc.timeoutBlocks <= currentBlockHeight) {
+                if (sc.timeoutBlocks && incoming.blockHeight! + sc.timeoutBlocks <= currentBlockHeight) {
                     // found one, send the relevant tx
                     return sc;
                 }

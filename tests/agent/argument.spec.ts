@@ -1,17 +1,17 @@
 import { encodeWinternitz24, WOTS_NIBBLES, WotsType } from '../../src/agent/common/winternitz';
 import { proofBigint } from '../../src/agent/common/constants';
 import { Argument } from '../../src/agent/protocol-logic/argument';
-import { getTransactionByName, twoDigits } from '../../src/agent/common/transactions';
 import { parseInput } from '../../src/agent/protocol-logic/parser';
-import { TransactionNames } from '../../src/agent/common/types';
 import { initTemplatesForTest, TEST_WOTS_SALT } from '../test-utils';
 import { createUniqueDataId } from '../../src/agent/setup/wots-keys';
+import { getTemplateByName, twoDigits } from '@src/agent/common/templates';
+import { TemplateNames } from '@src/agent/common/types';
 
 function makeSelectionPathUnparsed(selectionPath: number[]) {
     const spu: Buffer[][] = [];
     for (let i = 0; i < selectionPath.length; i++) {
         const tn = selectionPath[i];
-        const unique = createUniqueDataId(TEST_WOTS_SALT, TransactionNames.SELECT + '_' + twoDigits(i), 0, 0, 0);
+        const unique = createUniqueDataId(TEST_WOTS_SALT, TemplateNames.SELECT + '_' + twoDigits(i), 0, 0, 0);
         spu.push(encodeWinternitz24(BigInt(tn), unique));
     }
     return spu;
@@ -40,7 +40,7 @@ describe('Argument', () => {
     it('break it', async () => {
         const { argument, selectionPath, argWitness } = await init();
         const templates = initTemplatesForTest().prover;
-        const template = getTransactionByName(templates, TransactionNames.ARGUMENT);
+        const template = getTemplateByName(templates, TemplateNames.ARGUMENT);
         const decoded: bigint[][] = [];
         for (let i = 0; i < template.inputs.length; i++) {
             decoded.push(parseInput(templates, template.inputs[i], argWitness[i]));

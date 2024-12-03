@@ -2,13 +2,13 @@ import { agentConf } from '../agent.conf';
 import { addAmounts } from './amounts';
 import { generateAllScripts } from './generate-scripts';
 import { signTransactions } from './sign-transactions';
-import { getSpendingConditionByInput, SignatureType } from '../common/transactions';
+import { getSpendingConditionByInput } from '../common/templates';
 import { verifySetup } from './verify-setup';
 import { generateWotsPublicKeys, mergeWots, setWotsPublicKeysForArgument } from './wots-keys';
-import { AgentRoles } from '../common/types';
+import { AgentRoles, SignatureType } from '../common/types';
 import { initializeTemplates } from './init-templates';
-import { AgentDb } from '../common/db';
 import { TEST_WOTS_SALT } from '@tests/test-utils';
+import { AgentDb } from '../common/agent-db';
 
 export async function emulateSetup(
     proverAgentId: string,
@@ -17,20 +17,42 @@ export async function emulateSetup(
     generateFinal: boolean
 ) {
     const proverDb = new AgentDb(proverAgentId);
-    const verifierDb = new AgentDb(verifierAgentId);
+    const verifierDb = new AgentDb(verifierAgentId);    
 
-    const mockLockedFunds = {
-        txId: '0000000000000000000000000000000000000000000000000000000000000000',
-        outputIndex: 0,
-        amount: agentConf.payloadAmount,
-        external: true
-    };
-    const mockPayload = {
-        txId: '1111111111111111111111111111111111111111111111111111111111111111',
+    const mockStake = {
+        txid: '1111111111111111111111111111111111111111111111111111111111111111',
         outputIndex: 0,
         amount: agentConf.proverStakeAmount,
         external: true
     };
+    const mockLockedFunds = {
+        txid: '0000000000000000000000000000000000000000000000000000000000000000',
+        outputIndex: 0,
+        amount: agentConf.payloadAmount,
+        external: true
+    };
+
+    console.log('Creating setup...');
+
+    await proverDb.createSetup(setupId, 'prover salt');
+    await proverDb.updateSetup(setupId, {
+        payloadTxid: mockLockedFunds.txid,
+        payloadOutputIndex: mockLockedFunds.outputIndex,
+        payloadAmount: mockLockedFunds.amount,
+        stakeTxid: mockStake.txid,
+        stakeOutputIndex: mockStake.outputIndex,
+        stakeAmount: mockStake.amount,
+    });
+
+    await verifierDb.createSetup(setupId, 'verifier salt');
+    await proverDb.updateSetup(setupId, {
+        payloadTxid: mockLockedFunds.txid,
+        payloadOutputIndex: mockLockedFunds.outputIndex,
+        payloadAmount: mockLockedFunds.amount,
+        stakeTxid: mockStake.txid,
+        stakeOutputIndex: mockStake.outputIndex,
+        stakeAmount: mockStake.amount,
+    });
 
     console.log('generating templates...');
 
@@ -41,7 +63,7 @@ export async function emulateSetup(
         BigInt('0x' + agentConf.keyPairs[proverAgentId].schnorrPublic),
         BigInt('0x' + agentConf.keyPairs[verifierAgentId].schnorrPublic),
         mockLockedFunds,
-        mockPayload
+        mockStake
     );
     let verifierTemplates = await initializeTemplates(
         AgentRoles.VERIFIER,
@@ -50,7 +72,7 @@ export async function emulateSetup(
         BigInt('0x' + agentConf.keyPairs[proverAgentId].schnorrPublic),
         BigInt('0x' + agentConf.keyPairs[verifierAgentId].schnorrPublic),
         mockLockedFunds,
-        mockPayload
+        mockStake
     );
 
     console.log('merging templates...');
@@ -75,12 +97,7 @@ export async function emulateSetup(
 
     proverTemplates = await addAmounts(proverAgentId, AgentRoles.PROVER, setupId, proverTemplates);
     verifierTemplates = await addAmounts(verifierAgentId, AgentRoles.VERIFIER, setupId, verifierTemplates);
-
-    console.log('Creating setup...');
-
-    await proverDb.insertNewSetup(setupId, proverTemplates);
-    await verifierDb.insertNewSetup(setupId, verifierTemplates);
-
+    
     console.log('Signing transactions - this will overwrite templates...');
 
     proverTemplates = await signTransactions(AgentRoles.PROVER, proverAgentId, setupId, proverTemplates);
@@ -88,7 +105,7 @@ export async function emulateSetup(
 
     console.log('merging signatures...');
     for (const [templateIdx, proverTemplate] of proverTemplates.entries()) {
-        if (verifierTemplates[templateIdx].transactionName != proverTemplate.transactionName) {
+        if (verifierTemplates[templateIdx].name != proverTemplate.name) {
             throw new Error('Template mismatch');
         }
         for (const [inputIdx, proverInput] of proverTemplate.inputs.entries()) {
@@ -105,13 +122,18 @@ export async function emulateSetup(
 
     console.log('Update listener data...');
 
-    await proverDb.updateLastCheckedBlockHeight(setupId, 100);
-    await verifierDb.updateLastCheckedBlockHeight(setupId, 100);
+    await proverDb.updateSetupLastCheckedBlockHeight(setupId, 100);
+    await verifierDb.updateSetupLastCheckedBlockHeight(setupId, 100);
 
     console.log('Verify setups...');
 
     await verifySetup(proverAgentId, setupId, AgentRoles.PROVER);
+    await proverDb.markSetupPegoutActive(setupId);
+
+    console.log('Mark setups as active...');
+
     await verifySetup(verifierAgentId, setupId, AgentRoles.VERIFIER);
+    await verifierDb.markSetupPegoutActive(setupId);
 
     console.log('done.');
 }

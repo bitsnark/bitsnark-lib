@@ -7,22 +7,22 @@ import {
     JoinMessage,
     Message,
     SignaturesMessage,
-    Signed,
+    SignatureTuple,
     StartMessage,
     toJson,
     TransactionsMessage
 } from './messages';
 import { SimpleContext, TelegramBot } from './telegram';
-import { getTransactionByName, Transaction } from '../common/transactions';
 import { verifySetup } from './verify-setup';
 import { signMessage, verifyMessage } from '../common/schnorr';
 import { addAmounts } from './amounts';
 import { signTransactions } from './sign-transactions';
-import { AgentRoles, FundingUtxo } from '../common/types';
+import { AgentRoles, Setup, SetupStatus, Template } from '../common/types';
 import { initializeTemplates } from './init-templates';
 import { mergeWots, setWotsPublicKeysForArgument } from './wots-keys';
 import { BitcoinNode } from '../common/bitcoin-node';
-import { AgentDb } from '../common/db';
+import { AgentDb, updateSetupPartial } from '../common/agent-db';
+import { getTemplateByName } from '../common/templates';
 
 interface AgentInfo {
     agentId: string;
@@ -38,30 +38,24 @@ enum SetupState {
 
 class SetupInstance {
     setupId: string;
-    wotsSalt?: string;
+    setup?: Setup;
     state: SetupState = SetupState.HELLO;
     myRole: AgentRoles;
     prover?: AgentInfo;
     verifier?: AgentInfo;
-    proverFundingUtxo?: FundingUtxo;
-    payloadUtxo?: FundingUtxo;
-    transactions?: Transaction[];
+    templates?: Template[];
 
     constructor(
         setupId: string,
-        wotsSalt: string,
+        setup: Setup,
         myRole: AgentRoles,
-        me: AgentInfo,
-        proverFundingUtxo?: FundingUtxo,
-        payloadUtxo?: FundingUtxo
+        me: AgentInfo
     ) {
         this.setupId = setupId;
-        this.wotsSalt = wotsSalt;
+        this.setup = setup;
         this.myRole = myRole;
         this.prover = myRole == AgentRoles.PROVER ? me : undefined;
         this.verifier = myRole == AgentRoles.VERIFIER ? me : undefined;
-        this.proverFundingUtxo = proverFundingUtxo;
-        this.payloadUtxo = payloadUtxo;
     }
 }
 
@@ -95,24 +89,10 @@ export class Agent {
 
     public async messageReceived(data: string, context: SimpleContext) {
         const tokens = data.split(' ');
-        if (this.role == AgentRoles.PROVER && tokens.length == 1 && tokens[0] == '/start') {
-            const randomSetupId = Math.random().toString().slice(2);
-            this.start(
-                context,
-                randomSetupId,
-                {
-                    txId: '0000000000000000000000000000000000000000000000000000000000000000',
-                    outputIndex: 0,
-                    amount: agentConf.payloadAmount,
-                    external: true
-                },
-                {
-                    txId: '1111111111111111111111111111111111111111111111111111111111111111',
-                    outputIndex: 0,
-                    amount: agentConf.proverStakeAmount,
-                    external: true
-                }
-            );
+        if (this.role == AgentRoles.PROVER && tokens.length == 6 && tokens[0] == '/start') {
+            const setupId = tokens[1];
+            const [payloadTxid, payloadAmount, stakeTxid, stakeAmount] = tokens.slice(2);
+            this.start(context, setupId, payloadTxid, BigInt(payloadAmount), stakeTxid, BigInt(stakeAmount));
         } else if (data.trim().startsWith('{') && data.trim().endsWith('}')) {
             const message = fromJson(data);
             console.log('Message received: ', message);
@@ -163,21 +143,31 @@ export class Agent {
 
     /// PROTOCOL BEGINS
     // prover sends start message
-    public async start(context: SimpleContext, setupId: string, payloadUtxo: FundingUtxo, proverUtxo: FundingUtxo) {
+    public async start(
+        context: SimpleContext,
+        setupId: string,
+        payloadTxid: string,
+        payloadAmount: bigint,
+        stakeTxid: string,
+        stakeAmount: bigint
+    ) {
         if (this.role != AgentRoles.PROVER) throw new Error("I'm not a prover");
 
         const setup = await this.db.getSetup(setupId);
+        if (setup.status != SetupStatus.ACTIVE) throw new Error(`Invalid setup state: ${setup.status}`)
+
+        await this.db.updateSetup(
+            setupId,
+            { payloadTxid, payloadAmount, stakeTxid, stakeAmount, payloadOutputIndex: 1, stakeOutputIndex: 1 });
 
         const i = new SetupInstance(
             setupId,
-            setup.wotsSalt,
+            setup,
             AgentRoles.PROVER,
             {
                 agentId: this.agentId,
                 schnorrPublicKey: stringToBigint(this.schnorrPublicKey)
-            },
-            payloadUtxo,
-            proverUtxo
+            }
         );
         this.instances.set(setupId, i);
 
@@ -186,34 +176,36 @@ export class Agent {
         const msg = new StartMessage({
             setupId,
             agentId: this.agentId,
-            schnorrPublicKey: this.schnorrPublicKey,
-            payloadUtxo,
-            proverUtxo
+            schnorrPublicKey: this.schnorrPublicKey
         });
 
         await this.signMessageAndSend(context, msg);
     }
 
-    // verifier receives start message, generates transactions, sends join message
+    // verifier receives start message, generates templates, sends join message
     async on_start(context: SimpleContext, message: StartMessage) {
         let i = this.instances.get(message.setupId);
         if (i) throw new Error('Setup instance already exists');
 
         this.verifyPubKey((message as StartMessage).schnorrPublicKey, message.agentId);
 
-        const setup = await this.db.getSetup(message.setupId);
+        const setup = await this.db.createSetup(message.setupId, message.setupId);
+        setup.payloadTxid = message.payloadUtxo!.txid;
+        setup.payloadOutputIndex = message.payloadUtxo!.outputIndex;
+        setup.payloadAmount = message.payloadUtxo!.amount;
+        setup.stakeTxid = message.proverUtxo!.txid;
+        setup.stakeOutputIndex = message.proverUtxo!.outputIndex;
+        setup.stakeAmount = message.proverUtxo!.amount;
+        await this.db.updateSetup(setup.id, setup as updateSetupPartial);
 
         i = new SetupInstance(
             message.setupId,
-            setup.wotsSalt,
+            setup,
             AgentRoles.VERIFIER,
             {
                 agentId: this.agentId,
                 schnorrPublicKey: stringToBigint(this.schnorrPublicKey)
-            },
-            message.proverUtxo,
-            message.payloadUtxo
-        );
+            });
 
         i.prover = {
             agentId: message.agentId,
@@ -224,14 +216,14 @@ export class Agent {
 
         this.verifyMessage(message, i);
 
-        i.transactions = await initializeTemplates(
+        i.templates = await initializeTemplates(
             AgentRoles.VERIFIER,
             i.setupId,
-            i.wotsSalt!,
+            setup!.wotsSalt,
             i.prover!.schnorrPublicKey!,
             i.verifier!.schnorrPublicKey!,
-            i.payloadUtxo!,
-            i.proverFundingUtxo!
+            { txid: setup.payloadTxid, outputIndex: setup.payloadOutputIndex, amount: setup.payloadAmount },
+            { txid: setup.stakeTxid, outputIndex: setup.stakeOutputIndex, amount: setup.stakeAmount },
         );
 
         i.state = SetupState.TRANSACTIONS;
@@ -245,7 +237,7 @@ export class Agent {
         await this.signMessageAndSend(context, reply);
     }
 
-    // prover receives join message, generates transactions
+    // prover receives join message, generates templates
     async on_join(context: SimpleContext, message: JoinMessage) {
         const i = this.getInstance(message.setupId);
         if (i.state != SetupState.HELLO) throw new Error('Invalid state');
@@ -261,49 +253,51 @@ export class Agent {
 
         this.verifyMessage(message, i);
 
-        i.transactions = await initializeTemplates(
+        const setup = i.setup!;
+
+        i.templates = await initializeTemplates(
             AgentRoles.PROVER,
             i.setupId,
-            i.wotsSalt!,
+            i.setup!.wotsSalt,
             i.prover!.schnorrPublicKey!,
             i.verifier!.schnorrPublicKey!,
-            i.payloadUtxo!,
-            i.proverFundingUtxo!
+            { txid: setup.payloadTxid!, outputIndex: setup.payloadOutputIndex!, amount: setup.payloadAmount! },
+            { txid: setup.stakeTxid!, outputIndex: setup.stakeOutputIndex!, amount: setup.stakeAmount! },
         );
 
         i.state = SetupState.TRANSACTIONS;
         this.sendTransactions(context, i.setupId);
     }
 
-    // prover sends transaction structure
+    // prover sends template structure
     private async sendTransactions(context: SimpleContext, setupId: string) {
         const i = this.getInstance(setupId);
 
-        const transactionsMessage = TransactionsMessage.make(this.agentId, i.setupId, i.transactions!);
+        const transactionsMessage = TransactionsMessage.make(this.agentId, i.setupId, i.templates!);
         await this.signMessageAndSend(context, transactionsMessage);
     }
 
-    // prover or verifier receives others's transactions
+    // prover or verifier receives others's templates
     async on_transactions(context: SimpleContext, message: TransactionsMessage) {
         const i = this.getInstance(message.setupId);
         if (i.state != SetupState.TRANSACTIONS) throw new Error('Invalid state');
 
         // make sure two arrays have same structure
-        if (i.transactions!.some((t, tindex) => t.transactionName != message.transactions[tindex].transactionName))
+        if (i.templates!.some((t, tindex) => t.name != message.templates[tindex].name))
             throw new Error('Incompatible');
 
         this.verifyMessage(message, i);
 
         // copy their wots pubkeys to ours
-        i.transactions = mergeWots(i.myRole, i.transactions!, message.transactions!);
-        setWotsPublicKeysForArgument(i.setupId, i.transactions!);
+        i.templates = mergeWots(i.myRole, i.templates!, message.templates!);
+        setWotsPublicKeysForArgument(i.setupId, i.templates!);
 
         i.state = SetupState.SIGNATURES;
 
         if (this.role == AgentRoles.VERIFIER) await this.sendTransactions(context, i.setupId);
 
-        i.transactions = await generateAllScripts(this.role, i.transactions!, false);
-        i.transactions = await addAmounts(this.agentId, this.role, i.setupId, i.transactions!);
+        i.templates = await generateAllScripts(this.role, i.templates!, false);
+        i.templates = await addAmounts(this.agentId, this.role, i.setupId, i.templates!);
 
         if (this.role == AgentRoles.PROVER) this.sendSignatures(context, i.setupId);
     }
@@ -313,16 +307,16 @@ export class Agent {
     // prover sends all of the signatures
     private async sendSignatures(context: SimpleContext, setupId: string) {
         const i = this.getInstance(setupId);
-        if (!i.transactions) throw new Error('No transactions');
+        if (!i.templates) throw new Error('No templates');
 
-        await this.db.insertNewSetup(setupId, i.transactions);
+        await this.db.upsertTemplates(setupId, i.templates);
 
-        i.transactions = await signTransactions(this.role, this.agentId, i.setupId, i.transactions!);
+        i.templates = await signTransactions(this.role, this.agentId, i.setupId, i.templates!);
 
-        const signed: Signed[] = i.transactions!.map((t) => {
+        const signed: SignatureTuple[] = i.templates!.map((t) => {
             return {
-                transactionName: t.transactionName,
-                txId: t.txId ?? '',
+                transactionName: t.name,
+                txid: t.txid ?? '',
                 signatures: t.inputs.map(
                     (input) => (this.role == AgentRoles.PROVER ? input.proverSignature : input.verifierSignature) ?? ''
                 )
@@ -330,11 +324,11 @@ export class Agent {
         });
 
         const currentTip = await this.bitcoinClient.getBlockCount();
-        await this.db.updateLastCheckedBlockHeight(setupId, currentTip - 1);
+        await this.db.updateSetupLastCheckedBlockHeight(setupId, currentTip - 1);
 
         const signaturesMessage = new SignaturesMessage({
             setupId: i.setupId,
-            signed
+            signatures: signed
         });
 
         await this.signMessageAndSend(context, signaturesMessage);
@@ -348,10 +342,10 @@ export class Agent {
 
         i.state = SetupState.DONE;
 
-        for (const s of message.signed) {
-            const transaction = getTransactionByName(i.transactions!, s.transactionName);
-            if (transaction.external) continue;
-            transaction.inputs.forEach((input, inputIndex) => {
+        for (const s of message.signatures) {
+            const template = getTemplateByName(i.templates!, s.transactionName);
+            if (template.isExternal) continue;
+            template.inputs.forEach((input, inputIndex) => {
                 if (!s.signatures[inputIndex]) return;
                 if (this.role == AgentRoles.PROVER) {
                     input.verifierSignature = s.signatures[inputIndex];
@@ -363,6 +357,8 @@ export class Agent {
 
         if (this.role == AgentRoles.PROVER) {
             await verifySetup(this.agentId, i.setupId, this.role);
+            await this.db.upsertTemplates(i.setupId, i.templates!);
+            await this.db.markSetupPegoutActive(i.setupId);
             await this.signMessageAndSend(context, new DoneMessage({ setupId: i.setupId, agentId: this.agentId }));
         } else {
             await this.sendSignatures(context, i.setupId);
@@ -377,6 +373,8 @@ export class Agent {
 
         if (this.role == AgentRoles.VERIFIER) {
             await verifySetup(this.agentId, i.setupId, this.role);
+            await this.db.upsertTemplates(i.setupId, i.templates!);
+            await this.db.markSetupPegoutActive(i.setupId);
             await this.signMessageAndSend(context, new DoneMessage({ setupId: i.setupId, agentId: this.agentId }));
         }
     }
