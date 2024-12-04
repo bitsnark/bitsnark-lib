@@ -5,7 +5,7 @@ import { jsonParseCustom } from '../common/json';
 import { AgentDb } from '../common/agent-db';
 
 export interface Received {
-    txid: string;
+    actualTxid: string;
     blockHash?: string;
     blockHeight?: number;
     rawTransaction?: RawTransaction;
@@ -15,7 +15,6 @@ export interface Received {
 export interface ReceivedTemplate extends Template, Received, Omit<Setup, 'id' | 'status' | 'wotsSalt'> {
     setupId: string;
     setupStatus: SetupStatus;
-    txid: string;
 }
 
 // Setup row, with templates and received templates.
@@ -29,7 +28,7 @@ export class ListenerDb extends AgentDb {
     private static templateFields = `
         templates.name, templates.role, templates.is_external, templates.ordinal, 
         templates.inputs, templates.outputs,
-        received.transaction_hash, received.raw_transaction, received.block_hash, received.block_height,
+        received.txid, received.raw_transaction, received.block_hash, received.block_height,
         setups.id, setups.protocol_version,
         setups.status, setups.last_checked_block_height`;
 
@@ -42,13 +41,13 @@ export class ListenerDb extends AgentDb {
             ordinal: row[i++],
             inputs: jsonParseCustom(JSON.stringify(row[i++])),
             outputs: jsonParseCustom(JSON.stringify(row[i++])),
-            txid: row[i++],
+            actualTxid: row[i++],
             rawTransaction: row[i++],
             blockHash: row[i++],
             blockHeight: row[i++],
             setupId: row[i++],
             protocolVersion: row[i++],
-            setupStatus: SetupStatus[row[i++] as keyof typeof SetupStatus],
+            setupStatus: row[i++],
             lastCheckedBlockHeight: row[i++],
         };
     }

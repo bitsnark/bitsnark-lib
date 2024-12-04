@@ -97,7 +97,7 @@ export class AgentDb extends Db {
         await this.query(
             `UPDATE setups SET ${dollarsForUpdate(fields, 2)}
                 WHERE id = $1`,
-            objToRow(setupFieldsToInsert, [id, ...objToRow(fields, setup)])
+            [id, ...objToRow(fields, setup)]
         );
     }
 
@@ -188,8 +188,8 @@ export class AgentDb extends Db {
             `SELECT template_id FROM templates WHERE setup_id = $1`,
             [setupId]
         )).rows.map(row => row[0]);
-        const toInsert = templates.filter(t => ids.find(id => id == t.templateId));
-        const toUpdate = templates.filter(t => !ids.find(id => id == t.templateId));
+        const toInsert = templates.filter(t => ids.find(id => id == t.id));
+        const toUpdate = templates.filter(t => !ids.find(id => id == t.id));
         await this.insertTemplates(setupId, toInsert);
         await this.updateTemplates(setupId, toUpdate);
     }

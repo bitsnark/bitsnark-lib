@@ -17,6 +17,7 @@ CREATE INDEX setups_status_idx ON setups (status);
 
 CREATE TABLE templates (
     id SERIAL PRIMARY KEY,
+    txid CHARACTER VARYING,
     setup_id CHARACTER VARYING NOT NULL REFERENCES setups ON DELETE CASCADE,
     name CHARACTER VARYING NOT NULL,
     role CHARACTER VARYING NOT NULL,
@@ -35,8 +36,8 @@ CREATE INDEX ordinals_idx ON templates (ordinal);
 CREATE INDEX templates_status_idx ON templates (status);
 
 CREATE TABLE received (
-    template_id INTEGER NOT NULL REFERENCES templates ON DELETE CASCADE,
-    transaction_hash CHARACTER VARYING PRIMARY KEY,
+    template_id INTEGER NOT NULL PRIMARY KEY REFERENCES templates ON DELETE CASCADE,
+    txid CHARACTER VARYING NOT NULL,
     block_hash CHARACTER VARYING NOT NULL,
     block_height INTEGER NOT NULL,
     raw_transaction JSONB NOT NULL,
