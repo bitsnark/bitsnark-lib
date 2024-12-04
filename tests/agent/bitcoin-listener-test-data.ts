@@ -12,7 +12,6 @@ const templates = [
 const IncomingTransactionsBaseRow: ReceivedTemplate = {
     setupId: 'setup_id',
     setupStatus: SetupStatus.ACTIVE,
-    protocolVersion: '0.2',
     lastCheckedBlockHeight: 100,
     name: 'transaction_name',
     role: AgentRoles.PROVER,
@@ -21,7 +20,7 @@ const IncomingTransactionsBaseRow: ReceivedTemplate = {
     inputs: [],
     outputs: [],
     rawTransaction: undefined,
-    txid: 'tx_id',
+    actualTxid: 'tx_id',
     blockHash: undefined,
     blockHeight: undefined
 };
@@ -32,7 +31,7 @@ export function txIdBySetupAndName(setupId: string, transactionName: string) {
     return `${setupId}_tx_${transactionName}`;
 }
 
-export const mockExpected = (function createSetupsIncomingTransactions(): Template[] {
+export const mockExpected = (function createSetupsIncomingTransactions(): ReceivedTemplate[] {
     return setups.flatMap((setupId, setupIndex) => {
         return templates.map((templateName, index) => {
             return {

@@ -45,12 +45,7 @@ class SetupInstance {
     verifier?: AgentInfo;
     templates?: Template[];
 
-    constructor(
-        setupId: string,
-        setup: Setup,
-        myRole: AgentRoles,
-        me: AgentInfo
-    ) {
+    constructor(setupId: string, setup: Setup, myRole: AgentRoles, me: AgentInfo) {
         this.setupId = setupId;
         this.setup = setup;
         this.myRole = myRole;
@@ -88,11 +83,15 @@ export class Agent {
     }
 
     public async messageReceived(data: string, context: SimpleContext) {
+        if (!data) {
+            console.log('The Nothing is here');
+            return;
+        }
         const tokens = data.split(' ');
         if (this.role == AgentRoles.PROVER && tokens.length == 6 && tokens[0] == '/start') {
             const setupId = tokens[1];
             const [payloadTxid, payloadAmount, stakeTxid, stakeAmount] = tokens.slice(2);
-            this.start(context, setupId, payloadTxid, BigInt(payloadAmount), stakeTxid, BigInt(stakeAmount));
+            await this.start(context, setupId, payloadTxid, BigInt(payloadAmount), stakeTxid, BigInt(stakeAmount));
         } else if (data.trim().startsWith('{') && data.trim().endsWith('}')) {
             const message = fromJson(data);
             console.log('Message received: ', message);
@@ -154,21 +153,21 @@ export class Agent {
         if (this.role != AgentRoles.PROVER) throw new Error("I'm not a prover");
 
         const setup = await this.db.getSetup(setupId);
-        if (setup.status != SetupStatus.ACTIVE) throw new Error(`Invalid setup state: ${setup.status}`)
+        if (setup.status != SetupStatus.ACTIVE) throw new Error(`Invalid setup state: ${setup.status}`);
 
-        await this.db.updateSetup(
-            setupId,
-            { payloadTxid, payloadAmount, stakeTxid, stakeAmount, payloadOutputIndex: 1, stakeOutputIndex: 1 });
+        await this.db.updateSetup(setupId, {
+            payloadTxid,
+            payloadAmount,
+            stakeTxid,
+            stakeAmount,
+            payloadOutputIndex: 1,
+            stakeOutputIndex: 1
+        });
 
-        const i = new SetupInstance(
-            setupId,
-            setup,
-            AgentRoles.PROVER,
-            {
-                agentId: this.agentId,
-                schnorrPublicKey: stringToBigint(this.schnorrPublicKey)
-            }
-        );
+        const i = new SetupInstance(setupId, setup, AgentRoles.PROVER, {
+            agentId: this.agentId,
+            schnorrPublicKey: stringToBigint(this.schnorrPublicKey)
+        });
         this.instances.set(setupId, i);
 
         i.state = SetupState.HELLO;
@@ -176,6 +175,8 @@ export class Agent {
         const msg = new StartMessage({
             setupId,
             agentId: this.agentId,
+            payloadUtxo: { txid: payloadTxid, amount: payloadAmount, outputIndex: 0 },
+            proverUtxo: { txid: stakeTxid, amount: stakeAmount, outputIndex: 0 },
             schnorrPublicKey: this.schnorrPublicKey
         });
 
@@ -198,14 +199,10 @@ export class Agent {
         setup.stakeAmount = message.proverUtxo!.amount;
         await this.db.updateSetup(setup.id, setup as updateSetupPartial);
 
-        i = new SetupInstance(
-            message.setupId,
-            setup,
-            AgentRoles.VERIFIER,
-            {
-                agentId: this.agentId,
-                schnorrPublicKey: stringToBigint(this.schnorrPublicKey)
-            });
+        i = new SetupInstance(message.setupId, setup, AgentRoles.VERIFIER, {
+            agentId: this.agentId,
+            schnorrPublicKey: stringToBigint(this.schnorrPublicKey)
+        });
 
         i.prover = {
             agentId: message.agentId,
@@ -223,7 +220,7 @@ export class Agent {
             i.prover!.schnorrPublicKey!,
             i.verifier!.schnorrPublicKey!,
             { txid: setup.payloadTxid, outputIndex: setup.payloadOutputIndex, amount: setup.payloadAmount },
-            { txid: setup.stakeTxid, outputIndex: setup.stakeOutputIndex, amount: setup.stakeAmount },
+            { txid: setup.stakeTxid, outputIndex: setup.stakeOutputIndex, amount: setup.stakeAmount }
         );
 
         i.state = SetupState.TRANSACTIONS;
@@ -262,7 +259,7 @@ export class Agent {
             i.prover!.schnorrPublicKey!,
             i.verifier!.schnorrPublicKey!,
             { txid: setup.payloadTxid!, outputIndex: setup.payloadOutputIndex!, amount: setup.payloadAmount! },
-            { txid: setup.stakeTxid!, outputIndex: setup.stakeOutputIndex!, amount: setup.stakeAmount! },
+            { txid: setup.stakeTxid!, outputIndex: setup.stakeOutputIndex!, amount: setup.stakeAmount! }
         );
 
         i.state = SetupState.TRANSACTIONS;
@@ -283,8 +280,7 @@ export class Agent {
         if (i.state != SetupState.TRANSACTIONS) throw new Error('Invalid state');
 
         // make sure two arrays have same structure
-        if (i.templates!.some((t, tindex) => t.name != message.templates[tindex].name))
-            throw new Error('Incompatible');
+        if (i.templates!.some((t, tindex) => t.name != message.templates[tindex].name)) throw new Error('Incompatible');
 
         this.verifyMessage(message, i);
 

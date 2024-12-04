@@ -41,7 +41,9 @@ export class Db {
         try {
             return await client.query<Row>(sql, params ?? []);
         } catch (error) {
-            console.error('Failed to execute query:', sql, params);
+            console.error('Failed to execute query: ', (error as { message: string }).message ?? '');
+            console.error('SQL: ', sql);
+            console.error('params: ', params);
             throw error;
         } finally {
             await client.end();

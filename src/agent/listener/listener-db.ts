@@ -24,7 +24,6 @@ export interface ReceivedSetup extends Setup {
 }
 
 export class ListenerDb extends AgentDb {
-
     private static templateFields = `
         templates.name, templates.role, templates.is_external, templates.ordinal, 
         templates.inputs, templates.outputs,
@@ -48,7 +47,7 @@ export class ListenerDb extends AgentDb {
             setupId: row[i++],
             protocolVersion: row[i++],
             setupStatus: row[i++],
-            lastCheckedBlockHeight: row[i++],
+            lastCheckedBlockHeight: row[i++]
         };
     }
 
@@ -84,8 +83,7 @@ export class ListenerDb extends AgentDb {
 
     public async getReceivedTemplates(setupId?: string): Promise<ReceivedTemplate[]> {
         const setupFilter = setupId ? 'WHERE setups.id = $1' : '';
-        return (
-            await this.query<ReceivedTemplate>(
+        const result = await this.query<ReceivedTemplate>(
                 `
                     SELECT ${ListenerDb.templateFields}
                     FROM templates
@@ -95,8 +93,9 @@ export class ListenerDb extends AgentDb {
                     ORDER BY last_checked_block_height ASC, ordinal ASC
                 `,
                 [setupId]
-            )
-        ).rows.map(ListenerDb.receivedTemplateReader);
+            );
+        return result.rows
+            .map(ListenerDb.receivedTemplateReader);
     }
 
     public async getReceivedSetups(setupId: string): Promise<ReceivedSetup> {

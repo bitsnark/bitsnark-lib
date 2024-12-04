@@ -33,7 +33,6 @@ export class BitcoinListener {
     }
 
     async monitorTransmitted(): Promise<void> {
-
         const templates = await this.db.getReceivedTemplates();
         const pending = templates.filter((template) => template.blockHash == null);
         if (pending.length === 0) return;
@@ -105,10 +104,13 @@ export class BitcoinListener {
                 const candidate = await this.client.getRawTransaction(blockTx, true, blockHash);
                 if (candidate.vin.length !== searchBy.length) continue;
 
-                if (searchBy.every(
+                if (
+                    searchBy.every(
                         (search, index) =>
                             candidate.vin[index].txid === search[0] && candidate.vin[index].vout === search[1]
-                    )) return candidate;
+                    )
+                )
+                    return candidate;
             }
             return undefined;
         } catch (error) {

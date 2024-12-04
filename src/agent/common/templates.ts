@@ -1,6 +1,15 @@
 import { WotsType } from './winternitz';
 import { agentConf } from '../agent.conf';
-import { AgentRoles, Input, iterations, Output, SignatureType, SpendingCondition, Template, TemplateNames } from './types';
+import {
+    AgentRoles,
+    Input,
+    iterations,
+    Output,
+    SignatureType,
+    SpendingCondition,
+    Template,
+    TemplateNames
+} from './types';
 import { array } from './array-utils';
 
 export const twoDigits = (n: number) => (n < 10 ? `0${n}` : `${n}`);

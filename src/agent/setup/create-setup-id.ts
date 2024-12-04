@@ -8,12 +8,7 @@ import { SimpleTapTree } from '../common/taptree';
 import { createUniqueDataId } from './wots-keys';
 import { AgentDb } from '../common/agent-db';
 
-export async function createSetupId(
-    proverAgentId: string, 
-    verifierAgentId: string,
-
-): Promise<string> {
-
+export async function createSetupId(proverAgentId: string, verifierAgentId: string): Promise<string> {
     const uuid = uuidv4();
     const wotsSalt = Buffer.from(uuid, 'ascii').toString('hex');
 

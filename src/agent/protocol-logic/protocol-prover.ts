@@ -129,10 +129,7 @@ export class ProtocolProver {
     private async sendProof(proof: bigint[]) {
         const data = proof
             .map((n, dataIndex) =>
-                encodeWinternitz256_4(
-                    n,
-                    createUniqueDataId(this.setup!.wotsSalt, TemplateNames.PROOF, 0, 0, dataIndex)
-                )
+                encodeWinternitz256_4(n, createUniqueDataId(this.setup!.wotsSalt, TemplateNames.PROOF, 0, 0, dataIndex))
             )
             .flat();
         await this.sendTransaction(TemplateNames.PROOF, [data]);

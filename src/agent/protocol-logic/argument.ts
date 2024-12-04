@@ -27,10 +27,7 @@ export class Argument {
     private makeIndexWitness(): Buffer[] {
         return [
             ...this.selectionPathUnparsed,
-            encodeWinternitz24(
-                BigInt(this.index),
-                createUniqueDataId(this.wotsSalt, TemplateNames.ARGUMENT, 0, 0, 6)
-            )
+            encodeWinternitz24(BigInt(this.index), createUniqueDataId(this.wotsSalt, TemplateNames.ARGUMENT, 0, 0, 6))
         ].flat();
     }
 

@@ -6,7 +6,12 @@ import { agentConf } from '../agent.conf';
 import { Buffer } from 'node:buffer';
 import { DoomsdayGenerator } from '../final-step/doomsday-generator';
 import { AgentRoles, Input, SpendingCondition, Template, TemplateNames } from '../common/types';
-import { findOutputByInput, getSpendingConditionByInput, getTemplateByInput, getTemplateByName } from '../common/templates';
+import {
+    findOutputByInput,
+    getSpendingConditionByInput,
+    getTemplateByInput,
+    getTemplateByName
+} from '../common/templates';
 import { AgentDb } from '../common/agent-db';
 
 const DEAD_SCRIPT = Buffer.from([0x6a]); // opcode fails transaction
@@ -45,9 +50,7 @@ function setTaprootKey(transactions: Template[]) {
                 try {
                     sc.controlBlock = stt.getControlBlock(scIndex);
                 } catch (e) {
-                    throw new Error(
-                        `No control block for: ${t.name}, output: ${outputIndex}, sc: ${scIndex}`
-                    );
+                    throw new Error(`No control block for: ${t.name}, output: ${outputIndex}, sc: ${scIndex}`);
                 }
             }
         }

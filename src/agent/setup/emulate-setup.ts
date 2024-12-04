@@ -7,8 +7,9 @@ import { verifySetup } from './verify-setup';
 import { generateWotsPublicKeys, mergeWots, setWotsPublicKeysForArgument } from './wots-keys';
 import { AgentRoles, SignatureType } from '../common/types';
 import { initializeTemplates } from './init-templates';
-import { TEST_WOTS_SALT } from '@tests/test-utils';
 import { AgentDb } from '../common/agent-db';
+
+export const TEST_WOTS_SALT = 'salt';
 
 export async function emulateSetup(
     proverAgentId: string,
@@ -17,7 +18,7 @@ export async function emulateSetup(
     generateFinal: boolean
 ) {
     const proverDb = new AgentDb(proverAgentId);
-    const verifierDb = new AgentDb(verifierAgentId);    
+    const verifierDb = new AgentDb(verifierAgentId);
 
     const mockStake = {
         txid: '1111111111111111111111111111111111111111111111111111111111111111',
@@ -41,7 +42,7 @@ export async function emulateSetup(
         payloadAmount: mockLockedFunds.amount,
         stakeTxid: mockStake.txid,
         stakeOutputIndex: mockStake.outputIndex,
-        stakeAmount: mockStake.amount,
+        stakeAmount: mockStake.amount
     });
 
     await verifierDb.createSetup(setupId, 'verifier salt');
@@ -51,7 +52,7 @@ export async function emulateSetup(
         payloadAmount: mockLockedFunds.amount,
         stakeTxid: mockStake.txid,
         stakeOutputIndex: mockStake.outputIndex,
-        stakeAmount: mockStake.amount,
+        stakeAmount: mockStake.amount
     });
 
     console.log('generating templates...');
@@ -97,11 +98,11 @@ export async function emulateSetup(
 
     proverTemplates = await addAmounts(proverAgentId, AgentRoles.PROVER, setupId, proverTemplates);
     verifierTemplates = await addAmounts(verifierAgentId, AgentRoles.VERIFIER, setupId, verifierTemplates);
-    
+
     console.log('Signing transactions - this will overwrite templates...');
 
-    proverTemplates = await signTransactions(AgentRoles.PROVER, proverAgentId, setupId, proverTemplates);
-    verifierTemplates = await signTransactions(AgentRoles.VERIFIER, verifierAgentId, setupId, verifierTemplates);
+    // proverTemplates = await signTransactions(AgentRoles.PROVER, proverAgentId, setupId, proverTemplates);
+    // verifierTemplates = await signTransactions(AgentRoles.VERIFIER, verifierAgentId, setupId, verifierTemplates);
 
     console.log('merging signatures...');
     for (const [templateIdx, proverTemplate] of proverTemplates.entries()) {

@@ -3,11 +3,7 @@ import { AgentDb } from '../common/agent-db';
 import { findOutputByInput, getTemplateByName } from '../common/templates';
 import { TemplateNames, AgentRoles, Template } from '../common/types';
 
-const externallyFundedTxs: string[] = [
-    TemplateNames.LOCKED_FUNDS,
-    TemplateNames.PROVER_STAKE,
-    TemplateNames.CHALLENGE
-];
+const externallyFundedTxs: string[] = [TemplateNames.LOCKED_FUNDS, TemplateNames.PROVER_STAKE, TemplateNames.CHALLENGE];
 
 // Currently only counting script sizes, not the actual transaction sizes.
 // (Length input scripts + length of output scripts) / 8 bits per byte * fee per byte * fee factor percent / 100
@@ -107,8 +103,8 @@ export function validateTransactionFees(templates: Template[]) {
     if (totals.fee / BigInt(Math.ceil((totals.size / 8 / 100) * agentConf.feeFactorPercent)) != agentConf.feePerByte) {
         throw new Error(
             `Fee per byte is not correct: ` +
-            `${totals.fee / BigInt(Math.ceil((totals.size / 8 / 100) * agentConf.feeFactorPercent))} ` +
-            `!= ${agentConf.feePerByte}`
+                `${totals.fee / BigInt(Math.ceil((totals.size / 8 / 100) * agentConf.feeFactorPercent))} ` +
+                `!= ${agentConf.feePerByte}`
         );
     }
 }

@@ -6,7 +6,7 @@ import {
     protocolStart,
     protocolEnd,
     assertOrder,
-    getTemplateByName,
+    getTemplateByName
 } from '../common/templates';
 import { AgentRoles, FundingUtxo, SignatureType, Template, TemplateNames } from '../common/types';
 import { generateWotsPublicKeys } from './wots-keys';
@@ -43,7 +43,6 @@ export function initializeTemplates(
 
     // set ordinal, setup id and protocol version
     for (const [i, t] of templates.entries()) {
-        t.protocolVersion = t.protocolVersion ?? PROTOCOL_VERSION;
         t.setupId = setupId;
         t.ordinal = i;
     }

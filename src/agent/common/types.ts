@@ -1,4 +1,4 @@
-import { WotsType } from "./winternitz";
+import { WotsType } from './winternitz';
 
 export const iterations = 6;
 
@@ -131,10 +131,8 @@ export interface Template {
     unknownTxid?: boolean;
     ordinal?: number;
     setupId?: string;
-    protocolVersion?: string;
     txid?: string;
     inputs: Input[];
     outputs: Output[];
     status?: TemplateStatus;
 }
-

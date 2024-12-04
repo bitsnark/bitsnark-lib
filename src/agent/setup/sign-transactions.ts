@@ -35,8 +35,8 @@ export async function signTransactions(
         const subprocessError = error as { status: number; stdout: Buffer; stderr: Buffer };
         console.error(
             `Python script failed with code ${subprocessError.status}\n` +
-            `stdout:\n${subprocessError.stdout.toString()}\n` +
-            `stderr:\n${subprocessError.stderr.toString()}\n`
+                `stdout:\n${subprocessError.stdout.toString()}\n` +
+                `stderr:\n${subprocessError.stderr.toString()}\n`
         );
         throw error;
     }

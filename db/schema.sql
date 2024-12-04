@@ -26,7 +26,7 @@ CREATE TABLE templates (
     ordinal INTEGER NOT NULL,
     inputs JSONB NOT NULL,
     outputs JSONB NOT NULL,
-    status CHARACTER VARYING NOT NULL,
+    status CHARACTER VARYING NOT NULL DEFAULT 'PENDING',
     data JSONB NULL,
     updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
     UNIQUE (setup_id, name)

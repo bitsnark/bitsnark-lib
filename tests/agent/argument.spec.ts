@@ -2,10 +2,11 @@ import { encodeWinternitz24, WOTS_NIBBLES, WotsType } from '../../src/agent/comm
 import { proofBigint } from '../../src/agent/common/constants';
 import { Argument } from '../../src/agent/protocol-logic/argument';
 import { parseInput } from '../../src/agent/protocol-logic/parser';
-import { initTemplatesForTest, TEST_WOTS_SALT } from '../test-utils';
+import { initTemplatesForTest } from '../test-utils';
 import { createUniqueDataId } from '../../src/agent/setup/wots-keys';
-import { getTemplateByName, twoDigits } from '@src/agent/common/templates';
-import { TemplateNames } from '@src/agent/common/types';
+import { getTemplateByName, twoDigits } from '../../src/agent/common/templates';
+import { TemplateNames } from '../../src/agent/common/types';
+import { TEST_WOTS_SALT } from '../../src/agent/setup/emulate-setup';
 
 function makeSelectionPathUnparsed(selectionPath: number[]) {
     const spu: Buffer[][] = [];

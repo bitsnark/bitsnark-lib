@@ -1,9 +1,8 @@
+import { TEST_WOTS_SALT } from '../src/agent/setup/emulate-setup';
 import { agentConf } from '../src/agent/agent.conf';
 import { AgentRoles, Template } from '../src/agent/common/types';
 import { initializeTemplates } from '../src/agent/setup/init-templates';
 import { mergeWots, setWotsPublicKeysForArgument } from '../src/agent/setup/wots-keys';
-
-export const TEST_WOTS_SALT = 'salt';
 
 const payloadUtxo = {
     txid: '0000000000000000000000000000000000000000000000000000000000000000',

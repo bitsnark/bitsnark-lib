@@ -147,7 +147,18 @@ export function fromJson(json: string): Message {
     return m;
 }
 
+function sortFields(obj: any): any {
+    if (typeof obj != 'object') return obj;
+    const newObj: any = {};
+    Object.keys(obj)
+        .sort((a, b) => a.localeCompare(b))
+        .forEach(k => newObj[k] = sortFields(obj[k]));
+    return newObj;
+}
+
 export function toJson(message: Message): string {
+    // sort fields for predictability!
+    message = sortFields(message);
     const json = JSON.stringify(message, (key, value) => {
         if (typeof value === 'bigint') return `0x${value.toString(16)}n`;
         if (value?.type == 'Buffer' && value.data) {

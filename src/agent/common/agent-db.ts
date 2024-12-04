@@ -1,8 +1,8 @@
-import { agentConf } from "../agent.conf";
-import { array } from "./array-utils";
-import { Db, DbValue, QueryArgs } from "./db";
-import { jsonStringifyCustom } from "./json";
-import { Input, Output, Setup, SetupStatus, Template, TemplateStatus } from "./types";
+import { agentConf } from '../agent.conf';
+import { array } from './array-utils';
+import { Db, DbValue, QueryArgs } from './db';
+import { jsonParseCustom, jsonStringifyCustom } from './json';
+import { Input, Output, Setup, SetupStatus, Template, TemplateStatus } from './types';
 
 export interface UpdateTemplatePartial {
     setupId?: string;
@@ -23,97 +23,127 @@ export interface updateSetupPartial {
     stakeAmount: bigint;
 }
 
-const setupFields = ['id', 'protocol_version', 'status', 'last_checked_block_height', 'wots_salt',
-    'payload_txid', 'payload_output_index', 'payload_amount',
-    'stake_txid', 'stake_output_index', 'stake_amount'];
+const setupFields = [
+    'id',
+    'protocol_version',
+    'status',
+    'last_checked_block_height',
+    'wots_salt',
+    'payload_txid',
+    'payload_output_index',
+    'payload_amount',
+    'stake_txid',
+    'stake_output_index',
+    'stake_amount'
+];
 
-const setupFieldsToInsert = ['id', 'wots_salt',
-    'payload_txid', 'payload_output_index', 'payload_amount',
-    'stake_txid', 'stake_output_index', 'stake_amount',
-    'status', 'protocol_version'];
-
-const templateFields = ['template_id', 'name', 'role', 'is_external', 'unknown_txid', 'ordinal', 'setup_id',
-    'protocol_version', 'txid', 'inputs', 'outputs'];
+const templateFields = [
+    'id',
+    'name',
+    'role',
+    'is_external',
+    'unknown_txid',
+    'ordinal',
+    'setup_id',
+    'txid',
+    'inputs',
+    'outputs',
+    'status'
+];
 
 function isCap(c: string): boolean {
     return c >= 'A' && c <= 'Z';
 }
 
 function toCap(s: string): string {
-    return s.length > 0 ?
-        s.split('')[0].toUpperCase() + s.split('').slice(1) : '';
+    return s.length > 0 ? s.split('')[0].toUpperCase() + s.split('').slice(1).join('') : '';
 }
 
 function camelToSnake(name: string): string {
-    return name.split('').map(c => isCap(c) ? '_' + c.toLowerCase : c).join('');
+    return name
+        .split('')
+        .map((c) => (isCap(c) ? '_' + c.toLowerCase : c))
+        .join('');
 }
 
 function snakeToCamel(name: string): string {
-    return name.split('_').map((s, i) => i == 0 ? s : toCap(s)).join('');
+    const s = name
+        .split('_')
+        .map((s, i) => (i == 0 ? s : toCap(s)))
+        .join('');
+    return s;
 }
 
 function dollars(n: number): string {
-    return array(n, i => `$${i + 1}`).join(', ');
+    return array(n, (i) => `$${i + 1}`).join(', ');
 }
 
 function dollarsForUpdate(fields: string[], start: number): string {
     return fields.map((name, i) => `${name}=$${i + start}`).join(', ');
 }
 
-function objToRow<T>(fieldNames: string[], obj: T): DbValue[] {
-    return fieldNames.map(k => (obj as any)[snakeToCamel(k)]);
+function jsonizeObject<T>(obj: T): T {
+    return JSON.parse(jsonStringifyCustom(obj));
 }
 
-function rowToObj<T>(fieldNames: string[], row: DbValue[]): T {
-    const obj = {};
-    fieldNames.forEach((k, i) => (obj as any)[camelToSnake(k)] = row[i]);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function objToRow(fieldNames: string[], obj: any): DbValue[] {
+    const row = fieldNames.map((k) => obj[snakeToCamel(k)]).map((v) => (v != null ? jsonizeObject(v) : undefined));
+    return row;
+}
+
+function rowToObj<T>(fieldNames: string[], row: DbValue[], jsonFields: string[] = []): T {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const obj: any = {};
+    fieldNames.forEach((k, i) => {
+        if (jsonFields.find((tk) => tk == k)) row[i] = jsonParseCustom(JSON.stringify(row[i]));
+        obj[camelToSnake(k)] = row[i];
+    });
     return obj as T;
 }
 
 export class AgentDb extends Db {
-
     constructor(agentId: string) {
         super(agentId);
     }
 
-    public static jsonizeObject<T>(obj: T): T {
-        return JSON.parse(jsonStringifyCustom(obj));
-    }
-
     /*** SETUP ***/
 
-    public async createSetup(id: string, wotsSalt: string): Promise<Setup> {
+    public async createSetup(setupId: string, wotsSalt: string): Promise<Setup> {
         await this.query(
-            `INSERT INTO setups (id, wots_salt) 
-                VALUES ($1, $2)`,
-            objToRow(setupFieldsToInsert, [id, wotsSalt])
+            `INSERT INTO setups (id, wots_salt, protocol_version, status) 
+                VALUES ($1, $2, $3, $4)`,
+            [setupId, wotsSalt, agentConf.protocolVersion, SetupStatus.PENDING]
         );
-        return { id, wotsSalt, protocolVersion: agentConf.protocolVersion, status: SetupStatus.PENDING };
+        return { id: setupId, wotsSalt, protocolVersion: agentConf.protocolVersion, status: SetupStatus.PENDING };
     }
 
-    public async updateSetup(id: string, setup: updateSetupPartial) {
-        const fields = ['payload_txid', 'payload_output_index', 'payload_amount', 'stake_txid',
-            'stake_output_index', 'stake_amount'];
+    public async updateSetup(setupId: string, setup: updateSetupPartial) {
+        const fields = [
+            'payload_txid',
+            'payload_output_index',
+            'payload_amount',
+            'stake_txid',
+            'stake_output_index',
+            'stake_amount'
+        ];
         await this.query(
             `UPDATE setups SET ${dollarsForUpdate(fields, 2)}
                 WHERE id = $1`,
-            [id, ...objToRow(fields, setup)]
+            [setupId, ...objToRow(fields, setup)]
         );
     }
 
     public async getSetup(setupId: string): Promise<Setup> {
-        const rows = (await this.query<Setup>(
-            `SELECT ${setupFields.join(', ')} FROM setups WHERE id = $1`,
-            [setupId]
-        )).rows;
+        const rows = (await this.query<Setup>(`SELECT ${setupFields.join(', ')} FROM setups WHERE id = $1`, [setupId]))
+            .rows;
         if (rows.length != 1) throw new Error(`Setup not found: ${setupId}`);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         return rowToObj<Setup>(setupFields, rows[0] as any);
     }
 
     private async markSetupStatus(setupId: string, status: SetupStatus) {
-        await this.query(
-            'UPDATE setups SET status = $1 WHERE id = $2',
-            [SetupStatus[status], setupId]);
+        await this.query('UPDATE setups SET status = $1 WHERE id = $2', [SetupStatus[status], setupId]);
     }
 
     public async markSetupPegoutActive(setupId: string) {
@@ -129,67 +159,76 @@ export class AgentDb extends Db {
     }
 
     public async updateSetupLastCheckedBlockHeight(setupId: string, blockHeight: number) {
-        await this.query(
-            'UPDATE setups SET last_checked_block_height = $1 WHERE id = $2',
-            [blockHeight, setupId]);
+        await this.query('UPDATE setups SET last_checked_block_height = $1 WHERE id = $2', [blockHeight, setupId]);
     }
 
     public async updateSetupLastCheckedBlockHeightBatch(setupIds: string[], blockHeight: number) {
-        await this.query(
-            'UPDATE setups SET last_checked_block_height = $1 WHERE id = ANY($2)',
-            [blockHeight, setupIds]);
+        await this.query('UPDATE setups SET last_checked_block_height = $1 WHERE id = ANY($2)', [
+            blockHeight,
+            setupIds
+        ]);
     }
 
     public async getActiveSetups(): Promise<Setup[]> {
         return Promise.all(
-            (await this.query('SELECT id FROM setups WHERE status = $1', [SetupStatus.ACTIVE])).rows
-                .map(row => this.getSetup(row[0] as string))
+            (await this.query('SELECT id FROM setups WHERE status = $1', [SetupStatus.ACTIVE])).rows.map((row) =>
+                this.getSetup(row[0] as string)
+            )
         );
     }
 
     /*** Templates ***/
 
     public async getTemplates(setupId: string): Promise<Template[]> {
-        return (await this.query<Template>(
-            `SELECT ${templateFields.join(', ')}
+        const rows = (
+            await this.query<Template>(
+                `SELECT ${templateFields.join(', ')}
                     FROM templates WHERE setup_id = $1
                     ORDER BY ordinal ASC`,
-            [setupId]
-        )).rows.map(row => rowToObj(templateFields, row as any));
+                [setupId]
+            )
+        ).rows;
+        if (rows.length == 0) throw new Error(`No templates found, setupId: ${setupId}`);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        return rows.map((row) => rowToObj(templateFields, row as any, ['inputs', 'outputs']));
     }
 
     public async insertTemplates(setupId: string, templates: Template[]) {
         // make sure they go into the right setup
-        templates = templates.map(t => ({ ...t, setupId }));
+        // let the db make a new id
+        templates = templates.map((t) => ({
+            ...t,
+            setupId
+        }));
+        const fieldsNoId = templateFields.filter((s) => s != 'id');
         await this.session(
-            templates.map(template => ({
-                sql: `INSERT INTO templates (${templateFields.join(', ')})
-                    VALUES (${dollars(templateFields.length)})`,
-                args: objToRow(templateFields, template)
+            templates.map((template) => ({
+                sql: `INSERT INTO templates (${fieldsNoId.join(', ')})
+                    VALUES (${dollars(fieldsNoId.length)})`,
+                args: objToRow(fieldsNoId, template)
             }))
         );
     }
 
     public async updateTemplates(setupId: string, templates: UpdateTemplatePartial[]) {
         // make sure they go into the right setup
-        templates = templates.map(t => ({ ...t, setupId }));
+        templates = templates.map((t) => ({ ...t, setupId }));
         const fields = ['ordinal', 'txid', 'inputs', 'outputs'];
         await this.session(
-            templates.map(template => ({
+            templates.map((template) => ({
                 sql: `UPDATE templates SET ${dollarsForUpdate(fields, 3)}
-                        WHERE setup_id = $1 AND name = $2`,
+                        WHERE id = $1 AND name = $2`,
                 args: [setupId, template.name, ...objToRow(fields, template)]
             }))
         );
     }
 
     public async upsertTemplates(setupId: string, templates: Template[]) {
-        const ids = (await this.query<Template>(
-            `SELECT template_id FROM templates WHERE setup_id = $1`,
-            [setupId]
-        )).rows.map(row => row[0]);
-        const toInsert = templates.filter(t => ids.find(id => id == t.id));
-        const toUpdate = templates.filter(t => !ids.find(id => id == t.id));
+        const ids = (await this.query<Template>(`SELECT id FROM templates WHERE setup_id = $1`, [setupId])).rows.map(
+            (row) => row[0]
+        );
+        const toInsert = templates.filter((t) => !ids.find((id) => id == t.id));
+        const toUpdate = templates.filter((t) => ids.find((id) => id == t.id));
         await this.insertTemplates(setupId, toInsert);
         await this.updateTemplates(setupId, toUpdate);
     }

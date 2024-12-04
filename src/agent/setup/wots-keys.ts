@@ -51,10 +51,7 @@ export function setWotsPublicKeysForArgument(wotsSalt: string, templates: Templa
     sc.exampleWitness = argumentSelectionPath.map((n, i) =>
         encodeWinternitz24(n, createUniqueDataId(wotsSalt, TemplateNames.SELECT + '_' + twoDigits(i), 0, 0, 0))
     );
-    sc.exampleWitness[6] = encodeWinternitz24(
-        123456n,
-        createUniqueDataId(wotsSalt, TemplateNames.ARGUMENT, 0, 0, 6)
-    );
+    sc.exampleWitness[6] = encodeWinternitz24(123456n, createUniqueDataId(wotsSalt, TemplateNames.ARGUMENT, 0, 0, 6));
 }
 
 export function generateWotsPublicKeys(wotsSalt: string, templates: Template[], role: AgentRoles) {
@@ -134,8 +131,8 @@ export function mergeWots(role: AgentRoles, mine: Template[], theirs: TemplateWi
                 wotsPublicKeys: !sc.wotsSpec
                     ? undefined
                     : sc.nextRole == role
-                        ? wotsNotNull(sc.wotsPublicKeys)
-                        : wotsNotNull(
+                      ? wotsNotNull(sc.wotsPublicKeys)
+                      : wotsNotNull(
                             theirs[transactionIndex].outputs[outputIndex].spendingConditions[scIndex].wotsPublicKeys
                         )
             }))
