@@ -72,7 +72,8 @@ export class ProtocolVerifier {
                     break;
                 case TemplateNames.CHALLENGE:
                     if (lastFlag) {
-                        const timeoutSc = await this.checkTimeout(incoming);
+                        const proofIncoming = incomings.find((i) => i.name == TransactionNames.PROOF);
+                        const timeoutSc = await this.checkTimeout(proofIncoming!);
                         if (timeoutSc) await this.sendChallengeUncontested();
                     }
                     break;
@@ -216,7 +217,7 @@ export class ProtocolVerifier {
         const currentBlockHeight = await this.getCurrentBlockHeight();
         for (const output of incoming.outputs) {
             for (const sc of output.spendingConditions) {
-                if (sc.nextRole != AgentRoles.PROVER) continue;
+                if (sc.nextRole != AgentRoles.VERIFIER) continue;
                 if (sc.timeoutBlocks && incoming.blockHeight! + sc.timeoutBlocks <= currentBlockHeight) {
                     // found one, send the relevant tx
                     return sc;

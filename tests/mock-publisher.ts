@@ -4,6 +4,7 @@ import { ProtocolProver } from '../src/agent/protocol-logic/protocol-prover';
 import { proofBigint } from '../src/agent/common/constants';
 import { getTransactionByName, Transaction } from '../src/agent/common/transactions';
 import { RawTransaction, Input } from 'bitcoin-core';
+import { agentConf } from '../src/agent/agent.conf';
 
 export const mockRawTransaction: RawTransaction = {
     in_active_chain: true,
@@ -79,13 +80,18 @@ export class MockPublisher {
                 if (this.isRunning) return;
                 this.isRunning = true;
 
+                await this.generateBlocks(1);
+
                 const readyToSendTemplates = {
-                    prover: await this.dbs.prover.dev_readReadyToSendTemplates(this.setupId),
-                    verifier: await this.dbs.verifier.dev_readReadyToSendTemplates(this.setupId)
+                    prover: await this.dbs.prover.test_getReadyToSendTemplates(this.setupId),
+                    verifier: await this.dbs.verifier.test_getReadyToSendTemplates(this.setupId)
                 };
 
-                if (readyToSendTemplates.prover.length === 0 && readyToSendTemplates.verifier.length)
-                    throw new Error(`No templates to publish`);
+                if (!readyToSendTemplates.prover.length && !readyToSendTemplates.verifier.length) {
+                    console.log(`No templates to publish`);
+                    this.isRunning = false;
+                    return;
+                }
 
                 const tip = await this.bitcoinClient.client.getBlockCount();
                 const hash = await this.bitcoinClient.client.getBlockHash(tip);
@@ -111,7 +117,7 @@ export class MockPublisher {
                             rawTx
                         );
 
-                        await this.dbs[agent].dev_markPublished(this.setupId, readyTx.name);
+                        await this.dbs[agent].test_markPublished(this.setupId, readyTx.name);
 
                         await this.dbs[otherAgent].markReceived(
                             this.setupId,
@@ -125,13 +131,12 @@ export class MockPublisher {
                         console.log('Recived incoming transaction', readyTx.object.txId, readyTx.name);
                     }
                 }
-                await this.generateBlocks(1);
                 this.isRunning = false;
             } catch (e) {
                 console.error(e);
                 this.isRunning = false;
             }
-        }, 3000);
+        }, agentConf.protocolIntervalMs / 3);
     }
 
     async generateBlocks(blocksToGenerate: number) {
@@ -179,19 +184,17 @@ export class MockPublisher {
     }
 }
 
-console.log('require.main', require.main, module);
-
 if (require.main === module) {
     console.log('Starting mock publisher');
     (async () => {
         const proverId = 'bitsnark_prover_1';
-        const verrifirId = 'bitsnark_verifier_1';
+        const verifierId = 'bitsnark_verifier_1';
         const setupId = 'test_setup';
 
         const dbProver = new AgentDb(proverId);
-        const dbVerifier = new AgentDb(verrifirId);
-        await dbProver.markSetupPeggoutActive(setupId);
-        await dbVerifier.markSetupPeggoutActive(setupId);
+        const dbVerifier = new AgentDb(verifierId);
+        await dbProver.test_restartSetup(setupId);
+        await dbVerifier.test_restartSetup(setupId);
 
         const prover = new ProtocolProver(proverId, setupId);
         //Bad
@@ -201,6 +204,6 @@ if (require.main === module) {
         // Good
         //await prover.pegOut(proofBigint);
         console.log('proof sent:', proofBigint);
-        new MockPublisher(proverId, verrifirId, setupId).start();
+        new MockPublisher(proverId, verifierId, setupId).start();
     })();
 }

@@ -80,6 +80,8 @@ export class ProtocolProver {
                 case TemplateNames.CHALLENGE:
                     if (lastFlag) {
                         // send the first state iteration
+                        proof[0] = proof[0] - 1n; //<<---TEST
+                        await this.sendState(proof, []);
                     }
                     break;
                 case TemplateNames.CHALLENGE_UNCONTESTED:
