@@ -1,9 +1,10 @@
 // agent.spec.ts
 import { JoinMessage, Message, StartMessage, toJson } from '../../src/agent/setup/messages';
 import { Agent } from '../../src/agent/setup/agent';
-import { AgentRoles, FundingUtxo } from '../../src/agent/common/types';
+import { AgentRoles, FundingUtxo, Setup, SetupStatus } from '../../src/agent/common/types';
 import { agentConf } from '../../src/agent/agent.conf';
 import { SimpleContext, TelegrafContext } from '../../src/agent/setup/telegram';
+import { AgentDbMock } from '../test-utils/agent-db-mock';
 
 export const mockAgent = {
     signMessageAndSend: jest.fn(),
@@ -25,11 +26,22 @@ const proverStake: FundingUtxo = {
     outputIndex: 0,
     amount: agentConf.proverStakeAmount
 };
+const fakeSetup: Setup = {
+    id: 'test_setup',
+    wotsSalt: 'salt',
+    status: SetupStatus.PENDING
+};
 
 //Focuses on agent message signatures; setup is checked in emulate-setups.
 describe('Agent message signatures check', () => {
     const prover = new Agent('bitsnark_prover_1', AgentRoles.PROVER);
+    const mockProverDb = new AgentDbMock('bitsnark_prover_1');
+    prover.db = mockProverDb;
+
     const verifier = new Agent('bitsnark_verifier_1', AgentRoles.VERIFIER);
+    const mockVerifierDb = new AgentDbMock('bitsnark_prover_1');
+    verifier.db = mockVerifierDb;
+
     let setupId: string;
     let signedMessage: Message;
 
@@ -38,6 +50,8 @@ describe('Agent message signatures check', () => {
         const spyStart = jest.spyOn(prover, 'start');
         const message = 
             `/start test_setup ${lockedFunds.txid} ${lockedFunds.amount} ${proverStake.txid} ${proverStake.amount}`;
+
+        mockProverDb.getSetupReturn = fakeSetup;
         await prover.messageReceived(message, mockContext);
 
         expect(spyStart).toHaveBeenCalledTimes(1);
@@ -69,7 +83,12 @@ describe('Agent message signatures check', () => {
         const spySignMessageAndSend = jest.spyOn(verifier, 'signMessageAndSend');
         const spyOntart = jest.spyOn(verifier, 'on_start');
 
+        mockVerifierDb.createSetupReturn = fakeSetup;
         await verifier.messageReceived(toJson(signedMessage), mockContext);
+
+        expect(mockVerifierDb.createSetupCalledCount).toBe(1);
+        expect(mockVerifierDb.createSetupCalledParams)
+            .toEqual({ setupId: fakeSetup.id, wotsSalt: fakeSetup.id });
 
         expect(spySignMessageAndSend).toHaveBeenCalledTimes(1);
         expect(verifier.instances.get(setupId)).toBeDefined();

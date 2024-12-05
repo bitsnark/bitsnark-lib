@@ -153,7 +153,7 @@ export class Agent {
         if (this.role != AgentRoles.PROVER) throw new Error("I'm not a prover");
 
         const setup = await this.db.getSetup(setupId);
-        if (setup.status != SetupStatus.ACTIVE) throw new Error(`Invalid setup state: ${setup.status}`);
+        if (!setup || setup.status != SetupStatus.PENDING) throw new Error(`Invalid setup state: ${setup.status}`);
 
         await this.db.updateSetup(setupId, {
             payloadTxid,
