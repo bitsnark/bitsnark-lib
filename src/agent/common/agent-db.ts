@@ -198,7 +198,8 @@ export class AgentDb extends Db {
         // let the db make a new id
         templates = templates.map((t) => ({
             ...t,
-            setupId
+            setupId,
+            status: t.status ?? TemplateStatus.PENDING
         }));
         const fieldsNoId = templateFields.filter((s) => s != 'id');
         await this.session(

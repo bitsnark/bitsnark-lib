@@ -27,10 +27,9 @@ class ShowCommand(Command):
         terminal = os.get_terminal_size()
 
         # print("Object structure")
-        # pprint_json_structure(tx_template.object)
         print("Name:".ljust(19), tx_template.name)
         print("Ordinal:".ljust(19), tx_template.ordinal)
-        for key, value in tx_template.object.items():
+        for key, value in tx_template.items():
             if key in ('inputs', 'outputs'):
                 continue
             key = f"{key}:".ljust(20)
@@ -41,7 +40,7 @@ class ShowCommand(Command):
             print(f"{key}{value}")
         print("Inputs:")
         for inp in tx_template.inputs:
-            prev_tx_name = inp['transactionName']
+            prev_tx_name = inp['name']
             prev_tx = dbsession.execute(
                 sa.select(
                     TransactionTemplate,

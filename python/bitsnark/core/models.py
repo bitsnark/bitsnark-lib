@@ -7,7 +7,7 @@ from sqlalchemy import Column, Integer, JSON, String, Boolean, TIMESTAMP, Enum
 from sqlalchemy.schema import FetchedValue
 
 
-class OutgoingStatus(enum.Enum):
+class Status(enum.Enum):
     PENDING = 'PENDING'
     READY = 'READY'
     PUBLISHED = 'PUBLISHED'
@@ -28,12 +28,14 @@ class TransactionTemplate(Base):
     __tablename__ = 'templates'
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     setup_id: Mapped[str] = mapped_column(String, nullable=False)
+    txid: Mapped[str] = mapped_column(String, nullable=False)
     name: Mapped[str] = mapped_column(String, nullable=False)
     role: Mapped[str] = mapped_column(String, nullable=False)
     is_external: Mapped[bool] = mapped_column(Boolean, nullable=False)
     ordinal: Mapped[Optional[int]] = Column(Integer)
-    object: Mapped[dict] = mapped_column(JSON, nullable=False)
-    outgoing_status: Mapped[str] = mapped_column(Enum(OutgoingStatus), nullable=False)
+    inputs: Mapped[dict] = mapped_column(JSON, nullable=False)
+    outputs: Mapped[dict] = mapped_column(JSON, nullable=False)
+    status: Mapped[str] = mapped_column(Enum(Status), nullable=False)
     updated_at: Mapped[datetime.datetime] = mapped_column(TIMESTAMP, server_default=FetchedValue(), nullable=False)
 
     def __repr__(self):
@@ -41,14 +43,6 @@ class TransactionTemplate(Base):
             f"<TransactionTemplate(name={self.name}, "
             f"setup_id={self.setup_id}, id={self.id}, ordinal={self.ordinal}, "
             f"role={self.role}, is_external={self.is_external}, object=...)>")
-
-    @property
-    def inputs(self) -> list[TxInJson]:
-        return self.object['inputs']
-
-    @property
-    def outputs(self) -> list[TxOutJson]:
-        return self.object['outputs']
 
 
 JsonHexStr = str
@@ -66,7 +60,7 @@ class Setups(Base):
 
 class TxJson(TypedDict):
     role: str
-    transactionName: str
+    name: str
     inputs: list[TxInJson]
     outputs: list[TxOutJson]
     ordinal: int
@@ -74,7 +68,7 @@ class TxJson(TypedDict):
 
 
 class TxInJson(TypedDict):
-    transactionName: str
+    name: str
     outputIndex: int
     spendingConditionIndex: int
     script: JsonHexStr

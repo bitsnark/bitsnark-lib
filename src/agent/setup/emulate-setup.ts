@@ -101,6 +101,9 @@ export async function emulateSetup(
 
     console.log('Signing transactions - this will overwrite templates...');
 
+    await proverDb.upsertTemplates(setupId, proverTemplates);
+    await verifierDb.upsertTemplates(setupId, verifierTemplates);
+
     proverTemplates = await signTransactions(AgentRoles.PROVER, proverAgentId, setupId, proverTemplates);
     verifierTemplates = await signTransactions(AgentRoles.VERIFIER, verifierAgentId, setupId, verifierTemplates);
 

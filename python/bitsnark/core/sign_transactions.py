@@ -13,7 +13,7 @@ from sqlalchemy.orm.attributes import flag_modified
 
 from bitsnark.conf import POSTGRES_BASE_URL
 from bitsnark.core.parsing import parse_bignum, parse_hex_bytes, serialize_hex
-from .models import TransactionTemplate, Setups, OutgoingStatus, SetupStatus
+from .models import TransactionTemplate, Setups, Status, SetupStatus
 from .signing import sign_input
 
 Role = Literal['prover', 'verifier']
@@ -160,7 +160,7 @@ def _handle_tx_template(
 ):
     if tx_template.is_external:
         # Requierd for signing next transactions
-        tx_template.tx_id = tx_template.object['txId']
+        tx_template.tx_id = tx_template.txid
         tx_template_map[tx_template.name] = tx_template
         print(f"Transaction {tx_template.name} is external, skipping")
         return True
@@ -192,15 +192,15 @@ def _handle_tx_template(
         spent_outputs: list[CTxOut] = []
         input_tapscripts: list[CScript] = []
         for input_index, inp in enumerate(tx_template.inputs):
-            prev_tx = tx_template_map.get(inp['transactionName'])
+            prev_tx = tx_template_map.get(inp['templateName'])
             if not prev_tx:
-                raise KeyError(f"Transaction {inp['transactionName']} not found")
+                raise KeyError(f"Transaction {inp['name']} not found")
 
-            print(f"Processing input #{input_index} of transaction {inp['transactionName']} ...")
+            print(f"Processing input #{input_index} of transaction {inp['templateName']} ...")
 
             prev_txid = prev_tx.tx_id
             if not prev_txid:
-                raise ValueError(f"Transaction {inp['transactionName']} has no txId")
+                raise ValueError(f"Transaction {inp['name']} has no txId")
 
             prevout_index = inp['outputIndex']
             prevout = prev_tx.outputs[prevout_index]
@@ -274,8 +274,8 @@ def _handle_tx_template(
 
     # Alter the template
     tx_template.tx_id = tx_id
-    tx_template.object['txId'] = tx_id
-    tx_template.object['serializedTx'] = serialize_hex(serialized)
+    tx_template.txid = tx_id
+    tx_template.serializedTx = serialize_hex(serialized)
     for i, inp in enumerate(tx_inputs):
         signature = sign_input(
             script=input_tapscripts[i],
@@ -284,9 +284,9 @@ def _handle_tx_template(
             spent_outputs=spent_outputs,
             private_key=KEYPAIRS[agent_id]['private'],
         )
-        if len(tx_template.object['inputs']) <= i:
+        if len(tx_template.inputs) <= i:
             # HACK: the hardcoded initial transactions have an empty list of inputs
-            tx_template.object['inputs'].append({})
+            tx_templateinputs.append({})
 
         if role == 'prover':
             role_signature_key = 'proverSignature'
@@ -294,10 +294,11 @@ def _handle_tx_template(
             role_signature_key = 'verifierSignature'
         else:
             raise ValueError(f"Unknown role {role}")
-        tx_template.object['inputs'][i][role_signature_key] = serialize_hex(signature)
+        tx_template.inputs[i][role_signature_key] = serialize_hex(signature)
 
     # Make sure SQLAlchemy knows that the JSON object has changed
-    flag_modified(tx_template, 'object')
+    flag_modified(tx_template, 'inputs')
+    flag_modified(tx_template, 'outputs')
 
     tx_template_map[tx_template.name] = tx_template
     return True

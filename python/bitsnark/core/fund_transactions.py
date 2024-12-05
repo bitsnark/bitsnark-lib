@@ -122,10 +122,11 @@ def main(argv: Sequence[str] = None):
 
                     tx_id = tx.GetTxid()[::-1].hex()
                     tx_template.tx_id = tx_id
-                    tx_template.object['txId'] = tx_id
-                    tx_template.object['external'] = True
-                    tx_template.object['signedSerializedTx'] = serialize_hex(tx.serialize())
-                    flag_modified(tx_template, 'object')
+                    tx_template['txid'] = tx_id
+                    tx_template['isExternal'] = True
+                    tx_template['signedSerializedTx'] = serialize_hex(tx.serialize())
+                    flag_modified(tx_template, 'inputs')
+                    flag_modified(tx_template, 'outputs')
         finally:
             # Lock all previously locked utxos
             bitcoin_rpc.call('lockunspent', True, [{

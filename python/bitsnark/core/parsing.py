@@ -6,11 +6,11 @@ JSON parsing utilities
 def parse_bignum(s: str) -> int:
     if not isinstance(s, str):
         raise TypeError(f"Expected string, got {type(s)}")
-    if not s.startswith("0x"):
+    if not s.startswith("bigint:"):
         raise ValueError("Invalid prefix for bignum")
     if not s.endswith("n"):
         raise ValueError("Invalid suffix for bignum")
-    ret = s.removeprefix("0x")[:-1]
+    ret = s.removeprefix("bigint:")[:-1]
     assert all(c in "0123456789abcdef" for c in ret)
     return int(ret, 16)
 
@@ -18,9 +18,9 @@ def parse_bignum(s: str) -> int:
 def parse_hex_str(s: str) -> str:
     if not isinstance(s, str):
         raise TypeError(f"Expected string, got {type(s)}")
-    if not s.startswith("hex:"):
+    if not s.startswith("Buffer:"):
         raise ValueError("Invalid prefix for hex string")
-    ret = s.removeprefix("hex:")
+    ret = s.removeprefix("Buffer:")
     assert all(c in "0123456789abcdef" for c in ret)
     return ret
 
