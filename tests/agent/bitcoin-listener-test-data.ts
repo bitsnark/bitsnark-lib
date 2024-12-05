@@ -44,7 +44,7 @@ export const mockExpected = (function createSetupsIncomingTransactions(): Receiv
                     templateId: setupIndex * 100 + index,
                     setupId: setupId,
                     transactionName: templateName,
-                    temporaryTxId: templateName === TemplateNames.CHALLENGE
+                    unknownTxid: templateName === TemplateNames.CHALLENGE
                 },
                 outgoingStatus: TemplateStatus.PENDING
             };

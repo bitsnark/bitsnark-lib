@@ -35,7 +35,7 @@ describe('BitcoinListener', () => {
         nodeListener = new BitcoinListener(AgentRoles.PROVER);
         nodeListener.client = clientMock;
         jest.spyOn(nodeListener.db, 'query').mockImplementation(jest.fn());
-        jest.spyOn(nodeListener.db, 'getTemplates').mockImplementation(jest.fn());
+        jest.spyOn(nodeListener.db, 'getReceivedTemplates').mockImplementation(jest.fn());
         jest.spyOn(nodeListener.db, 'markReceived').mockImplementation(jest.fn());
         jest.spyOn(nodeListener.db, 'updateSetupLastCheckedBlockHeightBatch').mockImplementation(jest.fn());
     });
@@ -256,7 +256,7 @@ describe('BitcoinListener', () => {
     it('Should update listener height in setups', async () => {
         setupLastBlockProperties(nodeListener, 'hash109', 109);
         const mockExpected = getmockExpected();
-        jest.spyOn(nodeListener.db, 'getTemplates').mockResolvedValue(mockExpected);
+        jest.spyOn(nodeListener.db, 'getReceivedTemplates').mockResolvedValue(mockExpected);
 
         await nodeListener.monitorTransmitted();
 
