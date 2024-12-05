@@ -62,7 +62,7 @@ export function deepCompare(a: Bufferheap, b: Bufferheap): boolean {
     return false;
 }
 
-export interface MockAgent {
+export interface TestAgent {
     role?: string;
     agentId: string;
     db: testAgentDb;
@@ -71,7 +71,7 @@ export interface MockAgent {
     pending: Template[];
 }
 
-export function mockAgent(role: AgentRoles) {
+export function setTestAgent(role: AgentRoles): TestAgent {
     const agentId = `bitsnark_${role.toLowerCase()}_1`;
     return {
         role: role.toLowerCase(),
