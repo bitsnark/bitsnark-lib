@@ -1,8 +1,13 @@
 import { TEST_WOTS_SALT } from '../../src/agent/setup/emulate-setup';
 import { agentConf } from '../../src/agent/agent.conf';
-import { AgentRoles, Template } from '../../src/agent/common/types';
+import { AgentRoles, Template, TemplateStatus } from '../../src/agent/common/types';
 import { initializeTemplates } from '../../src/agent/setup/init-templates';
 import { mergeWots, setWotsPublicKeysForArgument } from '../../src/agent/setup/wots-keys';
+import { AgentDb } from '../../src/agent/common/agent-db';
+import { BitcoinListener } from '../../src/agent/listener/bitcoin-listener';
+import { BitcoinNetwork } from '../../src/agent/common/bitcoin-node';
+import { ListenerDb } from '@src/agent/listener/listener-db';
+
 
 const payloadUtxo = {
     txid: '0000000000000000000000000000000000000000000000000000000000000000',
@@ -55,4 +60,76 @@ export function deepCompare(a: Bufferheap, b: Bufferheap): boolean {
         return a.every((ta, i) => deepCompare(ta, b[i]));
     }
     return false;
+}
+
+export interface MockAgent {
+    role?: string;
+    agentId: string;
+    db: testAgentDb;
+    listener: BitcoinListener;
+    templates: Template[];
+    pending: Template[];
+}
+
+export function mockAgent(role: AgentRoles) {
+    const agentId = `bitsnark_${role.toLowerCase()}_1`;
+    return {
+        role: role.toLowerCase(),
+        agentId: agentId,
+        db: new testAgentDb(agentId),
+        listener: new BitcoinListener(agentId),
+        templates: [],
+        pending: []
+    };
+}
+
+export class testAgentDb extends AgentDb {
+    constructor(agentId: string) {
+        super(agentId);
+    }
+
+    //Used for testing purposes only
+    public async test_restartSetup(setupId: string) {
+        //delete all outgoing, incoming and templates
+        await this.query(
+            `UPDATE templates
+            SET outgoing_status = 'PENDING'
+            WHERE setup_id = $1`, [setupId]);
+        await this.query(
+            `UPDATE setups
+            SET status = 'ACTIVE'
+            WHERE id = $1`, [setupId]);
+        await this.query(
+            `DELETE FROM received
+            WHERE template_id in
+            (SELECT template_id
+            FROM templates
+            WHERE setup_id = $1)`, [setupId]);
+        ;
+    }
+
+    public async test_markPublished(setupId: string, templateName: string) {
+        await this.query(
+            `
+                UPDATE templates
+                SET updated_at = NOW(), outgoing_status = $1
+                WHERE setup_id = $2 AND name = $3
+            `,
+            [TemplateStatus.PUBLISHED, setupId, templateName]
+        );
+    }
+
+    async test_getReadyToSendTemplates(setupId: string): Promise<Template[]> {
+        return (
+            await this.query<Template>(
+                `SELECT ${ListenerDb.templateFields}
+            FROM templates
+                    JOIN setups ON templates.setup_id = setups.id
+                    LEFT JOIN received ON templates.id = received.template_id
+            WHERE outgoing_status = 'READY'
+            AND setups.id = $1`,
+                [setupId]
+            )
+        ).rows.map(ListenerDb.receivedTemplateReader);
+    }
 }

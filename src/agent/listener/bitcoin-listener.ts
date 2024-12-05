@@ -1,5 +1,5 @@
 import { agentConf } from '../agent.conf';
-import { BitcoinNode } from '../common/bitcoin-node';
+import { BitcoinNetwork, BitcoinNode } from '../common/bitcoin-node';
 import { RawTransaction } from 'bitcoin-core';
 import { ListenerDb } from './listener-db';
 import { Input, Template, TemplateNames } from '../common/types';
@@ -41,34 +41,7 @@ export class BitcoinListener {
 
         // No re-organization support - we just wait for blocks to be finalized.
         while (blockHeight <= this.tipHeight - agentConf.blocksUntilFinalized) {
-            const blockHash = await this.client.getBlockHash(blockHeight);
-
-            for (const pendingTx of pending) {
-                try {
-                    let transmittedTx: RawTransaction | undefined;
-                    if (!pendingTx.unknownTxid)
-                        transmittedTx = await this.client.getRawTransaction(pendingTx.txid!, true, blockHash);
-                    else
-                        transmittedTx = await this.getTransactionByInputs(
-                            pendingTx.inputs,
-                            templates.filter((template) => template.setupId === pendingTx.setupId),
-                            blockHash
-                        );
-
-                    if (transmittedTx)
-                        await this.db.markReceived(
-                            pendingTx.setupId,
-                            pendingTx.name,
-                            transmittedTx.txid,
-                            transmittedTx.blockhash,
-                            blockHeight,
-                            transmittedTx
-                        );
-                } catch (error) {
-                    console.error(error);
-                    continue;
-                }
-            }
+            await this.searchBlock(blockHeight, pending, templates);
 
             blockHeight++;
 
@@ -79,6 +52,36 @@ export class BitcoinListener {
         }
     }
 
+    async searchBlock(blockHeight: number, pending: Template[], templates: Template[]): Promise<void> {
+        const blockHash = await this.client.getBlockHash(blockHeight);
+
+        for (const pendingTx of pending) {
+            try {
+                let transmittedTx: RawTransaction | undefined;
+                if (!pendingTx.unknownTxid)
+                    transmittedTx = await this.client.getRawTransaction(pendingTx.txid!, true, blockHash);
+                else
+                    transmittedTx = await this.getTransactionByInputs(
+                        pendingTx.inputs,
+                        templates.filter((template) => template.setupId === pendingTx.setupId),
+                        blockHash
+                    );
+
+                if (transmittedTx)
+                    await this.db.markReceived(
+                        pendingTx.setupId!,
+                        pendingTx.name,
+                        transmittedTx.txid,
+                        transmittedTx.blockhash,
+                        blockHeight,
+                        transmittedTx
+                    );
+            } catch (error) {
+                console.error(error);
+                continue;
+            }
+        }
+    }
     private async getTransactionByInputs(
         inputs: Input[],
         templates: Template[],
@@ -103,7 +106,6 @@ export class BitcoinListener {
             for (const blockTx of blockTxs) {
                 const candidate = await this.client.getRawTransaction(blockTx, true, blockHash);
                 if (candidate.vin.length !== searchBy.length) continue;
-
                 if (
                     searchBy.every(
                         (search, index) =>

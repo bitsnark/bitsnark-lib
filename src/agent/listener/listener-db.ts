@@ -24,14 +24,14 @@ export interface ReceivedSetup extends Setup {
 }
 
 export class ListenerDb extends AgentDb {
-    private static templateFields = `
+    static templateFields = `
         templates.name, templates.role, templates.is_external, templates.ordinal,
         templates.inputs, templates.outputs, templates.unknown_txid,
         received.txid, received.raw_transaction, received.block_hash, received.block_height,
         setups.id, setups.protocol_version,
         setups.status, setups.last_checked_block_height`;
 
-    private static receivedTemplateReader(row: ResultRow<ResultRecord>): ReceivedTemplate {
+    static receivedTemplateReader(row: ResultRow<ResultRecord>): ReceivedTemplate {
         let i = 0;
         return {
             name: row[i++],

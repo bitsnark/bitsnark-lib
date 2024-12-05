@@ -3,7 +3,7 @@ import Client from 'bitcoin-core';
 
 export enum BitcoinNetwork {
     TESTNET = 'testnet',
-    REGTEST = 'regtest',
+    REGTEST = 'regtest'
 }
 export class BitcoinNode {
     public client;
@@ -17,8 +17,7 @@ export class BitcoinNode {
                 host: agentConf.bitcoinNodeHost,
                 port: agentConf.bitcoinNodePort
             });
-        }
-        else {
+        } else {
             this.client = new Client({
                 network: 'testnet',
                 username: 'sovtestnet',
