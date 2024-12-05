@@ -111,7 +111,7 @@ export class AgentDb extends Db {
 
     public async createSetup(setupId: string, wotsSalt: string): Promise<Setup> {
         await this.query(
-            `INSERT INTO setups (id, wots_salt, protocol_version, status) 
+            `INSERT INTO setups (id, wots_salt, protocol_version, status)
                 VALUES ($1, $2, $3, $4)`,
             [setupId, wotsSalt, agentConf.protocolVersion, SetupStatus.PENDING]
         );
@@ -249,6 +249,7 @@ export class AgentDb extends Db {
 
     // To assist mocking the DB in tests.
     public async query<Row>(sql: string, params?: QueryArgs) {
+        console.log('sql:', sql, params);
         return super.query<Row>(sql, params);
     }
 }

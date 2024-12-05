@@ -114,7 +114,7 @@ describe('BitcoinListener', () => {
         expect(clientMock.getRawTransaction).not.toHaveBeenCalledWith(mockExpected.find((tx) => !tx.unknownTxid));
     });
 
-    it('Will serach for temporaryTxId transaction parent spend inputs', async () => {
+    it('Will search for temporaryTxId transaction parent spend inputs', async () => {
         setupLastBlockProperties(nodeListener, 'hash107', 107);
         const mockExpected = getmockExpected(
             new Set([
@@ -125,13 +125,16 @@ describe('BitcoinListener', () => {
         );
         jest.spyOn(nodeListener.db, 'getReceivedTemplates').mockResolvedValue(mockExpected);
         (clientMock.getBlockHash as jest.Mock).mockResolvedValue('hash101');
+        (clientMock.getBlock as jest.Mock).mockResolvedValue({
+            tx: [txIdBySetupAndName('test_setup_1', TemplateNames.CHALLENGE_UNCONTESTED)]
+        });
 
         await nodeListener.monitorTransmitted();
 
         expect(clientMock.getTxOut).toHaveBeenCalled();
     });
 
-    it("Will not serach for temporaryTxId transaction if parent published but requiered inputs arn't spent", async () => {
+    it("Will not search for temporaryTxId transaction if parent published but requiered inputs arn't spent", async () => {
         setupLastBlockProperties(nodeListener, 'hash107', 107);
         const mockExpected = getmockExpected(
             new Set([
@@ -198,7 +201,7 @@ describe('BitcoinListener', () => {
         await nodeListener.monitorTransmitted();
 
         expect(clientMock.getRawTransaction).toHaveBeenCalledTimes(4);
-        jest.spyOn(nodeListener.db, 'getReceivedTemplates').mockImplementation(jest.fn());
+
         expect(nodeListener.db.markReceived).toHaveBeenCalledTimes(2);
         expect(nodeListener.db.markReceived).toHaveBeenCalledWith(
             'test_setup_1',

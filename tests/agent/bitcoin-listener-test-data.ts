@@ -11,6 +11,7 @@ const templates = [
 
 const IncomingTransactionsBaseRow: ReceivedTemplate = {
     setupId: 'setup_id',
+    txid: 'tx_id',
     setupStatus: SetupStatus.ACTIVE,
     lastCheckedBlockHeight: 100,
     name: 'transaction_name',
@@ -19,15 +20,16 @@ const IncomingTransactionsBaseRow: ReceivedTemplate = {
     ordinal: 4,
     inputs: [],
     outputs: [],
-    rawTransaction: undefined,
-    actualTxid: 'tx_id',
-    blockHash: undefined,
-    blockHeight: undefined
+    rawTransaction: null,
+    actualTxid: null,
+    blockHash: null,
+    blockHeight: null,
+    unknownTxid: false
 };
 
 const setups = ['test_setup_1'];
 
-export function txIdBySetupAndName(setupId: string, transactionName: string) {
+export function txIdBySetupAndName(setupId: string, transactionName: string): string {
     return `${setupId}_tx_${transactionName}`;
 }
 
@@ -38,14 +40,10 @@ export const mockExpected = (function createSetupsIncomingTransactions(): Receiv
                 ...IncomingTransactionsBaseRow,
                 name: templateName,
                 setupId: setupId,
-                object: {
-                    txId: txIdBySetupAndName(setupId, templateName),
-                    inputs: getInputs(templateName),
-                    templateId: setupIndex * 100 + index,
-                    setupId: setupId,
-                    transactionName: templateName,
-                    unknownTxid: templateName === TemplateNames.CHALLENGE
-                },
+                txid: txIdBySetupAndName(setupId, templateName),
+                templateId: setupIndex * 100 + index,
+                inputs: getInputs(templateName),
+                unknownTxid: templateName === TemplateNames.CHALLENGE,
                 outgoingStatus: TemplateStatus.PENDING
             };
         });
@@ -83,7 +81,7 @@ export function getmockExpected(markIncoming?: Set<string>) {
         if (markIncoming?.has(expectedTx.txid!)) {
             return {
                 ...expectedTx,
-                txId: expectedTx.txid ?? null,
+                actualTxid: expectedTx.txid ?? null,
                 blockHash: 'block_hash',
                 blockHeight: 100,
                 rawTransaction: {

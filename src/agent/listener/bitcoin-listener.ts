@@ -34,7 +34,7 @@ export class BitcoinListener {
 
     async monitorTransmitted(): Promise<void> {
         const templates = await this.db.getReceivedTemplates();
-        const pending = templates.filter((template) => template.blockHash == null);
+        const pending = templates.filter((template) => !template.blockHash);
         if (pending.length === 0) return;
 
         let blockHeight = (pending[0].lastCheckedBlockHeight ?? 0) + 1;
@@ -114,7 +114,7 @@ export class BitcoinListener {
             }
             return undefined;
         } catch (error) {
-            console.error(error);
+            console.log(error);
             return undefined;
         }
     }
@@ -122,9 +122,8 @@ export class BitcoinListener {
 
 if (require.main === module) {
     (async () => {
-        const db = new ListenerDb('bitsnark_prover_1');
-        const pending = await db.getReceivedTemplates();
-        console.log(pending.map((tx) => tx.lastCheckedBlockHeight));
+        const listener = new BitcoinListener('bitsnark_prover_1');
+        await listener.monitorTransmitted();
     })().catch((error) => {
         throw error;
     });

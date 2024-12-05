@@ -5,10 +5,10 @@ import { jsonParseCustom } from '../common/json';
 import { AgentDb } from '../common/agent-db';
 
 export interface Received {
-    actualTxid: string;
-    blockHash?: string;
-    blockHeight?: number;
-    rawTransaction?: RawTransaction;
+    actualTxid: string | null;
+    blockHash?: string | null;
+    blockHeight?: number | null;
+    rawTransaction?: RawTransaction | null;
 }
 
 // Template row, with optional received fields and setup data.
@@ -25,8 +25,8 @@ export interface ReceivedSetup extends Setup {
 
 export class ListenerDb extends AgentDb {
     private static templateFields = `
-        templates.name, templates.role, templates.is_external, templates.ordinal, 
-        templates.inputs, templates.outputs,
+        templates.name, templates.role, templates.is_external, templates.ordinal,
+        templates.inputs, templates.outputs, templates.unknown_txid,
         received.txid, received.raw_transaction, received.block_hash, received.block_height,
         setups.id, setups.protocol_version,
         setups.status, setups.last_checked_block_height`;
@@ -40,6 +40,7 @@ export class ListenerDb extends AgentDb {
             ordinal: row[i++],
             inputs: jsonParseCustom(JSON.stringify(row[i++])),
             outputs: jsonParseCustom(JSON.stringify(row[i++])),
+            unknownTxid: row[i++] as boolean,
             actualTxid: row[i++],
             rawTransaction: row[i++],
             blockHash: row[i++],
@@ -84,7 +85,7 @@ export class ListenerDb extends AgentDb {
     public async getReceivedTemplates(setupId?: string): Promise<ReceivedTemplate[]> {
         const setupFilter = setupId ? 'WHERE setups.id = $1' : '';
         const result = await this.query<ReceivedTemplate>(
-                `
+            `
                     SELECT ${ListenerDb.templateFields}
                     FROM templates
                     JOIN setups ON templates.setup_id = setups.id
@@ -92,10 +93,9 @@ export class ListenerDb extends AgentDb {
                     ${setupFilter}
                     ORDER BY last_checked_block_height ASC, ordinal ASC
                 `,
-                [setupId]
-            );
-        return result.rows
-            .map(ListenerDb.receivedTemplateReader);
+            [setupId]
+        );
+        return result.rows.map(ListenerDb.receivedTemplateReader);
     }
 
     public async getReceivedSetups(setupId: string): Promise<ReceivedSetup> {
@@ -104,7 +104,7 @@ export class ListenerDb extends AgentDb {
         const setup = (
             await this.query<ReceivedSetup>(
                 `
-                    SELECT 
+                    SELECT
                     id, protocol_version, status, last_checked_block_height, wots_salt
                     payload_txid, payload_output_index, payload_amount,
                     stake_txid, stake_output_index, stake_amount
@@ -124,4 +124,13 @@ export class ListenerDb extends AgentDb {
             received
         };
     }
+}
+
+if (require.main === module) {
+    (async () => {
+        const db = new ListenerDb('bitsnark_prover_1');
+        await db.getReceivedTemplates('test_setup').then((data) => {
+            data.map((row) => console.log(row.blockHash));
+        });
+    })();
 }
