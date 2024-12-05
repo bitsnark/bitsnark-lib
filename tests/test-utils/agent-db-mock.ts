@@ -1,8 +1,8 @@
-import { Setup, Template } from "../../src/agent/common/types";
-import { AgentDb, updateSetupPartial, UpdateTemplatePartial } from "../../src/agent/common/agent-db";
+import { Setup, Template } from '../../src/agent/common/types';
+import { AgentDb, updateSetupPartial, UpdateTemplatePartial } from '../../src/agent/common/agent-db';
 
 async function waitAndReturn<T>(obj: T): Promise<T> {
-    return new Promise(resolve => setTimeout(() => resolve(obj), 1));
+    return new Promise((resolve) => setTimeout(() => resolve(obj), 1));
 }
 
 export class AgentDbMock extends AgentDb {
@@ -10,7 +10,7 @@ export class AgentDbMock extends AgentDb {
 
     public createSetupReturn?: Setup;
     public createSetupCalledCount = 0;
-    public createSetupCalledParams?: { setupId: string, wotsSalt: string };
+    public createSetupCalledParams?: { setupId: string; wotsSalt: string };
     public async createSetup(setupId: string, wotsSalt: string): Promise<Setup> {
         this.createSetupCalledParams = { setupId, wotsSalt };
         this.createSetupCalledCount++;
@@ -18,7 +18,7 @@ export class AgentDbMock extends AgentDb {
     }
 
     public updateSetupCalledCount = 0;
-    public updateSetupCalledParams?: { setupId: string, setup: updateSetupPartial };
+    public updateSetupCalledParams?: { setupId: string; setup: updateSetupPartial };
     public async updateSetup(setupId: string, setup: updateSetupPartial) {
         this.updateSetupCalledParams = { setupId, setup };
         this.updateSetupCalledCount++;
@@ -55,14 +55,14 @@ export class AgentDbMock extends AgentDb {
     }
 
     public updateSetupLastCheckedBlockHeightCalledCount = 0;
-    public updateSetupLastCheckedBlockHeightCalledParams?: { setupId: string, blockHeight: number };
+    public updateSetupLastCheckedBlockHeightCalledParams?: { setupId: string; blockHeight: number };
     public async updateSetupLastCheckedBlockHeight(setupId: string, blockHeight: number) {
         this.updateSetupLastCheckedBlockHeightCalledParams = { setupId, blockHeight };
         this.updateSetupLastCheckedBlockHeightCalledCount++;
     }
 
     public updateSetupLastCheckedBlockHeightBatchCalledCount = 0;
-    public updateSetupLastCheckedBlockHeightBatchCalledParams?: { setupIds: string[], blockHeight: number };
+    public updateSetupLastCheckedBlockHeightBatchCalledParams?: { setupIds: string[]; blockHeight: number };
     public async updateSetupLastCheckedBlockHeightBatch(setupIds: string[], blockHeight: number) {
         this.updateSetupLastCheckedBlockHeightBatchCalledParams = { setupIds, blockHeight };
         this.updateSetupLastCheckedBlockHeightBatchCalledCount++;
@@ -87,28 +87,28 @@ export class AgentDbMock extends AgentDb {
     }
 
     public insertTemplatesCalledCount = 0;
-    public insertTemplatesCalledParams?: { setupId: string, templates: Template[] };
+    public insertTemplatesCalledParams?: { setupId: string; templates: Template[] };
     public async insertTemplates(setupId: string, templates: Template[]) {
         this.insertTemplatesCalledCount++;
         this.insertTemplatesCalledParams = { setupId, templates };
     }
 
     public updateTemplatesCalledCount = 0;
-    public updateTemplatesCalledParams?: { setupId: string, templates: UpdateTemplatePartial[] };
+    public updateTemplatesCalledParams?: { setupId: string; templates: UpdateTemplatePartial[] };
     public async updateTemplates(setupId: string, templates: UpdateTemplatePartial[]) {
         this.updateTemplatesCalledCount++;
         this.updateTemplatesCalledParams = { setupId, templates };
     }
 
     public upsertTemplatesCalledCount = 0;
-    public upsertTemplatesCalledParams?: { setupId: string, templates: Template[] };
+    public upsertTemplatesCalledParams?: { setupId: string; templates: Template[] };
     public async upsertTemplates(setupId: string, templates: Template[]) {
         this.upsertTemplatesCalledCount++;
         this.upsertTemplatesCalledParams = { setupId, templates };
     }
 
     public markTemplateToSendCalledCount = 0;
-    public markTemplateToSendCalledParams?: { setupId: string, templateName: string, data?: Buffer[][] };
+    public markTemplateToSendCalledParams?: { setupId: string; templateName: string; data?: Buffer[][] };
     public async markTemplateToSend(setupId: string, templateName: string, data?: Buffer[][]) {
         this.markTemplateToSendCalledCount++;
         this.markTemplateToSendCalledParams = { setupId, templateName, data };

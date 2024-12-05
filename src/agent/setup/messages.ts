@@ -147,12 +147,14 @@ export function fromJson(json: string): Message {
     return m;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function sortFields(obj: any): any {
     if (typeof obj != 'object') return obj;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const newObj: any = {};
     Object.keys(obj)
         .sort((a, b) => a.localeCompare(b))
-        .forEach(k => newObj[k] = sortFields(obj[k]));
+        .forEach((k) => (newObj[k] = sortFields(obj[k])));
     return newObj;
 }
 

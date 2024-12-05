@@ -101,8 +101,8 @@ export async function emulateSetup(
 
     console.log('Signing transactions - this will overwrite templates...');
 
-    // proverTemplates = await signTransactions(AgentRoles.PROVER, proverAgentId, setupId, proverTemplates);
-    // verifierTemplates = await signTransactions(AgentRoles.VERIFIER, verifierAgentId, setupId, verifierTemplates);
+    proverTemplates = await signTransactions(AgentRoles.PROVER, proverAgentId, setupId, proverTemplates);
+    verifierTemplates = await signTransactions(AgentRoles.VERIFIER, verifierAgentId, setupId, verifierTemplates);
 
     console.log('merging signatures...');
     for (const [templateIdx, proverTemplate] of proverTemplates.entries()) {

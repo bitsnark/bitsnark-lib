@@ -48,8 +48,7 @@ describe('Agent message signatures check', () => {
     it('Prover should create a new setupInstance & send a response when a message with /start is received', async () => {
         const spySignMessageAndSend = jest.spyOn(prover, 'signMessageAndSend');
         const spyStart = jest.spyOn(prover, 'start');
-        const message = 
-            `/start test_setup ${lockedFunds.txid} ${lockedFunds.amount} ${proverStake.txid} ${proverStake.amount}`;
+        const message = `/start test_setup ${lockedFunds.txid} ${lockedFunds.amount} ${proverStake.txid} ${proverStake.amount}`;
 
         mockProverDb.getSetupReturn = fakeSetup;
         await prover.messageReceived(message, mockContext);
@@ -87,8 +86,7 @@ describe('Agent message signatures check', () => {
         await verifier.messageReceived(toJson(signedMessage), mockContext);
 
         expect(mockVerifierDb.createSetupCalledCount).toBe(1);
-        expect(mockVerifierDb.createSetupCalledParams)
-            .toEqual({ setupId: fakeSetup.id, wotsSalt: fakeSetup.id });
+        expect(mockVerifierDb.createSetupCalledParams).toEqual({ setupId: fakeSetup.id, wotsSalt: fakeSetup.id });
 
         expect(spySignMessageAndSend).toHaveBeenCalledTimes(1);
         expect(verifier.instances.get(setupId)).toBeDefined();

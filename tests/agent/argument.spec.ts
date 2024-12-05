@@ -2,7 +2,7 @@ import { encodeWinternitz24, WOTS_NIBBLES, WotsType } from '../../src/agent/comm
 import { proofBigint } from '../../src/agent/common/constants';
 import { Argument } from '../../src/agent/protocol-logic/argument';
 import { parseInput } from '../../src/agent/protocol-logic/parser';
-import { initTemplatesForTest } from '../test-utils';
+import { initTemplatesForTest } from '../test-utils/test-utils';
 import { createUniqueDataId } from '../../src/agent/setup/wots-keys';
 import { getTemplateByName, twoDigits } from '../../src/agent/common/templates';
 import { TemplateNames } from '../../src/agent/common/types';
