@@ -20,7 +20,7 @@ function calculateTransactionFee(transaction: Template): bigint {
         0
     );
     const totalSize = Math.ceil((inputScriptsSize + outputScriptsSize) / 8);
-    const requiredFee = BigInt(totalSize) * agentConf.feePerByte;
+    const requiredFee = BigInt(totalSize) * agentConf.feePerVbyte;
     const factoredFee = (requiredFee * BigInt(agentConf.feeFactorPercent)) / 100n;
     return factoredFee + 1n;
 }
@@ -100,11 +100,11 @@ export function validateTransactionFees(templates: Template[]) {
         { size: 0, fee: 0n }
     );
 
-    if (totals.fee / BigInt(Math.ceil((totals.size / 8 / 100) * agentConf.feeFactorPercent)) != agentConf.feePerByte) {
+    if (totals.fee / BigInt(Math.ceil((totals.size / 8 / 100) * agentConf.feeFactorPercent)) != agentConf.feePerVbyte) {
         throw new Error(
             `Fee per byte is not correct: ` +
                 `${totals.fee / BigInt(Math.ceil((totals.size / 8 / 100) * agentConf.feeFactorPercent))} ` +
-                `!= ${agentConf.feePerByte}`
+                `!= ${agentConf.feePerVbyte}`
         );
     }
 }

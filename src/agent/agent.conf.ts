@@ -16,7 +16,7 @@ interface AgentConf {
     proverStakeAmount: bigint;
     verifierPaymentAmount: bigint;
     symbolicOutputAmount: bigint;
-    feePerByte: bigint;
+    feePerVbyte: bigint;
     feeFactorPercent: number;
     winternitzSecret: string;
     tokens: { [key: string]: string };
@@ -53,7 +53,7 @@ export const agentConf: AgentConf = {
     // https://github.com/bitcoin/bitcoin/blob/6463117a29294f6ddc9fafecfd1e9023956cc41b/src/policy/policy.cpp#L26
     symbolicOutputAmount: parse.bigint('SYMBOLIC_OUTPUT_AMOUNT', ONE_SATOSHI * 546n),
 
-    feePerByte: parse.bigint('FEE_PER_BYTE', ONE_SATOSHI * 20n),
+    feePerVbyte: parse.bigint('FEE_PER_BYTE', ONE_SATOSHI * 20n),
     feeFactorPercent: parse.integer('FEE_FACTOR_PERCENT', 125),
 
     winternitzSecret: parse.string('WOTS_SECRET', 'no rest for the wicked'),
@@ -97,5 +97,5 @@ export const agentConf: AgentConf = {
     blocksUntilFinalized: parse.integer('BLOCKS_UNTIL_FINALIZED', 0), // 6
     protocolVersion: parse.string('PROTOCOL_VERSION', '0.2'),
     useMockProgram: parse.boolean('USE_MOCK_PROGRAM', false),
-    protocolIntervalMs: parse.integer('PROTOCOL_INTERVAL_MS', 30000)
+    protocolIntervalMs: parse.integer('PROTOCOL_INTERVAL_MS', 1000)
 };
