@@ -1,46 +1,35 @@
 #!/bin/sh -e
 
-. ./scripts/docker-utils.sh
+. "$(dirname "$(realpath "$0")")/common.sh"
 
-CONTAINER_NAME=bitcoin-node
+bitcoin_data_dir="$1"
 
-# returns 1 if container exists but not removed
-conditionally_remove_container $CONTAINER_NAME
+# returns error (and therefore exits) if container exists but not removed.
+conditionally_remove_container $regtest_container_name
 
-echo Starting the Bitcoin node in regtest mode...
+echo -n Starting the Bitcoin node in regtest mode
+if [ "$bitcoin_data_dir" ]; then
+    mkdir -p "$bitcoin_data_dir"
+    volume_mount="-v $bitcoin_data_dir:/home/bitcoin/.bitcoin"
+    echo -n " with data directory $bitcoin_data_dir"
+fi
+echo ...
 
-docker run -d --name "$CONTAINER_NAME" -v bitcoin-data:/bitcoin/.bitcoin -p 18443:18443 -p 18444:18444 ruimarinho/bitcoin-core:latest \
+docker run -d --name "$regtest_container_name" \
+    $volume_mount -p 18443:18443 -p 18444:18444 ruimarinho/bitcoin-core:latest \
     -regtest -rpcuser=rpcuser -rpcpassword=rpcpassword -fallbackfee=0.0002  -rpcallowip=0.0.0.0/0 -rpcbind=0.0.0.0
-
-bitcoin_cli() {
-    docker exec "$CONTAINER_NAME" bitcoin-cli -regtest -rpcuser=rpcuser -rpcpassword=rpcpassword "$@"
-}
-
 printf "Waiting for the Bitcoin node to start..."
-
 while ! bitcoin_cli getblockchaininfo > /dev/null 2>&1; do
     printf .
     sleep 1
 done
-
 echo
-
 echo Bitcoin node is up and running.
-docker logs "$CONTAINER_NAME"
 
 echo Creating and loading a wallet...
-bitcoin_cli createwallet testwallet
+bitcoin_cli createwallet testwallet || true
 
 # Segwit needs 432 blocks, at least according to this:
 # https://gist.github.com/t4sk/0bc6b35a26998b9007d68f376a852636
 echo Generating initial blocks and activating segwit...
 bitcoin_cli generatetoaddress 432 $(bitcoin_cli getnewaddress) > /dev/null
-
-echo Generating mock transactions...
-for i in {1..10}
-do
-    bitcoin_cli sendtoaddress $(bitcoin_cli getnewaddress) 0.1
-done
-
-echo Generating another block to include the transactions...
-bitcoin_cli generatetoaddress 1 $(bitcoin_cli getnewaddress)

@@ -1,11 +1,9 @@
 #!/bin/sh -e
 
-. ./scripts/docker-utils.sh
-
-CONTAINER_NAME=postgres
+. "$(dirname "$(realpath "$0")")/common.sh"
 
 # Will exit if the container remains running.
-conditionally_remove_container "$CONTAINER_NAME"
+conditionally_remove_container "$postgres_container_name"
 
 # Prepare the SQL creation script.
 script_dir="$(dirname "$(realpath "$0")")"
@@ -24,12 +22,13 @@ done
 chmod 644 "$sql_file"
 
 # Run the PostgreSQL container.
-docker run --name "$CONTAINER_NAME" -dp 5432:5432 \
+docker run --name "$postgres_container_name" -dp 5432:5432 \
     -v "$sql_file:/docker-entrypoint-initdb.d/schema.sql" \
     -e POSTGRES_PASSWORD=1234 \
     postgres
 
-until docker exec "$CONTAINER_NAME" pg_isready -U postgres; do
+# Wait for the container to be ready.
+until docker exec "$postgres_container_name" pg_isready -U postgres; do
   sleep 1
 done
 
