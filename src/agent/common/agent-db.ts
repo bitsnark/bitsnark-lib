@@ -215,10 +215,11 @@ export class AgentDb extends Db {
         templates = templates.map((t) => ({ ...t, setupId }));
         const fields = ['ordinal', 'txid', 'inputs', 'outputs'];
         for (const template of templates) {
-            await this.query(
-                `UPDATE templates SET ${dollarsForUpdate(fields, 3)} WHERE setup_id = $1 AND name = $2`,
-                [setupId, template.name, ...objToRow(fields, template)]
-            );
+            await this.query(`UPDATE templates SET ${dollarsForUpdate(fields, 3)} WHERE setup_id = $1 AND name = $2`, [
+                setupId,
+                template.name,
+                ...objToRow(fields, template)
+            ]);
         }
     }
 

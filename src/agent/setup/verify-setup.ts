@@ -100,10 +100,8 @@ export async function verifySetup(agentId: string, setupId: string, role: AgentR
 }
 
 if (require.main === module) {
-    verifySetup('bitsnark_prover_1', 'test_setup', AgentRoles.PROVER).catch(
-        (error) => {
-            console.log('Error:', error);
-            throw error;
-        }
-    );
+    verifySetup('bitsnark_prover_1', 'test_setup', AgentRoles.PROVER).catch((error) => {
+        console.log('Error:', error);
+        throw error;
+    });
 }
