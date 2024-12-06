@@ -44,7 +44,7 @@ activate_python_venv() {
     fi
     if [ "$(missing_packages)" ]; then
         pip install --upgrade pip
-        pip install -r "$requirements"
+        pip install -r ./python/requirements.txt
         if [ "$(missing_packages)" ]; then
             echo "Failed to install all requirements"
             return 1
