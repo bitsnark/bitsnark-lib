@@ -79,7 +79,7 @@ export class TransactionsMessage {
 }
 
 export class SignatureTuple {
-    transactionName: string = '';
+    templateName: string = '';
     txid: string = '';
     signatures: string[] = [];
 }

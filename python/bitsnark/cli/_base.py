@@ -45,8 +45,7 @@ def find_tx_template(context: Context) -> TransactionTemplate:
     args = context.args
 
     tx_template_query = select(TransactionTemplate).filter_by(
-        setup_id=args.setup_id,
-        agent_id=args.agent_id,
+        setup_id=args.setup_id
     )
     if args.name is not None:
         tx_template_query = tx_template_query.filter_by(name=args.name)

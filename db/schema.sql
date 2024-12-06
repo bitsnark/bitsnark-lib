@@ -4,13 +4,13 @@ CREATE TABLE setups (
     protocol_version CHARACTER VARYING NOT NULL,
     status CHARACTER VARYING NOT NULL,
     last_checked_block_height INTEGER NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     payload_txid CHARACTER VARYING,
-    payload_output_index INTEGER, 
+    payload_output_index INTEGER,
     payload_amount INTEGER,
-    stake_txid CHARACTER VARYING, 
-    stake_output_index INTEGER, 
-    stake_amount INTEGER
+    stake_txid CHARACTER VARYING,
+    stake_output_index INTEGER,
+    stake_amount INTEGER,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX setups_status_idx ON setups (status);
@@ -27,7 +27,8 @@ CREATE TABLE templates (
     inputs JSONB NOT NULL,
     outputs JSONB NOT NULL,
     status CHARACTER VARYING NOT NULL DEFAULT 'PENDING',
-    data JSONB NULL,
+    tx_data JSONB NULL,
+    protocol_data JSONB NULL,
     updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
     UNIQUE (setup_id, name)
 );

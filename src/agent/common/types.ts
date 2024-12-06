@@ -2,20 +2,20 @@ import { WotsType } from './winternitz';
 
 export const iterations = 6;
 
-export const enum TemplateNames {
-    LOCKED_FUNDS = 'locked_funds',
-    PROVER_STAKE = 'prover_stake',
-    PROOF = 'proof',
-    PROOF_UNCONTESTED = 'proof_uncontested',
-    CHALLENGE = 'challenge',
-    CHALLENGE_UNCONTESTED = 'challenge_uncontested',
-    STATE = 'state',
-    STATE_UNCONTESTED = 'state_uncontested',
-    SELECT = 'select',
-    SELECT_UNCONTESTED = 'select_uncontested',
-    ARGUMENT = 'argument',
-    ARGUMENT_UNCONTESTED = 'argument_uncontested',
-    PROOF_REFUTED = 'proof_refuted'
+export enum TemplateNames {
+    LOCKED_FUNDS = 'LOCKED_FUNDS',
+    PROVER_STAKE = 'PROVER_STAKE',
+    PROOF = 'PROOF',
+    PROOF_UNCONTESTED = 'PROOF_UNCONTESTED',
+    CHALLENGE = 'CHALLENGE',
+    CHALLENGE_UNCONTESTED = 'CHALLENGE_UNCONTESTED',
+    STATE = 'STATE',
+    STATE_UNCONTESTED = 'STATE_UNCONTESTED',
+    SELECT = 'SELECT',
+    SELECT_UNCONTESTED = 'SELECT_UNCONTESTED',
+    ARGUMENT = 'ARGUMENT',
+    ARGUMENT_UNCONTESTED = 'ARGUMENT_UNCONTESTED',
+    PROOF_REFUTED = 'PROOF_REFUTED'
 }
 
 export enum ProtocolStep {

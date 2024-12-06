@@ -19,7 +19,7 @@ from ..btc.rpc import BitcoinRPC
 def main(argv: Sequence[str] = None):
     parser = argparse.ArgumentParser()
     parser.add_argument('--db', default=POSTGRES_BASE_URL)
-    parser.add_argument('--rpc', required=True, help='Bitcoin RPC url including the wallet',
+    parser.add_argument('--rpc', help='Bitcoin RPC url including the wallet',
                         default='http://rpcuser:rpcpassword@localhost:18443/wallet/testwallet')
     parser.add_argument('--setup-id', required=True,
                         help='Process only transactions with this setup ID. Required if --all is not set')
@@ -28,7 +28,7 @@ def main(argv: Sequence[str] = None):
     parser.add_argument('--fee-rate', required=True,
                         help='Fee rate sat/vB')
     parser.add_argument('--change-address', required=True,
-                        help='Change address')
+                        help='Change address ("generate" to generate a new one)')
     parser.add_argument('tx_names', nargs="+",
                         help='Name of the transaction template to fund. Specify multiple to fund multiple.')
 
@@ -48,6 +48,11 @@ def main(argv: Sequence[str] = None):
     else:
         raise ValueError(f"Unknown chain {blockchain_info['chain']}")
 
+    change_address  = args.change_address
+    if change_address == 'generate':
+        change_address = bitcoin_rpc.call('getnewaddress')
+        print(f"Generated a new change address: {change_address}")
+
     print(f"Funding transactions: {args.tx_names}")
     inputs_to_unlock: list[tuple[str, int]] = []  # txid, vout
     with ChainParams(chain):
@@ -58,7 +63,6 @@ def main(argv: Sequence[str] = None):
                     tx_template = dbsession.execute(
                         select(TransactionTemplate).filter_by(
                             setup_id=args.setup_id,
-                            agent_id=args.agent_id,
                             name=tx_name,
                         )
                     ).scalar_one()
@@ -95,7 +99,7 @@ def main(argv: Sequence[str] = None):
                         0,  # Locktime
                         {
                             'add_inputs': True,
-                            'changeAddress': args.change_address,
+                            'changeAddress': change_address,
                             'changePosition': change_index,
                             'fee_rate': args.fee_rate,
                             'lockUnspents': True,
@@ -120,13 +124,14 @@ def main(argv: Sequence[str] = None):
                     signed_psbt = PartiallySignedTransaction.from_base64(ret['psbt'])
                     tx = signed_psbt.extract_transaction()
 
-                    tx_id = tx.GetTxid()[::-1].hex()
-                    tx_template.tx_id = tx_id
-                    tx_template['txid'] = tx_id
-                    tx_template['isExternal'] = True
-                    tx_template['signedSerializedTx'] = serialize_hex(tx.serialize())
-                    flag_modified(tx_template, 'inputs')
-                    flag_modified(tx_template, 'outputs')
+                    txid = tx.GetTxid()[::-1].hex()
+                    tx_template.txid = txid
+                    tx_template.is_external = True
+                    tx_template.tx_data = dict(
+                        tx_template.tx_data or {}, signedSerializedTx=serialize_hex(tx.serialize())
+                    )
+                    flag_modified(tx_template, 'txid')
+                    flag_modified(tx_template, 'is_external')
         finally:
             # Lock all previously locked utxos
             bitcoin_rpc.call('lockunspent', True, [{

@@ -13,7 +13,7 @@ from sqlalchemy.orm.attributes import flag_modified
 
 from bitsnark.conf import POSTGRES_BASE_URL
 from bitsnark.core.parsing import parse_bignum, parse_hex_bytes, serialize_hex
-from .models import TransactionTemplate, Setups, Status, SetupStatus
+from .models import TransactionTemplate, Setups, SetupStatus, OutgoingStatus
 from .signing import sign_input
 
 Role = Literal['prover', 'verifier']
@@ -125,11 +125,11 @@ def main(argv: Sequence[str] = None):
             )
             if success:
                 successes.append(tx.name)
-                print(f"OK! {tx.tx_id}")
+                print(f"OK! {tx.txid}")
             else:
-                # The script that will be used in the proof_refuted tx is undetermined at this point.
+                # The script that will be used in the PROOF_REFUTED tx is undetermined at this point.
                 # This is a temporary fix until we figure out exactly what needs to be signed and when.
-                if tx.name == "proof_refuted":
+                if tx.name == "PROOF_REFUTED":
                     sys.stderr.write(f"FAIL! Hard-coded to ignore {tx.name}\n")
                 else:
                     raise TransactionProcessingError(f"Rollback: Failed signing {tx.name}")
@@ -160,10 +160,11 @@ def _handle_tx_template(
 ):
     if tx_template.is_external:
         # Requierd for signing next transactions
-        tx_template.tx_id = tx_template.txid
+        tx_template.txid = tx_template.txid
         tx_template_map[tx_template.name] = tx_template
-        print(f"Transaction {tx_template.name} is external, skipping")
-        return True
+        if not use_mocked_inputs:
+            # We don't want to sign external transactions
+            return True
 
     if use_mocked_inputs and tx_template.name in HARDCODED_MOCK_INPUTS:
         # assert len(tx_template.inputs) == 0  # cannot do it, this script might have been already run
@@ -194,13 +195,13 @@ def _handle_tx_template(
         for input_index, inp in enumerate(tx_template.inputs):
             prev_tx = tx_template_map.get(inp['templateName'])
             if not prev_tx:
-                raise KeyError(f"Transaction {inp['name']} not found")
+                raise KeyError(f"Transaction {inp['templateName']} not found")
 
             print(f"Processing input #{input_index} of transaction {inp['templateName']} ...")
 
-            prev_txid = prev_tx.tx_id
+            prev_txid = prev_tx.txid
             if not prev_txid:
-                raise ValueError(f"Transaction {inp['name']} has no txId")
+                raise ValueError(f"Transaction {inp['templateName']} has no txId")
 
             prevout_index = inp['outputIndex']
             prevout = prev_tx.outputs[prevout_index]
@@ -268,14 +269,15 @@ def _handle_tx_template(
         nVersion=2,
     )
 
-    tx_id = tx.GetTxid()[::-1].hex()
+    txid = tx.GetTxid()[::-1].hex()
 
     serialized = tx.serialize()
 
     # Alter the template
-    tx_template.tx_id = tx_id
-    tx_template.txid = tx_id
-    tx_template.serializedTx = serialize_hex(serialized)
+    tx_template.txid = txid
+    tx_template.tx_data = dict(
+        tx_template.tx_data or {}, signedSerializedTx=serialize_hex(tx.serialize())
+    )
     for i, inp in enumerate(tx_inputs):
         signature = sign_input(
             script=input_tapscripts[i],
@@ -286,7 +288,7 @@ def _handle_tx_template(
         )
         if len(tx_template.inputs) <= i:
             # HACK: the hardcoded initial transactions have an empty list of inputs
-            tx_templateinputs.append({})
+            tx_template.inputs.append({})
 
         if role == 'prover':
             role_signature_key = 'proverSignature'
@@ -298,7 +300,6 @@ def _handle_tx_template(
 
     # Make sure SQLAlchemy knows that the JSON object has changed
     flag_modified(tx_template, 'inputs')
-    flag_modified(tx_template, 'outputs')
 
     tx_template_map[tx_template.name] = tx_template
     return True

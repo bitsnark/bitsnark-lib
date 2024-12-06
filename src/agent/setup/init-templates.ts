@@ -16,7 +16,7 @@ const PROTOCOL_VERSION = '1.1';
 export function initializeTemplates(
     role: AgentRoles,
     setupId: string,
-    wotdSalt: string,
+    wotsSalt: string,
     proverPublicKey: bigint,
     verifierPublicKey: bigint,
     payloadUtxo: FundingUtxo,
@@ -47,7 +47,7 @@ export function initializeTemplates(
         t.ordinal = i;
     }
 
-    generateWotsPublicKeys(wotdSalt, templates, role);
+    generateWotsPublicKeys(wotsSalt, templates, role);
 
     // Copy timeouts from spending conditions to their inputs, so CHECKSEQUENCEVERIFY can verify the nSequence.
     for (const t of templates) {

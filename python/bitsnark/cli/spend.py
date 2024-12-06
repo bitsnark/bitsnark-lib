@@ -169,9 +169,9 @@ class SpendCommand(Command):
                 raw_result=mempool_accept,
             )
 
-        tx_id = bitcoin_rpc.call(
+        txid = bitcoin_rpc.call(
             'sendrawtransaction',
             serialized_tx,
         )
-        logger.info("TX broadcast: %s", tx_id)
+        logger.info("TX broadcast: %s", txid)
         bitcoin_rpc.mine_blocks()
