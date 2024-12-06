@@ -202,26 +202,25 @@ export class AgentDb extends Db {
             status: t.status ?? TemplateStatus.PENDING
         }));
         const fieldsNoId = templateFields.filter((s) => s != 'id');
-        await this.session(
-            templates.map((template) => ({
-                sql: `INSERT INTO templates (${fieldsNoId.join(', ')})
-                    VALUES (${dollars(fieldsNoId.length)})`,
-                args: objToRow(fieldsNoId, template)
-            }))
-        );
+        for (const template of templates) {
+            await this.query(
+                `INSERT INTO templates (${fieldsNoId.join(', ')}) VALUES (${dollars(fieldsNoId.length)})`,
+                objToRow(fieldsNoId, template)
+            );
+        }
     }
 
     public async updateTemplates(setupId: string, templates: UpdateTemplatePartial[]) {
         // make sure they go into the right setup
         templates = templates.map((t) => ({ ...t, setupId }));
         const fields = ['ordinal', 'txid', 'inputs', 'outputs'];
-        await this.session(
-            templates.map((template) => ({
-                sql: `UPDATE templates SET ${dollarsForUpdate(fields, 3)}
-                        WHERE id = $1 AND name = $2`,
-                args: [setupId, template.name, ...objToRow(fields, template)]
-            }))
-        );
+        for (const template of templates) {
+            await this.query(`UPDATE templates SET ${dollarsForUpdate(fields, 3)} WHERE setup_id = $1 AND name = $2`, [
+                setupId,
+                template.name,
+                ...objToRow(fields, template)
+            ]);
+        }
     }
 
     public async upsertTemplates(setupId: string, templates: Template[]) {
@@ -237,7 +236,7 @@ export class AgentDb extends Db {
     public async markTemplateToSend(setupId: string, templateName: string, data?: Buffer[][]) {
         await this.query(
             `UPDATE templates
-                SET updated = NOW(), data = $1, status = $2
+                SET updated_at = NOW(), protocol_data = $1, status = $2
                 WHERE setup_id = $3 AND name = $4`,
             [
                 data ? JSON.stringify(data.map((data) => data.map((buffer) => buffer.toString('hex')))) : null,
@@ -248,9 +247,9 @@ export class AgentDb extends Db {
         );
     }
 
-    // To assist mocking the DB in tests.
+    // To assist debugging and mocking the DB in tests.
     public async query<Row>(sql: string, params?: QueryArgs) {
-        console.log('sql:', sql, params);
+        console.log(`${this.database} sql: ${sql}`, params);
         return super.query<Row>(sql, params);
     }
 }

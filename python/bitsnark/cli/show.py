@@ -40,17 +40,16 @@ class ShowCommand(Command):
             print(f"{key}{value}")
         print("Inputs:")
         for inp in tx_template.inputs:
-            prev_tx_name = inp['name']
+            prev_tx_name = inp['templateName']
             prev_tx = dbsession.execute(
                 sa.select(
                     TransactionTemplate,
                 ).filter_by(
-                    agent_id=tx_template.agent_id,
                     setup_id=tx_template.setup_id,
                     name=prev_tx_name,
                 )
             ).scalar_one()
-            prev_txid = prev_tx.tx_id
+            prev_txid = prev_tx.txid
             prevout_index = inp['outputIndex']
             sc_index = inp['spendingConditionIndex']
             index = inp['index']

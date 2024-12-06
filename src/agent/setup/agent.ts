@@ -16,7 +16,7 @@ import { SimpleContext, TelegramBot } from './telegram';
 import { verifySetup } from './verify-setup';
 import { signMessage, verifyMessage } from '../common/schnorr';
 import { addAmounts } from './amounts';
-import { signTransactions } from './sign-transactions';
+import { signTemplates } from './sign-templates';
 import { AgentRoles, Setup, SetupStatus, Template } from '../common/types';
 import { initializeTemplates } from './init-templates';
 import { mergeWots, setWotsPublicKeysForArgument } from './wots-keys';
@@ -307,11 +307,11 @@ export class Agent {
 
         await this.db.upsertTemplates(setupId, i.templates);
 
-        i.templates = await signTransactions(this.role, this.agentId, i.setupId, i.templates!);
+        i.templates = await signTemplates(this.role, this.agentId, i.setupId, i.templates!);
 
         const signed: SignatureTuple[] = i.templates!.map((t) => {
             return {
-                transactionName: t.name,
+                templateName: t.name,
                 txid: t.txid ?? '',
                 signatures: t.inputs.map(
                     (input) => (this.role == AgentRoles.PROVER ? input.proverSignature : input.verifierSignature) ?? ''
@@ -339,7 +339,7 @@ export class Agent {
         i.state = SetupState.DONE;
 
         for (const s of message.signatures) {
-            const template = getTemplateByName(i.templates!, s.transactionName);
+            const template = getTemplateByName(i.templates!, s.templateName);
             if (template.isExternal) continue;
             template.inputs.forEach((input, inputIndex) => {
                 if (!s.signatures[inputIndex]) return;

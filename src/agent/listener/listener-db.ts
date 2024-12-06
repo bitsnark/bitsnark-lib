@@ -58,7 +58,7 @@ export class ListenerDb extends AgentDb {
 
     public async markReceived(
         setupId: string,
-        transactionName: string,
+        templateName: string,
         txid: string,
         blockHash: string,
         blockHeight: number,
@@ -78,7 +78,7 @@ export class ListenerDb extends AgentDb {
                 INSERT INTO received (template_id, transaction_hash, block_hash, block_height, raw_transaction)
                 VALUES ((SELECT id FROM templates WHERE setup_id = $1 AND name = $2), $3, $4, $5, $6)
             `,
-            [setupId, transactionName, txid, blockHash, blockHeight, JSON.stringify(rawTransaction)]
+            [setupId, templateName, txid, blockHash, blockHeight, JSON.stringify(rawTransaction)]
         );
     }
 

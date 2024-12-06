@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { AgentRoles, Template, TemplateNames } from '../common/types';
 import { AgentDb } from '../common/agent-db';
 
-export async function signTransactions(
+export async function signTemplates(
     role: AgentRoles,
     agentId: string,
     setupId: string,
@@ -63,7 +63,7 @@ async function main() {
     const setupId = 'test_setup';
     const db = new AgentDb(agentId);
     const templates = await db.getTemplates(setupId);
-    signTransactions(AgentRoles.PROVER, agentId, setupId, templates).catch(console.error);
+    signTemplates(AgentRoles.PROVER, agentId, setupId, templates).catch(console.error);
 }
 
 if (require.main === module) {

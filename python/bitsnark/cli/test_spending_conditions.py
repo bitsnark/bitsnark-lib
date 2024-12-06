@@ -152,7 +152,7 @@ class TestSpendingConditionsCommand(Command):
                 spending_condition['index']
             )
 
-            tx_id = FundAndSendCommand().run(Context(
+            txid = FundAndSendCommand().run(Context(
                 dbsession=dbsession,
                 bitcoin_rpc=bitcoin_rpc,
                 args=argparse.Namespace(
@@ -164,7 +164,7 @@ class TestSpendingConditionsCommand(Command):
                     output_amount=100_000,
                 ),
             ))
-            logger.info("Sent funded tx: %s", tx_id)
+            logger.info("Sent funded tx: %s", txid)
 
             result = Result(
                 tx_template=tx_template,
@@ -181,7 +181,7 @@ class TestSpendingConditionsCommand(Command):
                         agent_id=tx_template.agent_id,
                         name=tx_template.name,
                         spending_condition=spending_condition['index'],
-                        prevout=f"{tx_id}:{output_index}",
+                        prevout=f"{txid}:{output_index}",
                         prover_privkey=context.args.prover_privkey,
                         verifier_privkey=context.args.verifier_privkey,
                         to_address='OP_RETURN',

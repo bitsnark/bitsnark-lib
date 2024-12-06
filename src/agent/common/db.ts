@@ -49,17 +49,4 @@ export class Db {
             await client.end();
         }
     }
-
-    protected async session(queries: Query[]): Promise<void> {
-        this.query('BEGIN');
-        try {
-            for (const query of queries) {
-                await this.query(query.sql, query.args);
-            }
-        } catch (error) {
-            this.query('ROLLBACK');
-            throw error;
-        }
-        this.query('COMMIT');
-    }
 }

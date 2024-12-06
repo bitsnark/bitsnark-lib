@@ -11,12 +11,12 @@ import { TemplateWithWotsKeys } from './messages';
 
 export function createUniqueDataId(
     wotsSalt: string,
-    transactionName: string,
+    templateName: string,
     outputIndex: number,
     scIndex: number,
     dataIndex: number
 ) {
-    const u = `${wotsSalt}/${transactionName}/${outputIndex}/${scIndex}/${dataIndex}`;
+    const u = `${wotsSalt}/${templateName}/${outputIndex}/${scIndex}/${dataIndex}`;
     return u;
 }
 

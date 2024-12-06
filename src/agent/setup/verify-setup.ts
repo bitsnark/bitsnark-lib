@@ -4,6 +4,12 @@ import { AgentRoles, SignatureType, TemplateNames } from '../common/types';
 import { decodeWinternitz } from '../common/winternitz';
 import { validateTransactionFees } from './amounts';
 
+const failures: string[] = [];
+function fail(msg: string) {
+    console.error(msg);
+    failures.push(msg);
+}
+
 export async function verifySetup(agentId: string, setupId: string, role: AgentRoles) {
     const db = new AgentDb(agentId);
     const templates = await db.getTemplates(setupId);
@@ -12,11 +18,11 @@ export async function verifySetup(agentId: string, setupId: string, role: AgentR
     console.log('check that all outputs have taproot keys');
     const taprootCheck = !templates.every((t) =>
         t.outputs.every((o) => {
-            if (!o.taprootKey) console.log('Missing taproot key', t, o);
+            if (!o.taprootKey) fail(`Missing taproot key for ${t.name}: ${o.index}`);
             return o.taprootKey;
         })
     );
-    if (taprootCheck) console.log('Fail');
+    if (taprootCheck) fail('Failed taproot check');
     else console.log('Success');
 
     console.log('check that all outputs have amounts');
@@ -25,11 +31,11 @@ export async function verifySetup(agentId: string, setupId: string, role: AgentR
         .filter((t) => t.name != TemplateNames.CHALLENGE)
         .every((t) =>
             t.outputs.every((o) => {
-                if (!o.amount || o.amount <= 0n) console.log('Missing amount', t, o);
+                if (!o.amount || o.amount <= 0n) fail(`Missing amount for ${t.name}: ${o.index}`);
                 return o.amount && o.amount > 0n;
             })
         );
-    if (!amountCheck) console.log('Fail');
+    if (!amountCheck) fail('Failed amount check');
     else console.log('Success');
 
     console.log('check that all inputs have signatures');
@@ -45,15 +51,14 @@ export async function verifySetup(agentId: string, setupId: string, role: AgentR
             const verifierRequired =
                 sc.signatureType === SignatureType.VERIFIER || sc.signatureType === SignatureType.BOTH;
             if (!input.proverSignature && proverRequired) {
-                console.error(`Missing proverSignature for ${template.name} input ${input.index}`);
-                console.warn(input.proverSignature);
+                fail(`Missing proverSignature for ${template.name} input ${input.index}`);
             }
             if (!input.verifierSignature && verifierRequired) {
-                console.error(`Missing verifierSignature for ${template.name} input ${input.index}`);
-                console.warn(input.verifierSignature);
+                fail(`Missing verifierSignature for ${template.name} input ${input.index}`);
             }
         }
     }
+    console.warn('Not checking signature validity!!!');
 
     console.log('Check that all example witness parses correctly...');
     for (const template of templates) {
@@ -62,34 +67,41 @@ export async function verifySetup(agentId: string, setupId: string, role: AgentR
             if (!sc.wotsSpec || sc.nextRole != role) continue;
             console.log(template.name, input.index);
             if (!sc.exampleWitness) {
-                console.log('example witness is missing');
+                fail(`example witness is missing for ${template.name} input ${input.index}`);
                 continue;
             }
             if (!sc.wotsPublicKeys) {
-                console.log('public keys missing');
+                fail(`public keys missing for ${template.name} input ${input.index}`);
                 continue;
             }
-            let flag = true;
-            for (let dataIndex = 0; dataIndex < sc.wotsSpec.length && flag; dataIndex++) {
+            let wotsCheck = false;
+            for (let dataIndex = 0; dataIndex < sc.wotsSpec.length && !wotsCheck; dataIndex++) {
                 try {
                     decodeWinternitz(
                         sc.wotsSpec[dataIndex],
                         sc.exampleWitness![dataIndex],
                         sc.wotsPublicKeys![dataIndex]
                     );
-                } catch (e) {
-                    console.log(e);
-                    flag = false;
+                } catch (error: unknown) {
+                    fail((error as Error).message ?? (error as object).toString());
+                    wotsCheck = true;
                 }
             }
-            if (flag) console.log('OK');
+            if (wotsCheck) fail(`Failed WOTS check for ${template.name} input ${input.index}`);
+            else console.log('OK');
         }
     }
 
+    if (failures.length) {
+        console.error('Failures:\n', failures.join('\n'));
+        throw new Error('Verification failed');
+    }
     console.log('Success');
 }
 
-const scriptName = __filename;
-if (process.argv[1] == scriptName) {
-    verifySetup('bitsnark_prover_1', 'test_setup', AgentRoles.PROVER).catch(console.error);
+if (require.main === module) {
+    verifySetup('bitsnark_prover_1', 'test_setup', AgentRoles.PROVER).catch((error) => {
+        console.log('Error:', error);
+        throw error;
+    });
 }

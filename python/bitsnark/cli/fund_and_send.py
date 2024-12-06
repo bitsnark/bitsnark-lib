@@ -108,12 +108,12 @@ class FundAndSendCommand(Command):
         assert mempool_accept[0]['allowed'], mempool_accept
 
         logger.info(f"Broadcasting transaction...")
-        tx_id = bitcoin_rpc.call(
+        txid = bitcoin_rpc.call(
             'sendrawtransaction',
             serialized_tx,
         )
-        # print(tx_id)
-        assert tx_id == tx.GetTxid()[::-1].hex()
+        # print(txid)
+        assert txid == tx.GetTxid()[::-1].hex()
         bitcoin_rpc.mine_blocks()
-        logger.info(f"Transaction broadcast: {tx_id}")
-        return tx_id
+        logger.info(f"Transaction broadcast: {txid}")
+        return txid
