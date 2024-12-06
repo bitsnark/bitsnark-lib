@@ -1,7 +1,7 @@
+import axios from 'axios';
 import { Context, NarrowedContext, Telegraf } from 'telegraf';
 import { channelPost, message } from 'telegraf/filters';
 import { agentConf } from '../agent.conf';
-import axios from 'axios';
 import { Update } from 'telegraf/types';
 import { Message, toJson } from './messages';
 

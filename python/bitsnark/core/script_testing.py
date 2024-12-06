@@ -60,7 +60,7 @@ class Result:
     error: Exception | None = None
     reason: str | None = None
     spent_output: str | None = None  # txid:index
-    spending_tx_id: str | None = None
+    spending_txid: str | None = None
 
 
 def collect_script_test_cases(
@@ -199,12 +199,12 @@ def execute_script_test_case(
     script_tx = signed_psbt.extract_transaction()
     serialized_script_tx = script_tx.serialize().hex()
 
-    script_tx_id = bitcoin_rpc.call(
+    script_txid = bitcoin_rpc.call(
         'sendrawtransaction',
         serialized_script_tx,
     )
     bitcoin_rpc.mine_blocks()
-    logger.info(f"Broadcast script transaction %s, attempting to spend it next", script_tx_id)
+    logger.info(f"Broadcast script transaction %s, attempting to spend it next", script_txid)
 
     timeout_blocks = test_case.tx_template.outputs[
         test_case.output_index
@@ -220,7 +220,7 @@ def execute_script_test_case(
         vin=[
             CTxIn(
                 COutPoint(
-                    hash=bytes.fromhex(script_tx_id)[::-1],
+                    hash=bytes.fromhex(script_txid)[::-1],
                     n=0,
                 ), nSequence=(timeout_blocks or 0xffffffff)
             )
@@ -305,11 +305,11 @@ def execute_script_test_case(
             reason=f'testmempoolaccept: {mempool_accept[0]["reject-reason"]}',
         )
 
-    tx_id = bitcoin_rpc.call(
+    txid = bitcoin_rpc.call(
         'sendrawtransaction',
         serialized_spending_tx,
     )
-    logger.info("tx send successfully: %s", tx_id)
+    logger.info("tx send successfully: %s", txid)
     bitcoin_rpc.mine_blocks()
     return Result(
         test_case=test_case,

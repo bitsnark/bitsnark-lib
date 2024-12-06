@@ -9,7 +9,7 @@ interface Operation {
     templateItemId?: string;
 }
 
-export interface Template {
+export interface ScriptTemplate {
     buffer: Buffer;
     items: { itemId: string; index: number }[];
 }
@@ -48,7 +48,6 @@ export class Bitcoin {
         if (typeof value == 'number' && (value < 0 || value > 65535)) throw new Error('Invalid value');
         const si = this.DATA(value);
         this.maxStack = Math.max(this.maxStack, this.stack.items.length + this.altStack.length);
-        // console.log('Stack: ', this.stack.items.length);
         if (this.throwOnFail) {
             if (this.stack.items.length + this.altStack.length > 1000)
                 throw new Error(`Stack too big: ${this.stack.items.length + this.altStack.length}`);
@@ -1311,7 +1310,7 @@ export class Bitcoin {
         return this.programToTemplate(opts ?? { validateStack: true }).buffer;
     }
 
-    programToTemplate(opts?: ProgramToTemplateOpts): Template {
+    programToTemplate(opts?: ProgramToTemplateOpts): ScriptTemplate {
         opts = opts ?? { validateStack: true };
 
         if (opts.validateStack == true) {

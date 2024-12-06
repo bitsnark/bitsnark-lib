@@ -14,3 +14,4 @@ venv/
 /dist/
 /expose/git-filter-repo
 /generated
+/coverage

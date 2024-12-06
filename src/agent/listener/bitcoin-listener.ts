@@ -1,27 +1,25 @@
-import { Transaction } from '../common/transactions';
 import { agentConf } from '../agent.conf';
 import { BitcoinNode } from '../common/bitcoin-node';
 import { RawTransaction } from 'bitcoin-core';
-import { AgentDb, Template } from '../common/db';
+import { ListenerDb } from './listener-db';
+import { Input, Template } from '../common/types';
 
 export interface expectByInputs {
     setupId: string;
     name: string;
     templateId: number;
-    vins: { outputTxid: string; outputIndex: number; vin: number }[];
+    vins: { outputtxid: string; outputIndex: number; vin: number }[];
 }
 
 export class BitcoinListener {
-    private agentId: string;
     private tipHeight: number = 0;
     private tipHash: string = '';
     public client;
-    public db: AgentDb;
+    public db: ListenerDb;
 
     constructor(agentId: string) {
         this.client = new BitcoinNode().client;
-        this.agentId = agentId;
-        this.db = new AgentDb(this.agentId);
+        this.db = new ListenerDb(agentId);
     }
 
     async checkForNewBlock() {
@@ -35,8 +33,8 @@ export class BitcoinListener {
     }
 
     async monitorTransmitted(): Promise<void> {
-        const templates = await this.db.getTemplates();
-        const pending = templates.filter((template) => template.blockHash === null);
+        const templates = await this.db.getReceivedTemplates();
+        const pending = templates.filter((template) => !template.blockHash);
         if (pending.length === 0) return;
 
         let blockHeight = (pending[0].lastCheckedBlockHeight ?? 0) + 1;
@@ -48,11 +46,11 @@ export class BitcoinListener {
             for (const pendingTx of pending) {
                 try {
                     let transmittedTx: RawTransaction | undefined;
-                    if (!pendingTx.object.temporaryTxId)
-                        transmittedTx = await this.client.getRawTransaction(pendingTx.object.txId!, true, blockHash);
+                    if (!pendingTx.unknownTxid)
+                        transmittedTx = await this.client.getRawTransaction(pendingTx.txid!, true, blockHash);
                     else
                         transmittedTx = await this.getTransactionByInputs(
-                            pendingTx.object,
+                            pendingTx.inputs,
                             templates.filter((template) => template.setupId === pendingTx.setupId),
                             blockHash
                         );
@@ -74,7 +72,7 @@ export class BitcoinListener {
 
             blockHeight++;
 
-            await this.db.updateLastCheckedBlockHeightBatch(
+            await this.db.updateSetupLastCheckedBlockHeightBatch(
                 [...pending.reduce((setupIds, template) => setupIds.add(template.setupId), new Set<string>())],
                 blockHeight
             );
@@ -82,22 +80,22 @@ export class BitcoinListener {
     }
 
     private async getTransactionByInputs(
-        pendingTx: Transaction,
-        setupTemplates: Template[],
+        inputs: Input[],
+        templates: Template[],
         blockHash: string
     ): Promise<RawTransaction | undefined> {
         try {
             const searchBy: [string, number][] = [];
-            for (const input of pendingTx.inputs) {
-                const parentTemplate = setupTemplates.find(
-                    (template) => input.transactionName === template.name && template.txId
+            for (const input of inputs) {
+                const parentTemplate = templates.find(
+                    (template) => input.templateName === template.name && template.txid
                 );
 
                 if (parentTemplate === undefined) return undefined;
 
-                const utxo = await this.client.getTxOut(parentTemplate.txId!, input.outputIndex, false);
+                const utxo = await this.client.getTxOut(parentTemplate.txid!, input.outputIndex, false);
                 if (utxo !== null) return undefined;
-                searchBy.push([parentTemplate.txId!, input.outputIndex]);
+                searchBy.push([parentTemplate.txid!, input.outputIndex]);
             }
 
             const blockTxs = (await this.client.getBlock(blockHash)).tx;
@@ -116,7 +114,7 @@ export class BitcoinListener {
             }
             return undefined;
         } catch (error) {
-            console.error(error);
+            console.log(error);
             return undefined;
         }
     }
@@ -124,9 +122,8 @@ export class BitcoinListener {
 
 if (require.main === module) {
     (async () => {
-        const db = new AgentDb('bitsnark_prover_1');
-        const pending = await db.getTemplates();
-        console.log(pending.map((tx) => tx.lastCheckedBlockHeight));
+        const listener = new BitcoinListener('bitsnark_prover_1');
+        await listener.monitorTransmitted();
     })().catch((error) => {
         throw error;
     });

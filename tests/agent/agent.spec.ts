@@ -1,9 +1,10 @@
 // agent.spec.ts
 import { JoinMessage, Message, StartMessage, toJson } from '../../src/agent/setup/messages';
 import { Agent } from '../../src/agent/setup/agent';
-import { AgentRoles } from '../../src/agent/common/types';
+import { AgentRoles, FundingUtxo, Setup, SetupStatus } from '../../src/agent/common/types';
 import { agentConf } from '../../src/agent/agent.conf';
 import { SimpleContext, TelegrafContext } from '../../src/agent/setup/telegram';
+import { AgentDbMock } from '../test-utils/agent-db-mock';
 
 export const mockAgent = {
     signMessageAndSend: jest.fn(),
@@ -15,31 +16,41 @@ export const mockContext: SimpleContext = {
     context: {} as TelegrafContext
 };
 
-const lockedFunds = {
-    txId: '0000000000000000000000000000000000000000000000000000000000000000',
+const lockedFunds: FundingUtxo = {
+    txid: '0000000000000000000000000000000000000000000000000000000000000000',
     outputIndex: 0,
-    amount: agentConf.payloadAmount,
-    external: true
+    amount: agentConf.payloadAmount
 };
-const proverStake = {
-    txId: '1111111111111111111111111111111111111111111111111111111111111111',
+const proverStake: FundingUtxo = {
+    txid: '1111111111111111111111111111111111111111111111111111111111111111',
     outputIndex: 0,
-    amount: agentConf.proverStakeAmount,
-    external: true
+    amount: agentConf.proverStakeAmount
+};
+const fakeSetup: Setup = {
+    id: 'test_setup',
+    wotsSalt: 'salt',
+    status: SetupStatus.PENDING
 };
 
 //Focuses on agent message signatures; setup is checked in emulate-setups.
-describe('Agents message signatures check', () => {
+describe('Agent message signatures check', () => {
     const prover = new Agent('bitsnark_prover_1', AgentRoles.PROVER);
+    const mockProverDb = new AgentDbMock('bitsnark_prover_1');
+    prover.db = mockProverDb;
+
     const verifier = new Agent('bitsnark_verifier_1', AgentRoles.VERIFIER);
+    const mockVerifierDb = new AgentDbMock('bitsnark_prover_1');
+    verifier.db = mockVerifierDb;
+
     let setupId: string;
     let signedMessage: Message;
 
     it('Prover should create a new setupInstance & send a response when a message with /start is received', async () => {
         const spySignMessageAndSend = jest.spyOn(prover, 'signMessageAndSend');
         const spyStart = jest.spyOn(prover, 'start');
-        const message = `/start`;
+        const message = `/start test_setup ${lockedFunds.txid} ${lockedFunds.amount} ${proverStake.txid} ${proverStake.amount}`;
 
+        mockProverDb.getSetupReturn = fakeSetup;
         await prover.messageReceived(message, mockContext);
 
         expect(spyStart).toHaveBeenCalledTimes(1);
@@ -52,28 +63,34 @@ describe('Agents message signatures check', () => {
         expect(setupId).toBeDefined();
         expect(counter).toBe(1);
 
-        const messageStart = new StartMessage(prover);
-        messageStart.payloadUtxo = lockedFunds;
-        messageStart.proverUtxo = proverStake;
-        expect(setupId).toBeDefined();
-        expect(counter).toBe(1);
+        const messageStart = new StartMessage({
+            setupId,
+            agentId: prover.agentId,
+            schnorrPublicKey: prover.schnorrPublicKey,
+            payloadUtxo: lockedFunds,
+            proverUtxo: proverStake,
+            telegramMessageSig: ''
+        });
 
-        messageStart.setupId = setupId;
         signedMessage = prover.signMessage(mockContext, messageStart);
 
         expect(spySignMessageAndSend).toHaveBeenCalledTimes(1);
         expect(mockContext.send).toHaveBeenCalledWith(signedMessage);
     });
 
-    it('Verifier on eccepting the start message, should verify it, set its setupId and send a join message', async () => {
+    it('Verifier on accepting the start message, should verify it, set its setupId and send a join message', async () => {
         const spySignMessageAndSend = jest.spyOn(verifier, 'signMessageAndSend');
-        const spySOntart = jest.spyOn(verifier, 'on_start');
+        const spyOntart = jest.spyOn(verifier, 'on_start');
 
+        mockVerifierDb.createSetupReturn = fakeSetup;
         await verifier.messageReceived(toJson(signedMessage), mockContext);
+
+        expect(mockVerifierDb.createSetupCalledCount).toBe(1);
+        expect(mockVerifierDb.createSetupCalledParams).toEqual({ setupId: fakeSetup.id, wotsSalt: fakeSetup.id });
 
         expect(spySignMessageAndSend).toHaveBeenCalledTimes(1);
         expect(verifier.instances.get(setupId)).toBeDefined();
-        expect(spySOntart).toHaveBeenCalledTimes(1);
+        expect(spyOntart).toHaveBeenCalledTimes(1);
         expect(spySignMessageAndSend).toHaveBeenCalledTimes(1);
 
         const messageJoin = new JoinMessage(verifier);
@@ -82,7 +99,7 @@ describe('Agents message signatures check', () => {
         expect(mockContext.send).toHaveBeenCalledWith(signedMessage);
     });
 
-    it('Prover on eccepting the join message, should verify it', async () => {
+    it('Prover on accepting the join message, should verify it', async () => {
         const spySignMessageAndSend = jest.spyOn(prover, 'signMessageAndSend');
         const spyVerifyMessage = jest.spyOn(prover, 'verifyMessage');
 

@@ -1,36 +1,33 @@
 import { FatMerkleProof } from './fat-merkle';
 import { encodeWinternitz24, encodeWinternitz256_4 } from '../common/winternitz';
-import { createUniqueDataId, Transaction } from '../common/transactions';
 import { InstrCode, Instruction } from '../../generator/ec_vm/vm/types';
 import { Decasector, StateCommitment } from './decasector';
 import { DoomsdayGenerator, RefutationType } from '../final-step/doomsday-generator';
 import { prime_bigint } from '../common/constants';
 import { bigintToBufferBE, bufferToBigintBE } from '../common/encoding';
-import { TransactionNames } from '../common/types';
+import { Template, TemplateNames } from '../common/types';
+import { createUniqueDataId } from '../setup/wots-keys';
 
 function calculateD(a: bigint, b: bigint): bigint {
     return (a * b) / prime_bigint;
 }
 
 export class Argument {
-    setupId: string;
+    wotsSalt: string;
     selectionPath: number[] = [];
     selectionPathUnparsed: Buffer[][] = [];
     index: number = 0;
     proof: bigint[];
 
-    constructor(setupId: string, proof: bigint[]) {
-        this.setupId = setupId;
+    constructor(wotsSalt: string, proof: bigint[]) {
+        this.wotsSalt = wotsSalt;
         this.proof = proof;
     }
 
     private makeIndexWitness(): Buffer[] {
         return [
             ...this.selectionPathUnparsed,
-            encodeWinternitz24(
-                BigInt(this.index),
-                createUniqueDataId(this.setupId, TransactionNames.ARGUMENT, 0, 0, this.selectionPathUnparsed.length)
-            )
+            encodeWinternitz24(BigInt(this.index), createUniqueDataId(this.wotsSalt, TemplateNames.ARGUMENT, 0, 0, 6))
         ].flat();
     }
 
@@ -42,7 +39,7 @@ export class Argument {
             instr.name == InstrCode.MULMOD || instr.name == InstrCode.DIVMOD ? calculateD(aValue, bValue) : 0n;
         return [aValue, bValue, cValue, dValue]
             .map((n, dataIndex) =>
-                encodeWinternitz256_4(n, createUniqueDataId(this.setupId, TransactionNames.ARGUMENT, 1, 0, dataIndex))
+                encodeWinternitz256_4(n, createUniqueDataId(this.wotsSalt, TemplateNames.ARGUMENT, 1, 0, dataIndex))
             )
             .flat();
     }
@@ -69,7 +66,7 @@ export class Argument {
                 .map((b, dataIndex) =>
                     encodeWinternitz256_4(
                         bufferToBigintBE(b),
-                        createUniqueDataId(this.setupId, TransactionNames.ARGUMENT, 2 + oi, 0, dataIndex)
+                        createUniqueDataId(this.wotsSalt, TemplateNames.ARGUMENT, 2 + oi, 0, dataIndex)
                     )
                 )
                 .flat()
@@ -107,7 +104,7 @@ export class Argument {
     }
 
     public async refute(
-        transactions: Transaction[],
+        templates: Template[],
         argData: bigint[][],
         states: Buffer[][]
     ): Promise<{ data: bigint[]; script: Buffer; controlBlock: Buffer }> {
@@ -126,7 +123,7 @@ export class Argument {
         if (!doomsdayGenerator.checkLine(this.index, a, b, c, d)) {
             // the line is false, attack it!
             const data = [a, b, c, d];
-            const { script, controlBlock } = await doomsdayGenerator.generateFinalStepTaproot(transactions, {
+            const { script, controlBlock } = await doomsdayGenerator.generateFinalStepTaproot(templates, {
                 refutationType: RefutationType.INSTR,
                 line: this.index
             });
@@ -163,7 +160,7 @@ export class Argument {
         const data = [...proofs[whichProof].hashes.slice(whichHash * 2, whichHash * 2 + 3)].map((b) =>
             bufferToBigintBE(b)
         );
-        const { script, controlBlock } = await doomsdayGenerator.generateFinalStepTaproot(transactions, {
+        const { script, controlBlock } = await doomsdayGenerator.generateFinalStepTaproot(templates, {
             refutationType: RefutationType.HASH,
             line: this.index,
             whichProof,

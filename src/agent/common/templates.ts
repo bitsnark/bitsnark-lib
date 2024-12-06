@@ -1,72 +1,24 @@
 import { WotsType } from './winternitz';
 import { agentConf } from '../agent.conf';
-import { AgentRoles, iterations, TransactionNames } from './types';
+import {
+    AgentRoles,
+    Input,
+    iterations,
+    Output,
+    SignatureType,
+    SpendingCondition,
+    Template,
+    TemplateNames
+} from './types';
 import { array } from './array-utils';
 
 export const twoDigits = (n: number) => (n < 10 ? `0${n}` : `${n}`);
 
-export enum SignatureType {
-    NONE = 'NONE',
-    PROVER = 'PROVER',
-    VERIFIER = 'VERIFIER',
-    BOTH = 'BOTH'
-}
-
-export interface SpendingCondition {
-    index?: number;
-    timeoutBlocks?: number;
-    signatureType: SignatureType;
-    signaturesPublicKeys?: Buffer[];
-    nextRole: AgentRoles;
-    wotsSpec?: WotsType[];
-    wotsPublicKeys?: Buffer[][];
-    script?: Buffer;
-    exampleWitness?: Buffer[][];
-    wotsPublicKeysDebug?: string[][];
-    controlBlock?: Buffer;
-}
-
-export interface Input {
-    index?: number;
-    transactionId?: string;
-    transactionName: string;
-    outputIndex: number;
-    spendingConditionIndex: number;
-    nSequence?: number;
-    data?: bigint[];
-    script?: Buffer;
-    controlBlock?: Buffer;
-    proverSignature?: string;
-    verifierSignature?: string;
-    wotsPublicKeys?: Buffer[][];
-}
-
-export interface Output {
-    index?: number;
-    taprootKey?: Buffer;
-    amount?: bigint;
-    spendingConditions: SpendingCondition[];
-}
-
-export interface Transaction {
-    templateId?: number;
-    setupId?: string;
-    protocolVersion?: string;
-    role: AgentRoles;
-    transactionName: string;
-    ordinal?: number;
-    txId?: string;
-    inputs: Input[];
-    outputs: Output[];
-    external?: boolean;
-    temporaryTxId?: boolean;
-}
-
-export const protocolStart: Transaction[] = [
+export const protocolStart: Template[] = [
     {
         role: AgentRoles.PROVER,
-        transactionName: TransactionNames.LOCKED_FUNDS,
-        external: true,
+        name: TemplateNames.LOCKED_FUNDS,
+        isExternal: true,
         inputs: [],
         outputs: [
             {
@@ -81,12 +33,16 @@ export const protocolStart: Transaction[] = [
     },
     {
         role: AgentRoles.PROVER,
-        transactionName: TransactionNames.PROVER_STAKE,
-        external: true,
+        name: TemplateNames.PROVER_STAKE,
+        isExternal: true,
         inputs: [],
         outputs: [
             {
                 spendingConditions: [
+                    {
+                        nextRole: AgentRoles.PROVER,
+                        signatureType: SignatureType.BOTH
+                    },
                     {
                         nextRole: AgentRoles.PROVER,
                         signatureType: SignatureType.BOTH,
@@ -98,12 +54,12 @@ export const protocolStart: Transaction[] = [
     },
     {
         role: AgentRoles.PROVER,
-        transactionName: TransactionNames.PROOF,
+        name: TemplateNames.PROOF,
         inputs: [
             {
-                transactionName: TransactionNames.PROVER_STAKE,
+                templateName: TemplateNames.PROVER_STAKE,
                 outputIndex: 0,
-                spendingConditionIndex: 0
+                spendingConditionIndex: 1
             }
         ],
         outputs: [
@@ -142,11 +98,11 @@ export const protocolStart: Transaction[] = [
     },
     {
         role: AgentRoles.VERIFIER,
-        transactionName: TransactionNames.CHALLENGE,
-        temporaryTxId: true,
+        name: TemplateNames.CHALLENGE,
+        unknownTxid: true,
         inputs: [
             {
-                transactionName: TransactionNames.PROOF,
+                templateName: TemplateNames.PROOF,
                 outputIndex: 1,
                 spendingConditionIndex: 0
             }
@@ -165,20 +121,20 @@ export const protocolStart: Transaction[] = [
     },
     {
         role: AgentRoles.PROVER,
-        transactionName: TransactionNames.PROOF_UNCONTESTED,
+        name: TemplateNames.PROOF_UNCONTESTED,
         inputs: [
             {
-                transactionName: TransactionNames.LOCKED_FUNDS,
+                templateName: TemplateNames.LOCKED_FUNDS,
                 outputIndex: 0,
                 spendingConditionIndex: 0
             },
             {
-                transactionName: TransactionNames.PROOF,
+                templateName: TemplateNames.PROOF,
                 outputIndex: 0,
                 spendingConditionIndex: 0
             },
             {
-                transactionName: TransactionNames.PROOF,
+                templateName: TemplateNames.PROOF,
                 outputIndex: 1,
                 spendingConditionIndex: 0
             }
@@ -196,10 +152,10 @@ export const protocolStart: Transaction[] = [
     },
     {
         role: AgentRoles.VERIFIER,
-        transactionName: TransactionNames.CHALLENGE_UNCONTESTED,
+        name: TemplateNames.CHALLENGE_UNCONTESTED,
         inputs: [
             {
-                transactionName: TransactionNames.PROOF,
+                templateName: TemplateNames.PROOF,
                 outputIndex: 0,
                 spendingConditionIndex: 2
             }
@@ -217,12 +173,12 @@ export const protocolStart: Transaction[] = [
     }
 ];
 
-export const protocolEnd: Transaction[] = [
+export const protocolEnd: Template[] = [
     {
         role: AgentRoles.PROVER,
-        transactionName: TransactionNames.ARGUMENT,
+        name: TemplateNames.ARGUMENT,
         inputs: array(5, (i) => ({
-            transactionName: `${TransactionNames.SELECT}_${twoDigits(iterations - 1)}`,
+            templateName: `${TemplateNames.SELECT}_${twoDigits(iterations - 1)}`,
             outputIndex: i,
             spendingConditionIndex: 0
         })),
@@ -244,11 +200,11 @@ export const protocolEnd: Transaction[] = [
     },
     {
         role: AgentRoles.VERIFIER,
-        transactionName: TransactionNames.PROOF_REFUTED,
-        temporaryTxId: true,
+        name: TemplateNames.PROOF_REFUTED,
+        unknownTxid: true,
         inputs: [
             {
-                transactionName: TransactionNames.ARGUMENT,
+                templateName: TemplateNames.ARGUMENT,
                 outputIndex: 0,
                 spendingConditionIndex: 0
             }
@@ -271,15 +227,15 @@ export const protocolEnd: Transaction[] = [
     },
     {
         role: AgentRoles.PROVER,
-        transactionName: TransactionNames.ARGUMENT_UNCONTESTED,
+        name: TemplateNames.ARGUMENT_UNCONTESTED,
         inputs: [
             {
-                transactionName: TransactionNames.ARGUMENT,
+                templateName: TemplateNames.ARGUMENT,
                 outputIndex: 0,
                 spendingConditionIndex: 1
             },
             {
-                transactionName: TransactionNames.LOCKED_FUNDS,
+                templateName: TemplateNames.LOCKED_FUNDS,
                 outputIndex: 0,
                 spendingConditionIndex: 0
             }
@@ -297,15 +253,15 @@ export const protocolEnd: Transaction[] = [
     }
 ];
 
-export function makeProtocolSteps(): Transaction[] {
-    const result: Transaction[] = [];
+export function makeProtocolSteps(): Template[] {
+    const result: Template[] = [];
     for (let i = 0; i < iterations; i++) {
-        const state: Transaction = {
+        const state: Template = {
             role: AgentRoles.PROVER,
-            transactionName: `${TransactionNames.STATE}_${twoDigits(i)}`,
+            name: `${TemplateNames.STATE}_${twoDigits(i)}`,
             inputs: [
                 {
-                    transactionName: i == 0 ? TransactionNames.PROOF : `${TransactionNames.SELECT}_${twoDigits(i - 1)}`,
+                    templateName: i == 0 ? TemplateNames.PROOF : `${TemplateNames.SELECT}_${twoDigits(i - 1)}`,
                     outputIndex: 0,
                     spendingConditionIndex: i == 0 ? 1 : 0
                 }
@@ -328,17 +284,17 @@ export function makeProtocolSteps(): Transaction[] {
             ]
         };
 
-        const stateTimeout: Transaction = {
+        const stateTimeout: Template = {
             role: AgentRoles.PROVER,
-            transactionName: `${TransactionNames.STATE_UNCONTESTED}_${twoDigits(i)}`,
+            name: `${TemplateNames.STATE_UNCONTESTED}_${twoDigits(i)}`,
             inputs: [
                 {
-                    transactionName: `${TransactionNames.STATE}_${twoDigits(i)}`,
+                    templateName: `${TemplateNames.STATE}_${twoDigits(i)}`,
                     outputIndex: 0,
                     spendingConditionIndex: 1
                 },
                 {
-                    transactionName: TransactionNames.LOCKED_FUNDS,
+                    templateName: TemplateNames.LOCKED_FUNDS,
                     outputIndex: 0,
                     spendingConditionIndex: 0
                 }
@@ -355,12 +311,12 @@ export function makeProtocolSteps(): Transaction[] {
             ]
         };
 
-        const select: Transaction = {
+        const select: Template = {
             role: AgentRoles.VERIFIER,
-            transactionName: `${TransactionNames.SELECT}_${twoDigits(i)}`,
+            name: `${TemplateNames.SELECT}_${twoDigits(i)}`,
             inputs: [
                 {
-                    transactionName: `${TransactionNames.STATE}_${twoDigits(i)}`,
+                    templateName: `${TemplateNames.STATE}_${twoDigits(i)}`,
                     outputIndex: 0,
                     spendingConditionIndex: 0
                 }
@@ -430,12 +386,12 @@ export function makeProtocolSteps(): Transaction[] {
             ];
         }
 
-        const selectTimeout: Transaction = {
+        const selectTimeout: Template = {
             role: AgentRoles.VERIFIER,
-            transactionName: `${TransactionNames.SELECT_UNCONTESTED}_${twoDigits(i)}`,
+            name: `${TemplateNames.SELECT_UNCONTESTED}_${twoDigits(i)}`,
             inputs: [
                 {
-                    transactionName: `${TransactionNames.SELECT}_${twoDigits(i)}`,
+                    templateName: `${TemplateNames.SELECT}_${twoDigits(i)}`,
                     outputIndex: 0,
                     spendingConditionIndex: 1
                 }
@@ -456,39 +412,39 @@ export function makeProtocolSteps(): Transaction[] {
     return result;
 }
 
-export function getTransactionByName(transactions: Transaction[], name: string): Transaction {
-    const tx = transactions.find((t) => t.transactionName == name);
-    if (!tx) throw new Error('Transaction not found: ' + name);
+export function getTemplateByName(templates: Template[], name: string): Template {
+    const tx = templates.find((t) => t.name == name);
+    if (!tx) throw new Error('Template not found: ' + name);
     return tx;
 }
 
-export function getTransactionByTemplateId(transactions: Transaction[], templateId: number): Transaction {
-    const tx = transactions.find((t) => t.templateId == templateId);
-    if (!tx) throw new Error('Transaction not found: ' + templateId);
+export function getTemplateByTemplateId(templates: Template[], templateId: number): Template {
+    const tx = templates.find((t) => t.id == templateId);
+    if (!tx) throw new Error('Template not found: ' + templateId);
     return tx;
 }
 
-export function getTransactionByInput(transactions: Transaction[], input: Input): Transaction {
-    const tx = transactions.find((t) => t.transactionName == input.transactionName);
+export function getTemplateByInput(templates: Template[], input: Input): Template {
+    const tx = templates.find((t) => t.name == input.templateName);
     if (!tx) {
-        console.error('Transaction not found: ', input);
-        throw new Error('Transaction not found');
+        console.error('Template not found: ', input);
+        throw new Error('Template not found');
     }
     return tx;
 }
 
-export function findOutputByInput(transactions: Transaction[], input: Input): Output {
-    const tx = getTransactionByName(transactions, input.transactionName);
+export function findOutputByInput(templates: Template[], input: Input): Output {
+    const tx = getTemplateByName(templates, input.templateName);
     const output = tx.outputs[input.outputIndex];
     if (!output) throw new Error('Output not found: ' + input.outputIndex);
     return output;
 }
 
-export function getSpendingConditionByInput(transactions: Transaction[], input: Input): SpendingCondition {
-    const tx = transactions.find((t) => t.transactionName == input.transactionName);
+export function getSpendingConditionByInput(templates: Template[], input: Input): SpendingCondition {
+    const tx = templates.find((t) => t.name == input.templateName);
     if (!tx) {
-        console.error('Transaction not found: ', input);
-        throw new Error('Transaction not found');
+        console.error('Template not found: ', input);
+        throw new Error('Template not found');
     }
     if (!tx.outputs[input.outputIndex]) throw new Error('Output not found');
     if (!tx.outputs[input.outputIndex].spendingConditions[input.spendingConditionIndex])
@@ -496,25 +452,15 @@ export function getSpendingConditionByInput(transactions: Transaction[], input: 
     return tx.outputs[input.outputIndex].spendingConditions[input.spendingConditionIndex];
 }
 
-export function assertOrder(transactions: Transaction[]) {
-    const map: { [key: string]: Transaction } = {};
+export function assertOrder(templates: Template[]) {
+    const map: { [key: string]: Template } = {};
 
-    for (const t of transactions) {
+    for (const t of templates) {
         for (const i of t.inputs) {
-            if (!map[i.transactionName!]) throw new Error('Transaction not found: ' + i.transactionName);
-            if (!map[i.transactionName!].outputs[i.outputIndex])
-                throw new Error(`Index not found: ${t.transactionName} ${i.outputIndex}`);
+            if (!map[i.templateName!]) throw new Error('Template not found: ' + i.templateName);
+            if (!map[i.templateName!].outputs[i.outputIndex])
+                throw new Error(`Index not found: ${t.name} ${i.outputIndex}`);
         }
-        map[t.transactionName] = t;
+        map[t.name] = t;
     }
-}
-
-export function createUniqueDataId(
-    setupId: string,
-    transactionName: string,
-    outputIndex: number,
-    scIndex: number,
-    dataIndex: number
-) {
-    return `${setupId}/${transactionName}/${outputIndex}/${scIndex}/${dataIndex}`;
 }

@@ -1,19 +1,21 @@
+import { WotsType } from './winternitz';
+
 export const iterations = 6;
 
-export const enum TransactionNames {
-    LOCKED_FUNDS = 'locked_funds',
-    PROVER_STAKE = 'prover_stake',
-    PROOF = 'proof',
-    PROOF_UNCONTESTED = 'proof_uncontested',
-    CHALLENGE = 'challenge',
-    CHALLENGE_UNCONTESTED = 'challenge_uncontested',
-    STATE = 'state',
-    STATE_UNCONTESTED = 'state_uncontested',
-    SELECT = 'select',
-    SELECT_UNCONTESTED = 'select_uncontested',
-    ARGUMENT = 'argument',
-    ARGUMENT_UNCONTESTED = 'argument_uncontested',
-    PROOF_REFUTED = 'proof_refuted'
+export enum TemplateNames {
+    LOCKED_FUNDS = 'LOCKED_FUNDS',
+    PROVER_STAKE = 'PROVER_STAKE',
+    PROOF = 'PROOF',
+    PROOF_UNCONTESTED = 'PROOF_UNCONTESTED',
+    CHALLENGE = 'CHALLENGE',
+    CHALLENGE_UNCONTESTED = 'CHALLENGE_UNCONTESTED',
+    STATE = 'STATE',
+    STATE_UNCONTESTED = 'STATE_UNCONTESTED',
+    SELECT = 'SELECT',
+    SELECT_UNCONTESTED = 'SELECT_UNCONTESTED',
+    ARGUMENT = 'ARGUMENT',
+    ARGUMENT_UNCONTESTED = 'ARGUMENT_UNCONTESTED',
+    PROOF_REFUTED = 'PROOF_REFUTED'
 }
 
 export enum ProtocolStep {
@@ -30,17 +32,14 @@ export enum AgentRoles {
     VERIFIER = 'VERIFIER'
 }
 
-export interface TransactionInfo {
-    setupId: string;
-    desc: string;
-    txId?: string;
-    taprootAddress: Buffer;
-    scripts: Buffer[];
-    controlBlocks: Buffer[];
-    wotsPublicKeys: bigint[];
-    proverSignature?: Buffer;
-    verifierSignature?: Buffer;
-    value?: bigint;
+export enum SetupStatus {
+    PENDING = 'PENDING',
+    UNSIGNED = 'UNSIGNED',
+    SIGNED = 'SIGNED',
+    FAILED = 'FAILED',
+    ACTIVE = 'ACTIVE',
+    PEGOUT_SUCCESSFUL = 'PEGOUT_SUCCESSFUL',
+    PEGOUT_FAILED = 'PEGOUT_FAILED'
 }
 
 export interface ScriptAndKeys {
@@ -49,15 +48,91 @@ export interface ScriptAndKeys {
 }
 
 export interface FundingUtxo {
-    txId: string;
+    txid: string;
     outputIndex: number;
     amount: bigint;
-    serializedTransaction?: Buffer;
-    external: boolean;
+}
+
+export interface Setup {
+    id: string;
+    protocolVersion?: string;
+    status: SetupStatus;
+    lastCheckedBlockHeight?: number;
+    wotsSalt: string;
+    payloadTxid?: string;
+    payloadOutputIndex?: number;
+    payloadAmount?: bigint;
+    stakeTxid?: string;
+    stakeOutputIndex?: number;
+    stakeAmount?: bigint;
+}
+
+export enum SignatureType {
+    NONE = 'NONE',
+    PROVER = 'PROVER',
+    VERIFIER = 'VERIFIER',
+    BOTH = 'BOTH'
+}
+
+export interface SpendingCondition {
+    index?: number;
+    timeoutBlocks?: number;
+    signatureType: SignatureType;
+    signaturesPublicKeys?: Buffer[];
+    nextRole: AgentRoles;
+    wotsSpec?: WotsType[];
+    wotsPublicKeys?: Buffer[][];
+    script?: Buffer;
+    exampleWitness?: Buffer[][];
+    wotsPublicKeysDebug?: string[][];
+    controlBlock?: Buffer;
+}
+
+export interface Input {
+    index?: number;
+    transactionId?: string;
+    templateName: string;
+    outputIndex: number;
+    spendingConditionIndex: number;
+    nSequence?: number;
+    data?: bigint[];
+    script?: Buffer;
+    controlBlock?: Buffer;
+    proverSignature?: string;
+    verifierSignature?: string;
+    wotsPublicKeys?: Buffer[][];
+}
+
+export interface Output {
+    index?: number;
+    taprootKey?: Buffer;
+    amount?: bigint;
+    spendingConditions: SpendingCondition[];
 }
 
 export interface OperatorState {
     role: AgentRoles;
-    lastTransactionReceieved: TransactionNames;
-    lastTransactionSent: TransactionNames;
+    lastTransactionReceieved: TemplateNames;
+    lastTransactionSent: TemplateNames;
+}
+
+export enum TemplateStatus {
+    PENDING = 'PENDING',
+    READY = 'READY',
+    PUBLISHED = 'PUBLISHED',
+    REJECTED = 'REJECTED'
+}
+
+export interface Template {
+    id?: number;
+    name: string;
+    role: AgentRoles;
+    isExternal?: boolean;
+    unknownTxid?: boolean;
+    ordinal?: number;
+    setupId?: string;
+    txid?: string;
+    inputs: Input[];
+    outputs: Output[];
+    status?: TemplateStatus;
 }

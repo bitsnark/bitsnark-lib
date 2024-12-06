@@ -18,12 +18,13 @@
   "scripts": {
     "test": "jest",
     "py-install": "./python/run-in-venv.sh echo done",
-    "generate-tx": "ts-node ./src/agent/setup/init-templates.ts",
-    "generate-tx-clear": "npm run start-db && ts-node ./src/agent/setup/init-templates.ts",
-    "generate-scripts": "ts-node ./src/agent/setup/generate-scripts.ts",
-    "add-amounts": "ts-node ./src/agent/setup/amounts.ts",
-    "sign-tx": "./python/run-in-venv.sh ts-node ./src/agent/setup/sign-transactions.ts",
+    
+    "emulate-setup": "./python/run-in-venv.sh ts-node ./src/agent/setup/emulate-setup.ts",
+    "emulate-setup-clear": "npm run start-db && ./python/run-in-venv.sh ts-node ./src/agent/setup/emulate-setup.ts",
+    "emulate-setup-final": "./python/run-in-venv.sh ts-node ./src/agent/setup/emulate-setup.ts --final",
+    "emulate-setup-final-clear": "npm run start-db && ./python/run-in-venv.sh ts-node ./src/agent/setup/emulate-setup.ts --final",
     "verify-setup": "ts-node ./src/agent/setup/verify-setup.ts",
+
     "compile": "tsc",
     "lint": "eslint --ignore-pattern node_modules/ --ignore-pattern dist/ --ignore-pattern python/ .",
     "lint-fix": "npm run lint -- --fix",
@@ -35,11 +36,8 @@
     "start-verifier": "./python/run-in-venv.sh ts-node ./src/agent/setup/agent.ts bitsnark_verifier_1",
     "start-regtest": "./scripts/start-regtest.sh",
     "stop-node": "docker stop bitcoin-node",
-    "emulate-setup": "./python/run-in-venv.sh ts-node ./src/agent/setup/emulate-setup.ts",
-    "emulate-setup-clear": "npm run start-db && ./python/run-in-venv.sh ts-node ./src/agent/setup/emulate-setup.ts",
-    "emulate-setup-final": "./python/run-in-venv.sh ts-node ./src/agent/setup/emulate-setup.ts --final",
-    "emulate-setup-final-clear": "npm run start-db && ./python/run-in-venv.sh ts-node ./src/agent/setup/emulate-setup.ts --final",
-    "python-test": "cd python && ./run-in-venv.sh pytest"
+    "python-test": "cd python && ./run-in-venv.sh pytest",
+    "create-setup-id": "ts-node ./src/agent/setup/create-setup-id.ts"
   },
   "config": {
     "commitizen": {
@@ -54,7 +52,7 @@
     "bitcoinjs-lib": "6.1.6",
     "bscript-parser": "0.1.0",
     "crypto-js": "4.2.0",
-    "dotenv": "^16.4.5",
+    "dotenv": "16.4.5",
     "ecpair": "2.1.0",
     "hash-wasm": "4.11.0",
     "minimist": "1.2.8",
@@ -65,6 +63,7 @@
     "tiny-secp256k1": "2.2.3",
     "ts-graphviz": "2.1.4",
     "ts-postgres": "2.0.4",
+    "uuid": "11.0.3",
     "websnark": "git+https://github.com/tornadocash/websnark.git#4c0af6a8b65aabea3c09f377f63c44e7a58afa6d"
   },
   "devDependencies": {

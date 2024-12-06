@@ -15,6 +15,7 @@ from .show import ShowCommand
 from .spend import SpendCommand
 from .test_spending_conditions import TestSpendingConditionsCommand
 from .test_scripts import TestScriptsCommand
+from .broadcast import BroadcastCommand
 
 COMMAND_CLASSES = [
     FundAndSendCommand,
@@ -22,6 +23,7 @@ COMMAND_CLASSES = [
     SpendCommand,
     TestSpendingConditionsCommand,
     TestScriptsCommand,
+    BroadcastCommand,
 ]
 
 
@@ -48,7 +50,7 @@ def main(argv: Sequence[str] = None):
         format="%(message)s",
     )
 
-    engine = create_engine(args.db)
+    engine = create_engine(f"{args.db}/{args.agent_id}")
     dbsession = Session(engine, autobegin=False)
 
     bitcoin_rpc = BitcoinRPC(args.rpc)
