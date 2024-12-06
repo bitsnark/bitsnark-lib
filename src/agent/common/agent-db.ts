@@ -249,7 +249,7 @@ export class AgentDb extends Db {
 
     // To assist debugging and mocking the DB in tests.
     public async query<Row>(sql: string, params?: QueryArgs) {
-        console.log(`${this.database} sql: ${sql}`, params);
+        if (process.env.DEBUG_SQL) console.log(`${this.database} sql: ${sql}`, params);
         return super.query<Row>(sql, params);
     }
 }
