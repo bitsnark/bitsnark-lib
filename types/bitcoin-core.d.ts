@@ -9,7 +9,7 @@ declare module "bitcoin-core" {
         getBlockCount(): Promise<number>;
         getBlockHash(blockHeight: number): Promise<string>;
         getTxOut(txid: string, vout: number, include_mempool: boolean): Promise<TxOut | null>;
-        command(command: string, ...params: string[]): Promise<unknown>;
+        command(command: string, ...params: unknown[]): Promise<unknown>;
     }
 
     export interface ClientOptions {

@@ -1,7 +1,7 @@
 import { agentConf } from '../agent.conf';
 import { BitcoinNetwork, BitcoinNode } from '../common/bitcoin-node';
 import { RawTransaction } from 'bitcoin-core';
-import { ListenerDb } from './listener-db';
+import { ListenerDb, ReceivedTemplate } from './listener-db';
 import { Input, Template, TemplateNames } from '../common/types';
 
 export interface expectByInputs {
@@ -12,13 +12,13 @@ export interface expectByInputs {
 }
 
 export class BitcoinListener {
-    private tipHeight: number = 0;
-    private tipHash: string = '';
-    public client;
-    public db: ListenerDb;
+    tipHeight: number = 0;
+    tipHash: string = '';
+    client;
+    db: ListenerDb;
 
-    constructor(agentId: string) {
-        this.client = new BitcoinNode().client;
+    constructor(agentId: string, mode: BitcoinNetwork = agentConf.bitcoinNodeNetwork as BitcoinNetwork) {
+        this.client = new BitcoinNode(mode).client;
         this.db = new ListenerDb(agentId);
     }
 
@@ -52,14 +52,18 @@ export class BitcoinListener {
         }
     }
 
-    async searchBlock(blockHeight: number, pending: Template[], templates: Template[]): Promise<void> {
+    async searchBlock(blockHeight: number, pending: Template[], templates: ReceivedTemplate[]): Promise<void> {
         const blockHash = await this.client.getBlockHash(blockHeight);
 
         for (const pendingTx of pending) {
             try {
                 let transmittedTx: RawTransaction | undefined;
                 if (!pendingTx.unknownTxid)
-                    transmittedTx = await this.client.getRawTransaction(pendingTx.txid!, true, blockHash);
+                    try {
+                        transmittedTx = await this.client.getRawTransaction(pendingTx.txid!, true, blockHash);
+                    } catch (error) {
+                        continue;
+                    }
                 else
                     transmittedTx = await this.getTransactionByInputs(
                         pendingTx.inputs,
@@ -67,7 +71,7 @@ export class BitcoinListener {
                         blockHash
                     );
 
-                if (transmittedTx)
+                if (transmittedTx) {
                     await this.db.markReceived(
                         pendingTx.setupId!,
                         pendingTx.name,
@@ -76,15 +80,18 @@ export class BitcoinListener {
                         blockHeight,
                         transmittedTx
                     );
+                    templates.find((template) => template.name === pendingTx.name)!.blockHash = transmittedTx.blockhash;
+                }
             } catch (error) {
                 console.error(error);
                 continue;
             }
         }
     }
+
     private async getTransactionByInputs(
         inputs: Input[],
-        templates: Template[],
+        templates: ReceivedTemplate[],
         blockHash: string
     ): Promise<RawTransaction | undefined> {
         try {
@@ -94,7 +101,7 @@ export class BitcoinListener {
                     (template) => input.templateName === template.name && template.txid
                 );
 
-                if (parentTemplate === undefined) return undefined;
+                if (parentTemplate === undefined || !parentTemplate.blockHash) return undefined;
 
                 const utxo = await this.client.getTxOut(parentTemplate.txid!, input.outputIndex, false);
                 if (utxo !== null) return undefined;
@@ -120,43 +127,4 @@ export class BitcoinListener {
             return undefined;
         }
     }
-}
-
-if (require.main === module) {
-    (async () => {
-
-        const dbProver = new ListenerDb('bitsnark_prover_1');
-        const dbVerifier = new ListenerDb('bitsnark_verifier_1');
-
-        const testnetTxs = [{
-            name: TemplateNames.LOCKED_FUNDS,
-            block: 3519980,
-            txId: '64f14028c168c99caf145933ce121b7989051a2042dc7f4bc30a6d1bc793ddf8'
-        },
-        {
-            name: TemplateNames.PROVER_STAKE,
-            block: 3519962,
-            txId: '2844b5d8a0262628b3a31a5b270b89eca93a4b6ae9007481f21a045557515a42'
-        },
-        {
-            name: TemplateNames.PROOF,
-            txId: '34d82044efa0964c9800252d528c93012b4022059ff921485f533ac3fe2d3e13'
-        }]
-
-
-        for (const tx of testnetTxs) {
-            await dbProver.query(`UPDATE templates
-                SET txid = j $1
-                WHERE name = $2;`, [tx.txId, tx.name]);
-            await dbVerifier.query(`UPDATE templates
-                SET txid = j $1
-                WHERE name = $2;`, [tx.txId, tx.name]);
-        }
-
-
-
-
-    })().catch((error) => {
-        throw error;
-    });
 }

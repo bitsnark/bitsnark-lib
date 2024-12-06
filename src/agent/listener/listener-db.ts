@@ -25,7 +25,7 @@ export interface ReceivedSetup extends Setup {
 
 export class ListenerDb extends AgentDb {
     static templateFields = `
-        templates.name, templates.role, templates.is_external, templates.ordinal,
+        templates.name, templates.txid, templates.role, templates.is_external, templates.ordinal,
         templates.inputs, templates.outputs, templates.unknown_txid,
         received.txid, received.raw_transaction, received.block_hash, received.block_height,
         setups.id, setups.protocol_version,
@@ -35,6 +35,7 @@ export class ListenerDb extends AgentDb {
         let i = 0;
         return {
             name: row[i++],
+            txid: row[i++],
             role: row[i++],
             isExternal: row[i++],
             ordinal: row[i++],
@@ -75,7 +76,7 @@ export class ListenerDb extends AgentDb {
 
         await this.query(
             `
-                INSERT INTO received (template_id, transaction_hash, block_hash, block_height, raw_transaction)
+                INSERT INTO received (template_id, txid, block_hash, block_height, raw_transaction)
                 VALUES ((SELECT id FROM templates WHERE setup_id = $1 AND name = $2), $3, $4, $5, $6)
             `,
             [setupId, templateName, txid, blockHash, blockHeight, JSON.stringify(rawTransaction)]

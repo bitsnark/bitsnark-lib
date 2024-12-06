@@ -6,8 +6,7 @@ import { mergeWots, setWotsPublicKeysForArgument } from '../../src/agent/setup/w
 import { AgentDb } from '../../src/agent/common/agent-db';
 import { BitcoinListener } from '../../src/agent/listener/bitcoin-listener';
 import { BitcoinNetwork } from '../../src/agent/common/bitcoin-node';
-import { ListenerDb } from '@src/agent/listener/listener-db';
-
+import { ListenerDb, ReceivedTemplate } from '../../src/agent/listener/listener-db';
 
 const payloadUtxo = {
     txid: '0000000000000000000000000000000000000000000000000000000000000000',
@@ -63,29 +62,33 @@ export function deepCompare(a: Bufferheap, b: Bufferheap): boolean {
 }
 
 export interface TestAgent {
+    setupId: string;
     role?: string;
     agentId: string;
     db: testAgentDb;
     listener: BitcoinListener;
-    templates: Template[];
-    pending: Template[];
+    templates: ReceivedTemplate[];
+    pending: ReceivedTemplate[];
 }
 
-export function setTestAgent(role: AgentRoles): TestAgent {
+export function setTestAgent(role: AgentRoles, mode: BitcoinNetwork = BitcoinNetwork.REGTEST): TestAgent {
     const agentId = `bitsnark_${role.toLowerCase()}_1`;
     return {
+        setupId: 'test_setup',
         role: role.toLowerCase(),
         agentId: agentId,
         db: new testAgentDb(agentId),
-        listener: new BitcoinListener(agentId),
+        listener: new BitcoinListener(agentId, mode),
         templates: [],
         pending: []
     };
 }
 
 export class testAgentDb extends AgentDb {
+    listenerDb: ListenerDb;
     constructor(agentId: string) {
         super(agentId);
+        this.listenerDb = new ListenerDb(agentId);
     }
 
     //Used for testing purposes only
@@ -93,26 +96,31 @@ export class testAgentDb extends AgentDb {
         //delete all outgoing, incoming and templates
         await this.query(
             `UPDATE templates
-            SET outgoing_status = 'PENDING'
-            WHERE setup_id = $1`, [setupId]);
+            SET status = 'PENDING'
+            WHERE setup_id = $1`,
+            [setupId]
+        );
         await this.query(
             `UPDATE setups
             SET status = 'ACTIVE'
-            WHERE id = $1`, [setupId]);
+            WHERE id = $1`,
+            [setupId]
+        );
         await this.query(
             `DELETE FROM received
             WHERE template_id in
             (SELECT template_id
             FROM templates
-            WHERE setup_id = $1)`, [setupId]);
-        ;
+            WHERE setup_id = $1)`,
+            [setupId]
+        );
     }
 
     public async test_markPublished(setupId: string, templateName: string) {
         await this.query(
             `
                 UPDATE templates
-                SET updated_at = NOW(), outgoing_status = $1
+                SET updated_at = NOW(), status = $1
                 WHERE setup_id = $2 AND name = $3
             `,
             [TemplateStatus.PUBLISHED, setupId, templateName]
@@ -126,7 +134,7 @@ export class testAgentDb extends AgentDb {
             FROM templates
                     JOIN setups ON templates.setup_id = setups.id
                     LEFT JOIN received ON templates.id = received.template_id
-            WHERE outgoing_status = 'READY'
+            WHERE status = 'READY'
             AND setups.id = $1`,
                 [setupId]
             )
