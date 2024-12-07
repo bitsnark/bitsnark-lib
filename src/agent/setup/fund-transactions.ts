@@ -12,6 +12,10 @@ export async function fundExternalTemplates(
     const result = await runPython([
         '-m',
         'bitsnark.core.fund_transactions',
+        '--rpc',
+        'http://' +
+            `${agentConf.bitcoinNodeUsername}:${agentConf.bitcoinNodePassword}@` +
+            `${agentConf.bitcoinNodeHost}:${agentConf.bitcoinNodePort}/wallet/testwallet`,
         '--agent-id',
         agentId,
         '--setup-id',
