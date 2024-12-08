@@ -95,10 +95,9 @@ def btc_rpc(docker_compose) -> BitcoinRPC:
 
 @pytest.fixture()
 def btc_wallet(btc_rpc) -> BitcoinWallet:
-    return BitcoinWallet.create(
-        name="wallet1",
-        rpc_base_url=btc_rpc.url,
+    wallet = BitcoinWallet.create(
+        name="testwallet",
+        rpc_base_url=btc_rpc.url
     )
-
-
-
+    wallet.mine(432)
+    return wallet
