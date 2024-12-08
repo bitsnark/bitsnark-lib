@@ -15,6 +15,10 @@ export class SimpleContext {
         this.context = context;
     }
 
+    async sendText(text: string) {
+        await this.context.reply(text);
+    }
+
     async send(data: Message) {
         const text = toJson(data);
         if (text.length < TELEGRAM_MAX_TEXT_MSG_LENGTH) {
