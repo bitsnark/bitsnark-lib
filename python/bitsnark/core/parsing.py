@@ -4,7 +4,6 @@ JSON parsing utilities
 
 
 def parse_bignum(s: str) -> int:
-    print(f"FOOOOOOOOOOO {s}")
     if not isinstance(s, str):
         raise TypeError(f"Expected string, got {type(s)}")
     if not s.startswith("bigint:"):

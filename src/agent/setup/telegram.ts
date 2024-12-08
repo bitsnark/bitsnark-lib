@@ -7,6 +7,7 @@ import { Message, toJson } from './messages';
 
 export type TelegrafContext = NarrowedContext<Context<Update>, Update.ChannelPostUpdate>;
 const TELEGRAM_MAX_TEXT_MSG_LENGTH = 4096;
+
 export class SimpleContext {
     context: TelegrafContext;
 
@@ -35,9 +36,9 @@ export class TelegramBot {
     agentId: string;
     token: string;
     bot: Telegraf;
-    client: ITelegramClient;
+    client?: ITelegramClient;
 
-    constructor(agentId: string, client: ITelegramClient) {
+    constructor(agentId: string, client?: ITelegramClient) {
         this.agentId = agentId;
         this.token = agentConf.tokens[agentId];
         this.bot = new Telegraf(this.token);
@@ -50,18 +51,21 @@ export class TelegramBot {
         this.bot.on(channelPost(), async (context) => {
             console.log(context.update.channel_post);
             const channelPost = context.update.channel_post;
+
+            if (!this.client) return;
+
             const text = 'text' in channelPost ? channelPost.text : undefined;
             const file = 'document' in channelPost ? channelPost.document : undefined;
 
             try {
                 if (text) {
                     console.log('!!! text !!!', text);
-                    this.client.messageReceived(text, new SimpleContext(context));
+                    this.client!.messageReceived(text, new SimpleContext(context));
                 } else if (file) {
                     context.telegram.getFileLink(file.file_id).then((url) => {
                         axios({ url: url.toString(), responseType: 'text' }).then((response) => {
                             console.log('!!! file !!!', response.data.length);
-                            this.client.messageReceived(response.data, new SimpleContext(context));
+                            this.client!.messageReceived(response.data, new SimpleContext(context));
                         });
                     });
                 }
@@ -74,7 +78,7 @@ export class TelegramBot {
         process.once('SIGTERM', () => this.bot.stop('SIGTERM'));
     }
 
-    async launch() {
-        await this.bot.launch();
+    async launch(fn?: () => void) {
+        await this.bot.launch(fn);
     }
 }
