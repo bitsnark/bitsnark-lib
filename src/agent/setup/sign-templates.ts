@@ -1,6 +1,8 @@
 import { runPython } from '../common/python';
-import { AgentRoles, Template, TemplateNames } from '../common/types';
+import { AgentRoles, SignatureType, Template, TemplateNames } from '../common/types';
 import { AgentDb } from '../common/agent-db';
+import { randomBytes } from 'crypto';
+import { getSpendingConditionByInput } from '../common/templates';
 
 function verifyTemplates(templates: Template[], role: AgentRoles) {
     for (const template of templates) {
@@ -14,6 +16,26 @@ function verifyTemplates(templates: Template[], role: AgentRoles) {
         if (role == AgentRoles.VERIFIER && !template.inputs.every((i) => i.verifierSignature))
             throw new Error('Missing signature');
     }
+}
+
+export async function fakeSignTemplates(
+    role: AgentRoles,
+    agentId: string,
+    setupId: string,
+    templates: Template[]): Promise<Template[]> {
+    for (const template of templates) {
+        if (template.isExternal) continue;
+        for (const input of template.inputs) {
+            const sc = getSpendingConditionByInput(templates, input);
+            if (sc.signatureType == SignatureType.PROVER || sc.signatureType == SignatureType.BOTH)
+                input.proverSignature = randomBytes(64).toString('hex');
+            if (sc.signatureType == SignatureType.VERIFIER || sc.signatureType == SignatureType.BOTH)
+                input.verifierSignature = randomBytes(64).toString('hex');
+        }
+    }
+    const agentDb = new AgentDb(agentId);
+    await agentDb.updateTemplates(setupId, templates);
+    return templates;
 }
 
 export async function signTemplates(

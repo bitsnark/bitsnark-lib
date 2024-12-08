@@ -38,7 +38,7 @@ export async function verifySetup(agentId: string, setupId: string, role: AgentR
     if (!amountCheck) fail('Failed amount check');
     else console.log('Success');
 
-    console.log('check that all inputs have signatures');
+    console.log('Check that all inputs have signatures...');
     for (const template of templates) {
         if (template.isExternal || template.name == TemplateNames.PROOF_REFUTED) {
             console.warn(`Not checking signatures for ${template.name}`);
