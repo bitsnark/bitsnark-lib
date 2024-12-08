@@ -24,7 +24,8 @@ const IncomingTransactionsBaseRow: ReceivedTemplate = {
     actualTxid: null,
     blockHash: null,
     blockHeight: null,
-    unknownTxid: false
+    unknownTxid: false,
+    data: null
 };
 
 const setups = ['test_setup_1'];

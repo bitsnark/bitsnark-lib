@@ -1,10 +1,10 @@
-import { AgentDb, Template } from '../src/agent/common/db';
+import { test_Template, testAgentDb } from './test-utils/test-utils';
 import { BitcoinNode } from '../src/agent/common/bitcoin-node';
 import { ProtocolProver } from '../src/agent/protocol-logic/protocol-prover';
 import { proofBigint } from '../src/agent/common/constants';
-import { getTransactionByName, Transaction } from '../src/agent/common/transactions';
 import { RawTransaction, Input } from 'bitcoin-core';
 import { agentConf } from '../src/agent/agent.conf';
+import { ReceivedTemplate } from '../src/agent/listener/listener-db';
 
 export const mockRawTransaction: RawTransaction = {
     in_active_chain: true,
@@ -53,9 +53,9 @@ const mockVout = {
 
 export class MockPublisher {
     agents: { prover: string; verifier: string };
-    dbs: { prover: AgentDb; verifier: AgentDb };
+    dbs: { prover: testAgentDb; verifier: testAgentDb };
     setupId: string;
-    templates: { prover: Template[]; verifier: Template[] } = { prover: [], verifier: [] };
+    templates: { prover: test_Template[]; verifier: test_Template[] } = { prover: [], verifier: [] };
     bitcoinClient: BitcoinNode;
     scheduler: NodeJS.Timeout | undefined;
     isRunning: boolean = false;
@@ -64,13 +64,13 @@ export class MockPublisher {
         this.agents = { prover: proverId, verifier: verifierId };
         this.setupId = setupId;
         this.bitcoinClient = new BitcoinNode();
-        this.dbs = { prover: new AgentDb(proverId), verifier: new AgentDb(verifierId) };
+        this.dbs = { prover: new testAgentDb(proverId), verifier: new testAgentDb(verifierId) };
     }
 
     async start() {
         if (!this.templates.prover.length || !this.templates.verifier.length) {
-            this.templates.prover = await this.dbs.prover.getTemplates(this.setupId);
-            this.templates.verifier = await this.dbs.verifier.getTemplates(this.setupId);
+            this.templates.prover = await this.dbs.prover.test_getTemplates(this.setupId);
+            this.templates.verifier = await this.dbs.verifier.test_getTemplates(this.setupId);
         }
 
         if (this.scheduler) clearInterval(this.scheduler);
@@ -102,16 +102,20 @@ export class MockPublisher {
                     const agentReadyTemplates = readyToSendTemplates[agent];
 
                     for (const readyTx of agentReadyTemplates) {
+                        console.log('readyTx.data', readyTx.data, readyTx.data ? readyTx.data[0] : 'NULL');
                         const rawTx: RawTransaction = {
                             ...mockRawTransaction,
-                            txid: readyTx.object.txId!,
-                            vin: this.mockInputs(readyTx, this.templates[agent])
+                            txid: readyTx.txid!,
+                            vin: this.mockInputs(
+                                readyTx,
+                                this.templates[agent].filter((t) => t.setupId === readyTx.setupId)
+                            )
                         };
 
-                        await this.dbs[agent].markReceived(
+                        await this.dbs[agent].listenerDb.markReceived(
                             this.setupId,
                             readyTx.name,
-                            readyTx.object.txId!,
+                            readyTx.txid!,
                             hash,
                             tip,
                             rawTx
@@ -119,16 +123,16 @@ export class MockPublisher {
 
                         await this.dbs[agent].test_markPublished(this.setupId, readyTx.name);
 
-                        await this.dbs[otherAgent].markReceived(
+                        await this.dbs[otherAgent].listenerDb.markReceived(
                             this.setupId,
                             readyTx.name,
-                            readyTx.object.txId!,
+                            readyTx.txid!,
                             hash,
                             tip,
                             rawTx
                         );
 
-                        console.log('Recived incoming transaction', readyTx.object.txId, readyTx.name);
+                        console.log('Received incoming transaction', readyTx.txid, readyTx.name);
                     }
                 }
                 this.isRunning = false;
@@ -156,25 +160,18 @@ export class MockPublisher {
         }
     }
 
-    private mockInputs(template: Template, templates: Template[]): Input[] {
+    private mockInputs(template: ReceivedTemplate, templates: test_Template[]): Input[] {
         return (
             templates
                 .find((t) => t.name === template.name)
-                ?.object?.inputs.map((input, index) => {
+                ?.inputs.map((input, index) => {
+                    const parentTemplate = templates.find((t) => input.templateName === t.name);
+
                     return {
                         ...mockVin,
-                        txid:
-                            getTransactionByName(
-                                templates.map((t) => t.object),
-                                input.transactionName
-                            ).txId ?? '',
+                        txid: parentTemplate?.txid || '',
                         vout: input.outputIndex,
-                        txinwitness:
-                            template.data && template.data[index]
-                                ? template.data[index].map((witnessElement: Buffer) =>
-                                      Buffer.from(witnessElement).toString('hex')
-                                  )
-                                : []
+                        txinwitness: template.data && template.data[index] ? template.data[index] : []
                     };
                 }) || []
         );
@@ -191,8 +188,8 @@ if (require.main === module) {
         const verifierId = 'bitsnark_verifier_1';
         const setupId = 'test_setup';
 
-        const dbProver = new AgentDb(proverId);
-        const dbVerifier = new AgentDb(verifierId);
+        const dbProver = new testAgentDb(proverId);
+        const dbVerifier = new testAgentDb(verifierId);
         await dbProver.test_restartSetup(setupId);
         await dbVerifier.test_restartSetup(setupId);
 

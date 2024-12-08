@@ -37,7 +37,7 @@ const setupFields = [
     'stake_amount'
 ];
 
-const templateFields = [
+export const templateFields = [
     'id',
     'name',
     'role',
@@ -92,7 +92,7 @@ function objToRow(fieldNames: string[], obj: any): DbValue[] {
     return row;
 }
 
-function rowToObj<T>(fieldNames: string[], row: DbValue[], jsonFields: string[] = []): T {
+export function rowToObj<T>(fieldNames: string[], row: DbValue[], jsonFields: string[] = []): T {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const obj: any = {};
     fieldNames.forEach((k, i) => {
@@ -240,7 +240,7 @@ export class AgentDb extends Db {
                 SET updated_at = NOW(), protocol_data = $1, status = $2
                 WHERE setup_id = $3 AND name = $4`,
             [
-                data ? JSON.stringify(data.map((data) => data.map((buffer) => buffer.toString('hex')))) : null,
+                data ? data.map((data) => data.map((buffer) => buffer.toString('hex'))) : null,
                 TemplateStatus.READY,
                 setupId,
                 templateName
