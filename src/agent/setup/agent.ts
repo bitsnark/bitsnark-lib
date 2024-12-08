@@ -23,6 +23,7 @@ import { mergeWots, setWotsPublicKeysForArgument } from './wots-keys';
 import { BitcoinNode } from '../common/bitcoin-node';
 import { AgentDb, updateSetupPartial } from '../common/agent-db';
 import { getTemplateByName } from '../common/templates';
+import { createSetupId } from './create-setup-id';
 
 interface AgentInfo {
     agentId: string;
@@ -152,10 +153,10 @@ export class Agent {
     ) {
         if (this.role != AgentRoles.PROVER) throw new Error("I'm not a prover");
 
-        const setup = await this.db.getSetup(setupId);
+        let setup = await this.db.getSetup(setupId);
         if (!setup || setup.status != SetupStatus.PENDING) throw new Error(`Invalid setup state: ${setup.status}`);
 
-        await this.db.updateSetup(setupId, {
+        setup = await this.db.updateSetup(setupId, {
             payloadTxid,
             payloadAmount,
             stakeTxid,
