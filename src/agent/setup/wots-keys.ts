@@ -36,11 +36,9 @@ export function setWotsPublicKeysForArgument(wotsSalt: string, templates: Templa
     // the first 6 should be the same keys as the selections, in order
     for (let i = 0; i < iterations; i++) {
         const selection = getTemplateByName(templates, TemplateNames.SELECT + '_' + twoDigits(i));
-        if (selection.inputs.length != 1) 
-            throw new Error('Wrong number of inputs');
+        if (selection.inputs.length != 1) throw new Error('Wrong number of inputs');
         const sc = getSpendingConditionByInput(templates, selection.inputs[0]);
-        if (sc.wotsPublicKeys!.length != 1) 
-            throw new Error('Wrong number of keys');
+        if (sc.wotsPublicKeys!.length != 1) throw new Error('Wrong number of keys');
         actualWotsKeys.push(sc.wotsPublicKeys![0]);
     }
 
