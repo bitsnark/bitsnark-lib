@@ -22,6 +22,7 @@ export class AgentDbMock extends AgentDb {
     public async updateSetup(setupId: string, setup: updateSetupPartial) {
         this.updateSetupCalledParams = { setupId, setup };
         this.updateSetupCalledCount++;
+        return this.getSetup(setupId);
     }
 
     public getSetupReturn?: Setup;
