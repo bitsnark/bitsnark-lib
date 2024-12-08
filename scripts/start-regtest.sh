@@ -27,7 +27,8 @@ echo
 echo Bitcoin node is up and running.
 
 echo Creating and loading a wallet...
-bitcoin_cli createwallet testwallet || true
+bitcoin_cli createwallet testwallet 2>/dev/null || true
+bitcoin_cli loadwallet testwallet 2>/dev/null || true
 
 # Segwit needs 432 blocks, at least according to this:
 # https://gist.github.com/t4sk/0bc6b35a26998b9007d68f376a852636
