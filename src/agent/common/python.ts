@@ -16,8 +16,8 @@ export async function runPython(args: string[]): Promise<Buffer> {
         const subprocessError = error as { status: number; stdout: Buffer; stderr: Buffer };
         const errorMessage =
             `Python script failed with code ${subprocessError.status}\n` +
-            `stdout:\n${subprocessError.stdout.toString()}\n` +
-            `stderr:\n${subprocessError.stderr.toString()}\n`;
+            `stdout:\n${subprocessError.stdout.toString('ascii')}\n` +
+            `stderr:\n${subprocessError.stderr.toString('ascii')}\n`;
         console.error(errorMessage);
         throw new Error(errorMessage);
     }
