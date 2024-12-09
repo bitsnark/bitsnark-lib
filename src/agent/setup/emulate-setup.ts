@@ -2,7 +2,6 @@ import minimist from 'minimist';
 import { agentConf } from '../agent.conf';
 import { addAmounts } from './amounts';
 import { generateAllScripts } from './generate-scripts';
-import { fundExternalTemplates } from './fund-transactions';
 import { signTemplates } from './sign-templates';
 import { getSpendingConditionByInput } from '../common/templates';
 import { verifySetup } from './verify-setup';

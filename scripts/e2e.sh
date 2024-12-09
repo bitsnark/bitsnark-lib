@@ -27,18 +27,11 @@ snapshot() {
     npm run start-regtest -- "$data_dir"
 }
 
-broadcast() {
-    npx ts-node ./src/agent/protocol-logic/broadcast-transaction.ts \
-        --agent-id bitsnark_prover_1 --setup-id test_setup --name $1
-}
-
 npm run start-db
 npm run start-regtest -- "$data_dir"
 npm run emulate-setup
 
-broadcast prover_stake
-broadcast locked_funds
-
+ts-node ./src/agent/protocol-logic/fund-externals.ts bitsnark_prover_1 test_setup
 ts-node ./src/agent/protocol-logic/send-proof.ts bitsnark_prover_1 test_setup --fudge
 
 snapshot create
