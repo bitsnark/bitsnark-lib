@@ -26,7 +26,7 @@ export async function fundExternalTemplates(
         changeAddress,
         ...templateNames
     ]);
-    console.log(result.toString());
+    console.log(result.toString('ascii'));
 }
 
 async function main() {

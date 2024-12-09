@@ -89,6 +89,12 @@ export class Agent {
             return;
         }
         const tokens = data.split(' ');
+        if (this.role == AgentRoles.PROVER && tokens.length == 3 && tokens[0] == '/create') {
+            const [proverAgentId, verifierAgentId] = tokens.slice(1);
+            if (this.agentId != proverAgentId) return;
+            const setupId = await createSetupId(proverAgentId, verifierAgentId);
+            context.sendText(`setupId: ${setupId}`);
+        }
         if (this.role == AgentRoles.PROVER && tokens.length == 6 && tokens[0] == '/start') {
             const setupId = tokens[1];
             const [payloadTxid, payloadAmount, stakeTxid, stakeAmount] = tokens.slice(2);
@@ -297,7 +303,7 @@ export class Agent {
         i.templates = await addAmounts(this.agentId, this.role, i.setupId, i.templates!);
 
         await this.db.upsertTemplates(i.setupId, i.templates!);
-        i.templates = await fakeSignTemplates(this.role, this.agentId, i.setupId, i.templates!);
+        i.templates = await signTemplates(this.role, this.agentId, i.setupId, i.templates!);
 
         if (this.role == AgentRoles.PROVER) this.sendSignatures(context, i.setupId);
     }
@@ -380,8 +386,10 @@ export class Agent {
             await verifySetup(this.agentId, i.setupId, this.role);
             await this.db.markSetupPegoutActive(i.setupId);
             await this.signMessageAndSend(context, new DoneMessage({ setupId: i.setupId, agentId: this.agentId }));
+            i.state = SetupState.DONE;
         } else {
             await this.sendSignatures(context, i.setupId);
+            i.state = SetupState.DONE;
         }
     }
 

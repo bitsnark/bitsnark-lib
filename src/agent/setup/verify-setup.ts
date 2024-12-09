@@ -74,6 +74,11 @@ export async function verifySetup(agentId: string, setupId: string, role: AgentR
                 fail(`public keys missing for ${template.name} input ${input.index}`);
                 continue;
             }
+
+            // We can't check this for the argument, because the index data is supposed
+            // to come from verifier....
+            if (template.name == TemplateNames.ARGUMENT) continue;
+
             let wotsCheck = false;
             for (let dataIndex = 0; dataIndex < sc.wotsSpec.length && !wotsCheck; dataIndex++) {
                 try {

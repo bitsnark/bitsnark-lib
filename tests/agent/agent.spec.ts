@@ -13,6 +13,7 @@ export const mockAgent = {
 
 export const mockContext: SimpleContext = {
     send: jest.fn(),
+    sendText: jest.fn(),
     context: {} as TelegrafContext
 };
 

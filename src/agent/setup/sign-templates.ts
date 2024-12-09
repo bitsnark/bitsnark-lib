@@ -57,7 +57,7 @@ export async function signTemplates(
         '--no-mocks'
     ]);
     console.log('done');
-    console.log(result.toString());
+    console.log(result.toString('ascii'));
 
     const db = new AgentDb(agentId);
     templates = await db.getTemplates(setupId);
