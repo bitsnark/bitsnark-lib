@@ -90,20 +90,16 @@ export class Agent {
         }
         const tokens = data.split(' ');
         if (this.role == AgentRoles.PROVER && tokens.length == 3 && tokens[0] == '/create') {
-
             const [proverAgentId, verifierAgentId] = tokens.slice(1);
             if (this.agentId != proverAgentId) return;
             const setupId = await createSetupId(proverAgentId, verifierAgentId);
             context.sendText(`setupId: ${setupId}`);
-
-        } if (this.role == AgentRoles.PROVER && tokens.length == 6 && tokens[0] == '/start') {
-
+        }
+        if (this.role == AgentRoles.PROVER && tokens.length == 6 && tokens[0] == '/start') {
             const setupId = tokens[1];
             const [payloadTxid, payloadAmount, stakeTxid, stakeAmount] = tokens.slice(2);
             await this.start(context, setupId, payloadTxid, BigInt(payloadAmount), stakeTxid, BigInt(stakeAmount));
-
         } else if (data.trim().startsWith('{') && data.trim().endsWith('}')) {
-
             const message = fromJson(data);
             console.log('Message received: ', message);
             if (message.agentId == this.agentId) return;
