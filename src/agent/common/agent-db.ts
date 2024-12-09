@@ -225,9 +225,9 @@ export class AgentDb extends Db {
     }
 
     public async upsertTemplates(setupId: string, templates: Template[]) {
-        const names = (await this.query<Template>(
-            `SELECT name FROM templates WHERE setup_id = $1`,
-            [setupId])).rows.map(row => row[0]);
+        const names = (
+            await this.query<Template>(`SELECT name FROM templates WHERE setup_id = $1`, [setupId])
+        ).rows.map((row) => row[0]);
         const toInsert = templates.filter((t) => !names.find((name) => name == t.name));
         const toUpdate = templates.filter((t) => names.find((name) => name == t.name));
         await this.insertTemplates(setupId, toInsert);

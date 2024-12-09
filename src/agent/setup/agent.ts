@@ -358,10 +358,11 @@ export class Agent {
                 console.warn(`Not checking signatures for ${template.name}`);
                 continue;
             }
-    
+
             for (const input of template.inputs) {
                 const sc = getSpendingConditionByInput(i.templates!, input);
-                const proverRequired = sc.signatureType === SignatureType.PROVER || sc.signatureType === SignatureType.BOTH;
+                const proverRequired =
+                    sc.signatureType === SignatureType.PROVER || sc.signatureType === SignatureType.BOTH;
                 const verifierRequired =
                     sc.signatureType === SignatureType.VERIFIER || sc.signatureType === SignatureType.BOTH;
                 if (!input.proverSignature && proverRequired) {
@@ -371,7 +372,7 @@ export class Agent {
                     console.log(`Missing verifierSignature for ${template.name} input ${input.index}`);
                 }
             }
-        }    
+        }
 
         await this.db.updateTemplates(i.setupId, i.templates!);
 
