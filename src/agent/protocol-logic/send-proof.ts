@@ -16,5 +16,7 @@ if (require.main === module) {
     const agentId = args._[0] ?? args['agent-id'] ?? 'bitsnark_prover_1';
     const setupId = args._[1] ?? args['setup-id'] ?? 'test_setup';
     const fudge = args.fudge ?? false;
-    main(agentId, setupId, fudge).catch((error) => { throw error; });
+    main(agentId, setupId, fudge).catch((error) => {
+        throw error;
+    });
 }

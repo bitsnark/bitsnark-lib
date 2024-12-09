@@ -98,15 +98,6 @@ export async function emulateSetup(
     await proverDb.upsertTemplates(setupId, proverTemplates);
     await verifierDb.upsertTemplates(setupId, verifierTemplates);
 
-    console.log('funding external transactions for prover...');
-
-    const externalTransactions = proverTemplates.filter((template) => template.isExternal);
-    await fundExternalTemplates(
-        proverAgentId,
-        setupId,
-        proverTemplates.filter((template) => template.isExternal).map((template) => template.name as TemplateNames)
-    );
-
     console.log('running Python to sign transactions...');
 
     proverTemplates = await signTemplates(AgentRoles.PROVER, proverAgentId, setupId, proverTemplates);
