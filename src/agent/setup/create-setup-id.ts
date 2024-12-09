@@ -47,7 +47,7 @@ export async function createSetupId(proverAgentId: string, verifierAgentId: stri
     }
 
     const stt = new SimpleTapTree(agentConf.internalPubkey, scripts);
-    const setupId = stt.getScriptPubkey().toString('hex');
+    const setupId = stt.getAddress();
 
     const db = new AgentDb(proverAgentId);
     await db.createSetup(setupId, wotsSalt);

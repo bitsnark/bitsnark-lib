@@ -25,7 +25,6 @@ export async function emulateSetup(
 
     console.log('creating setup...');
 
-    await proverDb.createSetup(setupId, TEST_WOTS_SALT);
     await proverDb.updateSetup(setupId, {
         payloadTxid: lockedFunds.txid,
         payloadOutputIndex: lockedFunds.outputIndex,
@@ -155,7 +154,9 @@ if (require.main === module) {
             amount: agentConf.proverStakeAmount
         };
 
-    emulateSetup('bitsnark_prover_1', 'bitsnark_verifier_1', 'test_setup', args.final, lockedFunds, proverStake).catch(
+    const setupId = args['setup-id'] ?? 'test_setup';
+
+    emulateSetup('bitsnark_prover_1', 'bitsnark_verifier_1', setupId, args.final, lockedFunds, proverStake).catch(
         (error) => {
             throw error;
         }

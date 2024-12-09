@@ -8,7 +8,7 @@ snapshot_file="$(mktemp)"
 cleanup() {
     rm -rf "$data_dir" "$snapshot_file"
 }
-#trap cleanup EXIT
+trap cleanup EXIT
 
 snapshot() {
     bitcoin_cli stop
@@ -27,11 +27,52 @@ snapshot() {
     npm run start-regtest -- "$data_dir"
 }
 
+create_transaction() {
+    address=$1
+    amount=$2
+    fee=$3
+    utxo_idx=$4
+    utxo=$(bitcoin_cli listunspent 0 | jq -r "[.[] | select(.spendable == true)][$utxo_idx]")
+    txid=$(echo "$utxo" | jq -r '.txid')
+    vout=$(echo "$utxo" | jq -r '.vout')
+    utxo_amount=$(echo "$utxo" | jq -r '.amount')
+
+    if [ -z "$txid" ]; then
+        echo "No spendable UTXO found."
+        return 1
+    fi
+
+    change_amount=$(echo "$utxo_amount - $amount - $fee" | bc)
+    change_address=$(bitcoin_cli getnewaddress)
+
+    unsigned=$(bitcoin_cli createrawtransaction \
+        "[{\"txid\":\"$txid\",\"vout\":$vout}]" \
+        "{\"$address\":$amount,\"$change_address\":$change_amount}")
+    signed=$(bitcoin_cli signrawtransactionwithwallet "$unsigned" | jq -r '.hex')
+
+    echo $signed
+}
+
 npm run start-db
 npm run start-regtest -- "$data_dir"
-npm run emulate-setup
 
-ts-node ./src/agent/protocol-logic/fund-externals.ts bitsnark_prover_1 test_setup
-ts-node ./src/agent/protocol-logic/send-proof.ts bitsnark_prover_1 test_setup --fudge
+setup_id=$(npm run create-setup-id | tail -n1 | grep -o '[^ ]*$')
+locked_funds_tx=$(create_transaction $setup_id 10.0 0.005 0)
+prover_stake_tx=$(create_transaction $setup_id 2.0 0.005 1)
+locked_funds_txid=$(bitcoin_cli decoderawtransaction "$locked_funds_tx" | jq -r '.txid')
+prover_stake_txid=$(bitcoin_cli decoderawtransaction "$prover_stake_tx" | jq -r '.txid')
+
+# Just assuming bitcoin-cli will always use the first output for the value.
+locked_funds_output_index=0
+prover_stake_output_index=0
+
+npm run emulate-setup -- --setup-id $setup_id \
+    --locked $locked_funds_txid:$locked_funds_output_index \
+    --stake $prover_stake_txid:$prover_stake_output_index
+
+bitcoin_cli sendrawtransaction "$locked_funds_tx"
+bitcoin_cli sendrawtransaction "$prover_stake_tx"
+
+ts-node ./src/agent/protocol-logic/send-proof.ts bitsnark_prover_1 "$setup_id" --fudge
 
 snapshot create

@@ -404,7 +404,7 @@ export class DoomsdayGenerator {
     async generateFinalStepTaproot(
         transactions: Template[],
         scriptDescriptor?: ScriptDescriptor
-    ): Promise<{ pubkey: Buffer; script?: Buffer; controlBlock?: Buffer }> {
+    ): Promise<{ taproot: Buffer; script?: Buffer; controlBlock?: Buffer }> {
         let compressor = new Compressor(agentConf.internalPubkey, 20 * 300000);
 
         // which index do we need?
@@ -420,7 +420,7 @@ export class DoomsdayGenerator {
         this.generateRefuteInstructionTaproot(compressor, transactions);
 
         return {
-            pubkey: compressor.getScriptPubkey(),
+            taproot: compressor.getTaproot(),
             controlBlock: scriptDescriptor ? compressor.getControlBlock() : undefined,
             script: scriptDescriptor ? compressor.script : undefined
         };
