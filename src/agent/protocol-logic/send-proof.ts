@@ -8,11 +8,7 @@ async function main(agentId: string, setupId: string, fudge: boolean = false) {
     if (fudge) {
         proof[0] = proof[0] + 1n;
     }
-    try {
-        await protocol.pegOut(proofBigint);
-    } catch (e) {
-        console.error(e);
-    }
+    await protocol.pegOut(proofBigint);
 }
 
 if (require.main === module) {
@@ -20,5 +16,7 @@ if (require.main === module) {
     const agentId = args._[0] ?? args['agent-id'] ?? 'bitsnark_prover_1';
     const setupId = args._[1] ?? args['setup-id'] ?? 'test_setup';
     const fudge = args.fudge ?? false;
-    main(agentId, setupId, fudge).catch(console.error);
+    main(agentId, setupId, fudge).catch((error) => {
+        throw error;
+    });
 }

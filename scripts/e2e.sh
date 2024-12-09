@@ -25,7 +25,6 @@ snapshot() {
         exit 1
     fi
     npm run start-regtest -- "$data_dir"
-    bitcoin_cli loadwallet testwallet
 }
 
 broadcast() {
@@ -37,9 +36,9 @@ npm run start-db
 npm run start-regtest -- "$data_dir"
 npm run emulate-setup
 
-snapshot create
-
 broadcast prover_stake
 broadcast locked_funds
 
 ts-node ./src/agent/protocol-logic/send-proof.ts bitsnark_prover_1 test_setup --fudge
+
+snapshot create

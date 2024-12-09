@@ -14,11 +14,11 @@ export async function runPython(args: string[]): Promise<Buffer> {
         return result;
     } catch (error: unknown) {
         const subprocessError = error as { status: number; stdout: Buffer; stderr: Buffer };
-        console.error(
+        const errorMessage =
             `Python script failed with code ${subprocessError.status}\n` +
-                `stdout:\n${subprocessError.stdout.toString()}\n` +
-                `stderr:\n${subprocessError.stderr.toString()}\n`
-        );
-        throw error;
+            `stdout:\n${subprocessError.stdout.toString()}\n` +
+            `stderr:\n${subprocessError.stderr.toString()}\n`;
+        console.error(errorMessage);
+        throw new Error(errorMessage);
     }
 }

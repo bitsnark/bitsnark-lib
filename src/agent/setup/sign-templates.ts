@@ -22,7 +22,8 @@ export async function fakeSignTemplates(
     role: AgentRoles,
     agentId: string,
     setupId: string,
-    templates: Template[]): Promise<Template[]> {
+    templates: Template[]
+): Promise<Template[]> {
     for (const template of templates) {
         if (template.isExternal) continue;
         for (const input of template.inputs) {
