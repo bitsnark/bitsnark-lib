@@ -65,7 +65,8 @@ export class ListenerDb extends AgentDb {
         txid: string,
         blockHash: string,
         blockHeight: number,
-        rawTransaction: RawTransaction
+        rawTransaction: RawTransaction,
+        indexInBlock: number = 0
     ) {
         // Assert that the setup is active.
         const status = (await this.query('SELECT status FROM setups WHERE id = $1', [setupId]))
@@ -78,10 +79,18 @@ export class ListenerDb extends AgentDb {
 
         await this.query(
             `
-                INSERT INTO received (template_id, txid, block_hash, block_height, raw_transaction)
-                VALUES ((SELECT id FROM templates WHERE setup_id = $1 AND name = $2), $3, $4, $5, $6)
+                INSERT INTO received (template_id, txid, block_hash, block_height, raw_transaction, index_in_block)
+                VALUES ((SELECT id FROM templates WHERE setup_id = $1 AND name = $2), $3, $4, $5, $6, $7)
             `,
-            [setupId, templateName, txid, blockHash, blockHeight, jsonParseCustom(JSON.stringify(rawTransaction))]
+            [
+                setupId,
+                templateName,
+                txid,
+                blockHash,
+                blockHeight,
+                jsonParseCustom(JSON.stringify(rawTransaction)),
+                indexInBlock
+            ]
         );
     }
 

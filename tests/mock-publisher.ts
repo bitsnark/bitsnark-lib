@@ -197,9 +197,9 @@ if (require.main === module) {
         //Bad
         const boojum = proofBigint;
         boojum[0] = boojum[0] + 1n;
-        await prover.pegOut(boojum);
+        //await prover.pegOut(boojum);
         // Good
-        //await prover.pegOut(proofBigint);
+        await prover.pegOut(proofBigint);
         console.log('proof sent:', proofBigint);
         new MockPublisher(proverId, verifierId, setupId).start();
     })();

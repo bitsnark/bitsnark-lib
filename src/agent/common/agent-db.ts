@@ -1,3 +1,4 @@
+import { RawTransaction } from 'bitcoin-core';
 import { agentConf } from '../agent.conf';
 import { array } from './array-utils';
 import { Db, DbValue, QueryArgs } from './db';
@@ -21,6 +22,12 @@ export interface updateSetupPartial {
     stakeTxid: string;
     stakeOutputIndex: number;
     stakeAmount: bigint;
+}
+
+export interface ReceivedTransaction {
+    templateId: number;
+    height: number;
+    raw: RawTransaction;
 }
 
 const setupFields = [
@@ -246,6 +253,23 @@ export class AgentDb extends Db {
                 templateName
             ]
         );
+    }
+
+    public async getReceivedTransactions(setupId: string): Promise<ReceivedTransaction[]> {
+        const rows = (
+            await this.query<ReceivedTransaction>(
+                `SELECT template_id, block_height, raw_transaction
+                    FROM received, templates 
+                    WHERE received.template_id = templates.id AND templates.setup_id = $1
+                    ORDER BY block_height, index_in_block ASC`,
+                [setupId]
+            )
+        ).rows;
+        if (rows.length == 0) throw new Error(`No received transactions found, setupId: ${setupId}`);
+        return rows.map((row) => {
+            const [templateId, height, raw] = row;
+            return { templateId, height, raw };
+        });
     }
 
     // To assist debugging and mocking the DB in tests.
