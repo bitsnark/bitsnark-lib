@@ -1,3 +1,4 @@
+import minimist from 'minimist';
 import { RawTransaction } from 'bitcoin-core';
 import { agentConf } from '../agent.conf';
 import { BitcoinNode } from '../common/bitcoin-node';
@@ -15,6 +16,7 @@ import { AgentRoles, Setup, SpendingCondition, Template, TemplateNames } from '.
 import { AgentDb } from '../common/agent-db';
 import { twoDigits } from '../common/templates';
 import { ListenerDb, ReceivedTemplate } from '../listener/listener-db';
+import { broadcastTransaction } from './broadcast-transaction';
 
 export class ProtocolVerifier {
     agentId: string;
@@ -169,6 +171,8 @@ export class ProtocolVerifier {
 
     private async sendTransaction(name: string, data?: Buffer[][]) {
         this.db.markTemplateToSend(this.setupId, name, data);
+        console.warn(`Sending transaction ${name} manually for now`);
+        await broadcastTransaction(this.agentId, this.setupId, name);
     }
 
     private parseProof(incoming: ReceivedTemplate): bigint[] {
@@ -240,12 +244,15 @@ export async function main(agentId: string) {
     do {
         doit();
         await new Promise((r) => setTimeout(r, agentConf.protocolIntervalMs));
+        console.log('going to check again');
         /*eslint no-constant-condition: "off"*/
     } while (true);
 }
 
-const scriptName = __filename;
-if (process.argv[1] == scriptName) {
-    const agentId = process.argv[2] ?? 'bitsnark_verifier_1';
-    main(agentId).catch(console.error);
+if (require.main === module) {
+    const args = minimist(process.argv.slice(2));
+    const agentId = args._[0] ?? args['agent-id'] ?? 'bitsnark_prover_1';
+    main(agentId).catch((error) => {
+        throw error;
+    });
 }

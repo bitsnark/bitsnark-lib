@@ -25,7 +25,7 @@ export class BitcoinListener {
     async checkForNewBlock() {
         const tipHash = await this.client.getBestBlockHash();
         if (tipHash !== this.tipHash) {
-            this.tipHeight = (await this.client.getBlock(tipHash)).height;
+            this.tipHeight = await this.client.getBlockCount();
             console.log('New block detected:', tipHash, this.tipHeight);
             this.tipHash = tipHash;
             this.monitorTransmitted();
@@ -127,4 +127,12 @@ export class BitcoinListener {
             return undefined;
         }
     }
+}
+
+if (require.main === module) {
+    Promise.all(
+        ['bitsnark_prover_1', 'bitsnark_verifier_1'].map((agentId) => new BitcoinListener(agentId).checkForNewBlock())
+    ).catch((error) => {
+        throw error;
+    });
 }

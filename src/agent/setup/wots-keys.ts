@@ -52,6 +52,7 @@ export function setWotsPublicKeysForArgument(wotsSalt: string, templates: Templa
         encodeWinternitz24(n, createUniqueDataId(wotsSalt, TemplateNames.SELECT + '_' + twoDigits(i), 0, 0, 0))
     );
     sc.exampleWitness[6] = encodeWinternitz24(123456n, createUniqueDataId(wotsSalt, TemplateNames.ARGUMENT, 0, 0, 6));
+    return templates;
 }
 
 export function generateWotsPublicKeys(wotsSalt: string, templates: Template[], role: AgentRoles) {
@@ -114,6 +115,7 @@ export function generateWotsPublicKeys(wotsSalt: string, templates: Template[], 
             }
         }
     }
+    return templates;
 }
 
 export function mergeWots(role: AgentRoles, mine: Template[], theirs: TemplateWithWotsKeys[]): Template[] {

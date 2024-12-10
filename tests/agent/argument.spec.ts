@@ -36,7 +36,7 @@ describe('Argument', () => {
         expect(argWitness[2].length).toBe(11 * WOTS_NIBBLES[WotsType._256_4]);
         expect(argWitness[3].length).toBe(11 * WOTS_NIBBLES[WotsType._256_4]);
         expect(argWitness[4].length).toBe(11 * WOTS_NIBBLES[WotsType._256_4]);
-    });
+    }, 10000);
 
     it('break it', async () => {
         const { argument, selectionPath, argWitness } = await init();

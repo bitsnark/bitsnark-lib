@@ -12,14 +12,8 @@ git switch "$branch_to_update"
 npm run lint
 npm run prettier-check
 npm run compile
-docker stop bitcoin-node || true
-docker rm bitcoin-node || true
-npm run start-regtest
-docker stop postgres || true
-docker rm postgres || true
-npm run start-db
 npm run test
-npm run emulate-setup
+npm run python-test
 git switch "$current_branch"
 set +e
 

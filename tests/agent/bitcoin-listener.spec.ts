@@ -7,6 +7,7 @@ jest.mock('bitcoin-core', () => {
     return jest.fn().mockImplementation(() => ({
         getBestBlockHash: jest.fn(),
         getBlock: jest.fn(),
+        getBlockCount: jest.fn(),
         getRawTransaction: jest.fn(),
         getTransaction: jest.fn(),
         getBlockHash: jest.fn(),

@@ -1,3 +1,4 @@
+import minimist from 'minimist';
 import { RawTransaction } from 'bitcoin-core';
 import { agentConf } from '../agent.conf';
 import { BitcoinNode } from '../common/bitcoin-node';
@@ -11,6 +12,7 @@ import { createUniqueDataId } from '../setup/wots-keys';
 import { AgentRoles, iterations, Setup, SpendingCondition, Template, TemplateNames } from '../common/types';
 import { twoDigits } from '../common/templates';
 import { ListenerDb, ReceivedTemplate } from '../listener/listener-db';
+import { broadcastTransaction } from './broadcast-transaction';
 
 export class ProtocolProver {
     agentId: string;
@@ -124,9 +126,14 @@ export class ProtocolProver {
 
     private async sendTransaction(name: string, data?: Buffer[][]) {
         this.db.markTemplateToSend(this.setupId, name, data);
+        console.warn(`Sending transaction ${name} manually for now`);
+        await broadcastTransaction(this.agentId, this.setupId, name);
     }
 
     private async sendProof(proof: bigint[]) {
+        if (!this.setup) {
+            this.setup = await this.db.getSetup(this.setupId);
+        }
         const data = proof
             .map((n, dataIndex) =>
                 encodeWinternitz256_4(n, createUniqueDataId(this.setup!.wotsSalt, TemplateNames.PROOF, 0, 0, dataIndex))
@@ -229,8 +236,10 @@ export async function main(agentId: string) {
     } while (true);
 }
 
-const scriptName = __filename;
-if (process.argv[1] == scriptName) {
-    const agentId = process.argv[2] ?? 'bitsnark_prover_1';
-    main(agentId).catch(console.error);
+if (require.main === module) {
+    const args = minimist(process.argv.slice(2));
+    const agentId = args._[0] ?? args['agent-id'] ?? 'bitsnark_prover_1';
+    main(agentId).catch((error) => {
+        throw error;
+    });
 }

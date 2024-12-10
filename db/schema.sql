@@ -6,10 +6,10 @@ CREATE TABLE setups (
     last_checked_block_height INTEGER NULL,
     payload_txid CHARACTER VARYING,
     payload_output_index INTEGER,
-    payload_amount INTEGER,
+    payload_amount CHARACTER VARYING,
     stake_txid CHARACTER VARYING,
     stake_output_index INTEGER,
-    stake_amount INTEGER,
+    stake_amount CHARACTER VARYING,
     created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 

@@ -29,8 +29,8 @@ const IncomingTransactionsBaseRow: ReceivedTemplate = {
 
 const setups = ['test_setup_1'];
 
-export function txIdBySetupAndName(setupId: string, transactionName: string): string {
-    return `${setupId}_tx_${transactionName}`;
+export function txIdBySetupAndName(setupId: string, name: string): string {
+    return `${setupId}_tx_${name}`;
 }
 
 export const mockExpected = (function createSetupsIncomingTransactions(): ReceivedTemplate[] {
@@ -66,11 +66,11 @@ function getInputs(templateName: string): Input[] {
     }
     return [];
 
-    function getInput(index: number, outputIndex: number, transactionName: string, spendingConditionIndex: number) {
+    function getInput(index: number, outputIndex: number, templateName: string, spendingConditionIndex: number) {
         return {
             index: index,
             outputIndex: outputIndex,
-            templateName: transactionName,
+            templateName: templateName,
             spendingConditionIndex: spendingConditionIndex
         };
     }

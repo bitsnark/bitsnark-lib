@@ -149,7 +149,7 @@ export function fromJson(json: string): Message {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function sortFields(obj: any): any {
-    if (typeof obj != 'object') return obj;
+    if (typeof obj != 'object' || Array.isArray(obj)) return obj;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const newObj: any = {};
     Object.keys(obj)

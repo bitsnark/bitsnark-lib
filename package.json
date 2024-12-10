@@ -35,7 +35,8 @@
     "emulate-setup-clear": "npm run start-db && npm run emulate-setup",
     "emulate-setup-final-clear": "npm run start-db && npm run emulate-setup-final",
     "verify-setup": "ts-node ./src/agent/setup/verify-setup.ts",
-    "generate-diagrams": "./scripts/generate-dot.sh"
+    "generate-diagrams": "./scripts/generate-dot.sh",
+    "e2e": "./scripts/e2e.sh"
   },
   "config": {
     "commitizen": {

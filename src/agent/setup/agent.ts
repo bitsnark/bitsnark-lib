@@ -16,13 +16,14 @@ import { SimpleContext, TelegramBot } from './telegram';
 import { verifySetup } from './verify-setup';
 import { signMessage, verifyMessage } from '../common/schnorr';
 import { addAmounts } from './amounts';
-import { signTemplates } from './sign-templates';
-import { AgentRoles, Setup, SetupStatus, Template } from '../common/types';
+import { fakeSignTemplates, signTemplates } from './sign-templates';
+import { AgentRoles, Setup, SetupStatus, SignatureType, Template, TemplateNames } from '../common/types';
 import { initializeTemplates } from './init-templates';
 import { mergeWots, setWotsPublicKeysForArgument } from './wots-keys';
 import { BitcoinNode } from '../common/bitcoin-node';
 import { AgentDb, updateSetupPartial } from '../common/agent-db';
-import { getTemplateByName } from '../common/templates';
+import { getSpendingConditionByInput, getTemplateByName } from '../common/templates';
+import { createSetupId } from './create-setup-id';
 
 interface AgentInfo {
     agentId: string;
@@ -88,6 +89,12 @@ export class Agent {
             return;
         }
         const tokens = data.split(' ');
+        if (this.role == AgentRoles.PROVER && tokens.length == 3 && tokens[0] == '/create') {
+            const [proverAgentId, verifierAgentId] = tokens.slice(1);
+            if (this.agentId != proverAgentId) return;
+            const setupId = await createSetupId(proverAgentId, verifierAgentId);
+            context.sendText(`setupId: ${setupId}`);
+        }
         if (this.role == AgentRoles.PROVER && tokens.length == 6 && tokens[0] == '/start') {
             const setupId = tokens[1];
             const [payloadTxid, payloadAmount, stakeTxid, stakeAmount] = tokens.slice(2);
@@ -152,10 +159,10 @@ export class Agent {
     ) {
         if (this.role != AgentRoles.PROVER) throw new Error("I'm not a prover");
 
-        const setup = await this.db.getSetup(setupId);
+        let setup = await this.db.getSetup(setupId);
         if (!setup || setup.status != SetupStatus.PENDING) throw new Error(`Invalid setup state: ${setup.status}`);
 
-        await this.db.updateSetup(setupId, {
+        setup = await this.db.updateSetup(setupId, {
             payloadTxid,
             payloadAmount,
             stakeTxid,
@@ -295,6 +302,9 @@ export class Agent {
         i.templates = await generateAllScripts(this.role, i.templates!, false);
         i.templates = await addAmounts(this.agentId, this.role, i.setupId, i.templates!);
 
+        await this.db.upsertTemplates(i.setupId, i.templates!);
+        i.templates = await signTemplates(this.role, this.agentId, i.setupId, i.templates!);
+
         if (this.role == AgentRoles.PROVER) this.sendSignatures(context, i.setupId);
     }
 
@@ -304,10 +314,6 @@ export class Agent {
     private async sendSignatures(context: SimpleContext, setupId: string) {
         const i = this.getInstance(setupId);
         if (!i.templates) throw new Error('No templates');
-
-        await this.db.upsertTemplates(setupId, i.templates);
-
-        i.templates = await signTemplates(this.role, this.agentId, i.setupId, i.templates!);
 
         const signed: SignatureTuple[] = i.templates!.map((t) => {
             return {
@@ -336,7 +342,8 @@ export class Agent {
 
         this.verifyMessage(message, i);
 
-        i.state = SetupState.DONE;
+        await this.db.upsertTemplates(i.setupId, i.templates!);
+        i.templates = await fakeSignTemplates(this.role, this.agentId, i.setupId, i.templates!);
 
         for (const s of message.signatures) {
             const template = getTemplateByName(i.templates!, s.templateName);
@@ -351,13 +358,38 @@ export class Agent {
             });
         }
 
+        console.log('Check that all inputs have signatures...');
+        for (const template of i.templates!) {
+            if (template.isExternal || template.name == TemplateNames.PROOF_REFUTED) {
+                console.warn(`Not checking signatures for ${template.name}`);
+                continue;
+            }
+
+            for (const input of template.inputs) {
+                const sc = getSpendingConditionByInput(i.templates!, input);
+                const proverRequired =
+                    sc.signatureType === SignatureType.PROVER || sc.signatureType === SignatureType.BOTH;
+                const verifierRequired =
+                    sc.signatureType === SignatureType.VERIFIER || sc.signatureType === SignatureType.BOTH;
+                if (!input.proverSignature && proverRequired) {
+                    console.log(`Missing proverSignature for ${template.name} input ${input.index}`);
+                }
+                if (!input.verifierSignature && verifierRequired) {
+                    console.log(`Missing verifierSignature for ${template.name} input ${input.index}`);
+                }
+            }
+        }
+
+        await this.db.updateTemplates(i.setupId, i.templates!);
+
         if (this.role == AgentRoles.PROVER) {
             await verifySetup(this.agentId, i.setupId, this.role);
-            await this.db.upsertTemplates(i.setupId, i.templates!);
             await this.db.markSetupPegoutActive(i.setupId);
             await this.signMessageAndSend(context, new DoneMessage({ setupId: i.setupId, agentId: this.agentId }));
+            i.state = SetupState.DONE;
         } else {
             await this.sendSignatures(context, i.setupId);
+            i.state = SetupState.DONE;
         }
     }
 

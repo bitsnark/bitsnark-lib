@@ -97,7 +97,7 @@ function rowToObj<T>(fieldNames: string[], row: DbValue[], jsonFields: string[] 
     const obj: any = {};
     fieldNames.forEach((k, i) => {
         if (jsonFields.find((tk) => tk == k)) row[i] = jsonParseCustom(JSON.stringify(row[i]));
-        obj[camelToSnake(k)] = row[i];
+        obj[snakeToCamel(k)] = row[i];
     });
     return obj as T;
 }
@@ -118,7 +118,7 @@ export class AgentDb extends Db {
         return { id: setupId, wotsSalt, protocolVersion: agentConf.protocolVersion, status: SetupStatus.PENDING };
     }
 
-    public async updateSetup(setupId: string, setup: updateSetupPartial) {
+    public async updateSetup(setupId: string, setup: updateSetupPartial): Promise<Setup> {
         const fields = [
             'payload_txid',
             'payload_output_index',
@@ -132,6 +132,7 @@ export class AgentDb extends Db {
                 WHERE id = $1`,
             [setupId, ...objToRow(fields, setup)]
         );
+        return await this.getSetup(setupId);
     }
 
     public async getSetup(setupId: string): Promise<Setup> {
@@ -139,7 +140,7 @@ export class AgentDb extends Db {
             .rows;
         if (rows.length != 1) throw new Error(`Setup not found: ${setupId}`);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        return rowToObj<Setup>(setupFields, rows[0] as any);
+        return rowToObj<Setup>(setupFields, rows[0] as any, ['payload_amount', 'stake_amount']);
     }
 
     private async markSetupStatus(setupId: string, status: SetupStatus) {
@@ -224,11 +225,11 @@ export class AgentDb extends Db {
     }
 
     public async upsertTemplates(setupId: string, templates: Template[]) {
-        const ids = (await this.query<Template>(`SELECT id FROM templates WHERE setup_id = $1`, [setupId])).rows.map(
-            (row) => row[0]
-        );
-        const toInsert = templates.filter((t) => !ids.find((id) => id == t.id));
-        const toUpdate = templates.filter((t) => ids.find((id) => id == t.id));
+        const names = (
+            await this.query<Template>(`SELECT name FROM templates WHERE setup_id = $1`, [setupId])
+        ).rows.map((row) => row[0]);
+        const toInsert = templates.filter((t) => !names.find((name) => name == t.name));
+        const toUpdate = templates.filter((t) => names.find((name) => name == t.name));
         await this.insertTemplates(setupId, toInsert);
         await this.updateTemplates(setupId, toUpdate);
     }
