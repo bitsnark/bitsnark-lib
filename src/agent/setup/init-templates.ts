@@ -25,14 +25,6 @@ export function initializeTemplates(
     const templates = [...protocolStart, ...makeProtocolSteps(), ...protocolEnd];
     assertOrder(templates);
 
-    for (const t of templates) {
-        t.inputs.forEach((input, i) => (input.index = i));
-        t.outputs.forEach((output, i) => {
-            output.index = i;
-            output.spendingConditions.forEach((sc, i) => (sc.index = i));
-        });
-    }
-
     const payload = getTemplateByName(templates, TemplateNames.LOCKED_FUNDS);
     payload.txid = payloadUtxo.txid;
     payload.outputs[0].amount = payloadUtxo.amount;
@@ -56,8 +48,20 @@ export function initializeTemplates(
         }
     }
 
-    // put schnorr keys where needed
+    // put index in each object to make it easier later!
+    for (const template of templates) {
+        for (const [inputIndex, input] of template.inputs.entries()) {
+            input.index = inputIndex;
+        }
+        for (const [outputIndex, output] of template.outputs.entries()) {
+            output.index = outputIndex;
+            for (const [spendingConditionIndex, spendingCondition] of output.spendingConditions.entries()) {
+                spendingCondition.index = spendingConditionIndex;
+            }
+        }
+    }
 
+    // put schnorr keys where needed
     for (const t of templates) {
         for (const [inputIndex, input] of t.inputs.entries()) {
             const output = findOutputByInput(templates, input);
@@ -72,15 +76,6 @@ export function initializeTemplates(
             }
         }
     }
-
-    // put index in each object to make it easier later!
-    templates.forEach((t) => t.inputs.forEach((i, index) => (i.index = index)));
-    templates.forEach((t) =>
-        t.outputs.forEach((o, index) => {
-            o.index = index;
-            o.spendingConditions.forEach((sc, index) => (sc.index = index));
-        })
-    );
 
     return templates;
 }

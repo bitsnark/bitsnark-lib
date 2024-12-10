@@ -2,12 +2,12 @@ import minimist from 'minimist';
 import { agentConf } from '../agent.conf';
 import { addAmounts } from './amounts';
 import { generateAllScripts } from './generate-scripts';
-import { fundExternalTemplates } from './fund-transactions';
 import { signTemplates } from './sign-templates';
 import { getSpendingConditionByInput } from '../common/templates';
 import { verifySetup } from './verify-setup';
 import { generateWotsPublicKeys, mergeWots, setWotsPublicKeysForArgument } from './wots-keys';
 import { TemplateNames, AgentRoles, FundingUtxo, SignatureType } from '../common/types';
+import { createSetupId } from './create-setup-id';
 import { initializeTemplates } from './init-templates';
 import { AgentDb } from '../common/agent-db';
 
@@ -26,7 +26,6 @@ export async function emulateSetup(
 
     console.log('creating setup...');
 
-    await proverDb.createSetup(setupId, TEST_WOTS_SALT);
     await proverDb.updateSetup(setupId, {
         payloadTxid: lockedFunds.txid,
         payloadOutputIndex: lockedFunds.outputIndex,
@@ -139,26 +138,42 @@ export async function emulateSetup(
     console.log('done.');
 }
 
+async function main(
+    proverId: string,
+    verifierId: string,
+    lockedFunds: FundingUtxo,
+    proverStake: FundingUtxo,
+    generateFinal: boolean,
+    setupId?: string
+) {
+    if (!setupId) {
+        setupId = await createSetupId(proverId, verifierId);
+        console.log('generated setupId: ', setupId);
+    }
+    await emulateSetup(proverId, verifierId, setupId, generateFinal, lockedFunds, proverStake);
+}
+
 if (require.main === module) {
     const args = minimist(process.argv.slice(2));
+    const proverId = 'bitsnark_prover_1';
+    const verifierId = 'bitsnark_verifier_1';
     const lockedFunds: FundingUtxo = {
-            txid: args.locked
-                ? args.locked.split(':')[0]
-                : '1111111111111111111111111111111111111111111111111111111111111111',
-            outputIndex: args.locked ? parseInt(args.locked.split(':')[1]) : 0,
-            amount: agentConf.payloadAmount
-        },
-        proverStake: FundingUtxo = {
-            txid: args.stake
-                ? args.stake.split(':')[0]
-                : '0000000000000000000000000000000000000000000000000000000000000000',
-            outputIndex: args.stake ? parseInt(args.stake.split(':')[1]) : 0,
-            amount: agentConf.proverStakeAmount
-        };
-
-    emulateSetup('bitsnark_prover_1', 'bitsnark_verifier_1', 'test_setup', args.final, lockedFunds, proverStake).catch(
-        (error) => {
-            throw error;
-        }
-    );
+        txid: args.locked
+            ? args.locked.split(':')[0]
+            : '1111111111111111111111111111111111111111111111111111111111111111',
+        outputIndex: args.locked ? parseInt(args.locked.split(':')[1]) : 0,
+        amount: agentConf.payloadAmount
+    };
+    const proverStake: FundingUtxo = {
+        txid: args.stake
+            ? args.stake.split(':')[0]
+            : '0000000000000000000000000000000000000000000000000000000000000000',
+        outputIndex: args.stake ? parseInt(args.stake.split(':')[1]) : 0,
+        amount: agentConf.proverStakeAmount
+    };
+    const setupId = args['setup-id'];
+    const generateFinal = args.final;
+    main(proverId, verifierId, lockedFunds, proverStake, generateFinal, setupId).catch((error) => {
+        throw error;
+    });
 }
