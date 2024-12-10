@@ -1,50 +1,32 @@
 import minimist from 'minimist';
-import { RawTransaction } from 'bitcoin-core';
 import { agentConf } from '../agent.conf';
-import { BitcoinNode } from '../common/bitcoin-node';
 import { encodeWinternitz256_4 } from '../common/winternitz';
 import { calculateStates } from './states';
 import { Argument } from './argument';
-import { parseInput } from './parser';
 import { bufferToBigintBE } from '../common/encoding';
 import { last } from '../common/array-utils';
 import { createUniqueDataId } from '../setup/wots-keys';
-import { AgentRoles, iterations, Setup, SpendingCondition, Template, TemplateNames } from '../common/types';
+import { AgentRoles, iterations, TemplateNames } from '../common/types';
 import { twoDigits } from '../common/templates';
-import { ListenerDb, ReceivedTemplate } from '../listener/listener-db';
-import { broadcastTransaction } from './broadcast-transaction';
+import { ListenerDb } from '../listener/listener-db';
+import { ProtocolBase } from './protocol-base';
 
-export class ProtocolProver {
-    agentId: string;
-    setupId: string;
-    bitcoinClient: BitcoinNode;
-    templates?: Template[];
-    setup?: Setup;
-    db: ListenerDb;
-
+export class ProtocolProver extends ProtocolBase {
     constructor(agentId: string, setupId: string) {
-        this.agentId = agentId;
-        this.setupId = setupId;
-        this.bitcoinClient = new BitcoinNode();
-        this.db = new ListenerDb(this.agentId);
+        super(agentId, setupId, AgentRoles.PROVER);
     }
 
     public async pegOut(proof: bigint[]) {
+        await this.setTemplates();
         await this.sendProof(proof);
     }
 
     public async process() {
-        if (!this.templates) {
-            this.templates = await this.db.getTemplates(this.setupId);
-        }
-        if (!this.setup) {
-            this.setup = await this.db.getSetup(this.setupId);
-        }
+        await this.setTemplates();
 
         // read all incoming transactions
-        const setup = await this.db.getReceivedSetups(this.setupId);
-        const incomings = setup.received ?? [];
-        if (incomings.length == 0) {
+        const incomingArray = await this.getIncoming();
+        if (incomingArray.length == 0) {
             // nothing to do
             return;
         }
@@ -54,10 +36,10 @@ export class ProtocolProver {
         let proof: bigint[] = [];
 
         // examine each one
-        for (const incoming of incomings) {
-            const lastFlag = incoming == last(incomings);
+        for (const incoming of incomingArray) {
+            const lastFlag = incoming == last(incomingArray);
 
-            switch (incoming.name) {
+            switch (incoming.template.name) {
                 case TemplateNames.PROOF:
                     if (lastFlag) {
                         // did the timeout expire?
@@ -75,6 +57,8 @@ export class ProtocolProver {
                 case TemplateNames.CHALLENGE:
                     if (lastFlag) {
                         // send the first state iteration
+                        //proof[0] = proof[0] - 1n; //<<---TEST
+                        await this.sendState(proof, []);
                     }
                     break;
                 case TemplateNames.CHALLENGE_UNCONTESTED:
@@ -94,20 +78,20 @@ export class ProtocolProver {
                     break;
             }
 
-            if (incoming.name.startsWith(TemplateNames.STATE)) {
+            if (incoming.template.name.startsWith(TemplateNames.STATE)) {
                 if (lastFlag) {
                     // did the timeout expire?
                     const timeoutSc = await this.checkTimeout(incoming);
                     if (timeoutSc) await this.sendStateUncontested(selectionPath.length);
                 }
             }
-            if (incoming.name.startsWith(TemplateNames.STATE_UNCONTESTED)) {
+            if (incoming.template.name.startsWith(TemplateNames.STATE_UNCONTESTED)) {
                 // we won, mark it
                 await this.db.markSetupPegoutSuccessful(this.setupId);
                 break;
             }
-            if (incoming.name.startsWith(TemplateNames.SELECT)) {
-                const rawTx = incoming.rawTransaction as RawTransaction;
+            if (incoming.template.name.startsWith(TemplateNames.SELECT)) {
+                const rawTx = incoming.received.raw;
                 selectionPathUnparsed.push(rawTx.vin[0].txinwitness!.map((s) => Buffer.from(s, 'hex')));
                 const selection = this.parseSelection(incoming);
                 selectionPath.push(selection);
@@ -116,18 +100,12 @@ export class ProtocolProver {
                     else await this.sendArgument(proof, selectionPath, selectionPathUnparsed);
                 }
             }
-            if (incoming.name.startsWith(TemplateNames.SELECT_UNCONTESTED)) {
+            if (incoming.template.name.startsWith(TemplateNames.SELECT_UNCONTESTED)) {
                 // we lost, mark it
                 await this.db.markSetupPegoutFailed(this.setupId);
                 break;
             }
         }
-    }
-
-    private async sendTransaction(name: string, data?: Buffer[][]) {
-        this.db.markTemplateToSend(this.setupId, name, data);
-        console.warn(`Sending transaction ${name} manually for now`);
-        await broadcastTransaction(this.agentId, this.setupId, name);
     }
 
     private async sendProof(proof: bigint[]) {
@@ -136,7 +114,7 @@ export class ProtocolProver {
         }
         const data = proof
             .map((n, dataIndex) =>
-                encodeWinternitz256_4(n, createUniqueDataId(this.setup!.wotsSalt, TemplateNames.PROOF, 0, 0, dataIndex))
+                encodeWinternitz256_4(n, createUniqueDataId(this.setup!.wotsSalt, TemplateNames.PROOF, 0, 1, dataIndex))
             )
             .flat();
         await this.sendTransaction(TemplateNames.PROOF, [data]);
@@ -144,16 +122,6 @@ export class ProtocolProver {
 
     private async sendProofUncontested() {
         await this.sendTransaction(TemplateNames.PROOF_UNCONTESTED);
-    }
-
-    private parseProof(incoming: ReceivedTemplate): bigint[] {
-        const rawTx = incoming.rawTransaction as RawTransaction;
-        const proof = parseInput(
-            this.templates!,
-            incoming.inputs[0],
-            rawTx.vin[0].txinwitness!.map((s) => Buffer.from(s, 'hex'))
-        );
-        return proof;
     }
 
     private async sendArgument(proof: bigint[], selectionPath: number[], selectionPathUnparsed: Buffer[][]) {
@@ -170,16 +138,6 @@ export class ProtocolProver {
         await this.sendTransaction(TemplateNames.STATE_UNCONTESTED + '_' + twoDigits(iteration));
     }
 
-    private parseSelection(incoming: ReceivedTemplate): number {
-        const rawTx = incoming.rawTransaction as RawTransaction;
-        const data = parseInput(
-            this.templates!,
-            incoming.inputs[0],
-            rawTx.vin[0].txinwitness!.map((s) => Buffer.from(s, 'hex'))
-        );
-        return Number(data[0]);
-    }
-
     private async sendState(proof: bigint[], selectionPath: number[]) {
         const iteration = selectionPath.length;
         const states = await calculateStates(proof, selectionPath);
@@ -193,25 +151,6 @@ export class ProtocolProver {
             )
             .flat();
         await this.sendTransaction(txName, [statesWi]);
-    }
-
-    private async getCurrentBlockHeight(): Promise<number> {
-        return await this.bitcoinClient.getBlockCount();
-    }
-
-    private async checkTimeout(incoming: ReceivedTemplate): Promise<SpendingCondition | null> {
-        // check if any spending condition has a timeout that already expired
-        const currentBlockHeight = await this.getCurrentBlockHeight();
-        for (const output of incoming.outputs) {
-            for (const sc of output.spendingConditions) {
-                if (sc.nextRole != AgentRoles.PROVER) continue;
-                if (sc.timeoutBlocks && incoming.blockHeight! + sc.timeoutBlocks <= currentBlockHeight) {
-                    // found one, send the relevant tx
-                    return sc;
-                }
-            }
-        }
-        return null;
     }
 }
 
