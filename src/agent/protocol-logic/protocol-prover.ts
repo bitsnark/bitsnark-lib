@@ -10,7 +10,6 @@ import { AgentRoles, iterations, TemplateNames } from '../common/types';
 import { twoDigits } from '../common/templates';
 import { ListenerDb } from '../listener/listener-db';
 import { ProtocolBase } from './protocol-base';
-import { broadcastTransaction } from './broadcast-transaction';
 
 export class ProtocolProver extends ProtocolBase {
     constructor(agentId: string, setupId: string) {

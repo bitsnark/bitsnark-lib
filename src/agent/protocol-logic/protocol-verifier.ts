@@ -1,5 +1,4 @@
 import minimist from 'minimist';
-import { RawTransaction } from 'bitcoin-core';
 import { agentConf } from '../agent.conf';
 import { parseInput } from './parser';
 import { step1_vm } from '../../generator/ec_vm/vm/vm';
@@ -180,7 +179,6 @@ export async function main(agentId: string) {
     do {
         doit();
         await new Promise((r) => setTimeout(r, agentConf.protocolIntervalMs));
-        console.log('going to check again');
         /*eslint no-constant-condition: "off"*/
     } while (true);
 }

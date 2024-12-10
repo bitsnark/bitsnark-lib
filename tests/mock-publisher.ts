@@ -5,6 +5,7 @@ import { proofBigint } from '../src/agent/common/constants';
 import { RawTransaction, Input } from 'bitcoin-core';
 import { agentConf } from '../src/agent/agent.conf';
 import { ReceivedTemplate } from '../src/agent/listener/listener-db';
+import { mainModule } from 'process';
 
 export const mockRawTransaction: RawTransaction = {
     in_active_chain: true,
@@ -181,26 +182,28 @@ export class MockPublisher {
     }
 }
 
+async function main() {
+    const proverId = 'bitsnark_prover_1';
+    const verifierId = 'bitsnark_verifier_1';
+    const setupId = 'test_setup';
+
+    const dbProver = new testAgentDb(proverId);
+    const dbVerifier = new testAgentDb(verifierId);
+    await dbProver.test_restartSetup(setupId);
+    await dbVerifier.test_restartSetup(setupId);
+
+    const prover = new ProtocolProver(proverId, setupId);
+    //Bad
+    const boojum = proofBigint;
+    boojum[0] = boojum[0] + 1n;
+    //await prover.pegOut(boojum);
+    // Good
+    await prover.pegOut(proofBigint);
+    console.log('proof sent:', proofBigint);
+    new MockPublisher(proverId, verifierId, setupId).start();
+}
+
 if (require.main === module) {
     console.log('Starting mock publisher');
-    (async () => {
-        const proverId = 'bitsnark_prover_1';
-        const verifierId = 'bitsnark_verifier_1';
-        const setupId = 'test_setup';
-
-        const dbProver = new testAgentDb(proverId);
-        const dbVerifier = new testAgentDb(verifierId);
-        await dbProver.test_restartSetup(setupId);
-        await dbVerifier.test_restartSetup(setupId);
-
-        const prover = new ProtocolProver(proverId, setupId);
-        //Bad
-        const boojum = proofBigint;
-        boojum[0] = boojum[0] + 1n;
-        //await prover.pegOut(boojum);
-        // Good
-        await prover.pegOut(proofBigint);
-        console.log('proof sent:', proofBigint);
-        new MockPublisher(proverId, verifierId, setupId).start();
-    })();
+    main();
 }
