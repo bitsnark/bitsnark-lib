@@ -420,7 +420,7 @@ export class DoomsdayGenerator {
         this.generateRefuteInstructionTaproot(compressor, transactions);
 
         return {
-            taproot: compressor.getTaproot(),
+            taproot: compressor.getTaprootPubkey(),
             controlBlock: scriptDescriptor ? compressor.getControlBlock() : undefined,
             script: scriptDescriptor ? compressor.script : undefined
         };

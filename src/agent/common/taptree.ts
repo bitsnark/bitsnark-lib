@@ -80,7 +80,7 @@ export class SimpleTapTree {
         return Buffer.concat([versionBuf, keyBuf, proof]);
     }
 
-    public getTaproot(): Buffer {
+    public getTaprootPubkey(): Buffer {
         const taproot = bitcoin.payments.p2tr({
             internalPubkey: bigintToBufferBE(this.internalPubkey, 256),
             hash: this.getRoot(),
@@ -89,7 +89,7 @@ export class SimpleTapTree {
         return taproot.output!;
     }
 
-    public getAddress(): string {
+    public getTaprootAddress(): string {
         return bitcoin.payments.p2tr({
             internalPubkey: bigintToBufferBE(this.internalPubkey, 256),
             hash: this.getRoot(),
@@ -190,7 +190,7 @@ export class Compressor {
         return taproot.output!;
     }
 
-    public getTaproot(): Buffer {
+    public getTaprootPubkey(): Buffer {
         return Compressor.toPubKey(this.internalPubkey, this.getRoot());
     }
 
@@ -216,8 +216,8 @@ function test1() {
     const sttRoot = stt.getRoot();
     assert(sttRoot.compare(cRoot) == 0);
 
-    const sttKey = stt.getTaproot();
-    const cKey = c.getTaproot();
+    const sttKey = stt.getTaprootPubkey();
+    const cKey = c.getTaprootPubkey();
     assert(sttKey.compare(cKey) == 0);
 
     const sttScript = stt.scripts[index];

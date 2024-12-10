@@ -79,7 +79,7 @@ describe('SimpleTapTree', () => {
         const root = tapTree.getRoot();
         expect(root.toString('hex')).toBe(testcase.expected.root);
 
-        const scriptPubKey = tapTree.getTaproot();
+        const scriptPubKey = tapTree.getTaprootPubkey();
         expect(scriptPubKey.toString('hex')).toBe(testcase.expected.scriptPubKey);
 
         const control = tapTree.getControlBlock(0);

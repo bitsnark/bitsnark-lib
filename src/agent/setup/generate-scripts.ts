@@ -44,7 +44,7 @@ function setTaprootKey(transactions: Template[]) {
                 return inputs.length && inputs[0].script ? inputs[0].script : DEAD_SCRIPT;
             });
             const stt = new SimpleTapTree(agentConf.internalPubkey, scripts);
-            output.taprootKey = stt.getTaproot();
+            output.taprootKey = stt.getTaprootPubkey();
 
             for (const [scIndex, sc] of output.spendingConditions.entries()) {
                 try {
@@ -159,7 +159,7 @@ export async function generateAllScripts(
                 taproot = (await ddg.generateFinalStepTaproot(transactions)).taproot;
             } else {
                 const mockSTT = new SimpleTapTree(agentConf.internalPubkey, [DEAD_SCRIPT, DEAD_SCRIPT]);
-                taproot = mockSTT.getTaproot();
+                taproot = mockSTT.getTaprootPubkey();
             }
 
             const argument = getTemplateByName(transactions, TemplateNames.ARGUMENT);
