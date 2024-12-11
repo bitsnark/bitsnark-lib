@@ -27,8 +27,6 @@ describe('BitcoinListener', () => {
     let nodeListener: BitcoinListener;
     let clientMock: Client;
 
-
-
     beforeEach(() => {
         nodeListener = new BitcoinListener(AgentRoles.PROVER);
 
@@ -36,8 +34,6 @@ describe('BitcoinListener', () => {
         jest.spyOn(nodeListener.db, 'getReceivedTemplates').mockImplementation(jest.fn());
         jest.spyOn(nodeListener.db, 'markReceived').mockImplementation(jest.fn());
         jest.spyOn(nodeListener.db, 'updateSetupLastCheckedBlockHeightBatch').mockImplementation(jest.fn());
-
-
     });
 
     afterEach(() => {
@@ -63,8 +59,6 @@ describe('BitcoinListener', () => {
         Object.defineProperty(nodeListener, 'tipHeight', { value: height, writable: true });
     };
 
-
-
     it("Doesn't monitor transmitted if no new block is detected", async () => {
         setMocks(100, 'hash100', 100);
         const monitorTransmittedSpy = jest.spyOn(nodeListener, 'monitorTransmitted').mockResolvedValue(undefined);
@@ -78,7 +72,6 @@ describe('BitcoinListener', () => {
         await nodeListener.checkForNewBlock();
         expect(monitorTransmittedSpy).toHaveBeenCalled();
     });
-
 
     it("Won't query for raw transaction if no pending transactions were found", async () => {
         (nodeListener.db.getReceivedTemplates as jest.Mock).mockResolvedValue([]);
@@ -108,9 +101,11 @@ describe('BitcoinListener', () => {
         expect(nodeListener.client.getBlockHash).toHaveBeenCalled();
         expect(nodeListener.client.getRawTransaction).toHaveBeenCalledTimes(4);
         expect(nodeListener.client.getRawTransaction).not.toHaveBeenCalledWith(
-            txIdBySetupAndName('test_setup_1', TemplateNames.CHALLENGE), expect.any(Boolean), 'hash101');
+            txIdBySetupAndName('test_setup_1', TemplateNames.CHALLENGE),
+            expect.any(Boolean),
+            'hash101'
+        );
     });
-
 
     it('IF parent tx was transmitted and its inputs were spent will go over all block txs', async () => {
         setMocks(107, 'hash107', 107);
@@ -126,10 +121,14 @@ describe('BitcoinListener', () => {
 
         //LOCKED_FUNDS & PROVER_STAKE are the txs in block 101
         expect(nodeListener.client.getRawTransaction).toHaveBeenCalledWith(
-            txIdBySetupAndName('test_setup_1', TemplateNames.LOCKED_FUNDS), expect.any(Boolean), 'hash101'
+            txIdBySetupAndName('test_setup_1', TemplateNames.LOCKED_FUNDS),
+            expect.any(Boolean),
+            'hash101'
         );
         expect(nodeListener.client.getRawTransaction).toHaveBeenCalledWith(
-            txIdBySetupAndName('test_setup_1', TemplateNames.PROVER_STAKE), expect.any(Boolean), 'hash101'
+            txIdBySetupAndName('test_setup_1', TemplateNames.PROVER_STAKE),
+            expect.any(Boolean),
+            'hash101'
         );
     });
 
@@ -149,7 +148,6 @@ describe('BitcoinListener', () => {
         expect(nodeListener.client.getRawTransaction).not.toHaveBeenCalledTimes(4);
     });
 
-
     it('should save new published transactions found by transaction ids', async () => {
         setMocks(107, 'hash107', 107);
         const mockExpected = getmockExpected();
@@ -159,17 +157,27 @@ describe('BitcoinListener', () => {
         expect(nodeListener.client.getRawTransaction).toHaveBeenCalledTimes(4);
         expect(nodeListener.db.markReceived).toHaveBeenCalledTimes(2);
         expect(nodeListener.db.markReceived).toHaveBeenCalledWith(
-            'test_setup_1', TemplateNames.LOCKED_FUNDS, expect.any(String), expect.any(String), expect.any(Number), expect.any(Object)
+            'test_setup_1',
+            TemplateNames.LOCKED_FUNDS,
+            expect.any(String),
+            expect.any(String),
+            expect.any(Number),
+            expect.any(Object)
         );
 
         expect(nodeListener.db.markReceived).toHaveBeenCalledWith(
-            'test_setup_1', TemplateNames.PROVER_STAKE, expect.any(String), expect.any(String), expect.any(Number), expect.any(Object)
+            'test_setup_1',
+            TemplateNames.PROVER_STAKE,
+            expect.any(String),
+            expect.any(String),
+            expect.any(Number),
+            expect.any(Object)
         );
     });
 
     it('Should save new published transactions found by inputs', async () => {
         setupLastBlockProperties(nodeListener, 'hash113', 113);
-        nodeListener.client = new MockBlockchain(107)
+        nodeListener.client = new MockBlockchain(107);
         const mockExpected = getmockExpected(
             new Set([
                 txIdBySetupAndName('test_setup_1', TemplateNames.LOCKED_FUNDS),
@@ -185,7 +193,12 @@ describe('BitcoinListener', () => {
 
         expect(nodeListener.db.markReceived).toHaveBeenCalledTimes(1);
         expect(nodeListener.db.markReceived).toHaveBeenCalledWith(
-            'test_setup_1', TemplateNames.CHALLENGE, expect.any(String), expect.any(String), expect.any(Number), expect.any(Object)
+            'test_setup_1',
+            TemplateNames.CHALLENGE,
+            expect.any(String),
+            expect.any(String),
+            expect.any(Number),
+            expect.any(Object)
         );
     });
 
@@ -196,14 +209,8 @@ describe('BitcoinListener', () => {
 
         await nodeListener.monitorTransmitted();
         expect(nodeListener.db.updateSetupLastCheckedBlockHeightBatch).toHaveBeenCalledTimes(3);
-        expect(nodeListener.db.updateSetupLastCheckedBlockHeightBatch).toHaveBeenCalledWith(
-            ['test_setup_1'], 102
-        );
-        expect(nodeListener.db.updateSetupLastCheckedBlockHeightBatch).toHaveBeenCalledWith(
-            ['test_setup_1'], 103
-        );
-        expect(nodeListener.db.updateSetupLastCheckedBlockHeightBatch).toHaveBeenCalledWith(
-            ['test_setup_1'], 104
-        );
+        expect(nodeListener.db.updateSetupLastCheckedBlockHeightBatch).toHaveBeenCalledWith(['test_setup_1'], 102);
+        expect(nodeListener.db.updateSetupLastCheckedBlockHeightBatch).toHaveBeenCalledWith(['test_setup_1'], 103);
+        expect(nodeListener.db.updateSetupLastCheckedBlockHeightBatch).toHaveBeenCalledWith(['test_setup_1'], 104);
     });
 });

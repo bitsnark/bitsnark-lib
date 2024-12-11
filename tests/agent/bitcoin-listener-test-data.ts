@@ -29,8 +29,27 @@ const IncomingTransactionsBaseRow: ReceivedTemplate = {
     data: null
 };
 
-const emptyBlock: Block = { hash: '', confirmations: 0, size: 0, strippedsize: 0, weight: 0, height: 0, version: 0, versionHex: '', merkleroot: '', tx: [], time: 0, mediantime: 0, nonce: 0, bits: '', difficulty: 0, chainwork: '', nTx: 0, previousblockhash: undefined, nextblockhash: undefined };
-
+const emptyBlock: Block = {
+    hash: '',
+    confirmations: 0,
+    size: 0,
+    strippedsize: 0,
+    weight: 0,
+    height: 0,
+    version: 0,
+    versionHex: '',
+    merkleroot: '',
+    tx: [],
+    time: 0,
+    mediantime: 0,
+    nonce: 0,
+    bits: '',
+    difficulty: 0,
+    chainwork: '',
+    nTx: 0,
+    previousblockhash: undefined,
+    nextblockhash: undefined
+};
 
 const setups = ['test_setup_1'];
 
@@ -78,7 +97,13 @@ function getInputs(templateName: string, isVin: boolean = false): (Input | Vin)[
     }
     return [];
 
-    function getInput(index: number, outputIndex: number, templateName: string, spendingConditionIndex: number, isVin: boolean) {
+    function getInput(
+        index: number,
+        outputIndex: number,
+        templateName: string,
+        spendingConditionIndex: number,
+        isVin: boolean
+    ) {
         if (isVin) return getVin(templateName, outputIndex);
         return {
             index: index,
@@ -144,8 +169,6 @@ export function getMockRawChallengeTx(setupId: string, blockhash: string) {
     };
 }
 
-
-
 async function waitAndReturn<T>(obj: T): Promise<T> {
     return new Promise((resolve) => setTimeout(() => resolve(obj), 1));
 }
@@ -177,7 +200,6 @@ export class MockBlockchain {
                 tx: txs_names.map((name) => txIdBySetupAndName('test_setup_1', name))
             };
         }
-
     }
 
     getBestBlockHash(): Promise<string> {
@@ -186,7 +208,6 @@ export class MockBlockchain {
         }
         return waitAndReturn('hash');
     }
-
 
     getBlock(blockHash: string, verbosity?: number): Promise<Block> {
         const blockHeight = parseInt(blockHash.replace('hash', ''));
@@ -202,7 +223,6 @@ export class MockBlockchain {
         }
         return waitAndReturn(`hash${height}`);
     }
-
 
     getRawTransaction(txid: string, verbose: boolean, blockhash: string): Promise<RawTransaction> {
         const blockHeight = parseInt(blockhash.replace('hash', ''));
@@ -223,8 +243,7 @@ export class MockBlockchain {
                 time: 100,
                 blocktime: 100
             });
-        }
-        else {
+        } else {
             throw new Error('Transaction not found');
         }
     }
@@ -234,17 +253,18 @@ export class MockBlockchain {
 
     getTxOut(txid: string, vout: number, include_mempool: boolean): Promise<TxOut | null> {
         //only in block 107 checks assume PROOF was spent to enable PROOF_UNCONTESTED
-        if (this.blockchainTip === 107)
-            return waitAndReturn(null);
+        if (this.blockchainTip === 107) return waitAndReturn(null);
         else
-            return waitAndReturn({ bestblock: '', confirmations: 0, value: 0, scriptPubKey: { asm: '', hex: '', reqSigs: 0, type: '', addresses: [] }, coinbase: false });
+            return waitAndReturn({
+                bestblock: '',
+                confirmations: 0,
+                value: 0,
+                scriptPubKey: { asm: '', hex: '', reqSigs: 0, type: '', addresses: [] },
+                coinbase: false
+            });
     }
 
     command(command: string, ...params: unknown[]): Promise<unknown> {
         return waitAndReturn('');
     }
-
 }
-
-
-

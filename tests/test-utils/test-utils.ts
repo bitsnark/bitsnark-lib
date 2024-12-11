@@ -84,7 +84,6 @@ export function setTestAgent(role: AgentRoles, mode: BitcoinNetwork = BitcoinNet
     };
 }
 
-
 export interface test_Template extends Template {
     data: string[][];
 }
