@@ -15,6 +15,7 @@ export interface Received {
 export interface ReceivedTemplate extends Template, Received, Omit<Setup, 'id' | 'status' | 'wotsSalt'> {
     setupId: string;
     setupStatus: SetupStatus;
+    data: string[][] | null;
 }
 
 // Setup row, with templates and received templates.
@@ -26,7 +27,7 @@ export interface ReceivedSetup extends Setup {
 export class ListenerDb extends AgentDb {
     static templateFields = `
         templates.name, templates.txid, templates.role, templates.is_external, templates.ordinal,
-        templates.inputs, templates.outputs, templates.unknown_txid,
+        templates.inputs, templates.outputs, templates.unknown_txid, templates.protocol_data,
         received.txid, received.raw_transaction, received.block_hash, received.block_height,
         setups.id, setups.protocol_version,
         setups.status, setups.last_checked_block_height`;
@@ -42,6 +43,7 @@ export class ListenerDb extends AgentDb {
             inputs: jsonParseCustom(JSON.stringify(row[i++])),
             outputs: jsonParseCustom(JSON.stringify(row[i++])),
             unknownTxid: row[i++] as boolean,
+            data: row[i++] as string[][] | null,
             actualTxid: row[i++],
             rawTransaction: row[i++],
             blockHash: row[i++],
@@ -63,7 +65,8 @@ export class ListenerDb extends AgentDb {
         txid: string,
         blockHash: string,
         blockHeight: number,
-        rawTransaction: RawTransaction
+        rawTransaction: RawTransaction,
+        indexInBlock: number = 0
     ) {
         // Assert that the setup is active.
         const status = (await this.query('SELECT status FROM setups WHERE id = $1', [setupId]))
@@ -76,10 +79,18 @@ export class ListenerDb extends AgentDb {
 
         await this.query(
             `
-                INSERT INTO received (template_id, txid, block_hash, block_height, raw_transaction)
-                VALUES ((SELECT id FROM templates WHERE setup_id = $1 AND name = $2), $3, $4, $5, $6)
+                INSERT INTO received (template_id, txid, block_hash, block_height, raw_transaction, index_in_block)
+                VALUES ((SELECT id FROM templates WHERE setup_id = $1 AND name = $2), $3, $4, $5, $6, $7)
             `,
-            [setupId, templateName, txid, blockHash, blockHeight, JSON.stringify(rawTransaction)]
+            [
+                setupId,
+                templateName,
+                txid,
+                blockHash,
+                blockHeight,
+                jsonParseCustom(JSON.stringify(rawTransaction)),
+                indexInBlock
+            ]
         );
     }
 

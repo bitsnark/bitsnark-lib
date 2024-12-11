@@ -25,7 +25,8 @@ const IncomingTransactionsBaseRow: ReceivedTemplate = {
     actualTxid: null,
     blockHash: null,
     blockHeight: null,
-    unknownTxid: false
+    unknownTxid: false,
+    data: null
 };
 
 const emptyBlock: Block = { hash: '', confirmations: 0, size: 0, strippedsize: 0, weight: 0, height: 0, version: 0, versionHex: '', merkleroot: '', tx: [], time: 0, mediantime: 0, nonce: 0, bits: '', difficulty: 0, chainwork: '', nTx: 0, previousblockhash: undefined, nextblockhash: undefined };

@@ -15,9 +15,10 @@ if [ "$bitcoin_data_dir" ]; then
 fi
 echo ...
 
-docker run -d --name "$regtest_container_name" \
-    $volume_mount -p 18443:18443 -p 18444:18444 ruimarinho/bitcoin-core:latest \
-    -regtest -rpcuser=rpcuser -rpcpassword=rpcpassword -fallbackfee=0.0002  -rpcallowip=0.0.0.0/0 -rpcbind=0.0.0.0
+docker run -d --name "$regtest_container_name" $volume_mount -p 18443:18443 -p 18444:18444 \
+    ruimarinho/bitcoin-core:latest -regtest \
+    -rpcuser=rpcuser -rpcpassword=rpcpassword \
+    -rpcallowip=0.0.0.0/0 -rpcbind=0.0.0.0
 printf "Waiting for the Bitcoin node to start..."
 while ! bitcoin_cli getblockchaininfo > /dev/null 2>&1; do
     printf .

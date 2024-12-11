@@ -8,9 +8,8 @@ declare module "bitcoin-core" {
         getBlockCount(): Promise<number>;
         getBlockHash(blockHeight: number): Promise<string>;
         getTxOut(txid: string, vout: number, include_mempool: boolean): Promise<TxOut | null>;
-        command(command: string, ...params: unknown[]): Promise<unknown>;
+        command(command: string, ...params: (string | number)[]): Promise<unknown>;
     }
-
     export interface ClientOptions {
         network: string;
         username: string;
@@ -110,6 +109,17 @@ declare module "bitcoin-core" {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         decoded?: any; // The structure of 'decoded' can be complex, so 'any' is used here. You can define it more precisely if needed.
         setupId?: string; // Optional field
+    }
+
+    export interface Input {
+        txid: string;
+        vout: number;
+        scriptSig: {
+            asm: string;
+            hex: string;
+        };
+        sequence: number;
+        txinwitness: string[];
     }
 
     export interface TxOut {

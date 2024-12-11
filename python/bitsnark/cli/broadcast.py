@@ -37,67 +37,64 @@ class BroadcastCommand(Command):
 
         logger.info("Attempting to broadcast %s", tx_template.name)
         signed_serialized_tx = tx_template.tx_data.get('signedSerializedTx')
-        if signed_serialized_tx:
-            logger.info("signedSerializedTx exists, using it...")
-            signed_serialized_tx = parse_hex_str(signed_serialized_tx)
-        else:
-            serialized_tx = tx_template.tx_data.get('serializedTx')
-            if not serialized_tx:
-                raise ValueError(f"Transaction {tx_template.name} has neither signedSerializedTx nor serializedTx")
-            serialized_tx = parse_hex_str(serialized_tx)
+        if not signed_serialized_tx:
+            raise ValueError(f"Transaction {tx_template.name} has no signedSerializedTx")
 
-            tx = CMutableTransaction.deserialize(bytes.fromhex(serialized_tx))
-            input_witnesses = []
 
-            for input_index, inp in enumerate(tx_template.inputs):
-                verifier_signature_raw = inp.get('verifierSignature')
-                if not verifier_signature_raw:
-                    raise ValueError(f"Transaction {tx_template.name} input #{input_index} has no verifierSignature")
-                verifier_signature = parse_hex_bytes(verifier_signature_raw)
+        signed_serialized_tx = parse_hex_str(signed_serialized_tx)
 
-                prover_signature_raw = inp.get('proverSignature')
-                if not prover_signature_raw:
-                    raise ValueError(f"Transaction {tx_template.name} input #{input_index} has no proverSignature")
-                prover_signature = parse_hex_bytes(prover_signature_raw)
+        tx = CMutableTransaction.deserialize(bytes.fromhex(signed_serialized_tx))
+        input_witnesses = []
 
-                prev_tx = dbsession.execute(
-                    select(TransactionTemplate).filter_by(
-                        setup_id=tx_template.setup_id,
-                        name=inp['templateName'],
-                    )
-                ).scalar_one()
+        for input_index, inp in enumerate(tx_template.inputs):
+            verifier_signature_raw = inp.get('verifierSignature')
+            if not verifier_signature_raw:
+                raise ValueError(f"Transaction {tx_template.name} input #{input_index} has no verifierSignature")
+            verifier_signature = parse_hex_bytes(verifier_signature_raw)
 
-                prevout_index = inp['outputIndex']
-                prevout = prev_tx.outputs[prevout_index]
-                spending_condition = prevout['spendingConditions'][
-                    inp['spendingConditionIndex']
-                ]
+            prover_signature_raw = inp.get('proverSignature')
+            if not prover_signature_raw:
+                raise ValueError(f"Transaction {tx_template.name} input #{input_index} has no proverSignature")
+            prover_signature = parse_hex_bytes(prover_signature_raw)
 
-                tapscript = CScript(parse_hex_bytes(spending_condition['script']))
+            prev_tx = dbsession.execute(
+                select(TransactionTemplate).filter_by(
+                    setup_id=tx_template.setup_id,
+                    name=inp['templateName'],
+                )
+            ).scalar_one()
 
-                example_witness_raw = spending_condition.get('exampleWitness', [])
-                example_witness = [
-                    parse_hex_bytes(s) for s in
-                    # This flattens the list of lists
-                    itertools.chain.from_iterable(example_witness_raw)
-                ]
+            prevout_index = inp['outputIndex']
+            prevout = prev_tx.outputs[prevout_index]
+            spending_condition = prevout['spendingConditions'][
+                inp['spendingConditionIndex']
+            ]
 
-                control_block = parse_hex_bytes(spending_condition['controlBlock'])
+            tapscript = CScript(parse_hex_bytes(spending_condition['script']))
 
-                input_witness = CTxInWitness(CScriptWitness(
-                    stack=[
-                        *example_witness,
-                        verifier_signature,
-                        prover_signature,
-                        tapscript,
-                        control_block,
-                    ],
-                ))
-                input_witnesses.append(input_witness)
+            witness_raw = tx_template.protocol_data or []
+            witness = [
+                parse_hex_bytes(s) for s in
+                # This flattens the list of lists
+                itertools.chain.from_iterable(witness_raw)
+            ]
 
-            tx.wit = CTxWitness(vtxinwit=input_witnesses)
+            control_block = parse_hex_bytes(spending_condition['controlBlock'])
 
-            signed_serialized_tx = tx.serialize().hex()
+            input_witness = CTxInWitness(CScriptWitness(
+                stack=[
+                    *witness,
+                    verifier_signature,
+                    prover_signature,
+                    tapscript,
+                    control_block,
+                ],
+            ))
+            input_witnesses.append(input_witness)
+
+        tx.wit = CTxWitness(vtxinwit=input_witnesses)
+
+        signed_serialized_tx = tx.serialize().hex()
 
         if not context.args.no_test_mempool_accept:
             mempoolaccept_ret = bitcoin_rpc.call(

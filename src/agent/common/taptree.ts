@@ -6,6 +6,7 @@ import * as bitcoin from 'bitcoinjs-lib';
 import * as ecc from 'tiny-secp256k1';
 import assert from 'node:assert';
 import { array, last } from './array-utils';
+import { agentConf } from '../agent.conf';
 
 export const DEAD_ROOT = Buffer.from([0x6a, 0x6a, 0x6a, 0x6a, 0x6a, 0x6a, 0x6a, 0x6a]);
 
@@ -79,13 +80,21 @@ export class SimpleTapTree {
         return Buffer.concat([versionBuf, keyBuf, proof]);
     }
 
-    public getScriptPubkey(): Buffer {
+    public getTaprootPubkey(): Buffer {
         const taproot = bitcoin.payments.p2tr({
             internalPubkey: bigintToBufferBE(this.internalPubkey, 256),
             hash: this.getRoot(),
-            network: bitcoin.networks.bitcoin
+            network: bitcoin.networks[agentConf.bitcoinNodeNetwork as keyof typeof bitcoin.networks]
         });
         return taproot.output!;
+    }
+
+    public getTaprootAddress(): string {
+        return bitcoin.payments.p2tr({
+            internalPubkey: bigintToBufferBE(this.internalPubkey, 256),
+            hash: this.getRoot(),
+            network: bitcoin.networks[agentConf.bitcoinNodeNetwork as keyof typeof bitcoin.networks]
+        }).address!;
     }
 }
 
@@ -176,12 +185,12 @@ export class Compressor {
         const taproot = bitcoin.payments.p2tr({
             internalPubkey: bigintToBufferBE(internalPubkey, 256),
             hash: root,
-            network: bitcoin.networks.bitcoin
+            network: bitcoin.networks[agentConf.bitcoinNodeNetwork as keyof typeof bitcoin.networks]
         });
         return taproot.output!;
     }
 
-    public getScriptPubkey(): Buffer {
+    public getTaprootPubkey(): Buffer {
         return Compressor.toPubKey(this.internalPubkey, this.getRoot());
     }
 
@@ -207,8 +216,8 @@ function test1() {
     const sttRoot = stt.getRoot();
     assert(sttRoot.compare(cRoot) == 0);
 
-    const sttKey = stt.getScriptPubkey();
-    const cKey = c.getScriptPubkey();
+    const sttKey = stt.getTaprootPubkey();
+    const cKey = c.getTaprootPubkey();
     assert(sttKey.compare(cKey) == 0);
 
     const sttScript = stt.scripts[index];

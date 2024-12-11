@@ -42,6 +42,7 @@ CREATE TABLE received (
     block_hash CHARACTER VARYING NOT NULL,
     block_height INTEGER NOT NULL,
     raw_transaction JSONB NOT NULL,
-    detected_at TIMESTAMP NOT NULL DEFAULT NOW()
+    detected_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    index_in_block INTEGER NOT NULL
 );
 CREATE INDEX received_template_id_idx ON received (template_id);
