@@ -4,7 +4,6 @@ declare module "bitcoin-core" {
         getBlock(blockHash: string): Promise<Block>;
         getRawTransaction(txid: string, verbose: boolean, blockhash: string): Promise<RawTransaction>;
         getBestBlockHash(): Promise<string>;
-        getTransaction(txid: string): Promise<TransactionData>;
         getBlock(blockHash: string, verbosity?: number): Promise<Block>;
         getBlockCount(): Promise<number>;
         getBlockHash(blockHeight: number): Promise<string>;
@@ -52,16 +51,7 @@ declare module "bitcoin-core" {
         weight: number;
         version: number;
         locktime: number;
-        vin: Array<{
-            txid: string;
-            vout: number;
-            scriptSig: {
-                asm: string;
-                hex: string;
-            };
-            sequence: number;
-            txinwitness?: string[];
-        }>;
+        vin: Array<Vin>;
         vout: Array<{
             value: number;
             n: number;
@@ -80,6 +70,16 @@ declare module "bitcoin-core" {
         setupId?: string; // Optional field
     }
 
+    export interface Vin {
+        txid: string;
+        vout: number;
+        scriptSig: {
+            asm: string;
+            hex: string;
+        };
+        sequence: number;
+        txinwitness?: string[];
+    }
     export interface TransactionData {
         amount: number;
         fee: number;

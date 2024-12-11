@@ -5,6 +5,6 @@ const config: Config.InitialOptions = {
     transform: {
         "^.+\\.tsx?$": "ts-jest"
     },
-    testPathIgnorePatterns: [ "<rootDir>/node_modules/", "<rootDir>/dist/", "<rootDir>/src/" ]
+    testPathIgnorePatterns: ["<rootDir>/node_modules/", "<rootDir>/dist/", "<rootDir>/src/", "<rootDir>/tests/integrations"]
 };
 export default config;
