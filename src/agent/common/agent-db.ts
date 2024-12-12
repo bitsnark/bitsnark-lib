@@ -35,7 +35,6 @@ const setupFields = [
     'protocol_version',
     'status',
     'last_checked_block_height',
-    'wots_salt',
     'payload_txid',
     'payload_output_index',
     'payload_amount',
@@ -116,13 +115,13 @@ export class AgentDb extends Db {
 
     /*** SETUP ***/
 
-    public async createSetup(setupId: string, wotsSalt: string): Promise<Setup> {
+    public async createSetup(setupId: string): Promise<Setup> {
         await this.query(
-            `INSERT INTO setups (id, wots_salt, protocol_version, status)
+            `INSERT INTO setups (id, protocol_version, status)
                 VALUES ($1, $2, $3, $4)`,
-            [setupId, wotsSalt, agentConf.protocolVersion, SetupStatus.PENDING]
+            [setupId, agentConf.protocolVersion, SetupStatus.PENDING]
         );
-        return { id: setupId, wotsSalt, protocolVersion: agentConf.protocolVersion, status: SetupStatus.PENDING };
+        return { id: setupId, protocolVersion: agentConf.protocolVersion, status: SetupStatus.PENDING };
     }
 
     public async updateSetup(setupId: string, setup: updateSetupPartial): Promise<Setup> {

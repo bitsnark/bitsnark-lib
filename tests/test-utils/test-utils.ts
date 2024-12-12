@@ -6,8 +6,6 @@ import { AgentDb, rowToObj, templateFields } from '../../src/agent/common/agent-
 import { BitcoinListener } from '../../src/agent/listener/bitcoin-listener';
 import { ListenerDb, ReceivedTemplate } from '../../src/agent/listener/listener-db';
 
-export const TEST_WOTS_SALT = 'salt';
-
 const payloadUtxo = {
     txid: '0000000000000000000000000000000000000000000000000000000000000000',
     outputIndex: 0,
@@ -28,7 +26,6 @@ export function initTemplatesForTest(): { prover: Template[]; verifier: Template
     let prover = initializeTemplates(
         AgentRoles.PROVER,
         setupId,
-        TEST_WOTS_SALT,
         BigInt('0x' + agentConf.keyPairs[proverAgentId].schnorrPublic),
         BigInt('0x' + agentConf.keyPairs[verifierAgentId].schnorrPublic),
         payloadUtxo,
@@ -37,16 +34,17 @@ export function initTemplatesForTest(): { prover: Template[]; verifier: Template
     let verifier = initializeTemplates(
         AgentRoles.VERIFIER,
         setupId,
-        TEST_WOTS_SALT,
         BigInt('0x' + agentConf.keyPairs[proverAgentId].schnorrPublic),
         BigInt('0x' + agentConf.keyPairs[verifierAgentId].schnorrPublic),
         payloadUtxo,
         proverUtxo
     );
     prover = mergeWots(AgentRoles.PROVER, prover, verifier);
+    setWotsPublicKeysForArgument(setupId, prover);
+
     verifier = mergeWots(AgentRoles.VERIFIER, verifier, prover);
-    setWotsPublicKeysForArgument(TEST_WOTS_SALT, prover);
-    setWotsPublicKeysForArgument(TEST_WOTS_SALT, verifier);
+    setWotsPublicKeysForArgument(setupId, verifier);
+
     return { prover, verifier };
 }
 

@@ -58,7 +58,6 @@ export interface Setup {
     protocolVersion?: string;
     status: SetupStatus;
     lastCheckedBlockHeight?: number;
-    wotsSalt: string;
     payloadTxid?: string;
     payloadOutputIndex?: number;
     payloadAmount?: bigint;

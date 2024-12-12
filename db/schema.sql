@@ -1,6 +1,5 @@
 CREATE TABLE setups (
     id CHARACTER VARYING PRIMARY KEY,
-    wots_salt CHARACTER VARYING,
     protocol_version CHARACTER VARYING NOT NULL,
     status CHARACTER VARYING NOT NULL,
     last_checked_block_height INTEGER NULL,

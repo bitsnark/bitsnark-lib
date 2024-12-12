@@ -2,23 +2,26 @@ import { encodeWinternitz24, WOTS_NIBBLES, WotsType } from '../../src/agent/comm
 import { proofBigint } from '../../src/agent/common/constants';
 import { Argument } from '../../src/agent/protocol-logic/argument';
 import { parseInput } from '../../src/agent/protocol-logic/parser';
-import { initTemplatesForTest, TEST_WOTS_SALT } from '../test-utils/test-utils';
+import { initTemplatesForTest } from '../test-utils/test-utils';
 import { createUniqueDataId } from '../../src/agent/setup/wots-keys';
 import { getTemplateByName, twoDigits } from '../../src/agent/common/templates';
 import { TemplateNames } from '../../src/agent/common/types';
+
+const setupId = 'test_setup';
 
 function makeSelectionPathUnparsed(selectionPath: number[]) {
     const spu: Buffer[][] = [];
     for (let i = 0; i < selectionPath.length; i++) {
         const tn = selectionPath[i];
-        const unique = createUniqueDataId(TEST_WOTS_SALT, TemplateNames.SELECT + '_' + twoDigits(i), 0, 0, 0);
+        const unique = createUniqueDataId(setupId, TemplateNames.SELECT + '_' + twoDigits(i), 0, 0, 0);
+        console.log('unique 1: ', unique);
         spu.push(encodeWinternitz24(BigInt(tn), unique));
     }
     return spu;
 }
 
 async function init() {
-    const argument = new Argument(TEST_WOTS_SALT, proofBigint);
+    const argument = new Argument(setupId, proofBigint);
     const selectionPath = [1, 2, 3, 4, 5, 6];
     const argWitness = await argument.makeArgument(selectionPath, makeSelectionPathUnparsed(selectionPath));
     return { argument, selectionPath, argWitness };
@@ -26,7 +29,7 @@ async function init() {
 
 describe('Argument', () => {
     it('make it', async () => {
-        const { argument, selectionPath, argWitness } = await init();
+        const { argument, argWitness } = await init();
 
         expect(argWitness.length).toBe(5);
         expect(argWitness[0].length).toBe(7 * WOTS_NIBBLES[WotsType._24]);
@@ -38,7 +41,7 @@ describe('Argument', () => {
     }, 10000);
 
     it('break it', async () => {
-        const { argument, selectionPath, argWitness } = await init();
+        const { argWitness } = await init();
         const templates = initTemplatesForTest().prover;
         const template = getTemplateByName(templates, TemplateNames.ARGUMENT);
         const decoded: bigint[][] = [];

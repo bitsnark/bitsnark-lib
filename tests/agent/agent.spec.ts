@@ -29,7 +29,6 @@ const proverStake: FundingUtxo = {
 };
 const fakeSetup: Setup = {
     id: 'test_setup',
-    wotsSalt: 'salt',
     status: SetupStatus.PENDING
 };
 
@@ -87,7 +86,7 @@ describe('Agent message signatures check', () => {
         await verifier.messageReceived(toJson(signedMessage), mockContext);
 
         expect(mockVerifierDb.createSetupCalledCount).toBe(1);
-        expect(mockVerifierDb.createSetupCalledParams).toEqual({ setupId: fakeSetup.id, wotsSalt: fakeSetup.id });
+        expect(mockVerifierDb.createSetupCalledParams).toEqual({ setupId: fakeSetup.id });
 
         expect(spySignMessageAndSend).toHaveBeenCalledTimes(1);
         expect(verifier.instances.get(setupId)).toBeDefined();
