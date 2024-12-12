@@ -11,8 +11,6 @@ import {
 import { AgentRoles, FundingUtxo, SignatureType, Template, TemplateNames } from '../common/types';
 import { generateWotsPublicKeys } from './wots-keys';
 
-const PROTOCOL_VERSION = '1.1';
-
 export function initializeTemplates(
     role: AgentRoles,
     setupId: string,
@@ -63,7 +61,7 @@ export function initializeTemplates(
 
     // put schnorr keys where needed
     for (const t of templates) {
-        for (const [inputIndex, input] of t.inputs.entries()) {
+        for (const [_inputIndex, input] of t.inputs.entries()) {
             const output = findOutputByInput(templates, input);
             const spend = output.spendingConditions[input.spendingConditionIndex];
             if (!spend) throw new Error('Invalid spending condition: ' + input.spendingConditionIndex);

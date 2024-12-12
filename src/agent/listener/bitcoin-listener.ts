@@ -49,7 +49,7 @@ export class BitcoinListener {
                     if (!pendingTx.unknownTxid)
                         try {
                             transmittedTx = await this.client.getRawTransaction(pendingTx.txid!, true, blockHash);
-                        } catch (_) {
+                        } catch {
                             continue;
                         }
                     else

@@ -5,7 +5,6 @@ import { proofBigint } from '../src/agent/common/constants';
 import { RawTransaction, Input } from 'bitcoin-core';
 import { agentConf } from '../src/agent/agent.conf';
 import { ReceivedTemplate } from '../src/agent/listener/listener-db';
-import { mainModule } from 'process';
 
 export const mockRawTransaction: RawTransaction = {
     in_active_chain: true,
@@ -40,6 +39,7 @@ export const mockVin = {
     ]
 };
 
+/* eslint-disable @typescript-eslint/no-unused-vars */
 const mockVout = {
     value: 0.015,
     n: 0,

@@ -6,7 +6,7 @@ import { signTemplates } from './sign-templates';
 import { getSpendingConditionByInput } from '../common/templates';
 import { verifySetup } from './verify-setup';
 import { generateWotsPublicKeys, mergeWots, setWotsPublicKeysForArgument } from './wots-keys';
-import { TemplateNames, AgentRoles, FundingUtxo, SignatureType } from '../common/types';
+import { AgentRoles, FundingUtxo, SignatureType } from '../common/types';
 import { createSetupId } from './create-setup-id';
 import { initializeTemplates } from './init-templates';
 import { AgentDb } from '../common/agent-db';

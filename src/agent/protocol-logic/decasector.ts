@@ -65,7 +65,7 @@ export class StateCommitment {
 
     public getIndexForRuntimeIndex(runtimeIndex: number): number {
         if (!this.regIndexToRuntimeIndex) this.getValues();
-        const index = this.regIndexToRuntimeIndex!.findIndex((ri) => runtimeIndex === runtimeIndex);
+        const index = this.regIndexToRuntimeIndex!.findIndex((ri) => ri === runtimeIndex);
         if (index < 0) throw new Error('Runtime index not found in state commitment');
         return index;
     }

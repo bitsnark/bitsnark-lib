@@ -150,7 +150,7 @@ export class VM {
         let v = 0n;
         try {
             v = modInverse(b.value, prime_bigint) as bigint;
-        } catch (e) {
+        } catch {
             // Divide by zero. Return 0 because we can't fail here.
         }
         v = (a.value * v) % prime_bigint;
@@ -184,7 +184,6 @@ export class VM {
     ignoreFailureInExactlyOne(a: () => void, b: () => void) {
         if (!this.success) throw new Error('Invalid state');
         let count = 0;
-        const f = this.success;
         a();
         count += this.success ? 0 : 1;
         this.success.value = 1n;

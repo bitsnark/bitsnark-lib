@@ -66,7 +66,7 @@ export class DoomsdayGenerator {
     }
 
     // return true if the line succeeds!!!
-    public checkLine(index: number, a: bigint, b: bigint, c: bigint, d?: bigint): boolean {
+    public checkLine(index: number, a: bigint, b: bigint, c: bigint, _d?: bigint): boolean {
         const line = this.program[index];
         switch (line.name) {
             case InstrCode.ADDMOD:
@@ -92,7 +92,7 @@ export class DoomsdayGenerator {
             case InstrCode.DIVMOD:
                 try {
                     return c == a * modInverse(b, prime_bigint);
-                } catch (e) {
+                } catch {
                     return false;
                 }
             case InstrCode.ASSERTONE:
@@ -157,7 +157,6 @@ export class DoomsdayGenerator {
 
     private generateRefuteInstructionTaproot(compressor: Compressor, transactions: Template[]) {
         const lastSelect = getTemplateByName(transactions, `select_${twoDigits(this.decasector.iterations - 1)}`);
-        const semiFinal = getTemplateByName(transactions, TemplateNames.ARGUMENT);
 
         const cache: { [key: string]: ScriptTemplate } = {};
 
@@ -186,7 +185,6 @@ export class DoomsdayGenerator {
             } else {
                 const bitcoin = new Bitcoin();
                 bitcoin.throwOnFail = false;
-                const stack = bitcoin.stack.items;
 
                 const indexWitness = encodeWinternitz24(BigInt(index), '').map((b) => bitcoin.addWitness(b));
 

@@ -1,5 +1,5 @@
 import { ReceivedTemplate } from '@src/agent/listener/listener-db';
-import { AgentRoles, Input, SetupStatus, Template, TemplateNames, TemplateStatus } from '../../src/agent/common/types';
+import { AgentRoles, Input, SetupStatus, TemplateNames, TemplateStatus } from '../../src/agent/common/types';
 
 const templates = [
     TemplateNames.LOCKED_FUNDS,

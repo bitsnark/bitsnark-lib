@@ -112,8 +112,6 @@ export class BLAKE3 {
     }
 
     private rotl1(target: Register) {
-        const stack = this.bitcoin.stack.items;
-
         let s = this.registerToBigint(target).toString(2);
         while (s.length < 32) s = '0' + s;
         const t = s.slice(1) + s.slice(0, 1);

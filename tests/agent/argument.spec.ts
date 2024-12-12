@@ -27,7 +27,7 @@ async function init() {
 
 describe('Argument', () => {
     it('make it', async () => {
-        const { argument, selectionPath, argWitness } = await init();
+        const { argument, argWitness } = await init();
 
         expect(argWitness.length).toBe(5);
         expect(argWitness[0].length).toBe(7 * WOTS_NIBBLES[WotsType._24]);
@@ -39,7 +39,7 @@ describe('Argument', () => {
     }, 10000);
 
     it('break it', async () => {
-        const { argument, selectionPath, argWitness } = await init();
+        const { argWitness } = await init();
         const templates = initTemplatesForTest().prover;
         const template = getTemplateByName(templates, TemplateNames.ARGUMENT);
         const decoded: bigint[][] = [];

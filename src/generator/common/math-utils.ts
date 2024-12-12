@@ -94,7 +94,6 @@ export function polyInv(coeffs: bigint[], modulus_coeffs: bigint[], degree: numb
     let hm = polyComplete([0n], degree + 1);
     let low = polyCat(coeffs, [0n]);
     let high = polyCat(modulus_coeffs, [1n]);
-    let count = 0;
     while (polyDeg(low) > 0) {
         let r = polyRoundedDiv(high, low, prime);
         r = polyComplete(r, degree + 1);
@@ -111,14 +110,13 @@ export function polyInv(coeffs: bigint[], modulus_coeffs: bigint[], degree: numb
         lm = nm;
         high = low;
         low = _new;
-        count++;
     }
     lm.length = degree;
     lm = lm.map((n) => (n * modInverse(low[0], prime)) % prime);
     return lm;
 }
 
-export function polyMul(a: bigint[], b: bigint[], modulus_coeffs: bigint[], degree: number, prime: bigint): bigint[] {
+export function polyMul(a: bigint[], b: bigint[], modulus_coeffs: bigint[], degree: number): bigint[] {
     b = polyComplete([], degree * 2 - 1);
     for (let i = 0; i < degree; i++) {
         for (let j = 0; j < degree; j++) {

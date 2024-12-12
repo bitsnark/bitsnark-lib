@@ -41,7 +41,7 @@ function parseBigInt(value: string): bigint {
     }
     try {
         return BigInt(value);
-    } catch (_) {
+    } catch {
         throw makeParsingError(value, 'bigint');
     }
 }

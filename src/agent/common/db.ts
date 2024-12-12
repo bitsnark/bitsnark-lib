@@ -3,10 +3,6 @@ import { agentConf } from '../agent.conf';
 
 export type DbValue = string | number | boolean | object | null | undefined;
 export type QueryArgs = DbValue[];
-interface Query {
-    sql: string;
-    args?: QueryArgs;
-}
 
 export class Db {
     host: string;

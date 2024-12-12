@@ -58,19 +58,8 @@ export const templateFields = [
     'status'
 ];
 
-function isCap(c: string): boolean {
-    return c >= 'A' && c <= 'Z';
-}
-
 function toCap(s: string): string {
     return s.length > 0 ? s.split('')[0].toUpperCase() + s.split('').slice(1).join('') : '';
-}
-
-function camelToSnake(name: string): string {
-    return name
-        .split('')
-        .map((c) => (isCap(c) ? '_' + c.toLowerCase : c))
-        .join('');
 }
 
 function snakeToCamel(name: string): string {
@@ -259,7 +248,7 @@ export class AgentDb extends Db {
         const rows = (
             await this.query<ReceivedTransaction>(
                 `SELECT template_id, block_height, raw_transaction
-                    FROM received, templates 
+                    FROM received, templates
                     WHERE received.template_id = templates.id AND templates.setup_id = $1
                     ORDER BY block_height, index_in_block ASC`,
                 [setupId]
