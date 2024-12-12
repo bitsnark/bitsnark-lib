@@ -33,7 +33,6 @@ function setTaprootKey(transactions: Template[]) {
     for (const t of transactions) {
         for (let outputIndex = 0; outputIndex < t.outputs.length; outputIndex++) {
             const output = t.outputs[outputIndex];
-            if (output.taprootKey) continue;
             const scripts = output.spendingConditions.map((sc, scIndex) => {
                 const inputs = findInputsByOutput(transactions, t.name, outputIndex, scIndex);
                 return inputs.length && inputs[0].script ? inputs[0].script : DEAD_SCRIPT;

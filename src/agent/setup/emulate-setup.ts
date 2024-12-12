@@ -41,8 +41,8 @@ export async function emulateSetup(
         stakeAmount: proverStake.amount
     });
 
-    await proverDb.createSetup(setupId);
-    await proverDb.updateSetup(setupId, {
+    await verifierDb.createSetup(setupId);
+    await verifierDb.updateSetup(setupId, {
         payloadTxid: lockedFunds.txid,
         payloadOutputIndex: lockedFunds.outputIndex,
         payloadAmount: lockedFunds.amount,
