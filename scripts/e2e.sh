@@ -74,5 +74,3 @@ bitcoin_cli sendrawtransaction "$locked_funds_tx"
 bitcoin_cli sendrawtransaction "$prover_stake_tx"
 
 ts-node ./src/agent/protocol-logic/send-proof.ts bitsnark_prover_1 "$setup_id" --fudge
-
-snapshot create
