@@ -76,7 +76,6 @@ class TestSpendingConditionsCommand(Command):
         bitcoin_rpc.mine_blocks(101, change_address)
 
         tx_template_query = sa.select(TransactionTemplate).filter_by(
-            agent_id=agent_id,
             setup_id=setup_id,
         )
         if context.args.names:
@@ -157,7 +156,6 @@ class TestSpendingConditionsCommand(Command):
                 bitcoin_rpc=bitcoin_rpc,
                 args=argparse.Namespace(
                     setup_id=tx_template.setup_id,
-                    agent_id=tx_template.agent_id,
                     name=tx_template.name,
                     change_address=change_address,
                     fee_rate=10,
@@ -178,7 +176,6 @@ class TestSpendingConditionsCommand(Command):
                     bitcoin_rpc=bitcoin_rpc,
                     args=argparse.Namespace(
                         setup_id=tx_template.setup_id,
-                        agent_id=tx_template.agent_id,
                         name=tx_template.name,
                         spending_condition=spending_condition['index'],
                         prevout=f"{txid}:{output_index}",
