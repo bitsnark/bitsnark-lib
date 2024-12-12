@@ -246,7 +246,7 @@ export class AgentDb extends Db {
                 SET updated_at = NOW(), protocol_data = $1, status = $2
                 WHERE setup_id = $3 AND name = $4`,
             [
-                data ? data.map((data) => data.map((buffer) => buffer.toString('hex'))) : null,
+                data ? data.map((data) => data.map((buffer) => `Buffer:${buffer.toString('hex')}`)) : null,
                 TemplateStatus.READY,
                 setupId,
                 templateName

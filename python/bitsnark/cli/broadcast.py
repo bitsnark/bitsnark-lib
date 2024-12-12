@@ -47,7 +47,6 @@ class BroadcastCommand(Command):
         if not signed_serialized_tx:
             raise ValueError(f"Transaction {tx_template.name} has no signedSerializedTx")
 
-
         signed_serialized_tx = parse_hex_str(signed_serialized_tx)
 
         tx = CMutableTransaction.deserialize(bytes.fromhex(signed_serialized_tx))
