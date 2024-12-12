@@ -6,10 +6,7 @@ import { agentConf } from '../agent.conf';
 import { Buffer } from 'node:buffer';
 import { DoomsdayGenerator } from '../final-step/doomsday-generator';
 import { AgentRoles, Input, SpendingCondition, Template, TemplateNames } from '../common/types';
-import {
-    getSpendingConditionByInput,
-    getTemplateByName
-} from '../common/templates';
+import { getSpendingConditionByInput, getTemplateByName } from '../common/templates';
 import { AgentDb } from '../common/agent-db';
 
 const DEAD_SCRIPT = Buffer.from([0x6a]); // opcode fails transaction
