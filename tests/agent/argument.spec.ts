@@ -14,7 +14,6 @@ function makeSelectionPathUnparsed(selectionPath: number[]) {
     for (let i = 0; i < selectionPath.length; i++) {
         const tn = selectionPath[i];
         const unique = createUniqueDataId(setupId, TemplateNames.SELECT + '_' + twoDigits(i), 0, 0, 0);
-        console.log('unique 1: ', unique);
         spu.push(encodeWinternitz24(BigInt(tn), unique));
     }
     return spu;

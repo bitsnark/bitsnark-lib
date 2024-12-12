@@ -118,7 +118,7 @@ export class AgentDb extends Db {
     public async createSetup(setupId: string): Promise<Setup> {
         await this.query(
             `INSERT INTO setups (id, protocol_version, status)
-                VALUES ($1, $2, $3, $4)`,
+                VALUES ($1, $2, $3)`,
             [setupId, agentConf.protocolVersion, SetupStatus.PENDING]
         );
         return { id: setupId, protocolVersion: agentConf.protocolVersion, status: SetupStatus.PENDING };
