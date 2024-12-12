@@ -64,11 +64,6 @@ export function generateWotsPublicKeysForSpendingCondition(
 ) {
     if (!sc.wotsSpec) return;
 
-    if (templateName == 'ARGUMENT') {
-        const unique = createUniqueDataId(setupId, templateName, outputIndex, spendingConditionIndex, 0);
-        console.log('unique foo: ', unique);
-    }
-
     sc.wotsPublicKeys = sc.wotsSpec.map((wt, dataIndex) =>
         getWinternitzPublicKeys(
             wt,
