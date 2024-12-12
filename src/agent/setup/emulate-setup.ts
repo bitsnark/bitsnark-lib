@@ -6,12 +6,11 @@ import { signTemplates } from './sign-templates';
 import { getSpendingConditionByInput } from '../common/templates';
 import { verifySetup } from './verify-setup';
 import { generateWotsPublicKeys, mergeWots, setWotsPublicKeysForArgument } from './wots-keys';
-import { TemplateNames, AgentRoles, FundingUtxo, SignatureType } from '../common/types';
+import { AgentRoles, FundingUtxo, SignatureType } from '../common/types';
 import { createSetupId } from './create-setup-id';
 import { initializeTemplates } from './init-templates';
 import { AgentDb } from '../common/agent-db';
-
-export const TEST_WOTS_SALT = 'salt';
+import { randomBytes } from 'crypto';
 
 export async function emulateSetup(
     proverAgentId: string,
@@ -26,6 +25,10 @@ export async function emulateSetup(
 
     console.log('creating setup...');
 
+    const proverSalt = randomBytes(32).toString('hex');
+    const verifierSalt = setupId;
+
+    await proverDb.createSetup(setupId, proverSalt);
     await proverDb.updateSetup(setupId, {
         payloadTxid: lockedFunds.txid,
         payloadOutputIndex: lockedFunds.outputIndex,
@@ -35,7 +38,7 @@ export async function emulateSetup(
         stakeAmount: proverStake.amount
     });
 
-    await verifierDb.createSetup(setupId, TEST_WOTS_SALT);
+    await verifierDb.createSetup(setupId, verifierSalt);
     await proverDb.updateSetup(setupId, {
         payloadTxid: lockedFunds.txid,
         payloadOutputIndex: lockedFunds.outputIndex,
@@ -50,7 +53,7 @@ export async function emulateSetup(
     let proverTemplates = await initializeTemplates(
         AgentRoles.PROVER,
         setupId,
-        TEST_WOTS_SALT,
+        proverSalt,
         BigInt('0x' + agentConf.keyPairs[proverAgentId].schnorrPublic),
         BigInt('0x' + agentConf.keyPairs[verifierAgentId].schnorrPublic),
         lockedFunds,
@@ -59,7 +62,7 @@ export async function emulateSetup(
     let verifierTemplates = await initializeTemplates(
         AgentRoles.VERIFIER,
         setupId,
-        TEST_WOTS_SALT,
+        verifierSalt,
         BigInt('0x' + agentConf.keyPairs[proverAgentId].schnorrPublic),
         BigInt('0x' + agentConf.keyPairs[verifierAgentId].schnorrPublic),
         lockedFunds,
@@ -69,8 +72,8 @@ export async function emulateSetup(
 
     console.log('generating winternitz one-time signatures...');
 
-    proverTemplates = generateWotsPublicKeys(setupId, proverTemplates, AgentRoles.PROVER);
-    verifierTemplates = generateWotsPublicKeys(setupId, verifierTemplates, AgentRoles.VERIFIER);
+    proverTemplates = generateWotsPublicKeys(proverSalt, proverTemplates, AgentRoles.PROVER);
+    verifierTemplates = generateWotsPublicKeys(verifierSalt, verifierTemplates, AgentRoles.VERIFIER);
 
     console.log('merging winternitz one-time signatures...');
 
@@ -171,7 +174,7 @@ if (require.main === module) {
         outputIndex: args.stake ? parseInt(args.stake.split(':')[1]) : 0,
         amount: agentConf.proverStakeAmount
     };
-    const setupId = args['setup-id'];
+    const setupId = 'test_setup';
     const generateFinal = args.final;
     main(proverId, verifierId, lockedFunds, proverStake, generateFinal, setupId).catch((error) => {
         throw error;

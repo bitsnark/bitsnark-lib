@@ -20,37 +20,32 @@ export const protocolStart: Template[] = [
         name: TemplateNames.LOCKED_FUNDS,
         isExternal: true,
         inputs: [],
-        outputs: [
-            {
-                spendingConditions: [
-                    {
-                        nextRole: AgentRoles.PROVER,
-                        signatureType: SignatureType.BOTH
-                    }
-                ]
-            }
-        ]
+        outputs: [{
+            spendingConditions: [{
+                nextRole: AgentRoles.PROVER,
+                signatureType: SignatureType.BOTH
+            }, {
+                nextRole: AgentRoles.PROVER,
+                signatureType: SignatureType.BOTH,
+                wotsSpec: array(8, WotsType._256_4)
+            }]
+        }]
     },
     {
         role: AgentRoles.PROVER,
         name: TemplateNames.PROVER_STAKE,
         isExternal: true,
         inputs: [],
-        outputs: [
-            {
-                spendingConditions: [
-                    {
-                        nextRole: AgentRoles.PROVER,
-                        signatureType: SignatureType.BOTH
-                    },
-                    {
-                        nextRole: AgentRoles.PROVER,
-                        signatureType: SignatureType.BOTH,
-                        wotsSpec: array(8, WotsType._256_4)
-                    }
-                ]
-            }
-        ]
+        outputs: [{
+            spendingConditions: [{
+                nextRole: AgentRoles.PROVER,
+                signatureType: SignatureType.BOTH
+            }, {
+                nextRole: AgentRoles.PROVER,
+                signatureType: SignatureType.BOTH,
+                wotsSpec: array(8, WotsType._256_4)
+            }]
+        }]
     },
     {
         role: AgentRoles.PROVER,
