@@ -114,7 +114,7 @@ export class ProtocolProver extends ProtocolBase {
         }
         const data = proof
             .map((n, dataIndex) =>
-                encodeWinternitz256_4(n, createUniqueDataId(this.setup!.id, TemplateNames.PROOF, 0, 1, dataIndex))
+                encodeWinternitz256_4(n, createUniqueDataId(this.setup!.id, TemplateNames.PROOF, 0, 0, dataIndex))
             )
             .flat();
         await this.sendTransaction(TemplateNames.PROOF, [data]);
