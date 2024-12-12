@@ -13,21 +13,21 @@ function calculateD(a: bigint, b: bigint): bigint {
 }
 
 export class Argument {
-    wotsSalt: string;
+    setupId: string;
     selectionPath: number[] = [];
     selectionPathUnparsed: Buffer[][] = [];
     index: number = 0;
     proof: bigint[];
 
-    constructor(wotsSalt: string, proof: bigint[]) {
-        this.wotsSalt = wotsSalt;
+    constructor(setupId: string, proof: bigint[]) {
+        this.setupId = setupId;
         this.proof = proof;
     }
 
     private makeIndexWitness(): Buffer[] {
         return [
             ...this.selectionPathUnparsed,
-            encodeWinternitz24(BigInt(this.index), createUniqueDataId(this.wotsSalt, TemplateNames.ARGUMENT, 0, 0, 6))
+            encodeWinternitz24(BigInt(this.index), createUniqueDataId(this.setupId, TemplateNames.ARGUMENT, 0, 0, 6))
         ].flat();
     }
 
@@ -39,7 +39,7 @@ export class Argument {
             instr.name == InstrCode.MULMOD || instr.name == InstrCode.DIVMOD ? calculateD(aValue, bValue) : 0n;
         return [aValue, bValue, cValue, dValue]
             .map((n, dataIndex) =>
-                encodeWinternitz256_4(n, createUniqueDataId(this.wotsSalt, TemplateNames.ARGUMENT, 1, 0, dataIndex))
+                encodeWinternitz256_4(n, createUniqueDataId(this.setupId, TemplateNames.ARGUMENT, 1, 0, dataIndex))
             )
             .flat();
     }
@@ -66,7 +66,7 @@ export class Argument {
                 .map((b, dataIndex) =>
                     encodeWinternitz256_4(
                         bufferToBigintBE(b),
-                        createUniqueDataId(this.wotsSalt, TemplateNames.ARGUMENT, 2 + oi, 0, dataIndex)
+                        createUniqueDataId(this.setupId, TemplateNames.ARGUMENT, 2 + oi, 0, dataIndex)
                     )
                 )
                 .flat()

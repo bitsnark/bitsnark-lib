@@ -31,9 +31,9 @@ class TestScriptsCommand(Command):
                             choices=['PROVER', 'VERIFIER', 'prover', 'verifier'],
                             help='Role to test (PROVER or VERIFIER)')
         parser.add_argument('--agent-id',
+                            default='bitsnark_prover_1',
                             help=(
-                                'Agent ID of the tx templates to test (only used for filtering). '
-                                'Default is based on --role (bitsnark_prover_1 or bitsnar_verifier_1)'
+                                'Agent ID of the tx templates to test (used for database and filtering). '
                             ))
         parser.add_argument('--filter',
                             help='template_name/output_index/spending_condition_index')
@@ -87,7 +87,6 @@ class TestScriptsCommand(Command):
         bitcoin_rpc.mine_blocks(101, change_address)
 
         tx_template_query = sa.select(TransactionTemplate).filter_by(
-            agent_id=agent_id,
             setup_id=setup_id,
         )
         if filter_name:

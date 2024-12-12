@@ -1,5 +1,5 @@
 import { getSpendingConditionByInput, getTemplateByName, twoDigits } from '../common/templates';
-import { AgentRoles, Template, TemplateNames, iterations } from '../common/types';
+import { AgentRoles, SpendingCondition, Template, TemplateNames, iterations } from '../common/types';
 import {
     encodeWinternitz,
     encodeWinternitz24,
@@ -10,17 +10,17 @@ import {
 import { TemplateWithWotsKeys } from './messages';
 
 export function createUniqueDataId(
-    wotsSalt: string,
+    setupId: string,
     templateName: string,
     outputIndex: number,
     scIndex: number,
     dataIndex: number
 ) {
-    const u = `${wotsSalt}/${templateName}/${outputIndex}/${scIndex}/${dataIndex}`;
+    const u = `${setupId}/${templateName}/${outputIndex}/${scIndex}/${dataIndex}`;
     return u;
 }
 
-export function setWotsPublicKeysForArgument(wotsSalt: string, templates: Template[]) {
+export function setWotsPublicKeysForArgument(setupId: string, templates: Template[]) {
     const template = getTemplateByName(templates, TemplateNames.ARGUMENT);
     // there should be 5 inputs
     if (template.inputs.length != 5) throw new Error('Wrong number of inputs');
@@ -49,69 +49,62 @@ export function setWotsPublicKeysForArgument(wotsSalt: string, templates: Templa
 
     const argumentSelectionPath = [1n, 2n, 3n, 4n, 5n, 6n];
     sc.exampleWitness = argumentSelectionPath.map((n, i) =>
-        encodeWinternitz24(n, createUniqueDataId(wotsSalt, TemplateNames.SELECT + '_' + twoDigits(i), 0, 0, 0))
+        encodeWinternitz24(n, createUniqueDataId(setupId, TemplateNames.SELECT + '_' + twoDigits(i), 0, 0, 0))
     );
-    sc.exampleWitness[6] = encodeWinternitz24(123456n, createUniqueDataId(wotsSalt, TemplateNames.ARGUMENT, 0, 0, 6));
+    sc.exampleWitness[6] = encodeWinternitz24(123456n, createUniqueDataId(setupId, TemplateNames.ARGUMENT, 0, 0, 6));
     return templates;
 }
 
-export function generateWotsPublicKeys(wotsSalt: string, templates: Template[], role: AgentRoles) {
+export function generateWotsPublicKeysForSpendingCondition(
+    setupId: string,
+    templateName: string,
+    sc: SpendingCondition,
+    outputIndex: number,
+    spendingConditionIndex: number
+) {
+    if (!sc.wotsSpec) return;
+
+    sc.wotsPublicKeys = sc.wotsSpec.map((wt, dataIndex) =>
+        getWinternitzPublicKeys(
+            wt,
+            createUniqueDataId(setupId, templateName, outputIndex, spendingConditionIndex, dataIndex)
+        )
+    );
+    sc.wotsSpec!.map((wt, dataIndex) =>
+        getWinternitzPublicKeys(
+            wt,
+            createUniqueDataId(setupId, templateName, outputIndex, spendingConditionIndex, dataIndex)
+        )
+    );
+    sc.wotsPublicKeysDebug = sc.wotsSpec!.map((wt, dataIndex) =>
+        getWinternitzPublicKeysDebug(
+            wt,
+            createUniqueDataId(setupId, templateName, outputIndex, spendingConditionIndex, dataIndex)
+        )
+    );
+
+    sc.exampleWitness = sc.wotsSpec!.map((spec, dataIndex) => {
+        return encodeWinternitz(
+            spec,
+            0n,
+            createUniqueDataId(setupId!, templateName, outputIndex, spendingConditionIndex, dataIndex)
+        );
+    });
+}
+
+export function generateWotsPublicKeys(setupId: string, templates: Template[], role: AgentRoles) {
     for (const template of templates) {
         for (const input of template.inputs) {
             const sc = getSpendingConditionByInput(templates, input);
-
             if (sc.wotsSpec && sc.nextRole == role) {
-                sc.wotsPublicKeys = sc.wotsSpec!.map((wt, dataIndex) =>
-                    getWinternitzPublicKeys(
-                        wt,
-                        createUniqueDataId(
-                            wotsSalt,
-                            template.name,
-                            input.outputIndex,
-                            input.spendingConditionIndex,
-                            dataIndex
-                        )
-                    )
-                );
-                sc.wotsSpec!.map((wt, dataIndex) =>
-                    getWinternitzPublicKeys(
-                        wt,
-                        createUniqueDataId(
-                            wotsSalt,
-                            template.name,
-                            input.outputIndex,
-                            input.spendingConditionIndex,
-                            dataIndex
-                        )
-                    )
+                generateWotsPublicKeysForSpendingCondition(
+                    setupId,
+                    template.name,
+                    sc,
+                    input.outputIndex,
+                    input.spendingConditionIndex
                 );
                 input.wotsPublicKeys = sc.wotsPublicKeys;
-                sc.wotsPublicKeysDebug = sc.wotsSpec!.map((wt, dataIndex) =>
-                    getWinternitzPublicKeysDebug(
-                        wt,
-                        createUniqueDataId(
-                            wotsSalt,
-                            template.name,
-                            input.outputIndex,
-                            input.spendingConditionIndex,
-                            dataIndex
-                        )
-                    )
-                );
-
-                sc.exampleWitness = sc.wotsSpec.map((spec, dataIndex) => {
-                    return encodeWinternitz(
-                        spec,
-                        0n,
-                        createUniqueDataId(
-                            wotsSalt!,
-                            template.name,
-                            input.outputIndex,
-                            input.spendingConditionIndex,
-                            dataIndex
-                        )
-                    );
-                });
             }
         }
     }

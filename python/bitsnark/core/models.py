@@ -27,7 +27,6 @@ Base = declarative_base()
 class Setups(Base):
     __tablename__ = 'setups'
     id: Mapped[str] = mapped_column(String, primary_key=True, nullable=False)
-    wots_salt: Mapped[str] = mapped_column(String, nullable=False)
     protocol_version: Mapped[str] = mapped_column(String, nullable=False)
     status: Mapped[str] = mapped_column(Enum(SetupStatus), nullable=False)
     last_checked_block_height: Mapped[Optional[int]] = mapped_column(Integer)
