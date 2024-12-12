@@ -31,9 +31,6 @@ export async function emulateSetup(
         console.log('creating setup...');
     }
 
-    const proverSalt = randomBytes(32).toString('hex');
-    const verifierSalt = setupId;
-
     await proverDb.createSetup(setupId);
     await proverDb.updateSetup(setupId, {
         payloadTxid: lockedFunds.txid,
@@ -44,7 +41,7 @@ export async function emulateSetup(
         stakeAmount: proverStake.amount
     });
 
-    await verifierDb.createSetup(setupId);
+    await proverDb.createSetup(setupId);
     await proverDb.updateSetup(setupId, {
         payloadTxid: lockedFunds.txid,
         payloadOutputIndex: lockedFunds.outputIndex,
@@ -76,8 +73,8 @@ export async function emulateSetup(
 
     console.log('generating winternitz one-time signatures...');
 
-    proverTemplates = generateWotsPublicKeys(proverSalt, proverTemplates, AgentRoles.PROVER);
-    verifierTemplates = generateWotsPublicKeys(verifierSalt, verifierTemplates, AgentRoles.VERIFIER);
+    proverTemplates = generateWotsPublicKeys(setupId, proverTemplates, AgentRoles.PROVER);
+    verifierTemplates = generateWotsPublicKeys(setupId, verifierTemplates, AgentRoles.VERIFIER);
 
     console.log('merging winternitz one-time signatures...');
 
