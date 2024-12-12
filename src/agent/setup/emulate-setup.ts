@@ -25,6 +25,14 @@ export async function emulateSetup(
 
     console.log('creating setup...');
 
+    try {
+        const setup = await proverDb.getSetup(setupId);
+        console.log('Setup already exists: ', setupId);
+        console.log('Use npm run start-db to reset the database');
+        return;
+
+    } catch (e) {}
+
     const proverSalt = randomBytes(32).toString('hex');
     const verifierSalt = setupId;
 
@@ -95,7 +103,7 @@ export async function emulateSetup(
     proverTemplates = await addAmounts(proverAgentId, AgentRoles.PROVER, setupId, proverTemplates);
     verifierTemplates = await addAmounts(verifierAgentId, AgentRoles.VERIFIER, setupId, verifierTemplates);
 
-    console.log('writing templated to DB...');
+    console.log('writing templates to DB...');
 
     await proverDb.upsertTemplates(setupId, proverTemplates);
     await verifierDb.upsertTemplates(setupId, verifierTemplates);
