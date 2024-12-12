@@ -355,8 +355,10 @@ def _eval_tapscript(
 
             elif sop == OP_FROMALTSTACK:
                 if len(altstack) < 1:
-                    raise MissingOpArgumentsError(get_eval_state(),
-                                                  expected_stack_depth=1)
+                    raise EvalScriptError(
+                        'Attempted to pop from an empty altstack',
+                        get_eval_state(),
+                    )
                 v_bytes = altstack.pop()
                 stack.append(v_bytes)
 
