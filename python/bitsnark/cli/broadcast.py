@@ -9,6 +9,7 @@ from bitcointx.core.script import CScript, CScriptWitness
 from bitsnark.core.parsing import parse_hex_bytes, parse_hex_str
 from ._base import Command, add_tx_template_args, find_tx_template, Context
 from ..core.models import TransactionTemplate
+from ..scripteval import eval_tapscript
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +27,11 @@ class BroadcastCommand(Command):
             help='Test mempool acceptance before broadcasting',
             action='store_true',
         )
+        parser.add_argument(
+            '--eval-inputs',
+            help='Evaluate input tapscript execution (experimental)',
+            action='store_true',
+        )
 
     def run(
         self,
@@ -34,6 +40,7 @@ class BroadcastCommand(Command):
         tx_template = find_tx_template(context)
         bitcoin_rpc = context.bitcoin_rpc
         dbsession = context.dbsession
+        evaluate_inputs = getattr(context.args, 'eval_inputs')
 
         logger.info("Attempting to broadcast %s", tx_template.name)
         signed_serialized_tx = tx_template.tx_data.get('signedSerializedTx')
@@ -93,6 +100,19 @@ class BroadcastCommand(Command):
             input_witnesses.append(input_witness)
 
         tx.wit = CTxWitness(vtxinwit=input_witnesses)
+
+        if evaluate_inputs:
+            for input_index, input_witness in enumerate(input_witnesses):
+                logger.info("Evaluating input %s", input_index)
+                *witness_elems, tapscript, _ = input_witness.scriptWitness.stack
+                eval_tapscript(
+                    witness_elems=witness_elems,
+                    script=CScript(tapscript),
+                    inIdx=input_index,
+                    txTo=tx,
+                    # TODO: would be swell to get it working without ignore_signature_errors!
+                    ignore_signature_errors=True,
+                )
 
         signed_serialized_tx = tx.serialize().hex()
 

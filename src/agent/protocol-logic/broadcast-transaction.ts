@@ -11,7 +11,8 @@ export async function broadcastTransaction(agentId: string, setupId: string, tem
         '--setup-id',
         setupId,
         '--name',
-        templateName
+        templateName,
+        '--eval-inputs',
     ]);
     console.log(result.toString());
 }
