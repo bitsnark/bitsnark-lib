@@ -7,13 +7,13 @@ import { AgentDb, rowToObj, templateFields } from '../../src/agent/common/agent-
 import { BitcoinListener } from '../../src/agent/listener/bitcoin-listener';
 import { ListenerDb, ReceivedTemplate } from '../../src/agent/listener/listener-db';
 
-const payloadUtxo = {
+export const payloadUtxo = {
     txid: '0000000000000000000000000000000000000000000000000000000000000000',
     outputIndex: 0,
     amount: agentConf.payloadAmount
 };
 
-const proverUtxo = {
+export const proverUtxo = {
     txid: '1111111111111111111111111111111111111111111111111111111111111111',
     outputIndex: 0,
     amount: agentConf.proverStakeAmount

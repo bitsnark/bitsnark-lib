@@ -5,7 +5,7 @@ import { proofBigint } from '../src/agent/common/constants';
 import { RawTransaction, Input } from 'bitcoin-core';
 import { agentConf } from '../src/agent/agent.conf';
 import { ReceivedTemplate } from '../src/agent/listener/listener-db';
-import { mainModule } from 'process';
+import { argv, mainModule } from 'process';
 
 export const mockRawTransaction: RawTransaction = {
     in_active_chain: true,
@@ -88,6 +88,11 @@ export class MockPublisher {
                     verifier: await this.dbs.verifier.test_getReadyToSendTemplates(this.setupId)
                 };
 
+                const receivedTransactions = {
+                    prover: (await this.dbs.prover.query('SELECT received.txid FROM received, templates WHERE received.template_id = templates.id AND templates.setup_id = $1', [this.setupId])).rows,
+                    verifier: (await this.dbs.verifier.query('SELECT received.txid FROM received, templates WHERE received.template_id = templates.id AND templates.setup_id = $1', [this.setupId])).rows
+                };
+
                 if (!readyToSendTemplates.prover.length && !readyToSendTemplates.verifier.length) {
                     console.log(`No templates to publish`);
                     this.isRunning = false;
@@ -102,6 +107,7 @@ export class MockPublisher {
                     const otherAgent = agent === 'prover' ? 'verifier' : 'prover';
                     const agentReadyTemplates = readyToSendTemplates[agent];
 
+
                     for (const readyTx of agentReadyTemplates) {
                         console.log('readyTx.data', readyTx.data, readyTx.data ? readyTx.data[0] : 'NULL');
                         const rawTx: RawTransaction = {
@@ -112,27 +118,32 @@ export class MockPublisher {
                                 this.templates[agent].filter((t) => t.setupId === readyTx.setupId)
                             )
                         };
-
-                        await this.dbs[agent].listenerDb.markReceived(
-                            this.setupId,
-                            readyTx.name,
-                            readyTx.txid!,
-                            hash,
-                            tip,
-                            rawTx
-                        );
+                        console.log('readyTx', rawTx.txid);
+                        if (receivedTransactions[agent].every((rt) => rt[0] !== readyTx.txid)) {
+                            console.log('Marking received in agent', readyTx.txid, readyTx.name);
+                            await this.dbs[agent].listenerDb.markReceived(
+                                this.setupId,
+                                readyTx.name,
+                                readyTx.txid!,
+                                hash,
+                                tip,
+                                rawTx
+                            );
+                        }
 
                         await this.dbs[agent].test_markPublished(this.setupId, readyTx.name);
+                        if (receivedTransactions[otherAgent].every((rt) => rt[0] !== readyTx.txid)) {
+                            console.log('Marking received in OTHER agent', readyTx.txid, readyTx.name);
 
-                        await this.dbs[otherAgent].listenerDb.markReceived(
-                            this.setupId,
-                            readyTx.name,
-                            readyTx.txid!,
-                            hash,
-                            tip,
-                            rawTx
-                        );
-
+                            await this.dbs[otherAgent].listenerDb.markReceived(
+                                this.setupId,
+                                readyTx.name,
+                                readyTx.txid!,
+                                hash,
+                                tip,
+                                rawTx
+                            );
+                        }
                         console.log('Received incoming transaction', readyTx.txid, readyTx.name);
                     }
                 }
@@ -182,28 +193,41 @@ export class MockPublisher {
     }
 }
 
-async function main() {
+async function main(isStartOver: boolean = false) {
     const proverId = 'bitsnark_prover_1';
     const verifierId = 'bitsnark_verifier_1';
-    const setupId = 'test_setup';
 
     const dbProver = new testAgentDb(proverId);
     const dbVerifier = new testAgentDb(verifierId);
-    await dbProver.test_restartSetup(setupId);
-    await dbVerifier.test_restartSetup(setupId);
+    const setupId = (await dbProver.query('SELECT id FROM setups ORDER BY created_at LIMIT 1'))?.rows[0][0]
+    if (!setupId) {
+        console.error('No setup found');
+        return;
+    }
 
-    const prover = new ProtocolProver(proverId, setupId);
-    //Bad
-    const boojum = proofBigint;
-    boojum[0] = boojum[0] + 1n;
-    //await prover.pegOut(boojum);
-    // Good
-    await prover.pegOut(proofBigint);
-    console.log('proof sent:', proofBigint);
+    if (isStartOver) {
+        await dbProver.test_restartSetup(setupId);
+        await dbVerifier.test_restartSetup(setupId);
+
+        const prover = new ProtocolProver(proverId, setupId);
+        //Bad
+        const type = argv[3] ? argv[3] : 'g';
+        const proof = proofBigint;
+        if (type !== 'g') {
+            proof[0] = proof[0] + 1n;
+        }
+
+        await prover.pegOut(proof);
+        // Good
+        await prover.pegOut(proofBigint);
+        console.log('proof sent:', proofBigint);
+    }
     new MockPublisher(proverId, verifierId, setupId).start();
 }
 
 if (require.main === module) {
     console.log('Starting mock publisher');
-    main();
+    const isStartOver = argv[2] ? Boolean(argv[2]) : false;
+
+    main(isStartOver);
 }

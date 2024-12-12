@@ -185,7 +185,7 @@ export async function main(agentId: string) {
 
 if (require.main === module) {
     const args = minimist(process.argv.slice(2));
-    const agentId = args._[0] ?? args['agent-id'] ?? 'bitsnark_prover_1';
+    const agentId = args._[0] ?? args['agent-id'] ?? 'bitsnark_verifier_1';
     main(agentId).catch((error) => {
         throw error;
     });

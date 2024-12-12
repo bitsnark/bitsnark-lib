@@ -36,7 +36,7 @@ export async function emulateSetup(
     });
 
     await verifierDb.createSetup(setupId, TEST_WOTS_SALT);
-    await proverDb.updateSetup(setupId, {
+    await verifierDb.updateSetup(setupId, {
         payloadTxid: lockedFunds.txid,
         payloadOutputIndex: lockedFunds.outputIndex,
         payloadAmount: lockedFunds.amount,
