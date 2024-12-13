@@ -16,9 +16,9 @@ export class AgentDbMock extends TestAgentDb {
 
     public createSetupReturn?: Setup;
     public createSetupCalledCount = 0;
-    public createSetupCalledParams?: { setupId: string; wotsSalt: string };
-    public async createSetup(setupId: string, wotsSalt: string): Promise<Setup> {
-        this.createSetupCalledParams = { setupId, wotsSalt };
+    public createSetupCalledParams?: { setupId: string };
+    public async createSetup(setupId: string): Promise<Setup> {
+        this.createSetupCalledParams = { setupId };
         this.createSetupCalledCount++;
         return waitAndReturn<Setup>(this.createSetupReturn!);
     }

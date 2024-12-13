@@ -6,12 +6,7 @@ import { agentConf } from '../agent.conf';
 import { Buffer } from 'node:buffer';
 import { DoomsdayGenerator } from '../final-step/doomsday-generator';
 import { AgentRoles, Input, SpendingCondition, Template, TemplateNames } from '../common/types';
-import {
-    findOutputByInput,
-    getSpendingConditionByInput,
-    getTemplateByInput,
-    getTemplateByName
-} from '../common/templates';
+import { getSpendingConditionByInput, getTemplateByName } from '../common/templates';
 import { AgentDb } from '../common/agent-db';
 
 const DEAD_SCRIPT = Buffer.from([0x6a]); // opcode fails transaction
@@ -38,7 +33,6 @@ function setTaprootKey(transactions: Template[]) {
     for (const t of transactions) {
         for (let outputIndex = 0; outputIndex < t.outputs.length; outputIndex++) {
             const output = t.outputs[outputIndex];
-            if (output.taprootKey) continue;
             const scripts = output.spendingConditions.map((sc, scIndex) => {
                 const inputs = findInputsByOutput(transactions, t.name, outputIndex, scIndex);
                 return inputs.length && inputs[0].script ? inputs[0].script : DEAD_SCRIPT;
@@ -57,10 +51,8 @@ function setTaprootKey(transactions: Template[]) {
     }
 }
 
-function generateBoilerplate(templates: Template[], myRole: AgentRoles, input: Input): Buffer {
+export function generateBoilerplate(myRole: AgentRoles, spendingCondition: SpendingCondition, input: Input): Buffer {
     const bitcoin = new Bitcoin();
-
-    const spendingCondition = getSpendingConditionByInput(templates, input);
 
     bitcoin.throwOnFail = spendingCondition.nextRole == myRole;
 
@@ -133,10 +125,10 @@ function generateProcessSelectionPath(sc: SpendingCondition): Buffer {
 
 export async function generateAllScripts(
     myRole: AgentRoles,
-    transactions: Template[],
+    templates: Template[],
     generateFinal: boolean
 ): Promise<Template[]> {
-    for (const t of transactions.filter((t) => !t.isExternal)) {
+    for (const t of templates.filter((t) => !t.isExternal)) {
         console.log('generating scripts for: ', t.name);
 
         // check that all sc have wots public keys if they need them
@@ -156,18 +148,18 @@ export async function generateAllScripts(
             const ddg = new DoomsdayGenerator();
             let taproot;
             if (generateFinal) {
-                taproot = (await ddg.generateFinalStepTaproot(transactions)).taproot;
+                taproot = (await ddg.generateFinalStepTaproot(templates)).taproot;
             } else {
                 const mockSTT = new SimpleTapTree(agentConf.internalPubkey, [DEAD_SCRIPT, DEAD_SCRIPT]);
                 taproot = mockSTT.getTaprootPubkey();
             }
 
-            const argument = getTemplateByName(transactions, TemplateNames.ARGUMENT);
+            const argument = getTemplateByName(templates, TemplateNames.ARGUMENT);
             if (argument.outputs.length != 1) throw new Error('Wrong number of outputs');
             argument.outputs[0].taprootKey = taproot;
         } else {
             for (const input of t.inputs) {
-                const prevT = getTemplateByName(transactions, input.templateName);
+                const prevT = getTemplateByName(templates, input.templateName);
                 const prevOutput = prevT.outputs[input.outputIndex];
                 const sc = prevOutput.spendingConditions[input.spendingConditionIndex];
 
@@ -177,7 +169,8 @@ export async function generateAllScripts(
                 if (t.name == TemplateNames.ARGUMENT && input.index == 0) {
                     script = generateProcessSelectionPath(sc);
                 } else {
-                    script = generateBoilerplate(transactions, myRole, input);
+                    const sc = getSpendingConditionByInput(templates, input);
+                    script = generateBoilerplate(myRole, sc, input);
                 }
 
                 sc.script = script;
@@ -187,10 +180,10 @@ export async function generateAllScripts(
     }
 
     // copy scripts from spending conditions to matching inputs
-    for (const transaction of transactions) {
+    for (const transaction of templates) {
         if (transaction.name == TemplateNames.PROOF_REFUTED) continue;
         for (const input of transaction.inputs) {
-            const prev = getTemplateByName(transactions, input.templateName);
+            const prev = getTemplateByName(templates, input.templateName);
             if (!prev || input.outputIndex >= prev.outputs.length) throw new Error("Input doesn't match any outputs");
             const output = prev.outputs[input.outputIndex];
             const spendingCondition = output.spendingConditions[input.spendingConditionIndex];
@@ -201,9 +194,9 @@ export async function generateAllScripts(
     }
 
     // generate the taproot key for all outputs except in the argument tx
-    setTaprootKey(transactions);
+    setTaprootKey(templates);
 
-    return transactions;
+    return templates;
 }
 
 async function main() {

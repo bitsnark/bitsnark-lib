@@ -29,8 +29,10 @@ class ShowCommand(Command):
         # print("Object structure")
         print("Name:".ljust(19), tx_template.name)
         print("Ordinal:".ljust(19), tx_template.ordinal)
-        for key, value in tx_template.items():
-            if key in ('inputs', 'outputs'):
+        for key, value in tx_template.__dict__.items():
+            if key.startswith('_'):
+                continue
+            if key in ('name', 'ordinal', 'inputs', 'outputs'):
                 continue
             key = f"{key}:".ljust(20)
             value = str(value)

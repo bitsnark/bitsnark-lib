@@ -56,9 +56,9 @@ create_transaction() {
 npm run start-db
 npm run start-regtest -- "$data_dir"
 
-setup_id=$(npm run create-setup-id | tail -n1 | grep -o '[^ ]*$')
-locked_funds_tx=$(create_transaction $setup_id 10.0 0.005 0)
-prover_stake_tx=$(create_transaction $setup_id 2.0 0.005 1)
+setup_id=test_setup
+locked_funds_tx=$(create_transaction bcrt1p0kxevp4v9eulwu0hsed4jwtlfe2nz6dqntyj6tp833u9js8re7rs6uqs99 10.0 0.005 0)
+prover_stake_tx=$(create_transaction bcrt1p0e73ksayxrmxj23mmmtu5502uaanamx7hxml9j60ycu24x95gg4qagarnf 2.0 0.005 1)
 locked_funds_txid=$(bitcoin_cli decoderawtransaction "$locked_funds_tx" | jq -r '.txid')
 prover_stake_txid=$(bitcoin_cli decoderawtransaction "$prover_stake_tx" | jq -r '.txid')
 
@@ -74,5 +74,3 @@ bitcoin_cli sendrawtransaction "$locked_funds_tx"
 bitcoin_cli sendrawtransaction "$prover_stake_tx"
 
 ts-node ./src/agent/protocol-logic/send-proof.ts bitsnark_prover_1 "$setup_id" --fudge
-
-snapshot create

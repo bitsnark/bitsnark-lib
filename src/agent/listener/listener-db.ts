@@ -12,7 +12,7 @@ export interface Received {
 }
 
 // Template row, with optional received fields and setup data.
-export interface ReceivedTemplate extends Template, Received, Omit<Setup, 'id' | 'status' | 'wotsSalt'> {
+export interface ReceivedTemplate extends Template, Received, Omit<Setup, 'id' | 'status'> {
     setupId: string;
     setupStatus: SetupStatus;
     data: string[][] | null;
@@ -117,7 +117,7 @@ export class ListenerDb extends AgentDb {
             await this.query<ReceivedSetup>(
                 `
                     SELECT
-                    id, protocol_version, status, last_checked_block_height, wots_salt
+                    id, protocol_version, status, last_checked_block_height,
                     payload_txid, payload_output_index, payload_amount,
                     stake_txid, stake_output_index, stake_amount
                     FROM setups
@@ -131,7 +131,6 @@ export class ListenerDb extends AgentDb {
             protocolVersion: setup[1] as string,
             status: SetupStatus[setup[2] as keyof typeof SetupStatus],
             lastCheckedBlockHeight: setup[3] as number,
-            wotsSalt: setup[4],
             templates,
             received
         };

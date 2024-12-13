@@ -41,10 +41,6 @@ export const protocolStart: Template[] = [
                 spendingConditions: [
                     {
                         nextRole: AgentRoles.PROVER,
-                        signatureType: SignatureType.BOTH
-                    },
-                    {
-                        nextRole: AgentRoles.PROVER,
                         signatureType: SignatureType.BOTH,
                         wotsSpec: array(8, WotsType._256_4)
                     }
@@ -59,7 +55,7 @@ export const protocolStart: Template[] = [
             {
                 templateName: TemplateNames.PROVER_STAKE,
                 outputIndex: 0,
-                spendingConditionIndex: 1
+                spendingConditionIndex: 0
             }
         ],
         outputs: [
