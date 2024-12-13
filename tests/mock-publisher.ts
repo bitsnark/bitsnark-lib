@@ -1,4 +1,4 @@
-import { test_Template, testAgentDb } from './test-utils/test-utils';
+import { test_Template, TestAgentDb } from './test-utils/test-utils';
 import { BitcoinNode } from '../src/agent/common/bitcoin-node';
 import { ProtocolProver } from '../src/agent/protocol-logic/protocol-prover';
 import { proofBigint } from '../src/agent/common/constants';
@@ -54,7 +54,7 @@ const mockVout = {
 
 export class MockPublisher {
     agents: { prover: string; verifier: string };
-    dbs: { prover: testAgentDb; verifier: testAgentDb };
+    dbs: { prover: TestAgentDb; verifier: TestAgentDb };
     setupId: string;
     templates: { prover: test_Template[]; verifier: test_Template[] } = { prover: [], verifier: [] };
     bitcoinClient: BitcoinNode;
@@ -65,7 +65,7 @@ export class MockPublisher {
         this.agents = { prover: proverId, verifier: verifierId };
         this.setupId = setupId;
         this.bitcoinClient = new BitcoinNode();
-        this.dbs = { prover: new testAgentDb(proverId), verifier: new testAgentDb(verifierId) };
+        this.dbs = { prover: new TestAgentDb(proverId), verifier: new TestAgentDb(verifierId) };
     }
 
     async start() {
@@ -89,8 +89,18 @@ export class MockPublisher {
                 };
 
                 const receivedTransactions = {
-                    prover: (await this.dbs.prover.query('SELECT received.txid FROM received, templates WHERE received.template_id = templates.id AND templates.setup_id = $1', [this.setupId])).rows,
-                    verifier: (await this.dbs.verifier.query('SELECT received.txid FROM received, templates WHERE received.template_id = templates.id AND templates.setup_id = $1', [this.setupId])).rows
+                    prover: (
+                        await this.dbs.prover.query(
+                            'SELECT received.txid FROM received, templates WHERE received.template_id = templates.id AND templates.setup_id = $1',
+                            [this.setupId]
+                        )
+                    ).rows,
+                    verifier: (
+                        await this.dbs.verifier.query(
+                            'SELECT received.txid FROM received, templates WHERE received.template_id = templates.id AND templates.setup_id = $1',
+                            [this.setupId]
+                        )
+                    ).rows
                 };
 
                 if (!readyToSendTemplates.prover.length && !readyToSendTemplates.verifier.length) {
@@ -107,7 +117,6 @@ export class MockPublisher {
                     const otherAgent = agent === 'prover' ? 'verifier' : 'prover';
                     const agentReadyTemplates = readyToSendTemplates[agent];
 
-
                     for (const readyTx of agentReadyTemplates) {
                         console.log('readyTx.data', readyTx.data, readyTx.data ? readyTx.data[0] : 'NULL');
                         const rawTx: RawTransaction = {
@@ -118,7 +127,13 @@ export class MockPublisher {
                                 this.templates[agent].filter((t) => t.setupId === readyTx.setupId)
                             )
                         };
-                        console.log('readyTx', rawTx.txid);
+                        console.log(
+                            'Broadcasting transaction',
+                            readyTx.txid,
+                            readyTx.name,
+                            rawTx.vin[0].txinwitness ?? []
+                        );
+
                         if (receivedTransactions[agent].every((rt) => rt[0] !== readyTx.txid)) {
                             console.log('Marking received in agent', readyTx.txid, readyTx.name);
                             await this.dbs[agent].listenerDb.markReceived(
@@ -197,9 +212,9 @@ async function main(isStartOver: boolean = false) {
     const proverId = 'bitsnark_prover_1';
     const verifierId = 'bitsnark_verifier_1';
 
-    const dbProver = new testAgentDb(proverId);
-    const dbVerifier = new testAgentDb(verifierId);
-    const setupId = (await dbProver.query('SELECT id FROM setups ORDER BY created_at LIMIT 1'))?.rows[0][0]
+    const dbProver = new TestAgentDb(proverId);
+    const dbVerifier = new TestAgentDb(verifierId);
+    const setupId = (await dbProver.query('SELECT id FROM setups ORDER BY created_at LIMIT 1'))?.rows[0][0];
     if (!setupId) {
         console.error('No setup found');
         return;

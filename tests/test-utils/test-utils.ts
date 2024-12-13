@@ -1,11 +1,15 @@
 import { TEST_WOTS_SALT } from '../../src/agent/setup/emulate-setup';
 import { agentConf } from '../../src/agent/agent.conf';
-import { AgentRoles, Template, TemplateStatus } from '../../src/agent/common/types';
+import { AgentRoles, Setup, Template, TemplateStatus } from '../../src/agent/common/types';
 import { initializeTemplates } from '../../src/agent/setup/init-templates';
 import { mergeWots, setWotsPublicKeysForArgument } from '../../src/agent/setup/wots-keys';
-import { AgentDb, rowToObj, templateFields } from '../../src/agent/common/agent-db';
+import { AgentDb, ReceivedTransaction, rowToObj, templateFields } from '../../src/agent/common/agent-db';
 import { BitcoinListener } from '../../src/agent/listener/bitcoin-listener';
 import { ListenerDb, ReceivedTemplate } from '../../src/agent/listener/listener-db';
+import { ProtocolProver } from '../../src/agent/protocol-logic/protocol-prover';
+import { ProtocolVerifier } from '../../src/agent/protocol-logic/protocol-verifier';
+import { Mock } from 'node:test';
+import { AgentDbMock } from './agent-db-mock';
 
 export const payloadUtxo = {
     txid: '0000000000000000000000000000000000000000000000000000000000000000',
@@ -61,13 +65,16 @@ export function deepCompare(a: Bufferheap, b: Bufferheap): boolean {
 }
 
 export interface TestAgent {
-    setupId?: string;
+    setupId: string;
     role?: string;
     agentId: string;
-    db: testAgentDb;
+    db: TestAgentDb | AgentDbMock;
     listener: BitcoinListener;
     templates: Template[];
     pending: Template[];
+    setup?: Setup;
+    received?: ReceivedTransaction[];
+    protocol?: ProtocolProver | ProtocolVerifier;
 }
 
 export function setTestAgent(role: AgentRoles): TestAgent {
@@ -76,10 +83,11 @@ export function setTestAgent(role: AgentRoles): TestAgent {
         setupId: 'test_setup',
         role: role.toLowerCase(),
         agentId: agentId,
-        db: new testAgentDb(agentId),
+        db: new TestAgentDb(agentId),
         listener: new BitcoinListener(agentId),
         templates: [],
-        pending: []
+        pending: [],
+        received: []
     };
 }
 
@@ -87,7 +95,7 @@ export interface test_Template extends Template {
     data: string[][];
 }
 
-export class testAgentDb extends AgentDb {
+export class TestAgentDb extends AgentDb {
     listenerDb: ListenerDb;
     constructor(agentId: string) {
         super(agentId);

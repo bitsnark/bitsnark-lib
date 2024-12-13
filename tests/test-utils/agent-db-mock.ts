@@ -1,11 +1,17 @@
 import { Setup, Template } from '../../src/agent/common/types';
-import { AgentDb, updateSetupPartial, UpdateTemplatePartial } from '../../src/agent/common/agent-db';
+import {
+    AgentDb,
+    ReceivedTransaction,
+    updateSetupPartial,
+    UpdateTemplatePartial
+} from '../../src/agent/common/agent-db';
+import { TestAgentDb } from './test-utils';
 
 async function waitAndReturn<T>(obj: T): Promise<T> {
     return new Promise((resolve) => setTimeout(() => resolve(obj), 1));
 }
 
-export class AgentDbMock extends AgentDb {
+export class AgentDbMock extends TestAgentDb {
     /*** SETUP ***/
 
     public createSetupReturn?: Setup;
@@ -113,5 +119,29 @@ export class AgentDbMock extends AgentDb {
     public async markTemplateToSend(setupId: string, templateName: string, data?: Buffer[][]) {
         this.markTemplateToSendCalledCount++;
         this.markTemplateToSendCalledParams = { setupId, templateName, data };
+    }
+
+    // Received Transactions
+
+    public getReceivedTransactionReturn?: ReceivedTransaction[];
+    public getReceivedTransactionCalledCount = 0;
+    public getReceivedTransactionCalledParams?: { setupId: string };
+    public async getReceivedTransaction(setupId: string): Promise<ReceivedTransaction[]> {
+        this.getReceivedTransactionCalledCount++;
+        this.getReceivedTransactionCalledParams = { setupId };
+        return waitAndReturn(this.getReceivedTransactionReturn!);
+    }
+
+    //**** SET DATA */
+    public setSetup(setup: Setup) {
+        this.getSetupReturn = setup;
+    }
+
+    public setTemplates(templates: Template[]) {
+        this.getTemplatesReturn = templates;
+    }
+
+    public setReceivedTransaction(templates: ReceivedTransaction[]) {
+        this.getReceivedTransactionReturn = templates;
     }
 }

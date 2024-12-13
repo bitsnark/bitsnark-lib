@@ -242,6 +242,8 @@ export class AgentDb extends Db {
     }
 
     public async markTemplateToSend(setupId: string, templateName: string, data?: Buffer[][]) {
+        console.log(setupId, templateName, 'DATA', data ?? []);
+
         await this.query(
             `UPDATE templates
                 SET updated_at = NOW(), protocol_data = $1, status = $2
@@ -259,7 +261,7 @@ export class AgentDb extends Db {
         const rows = (
             await this.query<ReceivedTransaction>(
                 `SELECT template_id, block_height, raw_transaction
-                    FROM received, templates 
+                    FROM received, templates
                     WHERE received.template_id = templates.id AND templates.setup_id = $1
                     ORDER BY block_height, index_in_block ASC`,
                 [setupId]
