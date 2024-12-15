@@ -125,12 +125,14 @@ export class Argument {
         if (!doomsdayGenerator.checkLine(this.index, a, b, c, d)) {
             // the line is false, attack it!
             const data = [a, b, c, d];
-            const { script, controlBlock } = await doomsdayGenerator.generateFinalStepTaproot(templates, {
-                refutationType: RefutationType.INSTR,
-                line: this.index
-            });
+            // TODO: Complete the functionality of DDG
+            // const { script, controlBlock } = await doomsdayGenerator.generateFinalStepTaproot(templates, {
+            //     refutationType: RefutationType.INSTR,
+            //     line: this.index
+            // });
 
-            return { data, script: script!, controlBlock: controlBlock! };
+            // return { data, script: script!, controlBlock: controlBlock! };
+            return { data, script: Buffer.from([]), controlBlock: Buffer.from([]) };
         }
 
         // if not the instruction, then it must be one of the hashes in the
@@ -162,13 +164,14 @@ export class Argument {
         const data = [...proofs[whichProof].hashes.slice(whichHash * 2, whichHash * 2 + 3)].map((b) =>
             bufferToBigintBE(b)
         );
-        const { script, controlBlock } = await doomsdayGenerator.generateFinalStepTaproot(templates, {
-            refutationType: RefutationType.HASH,
-            line: this.index,
-            whichProof,
-            whichHash
-        });
-
-        return { data, script: script!, controlBlock: controlBlock! };
+        // TODO: Complete the functionality of DDG
+        //     const { script, controlBlock } = await doomsdayGenerator.generateFinalStepTaproot(templates, {
+        //     refutationType: RefutationType.HASH,
+        //     line: this.index,
+        //     whichProof,
+        //     whichHash
+        // });
+        // return { data, script: script!, controlBlock: controlBlock! };
+        return { data, script: Buffer.from([]), controlBlock: Buffer.from([]) };
     }
 }

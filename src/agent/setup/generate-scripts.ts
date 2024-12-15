@@ -150,7 +150,7 @@ export async function generateAllScripts(
             const ddg = new DoomsdayGenerator(agentId, setupId);
             let taproot;
             if (generateFinal) {
-                taproot = (await ddg.generateFinalStepTaproot(templates)).taproot;
+                taproot = (await ddg.generateFinalStepTaproot()).taprootPubKey;
             } else {
                 const mockSTT = new SimpleTapTree(agentConf.internalPubkey, [DEAD_SCRIPT, DEAD_SCRIPT]);
                 taproot = mockSTT.getTaprootPubkey();
