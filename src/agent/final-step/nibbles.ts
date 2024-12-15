@@ -8,6 +8,14 @@ export function nibblesToBigint_3(s: StackItem[]): bigint {
     return result;
 }
 
+export function nibblesToBigint_4(s: StackItem[]): bigint {
+    let result = 0n;
+    for (let i = 0; i < s.length; i++) {
+        result += BigInt(s[i].value as number) << (4n * BigInt(i));
+    }
+    return result;
+}
+
 export function bigintToNibbles_3(n: bigint, c?: number): number[] {
     const result: number[] = [];
     for (let i = 0; (c && i < c) || (!c && n > 0); i++) {

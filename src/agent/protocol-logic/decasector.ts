@@ -28,9 +28,9 @@ export function getRegsAt(savedVm: SavedVm<InstrCode>, left: number, line: numbe
     runner.execute(line);
     const regs = runner.getRegisterValues();
     for (let i = 0; i < regs.length; i++) {
-        if (writtenFlags[i] && readFlags[i]) map.push({ runtimeIndex: i, value: regs[i] });
+        if (writtenFlags[i] || readFlags[i]) map.push({ runtimeIndex: i, value: regs[i] });
     }
-    return map.sort((mi1, mi2) => mi1.runtimeIndex - mi2.runtimeIndex);
+    return map;
 }
 
 export class StateCommitment {
@@ -65,8 +65,9 @@ export class StateCommitment {
 
     public getIndexForRuntimeIndex(runtimeIndex: number): number {
         if (!this.regIndexToRuntimeIndex) this.getValues();
-        const index = this.regIndexToRuntimeIndex!.findIndex((ri) => runtimeIndex === runtimeIndex);
-        if (index < 0) throw new Error('Runtime index not found in state commitment');
+        const index = this.regIndexToRuntimeIndex!.findIndex((ri) => ri === runtimeIndex);
+        if (index < 0) 
+            throw new Error('Runtime index not found in state commitment');
         return index;
     }
 

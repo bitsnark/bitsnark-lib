@@ -1277,7 +1277,16 @@ export class Bitcoin {
     nibbles4To3(si: StackItem[]): StackItem[] {
         // break the input into bits and send them to altstack
         // send MSB first so it comes out last
+
+        // two bits extra!
+        this.OP_0_16(0);
+        this.OP_TOALTSTACK();
+        this.OP_0_16(0);
+        this.OP_TOALTSTACK();
+
         for (let i = si.length - 1; i >= 0; i--) {
+            if (si[i].value as number > 0)
+                console.log('aaaaaaa');
             this.pick(si[i]); // n
             for (let j = 3; j >= 0; j--) {
                 const orig = this.stack.top().value as number;
@@ -1291,7 +1300,7 @@ export class Bitcoin {
                 this.OP_0_16(1 << j); // n bitval
                 this.OP_SUB(); // n
                 this.OP_ENDIF(); // n
-                this.stack.top().value = flag ? (orig - 1) << j : orig;
+                this.stack.top().value = !flag ? orig : orig - (1 << j);
             }
             this.OP_DROP(); //
         }
