@@ -29,7 +29,7 @@ export class Bitcoin {
     public throwOnFail = false;
     lastTemplateItemId = 0;
 
-    constructor() { }
+    constructor() {}
 
     reset() {
         this.opcodes = [];
@@ -1275,7 +1275,6 @@ export class Bitcoin {
     }
 
     nibbles4To3(si: StackItem[]): StackItem[] {
-
         // break the input into bits and send them to altstack
         // send MSB first so it comes out last
         for (let i = si.length - 1; i >= 0; i--) {
@@ -1292,12 +1291,12 @@ export class Bitcoin {
                 this.OP_0_16(1 << j); // n bitval
                 this.OP_SUB(); // n
                 this.OP_ENDIF(); // n
-                this.stack.top().value = flag ? orig - 1 << j : orig;
+                this.stack.top().value = flag ? (orig - 1) << j : orig;
             }
-            this.OP_DROP(); // 
+            this.OP_DROP(); //
         }
 
-        const result = this.newNibbles(Math.ceil(si.length * 4 / 3));
+        const result = this.newNibbles(Math.ceil((si.length * 4) / 3));
         // now build the nibbles back in LSB order
         for (let i = 0; i < result.length; i++) {
             this.OP_FROMALTSTACK(); // bit0
@@ -1396,7 +1395,7 @@ export function executeProgram(bitcoin: Bitcoin, script: Buffer, printFlag: bool
     let doIf = false;
     let doElse = false;
 
-    const print = printFlag ? console.log : () => { };
+    const print = printFlag ? console.log : () => {};
 
     for (let i = 0; i < script.length; i++) {
         const opcode = opcodeMap[script[i]];

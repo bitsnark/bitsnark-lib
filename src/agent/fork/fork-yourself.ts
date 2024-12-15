@@ -1,6 +1,6 @@
 import * as readline from 'readline';
-import { execFile } from "node:child_process";
-import { jsonParseCustom, jsonStringifyCustom } from "../common/json";
+import { execFile } from 'node:child_process';
+import { jsonParseCustom, jsonStringifyCustom } from '../common/json';
 
 const tsNodePath = '/usr/local/bin/ts-node';
 
@@ -17,9 +17,10 @@ async function run(command: string, input: string): Promise<string> {
                     return;
                 }
                 resolve(stdout);
-            });
-        readline.createInterface({ input: child.stdout! }).on('line', line => console.log(line));
-        readline.createInterface({ input: child.stderr! }).on('line', line => console.error(line));
+            }
+        );
+        readline.createInterface({ input: child.stdout! }).on('line', (line) => console.log(line));
+        readline.createInterface({ input: child.stderr! }).on('line', (line) => console.error(line));
         child.stdin!.write(input.split('\n').join('') + '\n');
     });
 }
@@ -29,8 +30,7 @@ export enum ForkCommand {
 }
 
 export class ForkYourself {
-
-    constructor(private command: ForkCommand) { }
+    constructor(private command: ForkCommand) {}
 
     public async fork<Tin, Tout>(input: Tin): Promise<Tout> {
         const json = jsonStringifyCustom(input);

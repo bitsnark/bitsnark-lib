@@ -1,7 +1,7 @@
 import * as readline from 'readline';
-import { AgentDb } from "../common/agent-db";
-import { DoomsdayGenerator } from "../final-step/doomsday-generator";
-import { ForkCommand } from "./fork-yourself";
+import { AgentDb } from '../common/agent-db';
+import { DoomsdayGenerator } from '../final-step/doomsday-generator';
+import { ForkCommand } from './fork-yourself';
 import { jsonStringifyCustom } from '../common/json';
 
 export interface GenerateFinalTaprootCommand {
@@ -11,15 +11,13 @@ export interface GenerateFinalTaprootCommand {
     indexTo: number;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const commands: { [key: string]: (input: any) => any } = {
     [ForkCommand.DOOMSDAY]: async (input: GenerateFinalTaprootCommand) => {
         const ddg = new DoomsdayGenerator(input.agentId, input.setupId);
         const db = new AgentDb(input.agentId);
         const templates = await db.getTemplates(input.setupId);
-        const result = ddg.generateFinalStepTaprootChunk(
-            templates,
-            input.indexFrom ?? 0,
-            input.indexTo ?? 0);
+        const result = ddg.generateFinalStepTaprootChunk(templates, input.indexFrom ?? 0, input.indexTo ?? 0);
         return result;
     }
 };

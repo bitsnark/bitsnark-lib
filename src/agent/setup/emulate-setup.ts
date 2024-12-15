@@ -88,8 +88,20 @@ export async function emulateSetup(
 
     console.log('generating scripts...');
 
-    proverTemplates = await generateAllScripts(proverAgentId, setupId, AgentRoles.PROVER, proverTemplates, generateFinal);
-    verifierTemplates = await generateAllScripts(verifierAgentId, setupId, AgentRoles.VERIFIER, verifierTemplates, generateFinal);
+    proverTemplates = await generateAllScripts(
+        proverAgentId,
+        setupId,
+        AgentRoles.PROVER,
+        proverTemplates,
+        generateFinal
+    );
+    verifierTemplates = await generateAllScripts(
+        verifierAgentId,
+        setupId,
+        AgentRoles.VERIFIER,
+        verifierTemplates,
+        generateFinal
+    );
 
     console.log('adding amounts...');
 

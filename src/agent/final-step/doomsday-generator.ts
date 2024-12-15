@@ -172,11 +172,13 @@ export class DoomsdayGenerator {
         indexFrom: number,
         indexTo: number
     ): GenerateTaprootResult {
-
         const leaves = 2 ** Math.ceil(Math.log2(indexTo - indexFrom));
         const compressor = new Compressor(leaves);
 
-        const lastSelect = getTemplateByName(transactions, `${TemplateNames.SELECT}_${twoDigits(this.decasector.iterations - 1)}`);
+        const lastSelect = getTemplateByName(
+            transactions,
+            `${TemplateNames.SELECT}_${twoDigits(this.decasector.iterations - 1)}`
+        );
         const semiFinal = getTemplateByName(transactions, TemplateNames.ARGUMENT);
 
         const cache: { [key: string]: ScriptTemplate } = {};
@@ -329,7 +331,6 @@ export class DoomsdayGenerator {
         const compressor = new Compressor(leaves);
         let scriptTemplate: ScriptTemplate | undefined = undefined;
         for (let index = indexFrom; index < indexTo; index++) {
-
             if (index == 0) continue;
 
             // first find the 2 roots for the 3 merkle proofs
@@ -414,17 +415,20 @@ export class DoomsdayGenerator {
         const lines = this.program.length;
         const chunks = 128;
         const chunk = Math.ceil(lines / chunks);
-        const inputs: GenerateFinalTaprootCommand[] =
-            array(chunks, i => ({
-                agentId: this.agentId,
-                setupId: this.setupId,
-                indexFrom: i * chunk,
-                indexTo: Math.min(lines, (i + 1) * chunk)
-            }));
+        const inputs: GenerateFinalTaprootCommand[] = array(chunks, (i) => ({
+            agentId: this.agentId,
+            setupId: this.setupId,
+            indexFrom: i * chunk,
+            indexTo: Math.min(lines, (i + 1) * chunk)
+        }));
         return inputs;
     }
 
-    async generateFinalStepTaprootChunk(templates: Template[], indexFrom: number, indexTo: number): Promise<GenerateTaprootResult> {
+    async generateFinalStepTaprootChunk(
+        templates: Template[],
+        indexFrom: number,
+        indexTo: number
+    ): Promise<GenerateTaprootResult> {
         const compressor = new Compressor(2);
         const s1 = await this.generateRefuteInstructionTaproot(templates, indexFrom, indexTo);
         compressor.addHash(s1.taprootHash);
@@ -437,14 +441,14 @@ export class DoomsdayGenerator {
         const start = Date.now();
         console.log('Starting doomsday parallel...');
         const inputs = this.chunkTheWork();
-        const results =
-            await parallelize<GenerateFinalTaprootCommand, GenerateTaprootResult>
-                (inputs, input => this.forker.fork(input));
+        const results = await parallelize<GenerateFinalTaprootCommand, GenerateTaprootResult>(inputs, (input) =>
+            this.forker.fork(input)
+        );
         const compressor = new Compressor(inputs.length);
-        results.forEach(r => compressor.addHash(r.taprootHash));
+        results.forEach((r) => compressor.addHash(r.taprootHash));
 
         const time = Date.now() - start;
-        console.log(`Finished doomsday   -  ${Math.round(time/60000)}m`);
+        console.log(`Finished doomsday   -  ${Math.round(time / 60000)}m`);
 
         return {
             taprootPubKey: compressor.getTaprootPubkey()
@@ -464,13 +468,13 @@ export class DoomsdayGenerator {
             const r = await this.generateFinalStepTaprootChunk(templates, inputs[i].indexFrom, inputs[i].indexTo);
             results.push(r);
             const time = Date.now() - start;
-            console.log(`Finished chunk ${i}  -  ${Math.round(time/60000)}m`);
+            console.log(`Finished chunk ${i}  -  ${Math.round(time / 60000)}m`);
         }
         const compressor = new Compressor(inputs.length);
-        results.forEach(r => compressor.addHash(r.taprootHash));
+        results.forEach((r) => compressor.addHash(r.taprootHash));
 
         const time = Date.now() - start;
-        console.log(`Finished doomsday   -  ${Math.round(time/60000)}m`);
+        console.log(`Finished doomsday   -  ${Math.round(time / 60000)}m`);
 
         return {
             taprootPubKey: compressor.getTaprootPubkey()
