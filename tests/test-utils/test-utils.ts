@@ -1,4 +1,3 @@
-import { TEST_WOTS_SALT } from '../../src/agent/setup/emulate-setup';
 import { agentConf } from '../../src/agent/agent.conf';
 import { AgentRoles, Template, TemplateStatus } from '../../src/agent/common/types';
 import { initializeTemplates } from '../../src/agent/setup/init-templates';
@@ -28,7 +27,6 @@ export function initTemplatesForTest(): { prover: Template[]; verifier: Template
     let prover = initializeTemplates(
         AgentRoles.PROVER,
         setupId,
-        TEST_WOTS_SALT,
         BigInt('0x' + agentConf.keyPairs[proverAgentId].schnorrPublic),
         BigInt('0x' + agentConf.keyPairs[verifierAgentId].schnorrPublic),
         payloadUtxo,
@@ -37,16 +35,17 @@ export function initTemplatesForTest(): { prover: Template[]; verifier: Template
     let verifier = initializeTemplates(
         AgentRoles.VERIFIER,
         setupId,
-        TEST_WOTS_SALT,
         BigInt('0x' + agentConf.keyPairs[proverAgentId].schnorrPublic),
         BigInt('0x' + agentConf.keyPairs[verifierAgentId].schnorrPublic),
         payloadUtxo,
         proverUtxo
     );
     prover = mergeWots(AgentRoles.PROVER, prover, verifier);
+    setWotsPublicKeysForArgument(setupId, prover);
+
     verifier = mergeWots(AgentRoles.VERIFIER, verifier, prover);
-    setWotsPublicKeysForArgument(TEST_WOTS_SALT, prover);
-    setWotsPublicKeysForArgument(TEST_WOTS_SALT, verifier);
+    setWotsPublicKeysForArgument(setupId, verifier);
+
     return { prover, verifier };
 }
 
