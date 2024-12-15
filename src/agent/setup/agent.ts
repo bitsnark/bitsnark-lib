@@ -295,7 +295,7 @@ export class Agent {
 
         if (this.role == AgentRoles.VERIFIER) await this.sendTransactions(context, i.setupId);
 
-        i.templates = await generateAllScripts(this.role, i.templates!, false);
+        i.templates = await generateAllScripts(this.agentId, i.setupId, this.role, i.templates!, false);
         i.templates = await addAmounts(this.agentId, this.role, i.setupId, i.templates!);
 
         await this.db.upsertTemplates(i.setupId, i.templates!);

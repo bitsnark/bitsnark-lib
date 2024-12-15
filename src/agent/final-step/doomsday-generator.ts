@@ -7,21 +7,28 @@ import { encodeWinternitz24, encodeWinternitz256_4, getWinternitzPublicKeys, Wot
 import { step1_vm } from '../../generator/ec_vm/vm/vm';
 import { StackItem } from '../../generator/btc_vm/stack';
 import { Compressor } from '../common/taptree';
-import { agentConf } from '../agent.conf';
 import { BLAKE3, Register } from './blake-3-4u';
 import { Decasector } from '../protocol-logic/decasector';
 import { blake3 as blake3_wasm } from 'hash-wasm';
 import { modInverse } from '../../generator/common/math-utils';
 import { prime_bigint } from '../common/constants';
 import { bufferToBigintBE } from '../common/encoding';
-import { bigintToNibbles_3 } from './nibbles';
+import { bigintToNibbles_3, bigintToNibbles_4 } from './nibbles';
 import { NegifyFinalStep } from './negify-final-step';
-import { Template, TemplateNames } from '../common/types';
+import { AgentRoles, Template, TemplateNames } from '../common/types';
 import { AgentDb } from '../common/agent-db';
+import { ForkCommand, ForkYourself } from '../fork/fork-yourself';
+import { GenerateFinalTaprootCommand } from '../fork/fork-entrypoint';
+import { parallelize } from '../common/parallelize';
+import { array } from '../common/array-utils';
 
 export enum RefutationType {
     INSTR,
     HASH
+}
+
+export interface GenerateTaprootResult {
+    taprootHash: Buffer;
 }
 
 export interface ScriptDescriptor {
@@ -32,10 +39,15 @@ export interface ScriptDescriptor {
 }
 
 export class DoomsdayGenerator {
+    agentId: string;
+    setupId: string;
     program: Instruction[];
     decasector: Decasector;
+    forker = new ForkYourself(ForkCommand.DOOMSDAY);
 
-    constructor() {
+    constructor(agentId: string, setupId: string) {
+        this.agentId = agentId;
+        this.setupId = setupId;
         step1_vm.reset();
         groth16Verify(Key.fromSnarkjs(vKey), Step1_Proof.fromSnarkjs(proof));
         if (!step1_vm.success?.value) throw new Error('Failed.');
@@ -155,26 +167,22 @@ export class DoomsdayGenerator {
         }
     }
 
-    private generateRefuteInstructionTaproot(compressor: Compressor, transactions: Template[]) {
-        const lastSelect = getTemplateByName(transactions, `select_${twoDigits(this.decasector.iterations - 1)}`);
+    private generateRefuteInstructionTaproot(
+        transactions: Template[],
+        indexFrom: number,
+        indexTo: number
+    ): GenerateTaprootResult {
+
+        const leaves = 2 ** Math.ceil(Math.log2(indexTo - indexFrom));
+        const compressor = new Compressor(leaves);
+
+        const lastSelect = getTemplateByName(transactions, `${TemplateNames.SELECT}_${twoDigits(this.decasector.iterations - 1)}`);
         const semiFinal = getTemplateByName(transactions, TemplateNames.ARGUMENT);
 
         const cache: { [key: string]: ScriptTemplate } = {};
 
-        const started = Date.now();
-        let total = 0;
-        let max = 0;
-
-        console.log(`Generating refute instruction taproot for ${this.program.length} instructions`);
-        for (let index = 0; index < this.program.length; index++) {
+        for (let index = indexFrom; index < indexTo; index++) {
             const line = this.program[index];
-
-            if (index && index % 1000 == 0) {
-                const todo = ((this.program.length - index) * (Date.now() - started)) / index;
-                const m = Math.floor(todo / 60000);
-                const s = Math.floor((todo - m * 60000) / 1000);
-                console.log('index: ', index, '   max: ', max, '   total: ', total, '   left: ', `${m}:${s}`);
-            }
 
             // this is a hack to make this run (somewhat) faster
 
@@ -206,31 +214,39 @@ export class DoomsdayGenerator {
                 );
                 bitcoin.drop(indexWitness);
 
-                // a is the first element of the merkle proof in the second output
-                const a = bigintToNibbles_3(0n, 86).map((b) => bitcoin.addWitness(b));
-                bitcoin.winternitzDecode256_4(a, w_a, lastSelect.outputs[1].spendingConditions[0].wotsPublicKeys![0]);
+                // a is the first element in the second output
+                const a_4 = bitcoin.newNibbles(64);
+                bitcoin.winternitzDecode256_4(a_4, w_a, lastSelect.outputs[1].spendingConditions[0].wotsPublicKeys![0]);
                 bitcoin.drop(w_a);
+                const a = bitcoin.nibbles4To3(a_4);
+                bitcoin.drop(a_4);
 
-                // b is the second element of the merkle proof in the second output
-                const b = bigintToNibbles_3(0n, 86).map((b) => bitcoin.addWitness(b));
-                bitcoin.winternitzDecode256_4(b, w_b, lastSelect.outputs[1].spendingConditions[0].wotsPublicKeys![1]);
+                // b is the second element in the second output
+                const b_4 = bitcoin.newNibbles(64);
+                bitcoin.winternitzDecode256_4(b_4, w_b, lastSelect.outputs[1].spendingConditions[0].wotsPublicKeys![1]);
                 bitcoin.drop(w_b);
+                const b = bitcoin.nibbles4To3(b_4);
+                bitcoin.drop(b_4);
 
-                // c is the third element of the merkle proof in the second output
-                const c = bigintToNibbles_3(0n, 86).map((b) => bitcoin.addWitness(b));
-                bitcoin.winternitzDecode256_4(c, w_c, lastSelect.outputs[1].spendingConditions[0].wotsPublicKeys![2]);
+                // c is the third element in the second output
+                const c_4 = bitcoin.newNibbles(64);
+                bitcoin.winternitzDecode256_4(c_4, w_c, lastSelect.outputs[1].spendingConditions[0].wotsPublicKeys![2]);
                 bitcoin.drop(w_c);
+                const c = bitcoin.nibbles4To3(c_4);
+                bitcoin.drop(c_4);
 
                 // d is the fourth element second output
                 let d: StackItem[];
                 if (w_d) {
-                    d = bigintToNibbles_3(0n, 86).map((b) => bitcoin.addWitness(b));
+                    const d_4 = bitcoin.newNibbles(64);
                     bitcoin.winternitzDecode256_4(
-                        d,
+                        d_4,
                         w_d,
                         lastSelect.outputs[1].spendingConditions[0].wotsPublicKeys![3]
                     );
                     bitcoin.drop(w_d);
+                    d = bitcoin.nibbles4To3(d_4);
+                    bitcoin.drop(d_4);
                 }
 
                 this.checkLineBitcoin(bitcoin, line, a, b, c, d!);
@@ -239,13 +255,10 @@ export class DoomsdayGenerator {
                 final = scriptTemplate.buffer;
             }
 
-            total += final.length;
-            max = Math.max(max, final.length);
-
             compressor.addItem(final);
         }
 
-        return compressor.getRoot();
+        return { taprootHash: compressor.getRoot() };
     }
 
     private assertPairHash(
@@ -307,21 +320,17 @@ export class DoomsdayGenerator {
         return bitcoin.programToTemplate({ validateStack: true });
     }
 
-    private async generateRefuteMerkleProofTaproot(compressor: Compressor, transactions: Template[]) {
+    public async generateRefuteMerkleProofTaproot(
+        templates: Template[],
+        indexFrom: number,
+        indexTo: number
+    ): Promise<GenerateTaprootResult> {
+        const leaves = 2 ** Math.ceil(3 * 6 * Math.log2(indexTo - indexFrom));
+        const compressor = new Compressor(leaves);
         let scriptTemplate: ScriptTemplate | undefined = undefined;
+        for (let index = indexFrom; index < indexTo; index++) {
 
-        const started = Date.now();
-        let total = 0;
-        let max = 0;
-
-        console.log(`Generating refute merkle proof taproot for ${this.program.length} instructions`);
-        for (let index = 1; index < this.program.length; index++) {
-            if (index && index % 100 == 0) {
-                const todo = ((this.program.length - index) * (Date.now() - started)) / index;
-                const m = Math.floor(todo / 60000);
-                const s = Math.floor((todo - m * 60000) / 1000);
-                console.log('index: ', index, '   max: ', max, '   total: ', total, '   left: ', `${m}:${s}`);
-            }
+            if (index == 0) continue;
 
             // first find the 2 roots for the 3 merkle proofs
             const stateCommitmentBefore = this.decasector.stateCommitmentByLine[index - 1];
@@ -336,27 +345,27 @@ export class DoomsdayGenerator {
             if (beforeStateIteration < 0) continue;
 
             const stateTxBefore = getTemplateByName(
-                transactions,
+                templates,
                 `${TemplateNames.STATE}_${twoDigits(beforeStateIteration)}`
             );
-            const scBefore = getSpendingConditionByInput(transactions, stateTxBefore.inputs[0]);
+            const scBefore = getSpendingConditionByInput(templates, stateTxBefore.inputs[0]);
             const beforeRootKeys = scBefore.wotsPublicKeys![stateCommitmentIndexBefore];
 
             const stateTxAfter = getTemplateByName(
-                transactions,
+                templates,
                 `${TemplateNames.STATE}_${twoDigits(afterStateIteration)}`
             );
-            const scAfter = getSpendingConditionByInput(transactions, stateTxAfter.inputs[0]);
+            const scAfter = getSpendingConditionByInput(templates, stateTxAfter.inputs[0]);
             const afterRootKeys = scAfter.wotsPublicKeys![stateCommitmentIndexAfter];
 
             // now let's get the merkle proofs keys, there are 3 proofs
             const merkleProofKeysAll: Buffer[][] = [];
-            const argument = getTemplateByName(transactions, TemplateNames.ARGUMENT);
+            const argument = getTemplateByName(templates, TemplateNames.ARGUMENT);
 
             // We need all of the inputs except the first two, which are the path and the a, b, c, d values
             for (let i = 2; i < argument.inputs.length; i++) {
                 const input = argument.inputs[i];
-                const sc = getSpendingConditionByInput(transactions, input);
+                const sc = getSpendingConditionByInput(templates, input);
                 merkleProofKeysAll.push(...sc.wotsPublicKeys!);
             }
             // divide these into 3 sets of 11
@@ -364,7 +373,7 @@ export class DoomsdayGenerator {
 
             // now add the value before the proof, and the root after it
             {
-                const sc = getSpendingConditionByInput(transactions, argument.inputs[1]);
+                const sc = getSpendingConditionByInput(templates, argument.inputs[1]);
                 merkleProofKeys[0].unshift(sc.wotsPublicKeys![0]); // a
                 merkleProofKeys[1].unshift(sc.wotsPublicKeys![1]); // b
                 merkleProofKeys[2].unshift(sc.wotsPublicKeys![2]); // c
@@ -393,45 +402,87 @@ export class DoomsdayGenerator {
                         merkleProofKeys[i][j + 1],
                         merkleProofKeys[i][j + 2]
                     );
-                    total += script.length;
-                    max = Math.max(max, script.length);
                     compressor.addItem(script);
                 }
             }
         }
+
+        return { taprootHash: compressor.getRoot() };
     }
 
-    async generateFinalStepTaproot(
-        transactions: Template[],
-        scriptDescriptor?: ScriptDescriptor
-    ): Promise<{ taproot: Buffer; script?: Buffer; controlBlock?: Buffer }> {
-        let compressor = new Compressor(agentConf.internalPubkey, 20 * 300000);
+    chunkTheWork(): GenerateFinalTaprootCommand[] {
+        const lines = this.program.length;
+        const chunks = 128;
+        const chunk = Math.ceil(lines / chunks);
+        const inputs: GenerateFinalTaprootCommand[] =
+            array(chunks, i => ({
+                agentId: this.agentId,
+                setupId: this.setupId,
+                indexFrom: i * chunk,
+                indexTo: Math.min(lines, (i + 1) * chunk)
+            }));
+        return inputs;
+    }
 
-        // which index do we need?
-        if (scriptDescriptor) {
-            const leafIndex =
-                scriptDescriptor.refutationType == RefutationType.INSTR
-                    ? scriptDescriptor.line
-                    : scriptDescriptor.line * (1 + scriptDescriptor.whichProof! * 6 + scriptDescriptor.whichHash!);
-            compressor = new Compressor(agentConf.internalPubkey, 20 * 300000, leafIndex);
-        }
+    async generateFinalStepTaprootChunk(templates: Template[], indexFrom: number, indexTo: number): Promise<GenerateTaprootResult> {
+        const compressor = new Compressor(2);
+        const s1 = await this.generateRefuteInstructionTaproot(templates, indexFrom, indexTo);
+        compressor.addHash(s1.taprootHash);
+        const s2 = await this.generateRefuteMerkleProofTaproot(templates, indexFrom, indexTo);
+        compressor.addHash(s2.taprootHash);
+        return { taprootHash: compressor.getRoot() };
+    }
 
-        await this.generateRefuteMerkleProofTaproot(compressor, transactions);
-        this.generateRefuteInstructionTaproot(compressor, transactions);
+    async generateFinalStepTaprootParallel(): Promise<{ taprootPubKey: Buffer }> {
+        const start = Date.now();
+        console.log('Starting doomsday parallel...');
+        const inputs = this.chunkTheWork();
+        const results =
+            await parallelize<GenerateFinalTaprootCommand, GenerateTaprootResult>
+                (inputs, input => this.forker.fork(input));
+        const compressor = new Compressor(inputs.length);
+        results.forEach(r => compressor.addHash(r.taprootHash));
+
+        const time = Date.now() - start;
+        console.log(`Finished doomsday   -  ${Math.round(time/60000)}m`);
 
         return {
-            taproot: compressor.getTaprootPubkey(),
-            controlBlock: scriptDescriptor ? compressor.getControlBlock() : undefined,
-            script: scriptDescriptor ? compressor.script : undefined
+            taprootPubKey: compressor.getTaprootPubkey()
+        };
+    }
+
+    async generateFinalStepTaproot(): Promise<{ taprootPubKey: Buffer }> {
+        const db = new AgentDb(this.agentId);
+        const templates = await db.getTemplates(this.setupId);
+        const inputs = this.chunkTheWork();
+        const start = Date.now();
+        console.log('Starting doomsday...');
+        const results: GenerateTaprootResult[] = [];
+        for (let i = 0; i < inputs.length; i++) {
+            const start = Date.now();
+            console.log('Starting chunk ' + i);
+            const r = await this.generateFinalStepTaprootChunk(templates, inputs[i].indexFrom, inputs[i].indexTo);
+            results.push(r);
+            const time = Date.now() - start;
+            console.log(`Finished chunk ${i}  -  ${Math.round(time/60000)}m`);
+        }
+        const compressor = new Compressor(inputs.length);
+        results.forEach(r => compressor.addHash(r.taprootHash));
+
+        const time = Date.now() - start;
+        console.log(`Finished doomsday   -  ${Math.round(time/60000)}m`);
+
+        return {
+            taprootPubKey: compressor.getTaprootPubkey()
         };
     }
 }
 
 async function main() {
-    const ddg = new DoomsdayGenerator();
-    const db = new AgentDb('bitsnark_prover_1');
-    const transactions = await db.getTemplates('test_setup');
-    const r = await ddg.generateFinalStepTaproot(transactions);
+    const agentId = 'bitsnark_prover_1';
+    const setupId = 'test_setup';
+    const ddg = new DoomsdayGenerator(agentId, setupId);
+    const r = await ddg.generateFinalStepTaprootParallel();
     console.log(r);
 }
 

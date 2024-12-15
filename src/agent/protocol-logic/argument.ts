@@ -13,13 +13,15 @@ function calculateD(a: bigint, b: bigint): bigint {
 }
 
 export class Argument {
+    agentId: string;
     setupId: string;
     selectionPath: number[] = [];
     selectionPathUnparsed: Buffer[][] = [];
     index: number = 0;
     proof: bigint[];
 
-    constructor(setupId: string, proof: bigint[]) {
+    constructor(agentId: string, setupId: string, proof: bigint[]) {
+        this.agentId = agentId;
         this.setupId = setupId;
         this.proof = proof;
     }
@@ -119,7 +121,7 @@ export class Argument {
         const [a, b, c, d] = argData[1];
 
         // let's check the instruction first
-        const doomsdayGenerator = new DoomsdayGenerator();
+        const doomsdayGenerator = new DoomsdayGenerator(this.agentId, this.setupId);
         if (!doomsdayGenerator.checkLine(this.index, a, b, c, d)) {
             // the line is false, attack it!
             const data = [a, b, c, d];

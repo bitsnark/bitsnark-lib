@@ -101,16 +101,11 @@ export class BtcArithmetic {
         this.bitcoin.OP_FROMALTSTACK();
         this.bitcoin.replaceWithTop(result[l]); //
 
-        if (nibblesToBigint_3(a) + nibblesToBigint_3(b) != nibblesToBigint_3(result)) teaPot();
-
         return result;
     }
 
     public subtractFromA(a: StackItem[], b: StackItem[]) {
         if (a.length < b.length) teaPot();
-
-        const savedA = nibblesToBigint_3(a);
-        const savedB = nibblesToBigint_3(b);
 
         const stack = this.bitcoin.stack.items;
 
@@ -150,8 +145,6 @@ export class BtcArithmetic {
             if (i + 1 < a.length) this.bitcoin.OP_TOALTSTACK(); // a[i]-borrow-b[i]
             this.bitcoin.replaceWithTop(a[i]); //
         }
-
-        if (savedA - savedB != nibblesToBigint_3(a)) teaPot();
     }
 
     public naiiveMult(a: StackItem[], b: StackItem[]): StackItem[] {
@@ -179,8 +172,6 @@ export class BtcArithmetic {
             this.bitcoin.replaceWithTop(result[i + b.length]);
         }
 
-        if (nibblesToBigint_3(a) * nibblesToBigint_3(b) != nibblesToBigint_3(result)) teaPot();
-
         return result;
     }
 
@@ -188,9 +179,6 @@ export class BtcArithmetic {
         if (a.length != b.length) teaPot();
 
         if (maxDepth == 0) return this.naiiveMult(a, b);
-
-        const origA = nibblesToBigint_3(a);
-        const origB = nibblesToBigint_3(b);
 
         const l = Math.floor(a.length / 2);
 
@@ -247,9 +235,6 @@ export class BtcArithmetic {
             this.bitcoin.tableFetchInStack(this.breakTableValue);
             this.bitcoin.replaceWithTop(result[i]);
         }
-
-        const c = nibblesToBigint_3(result);
-        if (origA * origB != c) teaPot();
 
         return result;
     }

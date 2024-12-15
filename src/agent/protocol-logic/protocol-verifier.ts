@@ -119,7 +119,7 @@ export class ProtocolVerifier extends ProtocolBase {
                 vin.txinwitness!.map((s) => Buffer.from(s, 'hex'))
             )
         );
-        const argument = new Argument(this.setup!.id, proof);
+        const argument = new Argument(this.agentId, this.setup!.id, proof);
         const refutation = await argument.refute(this.templates!, argData, this.states);
 
         incoming.template.inputs[0].script = refutation.script;

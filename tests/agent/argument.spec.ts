@@ -7,6 +7,7 @@ import { createUniqueDataId } from '../../src/agent/setup/wots-keys';
 import { getTemplateByName, twoDigits } from '../../src/agent/common/templates';
 import { TemplateNames } from '../../src/agent/common/types';
 
+const agentId = 'bitsnark_prover_1';
 const setupId = 'test_setup';
 
 function makeSelectionPathUnparsed(selectionPath: number[]) {
@@ -20,7 +21,7 @@ function makeSelectionPathUnparsed(selectionPath: number[]) {
 }
 
 async function init() {
-    const argument = new Argument(setupId, proofBigint);
+    const argument = new Argument(agentId, setupId, proofBigint);
     const selectionPath = [1, 2, 3, 4, 5, 6];
     const argWitness = await argument.makeArgument(selectionPath, makeSelectionPathUnparsed(selectionPath));
     return { argument, selectionPath, argWitness };

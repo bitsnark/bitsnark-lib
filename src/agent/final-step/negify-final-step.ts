@@ -91,7 +91,7 @@ export class NegifyFinalStep {
 
     public negifyAddMod(a: StackItem[], b: StackItem[], c: StackItem[]) {
         const btca = new BtcArithmetic(this.bitcoin);
-        const w_p = btca.addWitness(bigintToNibbles_3(prime_bigint, 64));
+        const w_p = btca.addWitness(bigintToNibbles_3(prime_bigint, 86));
         btca.initializeAddTables();
         const t = btca.add(a, b);
         const temp = this.bitcoin.newStackItem(0);
