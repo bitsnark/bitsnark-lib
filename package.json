@@ -22,6 +22,7 @@
     "prettier-check": "./scripts/prettier.sh",
     "prettier-fix": "./scripts/prettier.sh --fix",
     "test": "jest",
+    "test-integration": "jest tests/integrations --testPathIgnorePatterns='<rootDir>/dist/tests/integrations'",
     "python-test": "./scripts/python-test.sh",
     "start-db": "./scripts/start-db.sh",
     "start-regtest": "./scripts/start-regtest.sh",

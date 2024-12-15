@@ -71,14 +71,14 @@ export interface TestAgent {
     pending: ReceivedTemplate[];
 }
 
-export function setTestAgent(role: AgentRoles, mode: BitcoinNetwork = BitcoinNetwork.REGTEST): TestAgent {
+export function setTestAgent(role: AgentRoles): TestAgent {
     const agentId = `bitsnark_${role.toLowerCase()}_1`;
     return {
         setupId: 'test_setup',
         role: role.toLowerCase(),
         agentId: agentId,
         db: new testAgentDb(agentId),
-        listener: new BitcoinListener(agentId, mode),
+        listener: new BitcoinListener(agentId),
         templates: [],
         pending: []
     };

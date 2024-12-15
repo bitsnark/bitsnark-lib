@@ -2,10 +2,9 @@ import { AgentRoles, TemplateNames, SetupStatus } from '../../src/agent/common/t
 import { TestAgent, setTestAgent } from '../test-utils/test-utils';
 import { BitcoinNetwork } from '../../src/agent/common/bitcoin-node';
 import { agentConf } from '../../src/agent/agent.conf';
+import { cat } from '@src/agent/common/encoding';
 
 //python -m bitsnark.cli broadcast --setup-id test_setup --agent-id bitsnark_prover_1 --name $1
-
-const DebugMode = agentConf.bitcoinNodeNetwork as BitcoinNetwork;
 
 const testnetTxs = [
     {
@@ -107,50 +106,10 @@ async function generateBlocks(agent: TestAgent, blocksToGenerate: number, addres
     }
 }
 
-describe('Listener integration on testnet', () => {
-    if (DebugMode === BitcoinNetwork.TESTNET) {
-        const agents: TestAgent[] = [setTestAgent(AgentRoles.PROVER, BitcoinNetwork.TESTNET)];
-
-        beforeAll(async () => {
-            await (async () => {
-                await restartSetup(agents, BitcoinNetwork.TESTNET);
-            })().catch((error) => {
-                throw error;
-            });
-        }, 600000);
-
-        it('Setup ready', () => {
-            const testBlockHeight = agents[0].listener.tipHeight;
-            expect(
-                testnetTxs.every((tx) => {
-                    return agents[0].templates.some((template) => {
-                        return template.name === tx.name && template.txid === tx.txId;
-                    });
-                })
-            ).toBe(true);
-            expect(agents[0].templates[0].setupStatus).toEqual(SetupStatus.ACTIVE);
-            expect(agents[0].templates[0].lastCheckedBlockHeight).toBe(testBlockHeight - 1);
-        });
-
-        it('Find PROOF by txid', async () => {
-            const proof = testnetTxs.find((tx) => tx.name === TemplateNames.PROOF)!.txId;
-
-            const testBlockHeight = agents[0].listener.tipHeight;
-            await agents[0].listener.searchBlock(testBlockHeight, agents[0].pending, agents[0].templates);
-            const received = (await agents[0].db.listenerDb.getReceivedTemplates('test_setup')).filter(
-                (tx) => tx.blockHash
-            );
-            expect(received.length).toEqual(1);
-            expect(received[0].name).toEqual(TemplateNames.PROOF);
-            expect(received[0].txid).toEqual(proof);
-            expect(proof).toBeDefined();
-        }, 600000);
-    }
-});
-
-describe(`Listener integration tests on regtest`, () => {
-    if (DebugMode === BitcoinNetwork.REGTEST) {
-        const agents: TestAgent[] = [setTestAgent(AgentRoles.PROVER, BitcoinNetwork.REGTEST)];
+(agentConf.bitcoinNodeNetwork === BitcoinNetwork.REGTEST ? describe : describe.skip)(
+    `Listener integration tests on regtest`,
+    () => {
+        const agents = [setTestAgent(AgentRoles.PROVER)];
         let proof = '';
 
         beforeAll(async () => {
@@ -168,7 +127,7 @@ describe(`Listener integration tests on regtest`, () => {
             ).toBeGreaterThan(-1);
             expect(agents[0].templates[0].setupStatus).toEqual(SetupStatus.ACTIVE);
             expect(agents[0].templates[0].lastCheckedBlockHeight).toBe(testBlockHeight - 1);
-        });
+        }, 600000);
 
         it('Find PROOF by txid', async () => {
             const testBlockHeight = agents[0].listener.tipHeight;
@@ -181,4 +140,43 @@ describe(`Listener integration tests on regtest`, () => {
             expect(received[0].txid).toEqual(proof);
         }, 600000);
     }
-});
+);
+
+(agentConf.bitcoinNodeNetwork === BitcoinNetwork.TESTNET ? describe : describe.skip)(
+    'Listener integration on testnet',
+    () => {
+        let agents: TestAgent[] = [];
+
+        beforeAll(async () => {
+            agents = [setTestAgent(AgentRoles.PROVER)];
+            await restartSetup(agents, BitcoinNetwork.TESTNET);
+        }, 600000);
+
+        it('Setup ready', () => {
+            const testBlockHeight = agents[0].listener.tipHeight;
+            expect(
+                testnetTxs.every((tx) => {
+                    return agents[0].templates.some((template) => {
+                        return template.name === tx.name && template.txid === tx.txId;
+                    });
+                })
+            ).toBe(true);
+            expect(agents[0].templates[0].setupStatus).toEqual(SetupStatus.ACTIVE);
+            expect(agents[0].templates[0].lastCheckedBlockHeight).toBe(testBlockHeight - 1);
+        }, 600000);
+
+        it('Find PROOF by txid', async () => {
+            const proof = testnetTxs.find((tx) => tx.name === TemplateNames.PROOF)!.txId;
+
+            const testBlockHeight = agents[0].listener.tipHeight;
+            await agents[0].listener.searchBlock(testBlockHeight, agents[0].pending, agents[0].templates);
+            const received = (await agents[0].db.listenerDb.getReceivedTemplates('test_setup')).filter(
+                (tx) => tx.blockHash
+            );
+            expect(received.length).toEqual(1);
+            expect(received[0].name).toEqual(TemplateNames.PROOF);
+            expect(received[0].txid).toEqual(proof);
+            expect(proof).toBeDefined();
+        }, 600000);
+    }
+);

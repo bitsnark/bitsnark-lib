@@ -1,5 +1,5 @@
 import { agentConf } from '../agent.conf';
-import { BitcoinNetwork, BitcoinNode } from '../common/bitcoin-node';
+import { BitcoinNode } from '../common/bitcoin-node';
 import { RawTransaction } from 'bitcoin-core';
 import { ListenerDb, ReceivedTemplate } from './listener-db';
 import { Input, Template, TemplateNames } from '../common/types';
@@ -17,8 +17,8 @@ export class BitcoinListener {
     client;
     db: ListenerDb;
 
-    constructor(agentId: string, mode: BitcoinNetwork = agentConf.bitcoinNodeNetwork as BitcoinNetwork) {
-        this.client = new BitcoinNode(mode).client;
+    constructor(agentId: string) {
+        this.client = new BitcoinNode().client;
         this.db = new ListenerDb(agentId);
     }
 

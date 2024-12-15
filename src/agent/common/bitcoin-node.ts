@@ -8,24 +8,14 @@ export enum BitcoinNetwork {
 export class BitcoinNode {
     public client;
 
-    constructor(mode: BitcoinNetwork = BitcoinNetwork.REGTEST) {
-        if (mode == BitcoinNetwork.REGTEST) {
-            this.client = new Client({
-                network: agentConf.bitcoinNodeNetwork,
-                username: agentConf.bitcoinNodeUsername,
-                password: agentConf.bitcoinNodePassword,
-                host: agentConf.bitcoinNodeHost,
-                port: agentConf.bitcoinNodePort
-            });
-        } else {
-            this.client = new Client({
-                network: 'testnet',
-                username: 'sovtestnet',
-                password: '9u7dpYWapKJFh4qy',
-                host: '3.143.152.117',
-                port: 18332
-            });
-        }
+    constructor() {
+        this.client = new Client({
+            network: agentConf.bitcoinNodeNetwork,
+            username: agentConf.bitcoinNodeUsername,
+            password: agentConf.bitcoinNodePassword,
+            host: agentConf.bitcoinNodeHost,
+            port: agentConf.bitcoinNodePort
+        });
     }
 
     async getBlockCount() {
@@ -34,7 +24,7 @@ export class BitcoinNode {
 }
 
 if (require.main === module) {
-    const node = new BitcoinNode(BitcoinNetwork.TESTNET);
+    const node = new BitcoinNode();
     node.getBlockCount().then(console.log);
     node.client.getBestBlockHash().then(console.log);
     node.client.command('getnetworkinfo').then(console.log);
