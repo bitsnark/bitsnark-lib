@@ -1,10 +1,5 @@
-import { Setup, Template, TemplateStatus } from '../../src/agent/common/types';
-import {
-    AgentDb,
-    ReceivedTransaction,
-    updateSetupPartial,
-    UpdateTemplatePartial
-} from '../../src/agent/common/agent-db';
+import { Setup, Template, TemplateStatus, ReceivedTransaction } from '../../src/agent/common/types';
+import { AgentDb, updateSetupPartial, UpdateTemplatePartial } from '../../src/agent/common/agent-db';
 import { test_Template, TestAgentDb } from './test-utils';
 
 async function waitAndReturn<T>(obj: T): Promise<T> {
@@ -123,10 +118,8 @@ export class AgentDbMock extends TestAgentDb {
         this.markTemplateToSendCalledParams = { setupId, templateName, data };
         const templateId = this.gettestTemplatesReturn!.find((t: test_Template) => t.name === templateName)?.id;
         this.gettestTemplatesReturn!.find((t: test_Template) => t.name === templateName)!.data = data ?? [];
-        this.gettestTemplatesReturn!.find((t: test_Template) => t.name === templateName)!.status = TemplateStatus.READY
+        this.gettestTemplatesReturn!.find((t: test_Template) => t.name === templateName)!.status = TemplateStatus.READY;
     }
-
-
 
     // Received Transactions
 
@@ -153,15 +146,8 @@ export class AgentDbMock extends TestAgentDb {
         this.getReceivedTransactionsReturn = received;
     }
 
-
-
-    // public test_getReadyToSendTemplates(setupId: string): Promise<ReceivedTransaction[]> {
-    //     return waitAndReturn(this.gettestTemplatesReturn!.filter((template) => template.status === TemplateStatus.READY));
-    // }
-
     public gettestTemplatesReturn?: test_Template[];
     public test_getTemplates(): Promise<test_Template[]> {
         return waitAndReturn(this.gettestTemplatesReturn ?? []);
     }
-
 }

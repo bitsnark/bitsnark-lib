@@ -3,7 +3,7 @@ import { agentConf } from '../agent.conf';
 import { array } from './array-utils';
 import { Db, DbValue, QueryArgs } from './db';
 import { jsonParseCustom, jsonStringifyCustom } from './json';
-import { Input, Output, Setup, SetupStatus, Template, TemplateStatus } from './types';
+import { Input, Output, ReceivedTransaction, Setup, SetupStatus, Template, TemplateStatus } from './types';
 
 export interface UpdateTemplatePartial {
     setupId?: string;
@@ -23,15 +23,6 @@ export interface updateSetupPartial {
     stakeOutputIndex: number;
     stakeAmount: bigint;
 }
-
-export interface ReceivedTransaction {
-    templateId: number;
-    height: number;
-    raw: RawTransaction;
-    blockHash: string;
-}
-
-
 
 const setupFields = [
     'id',
@@ -182,9 +173,11 @@ export class AgentDb extends Db {
 
     public async getActiveSetups(): Promise<Setup[]> {
         return Promise.all(
-            (await this.query('SELECT id FROM setups WHERE status = $1 ORDER BY last_checked_block_height ASC', [SetupStatus.ACTIVE])).rows.map((row) =>
-                this.getSetup(row[0] as string)
-            )
+            (
+                await this.query('SELECT id FROM setups WHERE status = $1 ORDER BY last_checked_block_height ASC', [
+                    SetupStatus.ACTIVE
+                ])
+            ).rows.map((row) => this.getSetup(row[0] as string))
         );
     }
 

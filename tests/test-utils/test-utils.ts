@@ -1,10 +1,9 @@
 import { agentConf } from '../../src/agent/agent.conf';
-import { AgentRoles, Setup, Template, TemplateStatus } from '../../src/agent/common/types';
+import { AgentRoles, Setup, Template, TemplateStatus, ReceivedTransaction } from '../../src/agent/common/types';
 import { initializeTemplates } from '../../src/agent/setup/init-templates';
 import { mergeWots, setWotsPublicKeysForArgument } from '../../src/agent/setup/wots-keys';
-import { AgentDb, ReceivedTransaction, rowToObj, templateFields } from '../../src/agent/common/agent-db';
+import { AgentDb, rowToObj, templateFields } from '../../src/agent/common/agent-db';
 import { BitcoinListener } from '../../src/agent/listener/bitcoin-listener';
-import { ListenerDb, ReceivedTemplate } from '../../src/agent/listener/listener-db';
 import { ProtocolProver } from '../../src/agent/protocol-logic/protocol-prover';
 import { ProtocolVerifier } from '../../src/agent/protocol-logic/protocol-verifier';
 import { Mock } from 'node:test';
@@ -95,10 +94,10 @@ export interface test_Template extends Template {
 }
 
 export class TestAgentDb extends AgentDb {
-    listenerDb: ListenerDb;
+    listenerDb: AgentDb;
     constructor(agentId: string) {
         super(agentId);
-        this.listenerDb = new ListenerDb(agentId);
+        this.listenerDb = new AgentDb(agentId);
     }
 
     //Used for testing purposes only
@@ -137,19 +136,19 @@ export class TestAgentDb extends AgentDb {
         );
     }
 
-    async test_getReadyToSendTemplates(setupId: string): Promise<ReceivedTemplate[]> {
-        return (
-            await this.query<test_Template>(
-                `SELECT ${ListenerDb.templateFields}
-            FROM templates
-                    JOIN setups ON templates.setup_id = setups.id
-                    LEFT JOIN received ON templates.id = received.template_id
-            WHERE templates.status = 'READY'
-            AND setups.id = $1`,
-                [setupId]
-            )
-        ).rows.map(ListenerDb.receivedTemplateReader);
-    }
+    // async test_getReadyToSendTemplates(setupId: string): Promise<ReceivedTemplate[]> {
+    //     return (
+    //         await this.query<test_Template>(
+    //             `SELECT ${ListenerDb.templateFields}
+    //         FROM templates
+    //                 JOIN setups ON templates.setup_id = setups.id
+    //                 LEFT JOIN received ON templates.id = received.template_id
+    //         WHERE templates.status = 'READY'
+    //         AND setups.id = $1`,
+    //             [setupId]
+    //         )
+    //     ).rows.map(ListenerDb.receivedTemplateReader);
+    // }
 
     public async test_getTemplates(setupId: string): Promise<test_Template[]> {
         const testTemplateFields = templateFields.concat(['protocol_data']);

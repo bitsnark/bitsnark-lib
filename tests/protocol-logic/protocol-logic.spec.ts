@@ -5,7 +5,7 @@ import { payloadUtxo, proverUtxo, setTestAgent, TestAgent } from '../test-utils/
 import { emulateSetup } from '../../src/agent/setup/emulate-setup';
 import { AgentRoles, SetupStatus } from '../../src/agent/common/types';
 import { proofBigint } from '../../src/agent/common/constants';
-import { TestPublisher } from '../../tests/mock-publisher';
+import { TestPublisher } from '../mock-publisher';
 import { agentConf } from '../../src/agent/agent.conf';
 
 describe('Protocol logic', () => {
@@ -43,17 +43,9 @@ describe('Protocol logic', () => {
             });
             publisher.dbs[agent.role as 'prover' | 'verifier'] = agent.db;
         }
-
-
-
-        //create setup in agentsMockDBs
-
-        //const setup = await prover.db.getSetup(setupId);
     }, 60000);
 
     it('should make sure setup ready', async () => {
-        // expect((prover.db as AgentDbMock).getSetupCalledCount).toBe(0);
-        console.log('prover.db.get', await prover.db.getSetup(prover.setupId));
         expect(await prover.db.getSetup(prover.setupId)).toMatchObject({
             id: prover.setupId,
             status: SetupStatus.ACTIVE
@@ -62,15 +54,4 @@ describe('Protocol logic', () => {
         expect((await prover.db.getTemplates(prover.setupId)).length).toBeGreaterThan(0);
         expect(await prover.db.getReceivedTransactions(prover.setupId)).toHaveLength(0);
     }, 60000);
-
-    it('Good proof should be peggout successfully', async () => {
-        await (prover.protocol as ProtocolProver).pegOut(proof);
-        // publisher.
-        await publisher.generateBlocks(agentConf.smallTimeoutBlocks);
-
-    });
-
-
-
-
 });

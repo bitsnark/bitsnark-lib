@@ -1,9 +1,9 @@
 import { RawTransaction } from 'bitcoin-core';
 import { BitcoinNode } from '../common/bitcoin-node';
 import { parseInput } from './parser';
-import { AgentRoles, Setup, SpendingCondition, Template } from '../common/types';
+import { AgentRoles, Setup, SpendingCondition, Template, ReceivedTransaction } from '../common/types';
 import { getTemplateByTemplateId } from '../common/templates';
-import { AgentDb, ReceivedTransaction } from '../common/agent-db';
+import { AgentDb } from '../common/agent-db';
 import { bigintToBufferBE } from '../common/encoding';
 import { broadcastTransaction } from './broadcast-transaction';
 
@@ -51,7 +51,7 @@ export class ProtocolBase {
     async sendTransaction(name: string, data?: Buffer[][]) {
         await this.db.markTemplateToSend(this.setupId, name, data);
         console.warn(`Sending transaction ${name} manually for now`);
-        //await broadcastTransaction(this.agentId, this.setupId, name);
+        await broadcastTransaction(this.agentId, this.setupId, name);
     }
 
     parseProof(incoming: Incoming): bigint[] {
@@ -59,7 +59,7 @@ export class ProtocolBase {
         const proof = parseInput(
             this.templates!,
             incoming.template.inputs[0],
-            rawTx.vin[0].txinwitness!.map((s) => Buffer.from(s, 'hex'))
+            rawTx.vin[0].txinwitness!.map((s: string) => Buffer.from(s, 'hex'))
         );
         return proof;
     }

@@ -1,11 +1,8 @@
 import { agentConf } from '../agent.conf';
 import { BitcoinNode } from '../common/bitcoin-node';
 import { RawTransaction } from 'bitcoin-core';
-import { ListenerDb } from './listener-db';
-import { Input, Template } from '../common/types';
-import { Agent } from 'http';
-import { AgentDb, ReceivedTransaction } from '../common/agent-db';
-import { on } from 'events';
+import { Input, Template, ReceivedTransaction, ReceivedTemplateRow } from '../common/types';
+import { AgentDb } from '../common/agent-db';
 
 export interface expectByInputs {
     setupId: string;
@@ -14,9 +11,6 @@ export interface expectByInputs {
     vins: { outputtxid: string; outputIndex: number; vin: number }[];
 }
 
-export interface ListenerTemplateRow extends Template, Partial<ReceivedTransaction> {
-    lastCheckedBlockHeight?: number;
-}
 export class BitcoinListener {
     private tipHeight: number = 0;
     private tipHash: string = '';
@@ -89,8 +83,8 @@ export class BitcoinListener {
         }
     }
 
-    private async getReceivedTemplates() {
-        const listenerTemplates: ListenerTemplateRow[] = [];
+    async getReceivedTemplates() {
+        const listenerTemplates: ReceivedTemplateRow[] = [];
 
         const activeSetups = await this.db.getActiveSetups();
         for (const setup of activeSetups) {
@@ -98,8 +92,10 @@ export class BitcoinListener {
             try {
                 templates = await this.db.getTemplates(setup.id);
                 let received: ReceivedTransaction[] = [];
-                try { received = await this.db.getReceivedTransactions(setup.id); }
-                catch (error) {//
+                try {
+                    received = await this.db.getReceivedTransactions(setup.id);
+                } catch (error) {
+                    //
                 }
 
                 for (const template of templates) {
@@ -109,11 +105,8 @@ export class BitcoinListener {
                         ...template,
                         ...receivedTemplate
                     });
-
                 }
-            }
-            catch (error) {
-
+            } catch (error) {
                 if (templates) continue;
             }
         }

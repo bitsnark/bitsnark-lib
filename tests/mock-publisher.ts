@@ -4,8 +4,8 @@ import { ProtocolProver } from '../src/agent/protocol-logic/protocol-prover';
 import { proofBigint } from '../src/agent/common/constants';
 import { RawTransaction, Input } from 'bitcoin-core';
 import { agentConf } from '../src/agent/agent.conf';
-import { ReceivedTemplate } from '../src/agent/listener/listener-db';
 import { argv, mainModule } from 'process';
+import { TemplateStatus, ReceivedTemplateRow, Template } from '../src/agent/common/types';
 
 export const mockRawTransaction: RawTransaction = {
     in_active_chain: true,
@@ -84,8 +84,12 @@ export class TestPublisher {
                 await this.generateBlocks(1);
 
                 const readyToSendTemplates = {
-                    prover: await this.dbs.prover.test_getReadyToSendTemplates(this.setupId),
-                    verifier: await this.dbs.verifier.test_getReadyToSendTemplates(this.setupId)
+                    prover: (await this.dbs.prover.getTemplates(this.setupId)).filter(
+                        (t) => t.status === TemplateStatus.READY
+                    ),
+                    verifier: (await this.dbs.verifier.getTemplates(this.setupId)).filter(
+                        (t) => t.status === TemplateStatus.READY
+                    )
                 };
 
                 const receivedTransactions = {
@@ -118,7 +122,11 @@ export class TestPublisher {
                     const agentReadyTemplates = readyToSendTemplates[agent];
 
                     for (const readyTx of agentReadyTemplates) {
-                        console.log('readyTx.data', readyTx.data, readyTx.data ? readyTx.data[0] : 'NULL');
+                        console.log(
+                            'readyTx.data',
+                            readyTx.protocolData,
+                            readyTx.protocolData ? readyTx.protocolData[0] : 'NULL'
+                        );
                         const rawTx: RawTransaction = {
                             ...mockRawTransaction,
                             txid: readyTx.txid!,
@@ -189,7 +197,7 @@ export class TestPublisher {
         }
     }
 
-    private mockInputs(template: ReceivedTemplate, templates: test_Template[]): Input[] {
+    private mockInputs(template: ReceivedTemplateRow, templates: Template[]): Input[] {
         return (
             templates
                 .find((t) => t.name === template.name)
@@ -200,7 +208,8 @@ export class TestPublisher {
                         ...mockVin,
                         txid: parentTemplate?.txid || '',
                         vout: input.outputIndex,
-                        txinwitness: template.data && template.data[index] ? template.data[index] : []
+                        txinwitness:
+                            template.protocolData && template.protocolData[index] ? template.protocolData[index] : []
                     };
                 }) || []
         );

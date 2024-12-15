@@ -1,3 +1,4 @@
+import { RawTransaction } from 'bitcoin-core';
 import { WotsType } from './winternitz';
 
 export const iterations = 6;
@@ -134,5 +135,15 @@ export interface Template {
     inputs: Input[];
     outputs: Output[];
     status?: TemplateStatus;
-    protocolData?: string[];
+    protocolData?: string[][];
+}
+
+export interface ReceivedTransaction {
+    templateId: number;
+    height: number;
+    raw: RawTransaction;
+    blockHash: string;
+}
+export interface ReceivedTemplateRow extends Template, Partial<ReceivedTransaction> {
+    lastCheckedBlockHeight?: number;
 }
