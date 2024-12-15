@@ -3,6 +3,9 @@ import { BitcoinNode } from '../common/bitcoin-node';
 import { RawTransaction } from 'bitcoin-core';
 import { ListenerDb } from './listener-db';
 import { Input, Template } from '../common/types';
+import { Agent } from 'http';
+import { AgentDb, ReceivedTransaction } from '../common/agent-db';
+import { on } from 'events';
 
 export interface expectByInputs {
     setupId: string;
@@ -11,15 +14,18 @@ export interface expectByInputs {
     vins: { outputtxid: string; outputIndex: number; vin: number }[];
 }
 
+export interface ListenerTemplateRow extends Template, Partial<ReceivedTransaction> {
+    lastCheckedBlockHeight?: number;
+}
 export class BitcoinListener {
     private tipHeight: number = 0;
     private tipHash: string = '';
     public client;
-    public db: ListenerDb;
+    public db: AgentDb;
 
     constructor(agentId: string) {
         this.client = new BitcoinNode().client;
-        this.db = new ListenerDb(agentId);
+        this.db = new AgentDb(agentId);
     }
 
     async checkForNewBlock() {
@@ -33,7 +39,7 @@ export class BitcoinListener {
     }
 
     async monitorTransmitted(): Promise<void> {
-        const templates = await this.db.getReceivedTemplates();
+        const templates = await this.getReceivedTemplates();
         const pending = templates.filter((template) => !template.blockHash);
         if (pending.length === 0) return;
 
@@ -61,7 +67,7 @@ export class BitcoinListener {
 
                     if (transmittedTx)
                         await this.db.markReceived(
-                            pendingTx.setupId,
+                            pendingTx.setupId!,
                             pendingTx.name,
                             transmittedTx.txid,
                             transmittedTx.blockhash,
@@ -77,10 +83,41 @@ export class BitcoinListener {
             blockHeight++;
 
             await this.db.updateSetupLastCheckedBlockHeightBatch(
-                [...pending.reduce((setupIds, template) => setupIds.add(template.setupId), new Set<string>())],
+                [...pending.reduce((setupIds, template) => setupIds.add(template.setupId!), new Set<string>())],
                 blockHeight
             );
         }
+    }
+
+    private async getReceivedTemplates() {
+        const listenerTemplates: ListenerTemplateRow[] = [];
+
+        const activeSetups = await this.db.getActiveSetups();
+        for (const setup of activeSetups) {
+            let templates: Template[] | undefined;
+            try {
+                templates = await this.db.getTemplates(setup.id);
+                let received: ReceivedTransaction[] = [];
+                try { received = await this.db.getReceivedTransactions(setup.id); }
+                catch (error) {//
+                }
+
+                for (const template of templates) {
+                    const receivedTemplate = received.find((rt: ReceivedTransaction) => rt.templateId === template.id);
+                    listenerTemplates.push({
+                        lastCheckedBlockHeight: setup.lastCheckedBlockHeight,
+                        ...template,
+                        ...receivedTemplate
+                    });
+
+                }
+            }
+            catch (error) {
+
+                if (templates) continue;
+            }
+        }
+        return listenerTemplates;
     }
 
     private async getTransactionByInputs(

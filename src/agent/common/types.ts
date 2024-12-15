@@ -134,4 +134,5 @@ export interface Template {
     inputs: Input[];
     outputs: Output[];
     status?: TemplateStatus;
+    protocolData?: string[];
 }

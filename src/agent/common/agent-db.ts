@@ -28,7 +28,10 @@ export interface ReceivedTransaction {
     templateId: number;
     height: number;
     raw: RawTransaction;
+    blockHash: string;
 }
+
+
 
 const setupFields = [
     'id',
@@ -54,7 +57,8 @@ export const templateFields = [
     'txid',
     'inputs',
     'outputs',
-    'status'
+    'status',
+    'protocol_data'
 ];
 
 function isCap(c: string): boolean {
@@ -178,7 +182,7 @@ export class AgentDb extends Db {
 
     public async getActiveSetups(): Promise<Setup[]> {
         return Promise.all(
-            (await this.query('SELECT id FROM setups WHERE status = $1', [SetupStatus.ACTIVE])).rows.map((row) =>
+            (await this.query('SELECT id FROM setups WHERE status = $1 ORDER BY last_checked_block_height ASC', [SetupStatus.ACTIVE])).rows.map((row) =>
                 this.getSetup(row[0] as string)
             )
         );
@@ -197,7 +201,7 @@ export class AgentDb extends Db {
         ).rows;
         if (rows.length == 0) throw new Error(`No templates found, setupId: ${setupId}`);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        return rows.map((row) => rowToObj(templateFields, row as any, ['inputs', 'outputs']));
+        return rows.map((row) => rowToObj(templateFields, row as any, ['inputs', 'outputs', 'protocol_data']));
     }
 
     public async insertTemplates(setupId: string, templates: Template[]) {
@@ -208,7 +212,7 @@ export class AgentDb extends Db {
             setupId,
             status: t.status ?? TemplateStatus.PENDING
         }));
-        const fieldsNoId = templateFields.filter((s) => s != 'id');
+        const fieldsNoId = templateFields.filter((s) => s != 'id' && s != 'protocol_data');
         for (const template of templates) {
             await this.query(
                 `INSERT INTO templates (${fieldsNoId.join(', ')}) VALUES (${dollars(fieldsNoId.length)})`,
@@ -259,18 +263,54 @@ export class AgentDb extends Db {
     public async getReceivedTransactions(setupId: string): Promise<ReceivedTransaction[]> {
         const rows = (
             await this.query<ReceivedTransaction>(
-                `SELECT template_id, block_height, raw_transaction
+                `SELECT template_id, block_height, raw_transaction, block_hash
                     FROM received, templates
-                    WHERE received.template_id = templates.id AND templates.setup_id = $1
-                    ORDER BY block_height, index_in_block ASC`,
+                    WHERE received.template_id = templates.id
+                    AND templates.setup_id = $1
+                ORDER BY block_height, index_in_block ASC`,
                 [setupId]
             )
         ).rows;
         if (rows.length == 0) throw new Error(`No received transactions found, setupId: ${setupId}`);
         return rows.map((row) => {
-            const [templateId, height, raw] = row;
-            return { templateId, height, raw };
+            const [templateId, height, raw, blockHash] = row;
+            return { templateId, height, raw, blockHash };
         });
+    }
+
+    public async markReceived(
+        setupId: string,
+        templateName: string,
+        txid: string,
+        blockHash: string,
+        blockHeight: number,
+        rawTransaction: RawTransaction,
+        indexInBlock: number = 0
+    ) {
+        // Assert that the setup is active.
+        const status = (await this.query('SELECT status FROM setups WHERE id = $1', [setupId]))
+            .rows[0]?.[0] as SetupStatus;
+        if (status != SetupStatus.ACTIVE) {
+            throw new Error(
+                `Status of ${setupId} is ${SetupStatus[status]} instead of ${SetupStatus[SetupStatus.ACTIVE]}`
+            );
+        }
+
+        await this.query(
+            `
+                INSERT INTO received (template_id, txid, block_hash, block_height, raw_transaction, index_in_block)
+                VALUES ((SELECT id FROM templates WHERE setup_id = $1 AND name = $2), $3, $4, $5, $6, $7)
+            `,
+            [
+                setupId,
+                templateName,
+                txid,
+                blockHash,
+                blockHeight,
+                jsonParseCustom(JSON.stringify(rawTransaction)),
+                indexInBlock
+            ]
+        );
     }
 
     // To assist debugging and mocking the DB in tests.

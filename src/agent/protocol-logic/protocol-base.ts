@@ -51,7 +51,7 @@ export class ProtocolBase {
     async sendTransaction(name: string, data?: Buffer[][]) {
         await this.db.markTemplateToSend(this.setupId, name, data);
         console.warn(`Sending transaction ${name} manually for now`);
-        await broadcastTransaction(this.agentId, this.setupId, name);
+        //await broadcastTransaction(this.agentId, this.setupId, name);
     }
 
     parseProof(incoming: Incoming): bigint[] {
