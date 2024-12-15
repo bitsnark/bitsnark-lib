@@ -13,7 +13,7 @@ trap cleanup EXIT
 snapshot() {
     bitcoin_cli stop
     sleep 1
-    docker rm -f "$regtest_container_name"
+    sudo docker rm -f "$regtest_container_name"
     if [ "$1" = create ]; then
         tar -czf "$snapshot_file" -C "$data_dir" .
     elif [ "$1" = restore ]; then

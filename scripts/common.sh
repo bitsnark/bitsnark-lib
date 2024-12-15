@@ -56,16 +56,16 @@ activate_python_venv() {
 
 conditionally_remove_container() {
     local container_name="$1"
-    test -z "$(docker ps -aq -f name=$container_name)" && return 0
+    test -z "$(sudo docker ps -aq -f name=$container_name)" && return 0
     echo "Container $container_name already exists."
     read -p "Do you want to remove the existing container? (y/n): " choice
     if [ "$choice" = y ] || [ "$choice" = Y ]; then
-        docker rm -f "$container_name" && return 0
+        sudo docker rm -f "$container_name" && return 0
     fi
     echo Existing container was not removed - exiting.
     return 1
 }
 
 bitcoin_cli() {
-    docker exec "$regtest_container_name" bitcoin-cli -regtest -rpcuser=rpcuser -rpcpassword=rpcpassword "$@"
+    sudo docker exec "$regtest_container_name" bitcoin-cli -regtest -rpcuser=rpcuser -rpcpassword=rpcpassword "$@"
 }
