@@ -52,7 +52,7 @@ const mockVout = {
     }
 };
 
-export class MockPublisher {
+export class TestPublisher {
     agents: { prover: string; verifier: string };
     dbs: { prover: TestAgentDb; verifier: TestAgentDb };
     setupId: string;
@@ -162,6 +162,8 @@ export class MockPublisher {
                         console.log('Received incoming transaction', readyTx.txid, readyTx.name);
                     }
                 }
+
+                // await this.findAndPublishReceived()
                 this.isRunning = false;
             } catch (e) {
                 console.error(e);
@@ -237,12 +239,12 @@ async function main(isStartOver: boolean = false) {
         await prover.pegOut(proofBigint);
         console.log('proof sent:', proofBigint);
     }
-    new MockPublisher(proverId, verifierId, setupId).start();
+    new TestPublisher(proverId, verifierId, setupId).start();
 }
 
 if (require.main === module) {
     console.log('Starting mock publisher');
-    const isStartOver = argv[2] ? Boolean(argv[2]) : false;
+    const isStartOver = argv[2] ? Boolean(argv[2]) : true;
 
     main(isStartOver);
 }

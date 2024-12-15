@@ -65,7 +65,7 @@ export function deepCompare(a: Bufferheap, b: Bufferheap): boolean {
 
 export interface TestAgent {
     setupId: string;
-    role?: string;
+    role: string;
     agentId: string;
     db: TestAgentDb | AgentDbMock;
     listener: BitcoinListener;
@@ -91,7 +91,7 @@ export function setTestAgent(role: AgentRoles): TestAgent {
 }
 
 export interface test_Template extends Template {
-    data: string[][];
+    data: Buffer[][];
 }
 
 export class TestAgentDb extends AgentDb {

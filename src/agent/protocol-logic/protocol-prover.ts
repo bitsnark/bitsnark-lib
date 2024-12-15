@@ -152,9 +152,9 @@ export class ProtocolProver extends ProtocolBase {
 }
 
 export async function main(agentId: string) {
-    const db = new ListenerDb(agentId);
-    const setups = await db.getActiveSetups();
     const doit = async () => {
+        const db = new ListenerDb(agentId);
+        const setups = await db.getActiveSetups();
         for (const setup of setups) {
             const protocol = new ProtocolProver(agentId, setup.id);
             try {

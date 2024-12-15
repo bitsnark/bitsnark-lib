@@ -160,9 +160,9 @@ export class ProtocolVerifier extends ProtocolBase {
 }
 
 export async function main(agentId: string) {
-    const db = new AgentDb(agentId);
-    const setups = await db.getActiveSetups();
     const doit = async () => {
+        const db = new AgentDb(agentId);
+        const setups = await db.getActiveSetups();
         for (const setup of setups) {
             const protocol = new ProtocolVerifier(agentId, setup.id);
             try {

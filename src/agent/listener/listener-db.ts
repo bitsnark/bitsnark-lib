@@ -43,7 +43,7 @@ export class ListenerDb extends AgentDb {
             inputs: jsonParseCustom(JSON.stringify(row[i++])),
             outputs: jsonParseCustom(JSON.stringify(row[i++])),
             unknownTxid: row[i++] as boolean,
-            data: row[i++] as string[][] | null,
+            data: jsonParseCustom(JSON.stringify(row[i++])), //row[i++] as Buffer[][] | null,
             actualTxid: row[i++],
             rawTransaction: row[i++],
             blockHash: row[i++],
