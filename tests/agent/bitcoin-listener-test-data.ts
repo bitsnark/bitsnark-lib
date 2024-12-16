@@ -1,5 +1,5 @@
 import { AgentRoles, Input, TemplateNames, TemplateStatus } from '../../src/agent/common/types';
-import { ReceivedTemplateRow } from '../../src/agent/common/types';
+import { ReceivedTemplateRow } from '../../src/agent/listener/bitcoin-listener';
 
 const templates = [
     TemplateNames.LOCKED_FUNDS,

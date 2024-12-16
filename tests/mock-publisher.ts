@@ -4,8 +4,9 @@ import { ProtocolProver } from '../src/agent/protocol-logic/protocol-prover';
 import { proofBigint } from '../src/agent/common/constants';
 import { RawTransaction, Input } from 'bitcoin-core';
 import { agentConf } from '../src/agent/agent.conf';
-import { argv, mainModule } from 'process';
-import { TemplateStatus, ReceivedTemplateRow, Template } from '../src/agent/common/types';
+import { argv } from 'process';
+import { TemplateStatus, Template } from '../src/agent/common/types';
+import { ReceivedTemplateRow } from '../src/agent/listener/bitcoin-listener';
 
 export const mockRawTransaction: RawTransaction = {
     in_active_chain: true,

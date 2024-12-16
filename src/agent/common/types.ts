@@ -144,6 +144,3 @@ export interface ReceivedTransaction {
     raw: RawTransaction;
     blockHash: string;
 }
-export interface ReceivedTemplateRow extends Template, Partial<ReceivedTransaction> {
-    lastCheckedBlockHeight?: number;
-}

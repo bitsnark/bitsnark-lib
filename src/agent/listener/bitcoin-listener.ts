@@ -1,7 +1,7 @@
 import { agentConf } from '../agent.conf';
 import { BitcoinNode } from '../common/bitcoin-node';
 import { RawTransaction } from 'bitcoin-core';
-import { Input, Template, ReceivedTransaction, ReceivedTemplateRow } from '../common/types';
+import { Input, Template, ReceivedTransaction } from '../common/types';
 import { AgentDb } from '../common/agent-db';
 
 export interface expectByInputs {
@@ -9,6 +9,10 @@ export interface expectByInputs {
     name: string;
     templateId: number;
     vins: { outputtxid: string; outputIndex: number; vin: number }[];
+}
+
+export interface ReceivedTemplateRow extends Template, Partial<ReceivedTransaction> {
+    lastCheckedBlockHeight?: number;
 }
 
 export class BitcoinListener {
