@@ -160,9 +160,9 @@ export class ProtocolVerifier extends ProtocolBase {
 }
 
 export async function main(agentId: string) {
-    const db = new AgentDb(agentId);
-    const setups = await db.getActiveSetups();
     const doit = async () => {
+        const db = new AgentDb(agentId);
+        const setups = await db.getActiveSetups();
         for (const setup of setups) {
             const protocol = new ProtocolVerifier(agentId, setup.id);
             try {
@@ -182,7 +182,7 @@ export async function main(agentId: string) {
 
 if (require.main === module) {
     const args = minimist(process.argv.slice(2));
-    const agentId = args._[0] ?? args['agent-id'] ?? 'bitsnark_prover_1';
+    const agentId = args._[0] ?? args['agent-id'] ?? 'bitsnark_verifier_1';
     main(agentId).catch((error) => {
         throw error;
     });

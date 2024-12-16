@@ -1,8 +1,8 @@
 import { agentConf } from '../agent.conf';
 import { BitcoinNode } from '../common/bitcoin-node';
 import { RawTransaction } from 'bitcoin-core';
-import { ListenerDb, ReceivedTemplate } from './listener-db';
-import { Input, Template, TemplateNames } from '../common/types';
+import { Input, Template, ReceivedTransaction } from '../common/types';
+import { AgentDb } from '../common/agent-db';
 
 export interface expectByInputs {
     setupId: string;
@@ -11,15 +11,19 @@ export interface expectByInputs {
     vins: { outputtxid: string; outputIndex: number; vin: number }[];
 }
 
+export interface ReceivedTemplateRow extends Template, Partial<ReceivedTransaction> {
+    lastCheckedBlockHeight?: number;
+}
+
 export class BitcoinListener {
     tipHeight: number = 0;
     tipHash: string = '';
     client;
-    db: ListenerDb;
+    db: AgentDb;
 
     constructor(agentId: string) {
         this.client = new BitcoinNode().client;
-        this.db = new ListenerDb(agentId);
+        this.db = new AgentDb(agentId);
     }
 
     async checkForNewBlock() {
@@ -33,7 +37,7 @@ export class BitcoinListener {
     }
 
     async monitorTransmitted(): Promise<void> {
-        const templates = await this.db.getReceivedTemplates();
+        const templates = await this.getReceivedTemplates();
         const pending = templates.filter((template) => !template.blockHash);
         if (pending.length === 0) return;
 
@@ -42,17 +46,15 @@ export class BitcoinListener {
         // No re-organization support - we just wait for blocks to be finalized.
         while (blockHeight <= this.tipHeight - agentConf.blocksUntilFinalized) {
             await this.searchBlock(blockHeight, pending, templates);
-
             blockHeight++;
-
             await this.db.updateSetupLastCheckedBlockHeightBatch(
-                [...pending.reduce((setupIds, template) => setupIds.add(template.setupId), new Set<string>())],
+                [...pending.reduce((setupIds, template) => setupIds.add(template.setupId!), new Set<string>())],
                 blockHeight
             );
         }
     }
 
-    async searchBlock(blockHeight: number, pending: Template[], templates: ReceivedTemplate[]): Promise<void> {
+    async searchBlock(blockHeight: number, pending: Template[], templates: ReceivedTemplateRow[]): Promise<void> {
         const blockHash = await this.client.getBlockHash(blockHeight);
 
         for (const pendingTx of pending) {
@@ -89,9 +91,39 @@ export class BitcoinListener {
         }
     }
 
+    async getReceivedTemplates() {
+        const listenerTemplates: ReceivedTemplateRow[] = [];
+
+        const activeSetups = await this.db.getActiveSetups();
+        for (const setup of activeSetups) {
+            let templates: Template[] | undefined;
+            try {
+                templates = await this.db.getTemplates(setup.id);
+                let received: ReceivedTransaction[] = [];
+                try {
+                    received = await this.db.getReceivedTransactions(setup.id);
+                } catch (error) {
+                    //
+                }
+
+                for (const template of templates) {
+                    const receivedTemplate = received.find((rt: ReceivedTransaction) => rt.templateId === template.id);
+                    listenerTemplates.push({
+                        lastCheckedBlockHeight: setup.lastCheckedBlockHeight,
+                        ...template,
+                        ...receivedTemplate
+                    });
+                }
+            } catch (error) {
+                if (templates) continue;
+            }
+        }
+        return listenerTemplates;
+    }
+
     private async getTransactionByInputs(
         inputs: Input[],
-        templates: ReceivedTemplate[],
+        templates: ReceivedTemplateRow[],
         blockHash: string
     ): Promise<RawTransaction | undefined> {
         try {
