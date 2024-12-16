@@ -61,7 +61,7 @@ export function initializeTemplates(
 
     // put schnorr keys where needed
     for (const t of templates) {
-        for (const [_inputIndex, input] of t.inputs.entries()) {
+        for (const [_, input] of t.inputs.entries()) {
             const output = findOutputByInput(templates, input);
             const spend = output.spendingConditions[input.spendingConditionIndex];
             if (!spend) throw new Error('Invalid spending condition: ' + input.spendingConditionIndex);

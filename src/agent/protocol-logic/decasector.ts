@@ -65,7 +65,7 @@ export class StateCommitment {
 
     public getIndexForRuntimeIndex(runtimeIndex: number): number {
         if (!this.regIndexToRuntimeIndex) this.getValues();
-        const index = this.regIndexToRuntimeIndex!.findIndex((_ri) => runtimeIndex === runtimeIndex);
+        const index = this.regIndexToRuntimeIndex!.findIndex((_) => runtimeIndex === runtimeIndex);
         if (index < 0) throw new Error('Runtime index not found in state commitment');
         return index;
     }
@@ -151,8 +151,7 @@ export class Decasector {
     }
 }
 
-const scriptName = __filename;
-if (process.argv[1] == scriptName) {
+if (require.main === module) {
     try {
         const d = new Decasector();
         console.log(d.stateCommitmentByLine);

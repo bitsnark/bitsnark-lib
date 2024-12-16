@@ -7,7 +7,7 @@ export default tseslint.config(eslint.configs.recommended, ...tseslint.configs.r
         'unused-imports-ts': unusedImports
     },
     rules: {
-        '@typescript-eslint/no-unused-vars': ['error', { varsIgnorePattern: '^_.*$', argsIgnorePattern: '^_.*$' }]
+        '@typescript-eslint/no-unused-vars': ['error', { varsIgnorePattern: '^_$', argsIgnorePattern: '^_$' }]
     },
     languageOptions: {
         globals: {

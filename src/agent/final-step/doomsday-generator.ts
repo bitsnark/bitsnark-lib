@@ -66,7 +66,7 @@ export class DoomsdayGenerator {
     }
 
     // return true if the line succeeds!!!
-    public checkLine(index: number, a: bigint, b: bigint, c: bigint, _d?: bigint): boolean {
+    public checkLine(index: number, a: bigint, b: bigint, c: bigint, _: bigint): boolean {
         const line = this.program[index];
         switch (line.name) {
             case InstrCode.ADDMOD:
@@ -433,7 +433,6 @@ async function main() {
     console.log(r);
 }
 
-const scriptName = __filename;
-if (process.argv[1] == scriptName) {
+if (require.main === module) {
     main();
 }

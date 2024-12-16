@@ -44,7 +44,6 @@ async function main() {
     emulateTransactionScripts(templates);
 }
 
-const scriptName = __filename;
-if (process.argv[1] == scriptName) {
+if (require.main === module) {
     main().catch(console.error);
 }

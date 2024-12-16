@@ -425,7 +425,6 @@ async function main() {
     await test4();
 }
 
-const scriptName = __filename;
-if (process.argv[1] == scriptName) {
+if (require.main === module) {
     main();
 }

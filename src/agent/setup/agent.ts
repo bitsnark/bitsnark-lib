@@ -408,7 +408,7 @@ export class Agent {
     }
 }
 
-if (__filename == process.argv[1]) {
+if (require.main === module) {
     console.log('Starting');
 
     const agentId = process.argv[2] ?? 'bitsnark_prover_1';
