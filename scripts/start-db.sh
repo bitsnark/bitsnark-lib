@@ -22,13 +22,13 @@ done
 chmod 644 "$sql_file"
 
 # Run the PostgreSQL container.
-docker run --name "$postgres_container_name" -dp 5432:5432 \
+sudo docker run --name "$postgres_container_name" -dp 5432:5432 \
     -v "$sql_file:/docker-entrypoint-initdb.d/schema.sql" \
     -e POSTGRES_PASSWORD=1234 \
     postgres
 
 # Wait for the container to be ready.
-until docker exec "$postgres_container_name" pg_isready -U postgres; do
+until sudo docker exec "$postgres_container_name" pg_isready -U postgres; do
   sleep 1
 done
 
