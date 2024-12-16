@@ -8,7 +8,7 @@ import { last } from '../common/array-utils';
 import { createUniqueDataId } from '../setup/wots-keys';
 import { AgentRoles, iterations, TemplateNames } from '../common/types';
 import { twoDigits } from '../common/templates';
-import { ListenerDb } from '../listener/listener-db';
+import { AgentDb } from '../common/agent-db';
 import { ProtocolBase } from './protocol-base';
 
 export class ProtocolProver extends ProtocolBase {
@@ -152,9 +152,9 @@ export class ProtocolProver extends ProtocolBase {
 }
 
 export async function main(agentId: string) {
-    const db = new ListenerDb(agentId);
-    const setups = await db.getActiveSetups();
     const doit = async () => {
+        const db = new AgentDb(agentId);
+        const setups = await db.getActiveSetups();
         for (const setup of setups) {
             const protocol = new ProtocolProver(agentId, setup.id);
             try {

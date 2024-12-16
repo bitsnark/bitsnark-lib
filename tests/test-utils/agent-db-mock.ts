@@ -1,4 +1,4 @@
-import { Setup, Template } from '../../src/agent/common/types';
+import { Setup, Template, TemplateStatus, ReceivedTransaction } from '../../src/agent/common/types';
 import { AgentDb, updateSetupPartial, UpdateTemplatePartial } from '../../src/agent/common/agent-db';
 
 async function waitAndReturn<T>(obj: T): Promise<T> {
@@ -29,6 +29,7 @@ export class AgentDbMock extends AgentDb {
     public getSetupCalledCount = 0;
     public getSetupCalledParams?: { setupId: string };
     public async getSetup(setupId: string): Promise<Setup> {
+        console.log('MOCK SETUP CALLED');
         this.getSetupCalledParams = { setupId };
         this.getSetupCalledCount++;
         return waitAndReturn(this.getSetupReturn!);
@@ -82,6 +83,7 @@ export class AgentDbMock extends AgentDb {
     public getTemplatesCalledCount = 0;
     public getTemplatesCalledParams?: { setupId: string };
     public async getTemplates(setupId: string): Promise<Template[]> {
+        console.log('MOCK getTemplates CALLED');
         this.getTemplatesCalledCount++;
         this.getTemplatesCalledParams = { setupId };
         return waitAndReturn(this.getTemplatesReturn!);
