@@ -41,19 +41,6 @@ export const mockVin = {
     ]
 };
 
-/* eslint-disable @typescript-eslint/no-unused-vars */
-const mockVout = {
-    value: 0.015,
-    n: 0,
-    scriptPubKey: {
-        asm: 'OP_DUP OP_HASH160 76a91489abcdefabbaabbaabbaabbaabbaabbaabbaabba88ac OP_EQUALVERIFY OP_CHECKSIG',
-        hex: '76a91489abcdefabbaabbaabbaabbaabbaabbaabbaabba88ac',
-        reqSigs: 1,
-        type: 'pubkeyhash',
-        addresses: ['1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa']
-    }
-};
-
 export class TestPublisher {
     agents: { prover: string; verifier: string };
     dbs: { prover: TestAgentDb; verifier: TestAgentDb };
