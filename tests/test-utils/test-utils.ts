@@ -2,11 +2,10 @@ import { agentConf } from '../../src/agent/agent.conf';
 import { AgentRoles, Setup, Template, TemplateStatus, ReceivedTransaction } from '../../src/agent/common/types';
 import { initializeTemplates } from '../../src/agent/setup/init-templates';
 import { mergeWots, setWotsPublicKeysForArgument } from '../../src/agent/setup/wots-keys';
-import { AgentDb, rowToObj, templateFields } from '../../src/agent/common/agent-db';
+import { AgentDb } from '../../src/agent/common/agent-db';
 import { BitcoinListener } from '../../src/agent/listener/bitcoin-listener';
 import { ProtocolProver } from '../../src/agent/protocol-logic/protocol-prover';
 import { ProtocolVerifier } from '../../src/agent/protocol-logic/protocol-verifier';
-import { Mock } from 'node:test';
 import { AgentDbMock } from './agent-db-mock';
 
 export const payloadUtxo = {

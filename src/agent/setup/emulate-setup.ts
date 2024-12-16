@@ -9,7 +9,6 @@ import { generateWotsPublicKeys, mergeWots, setWotsPublicKeysForArgument } from 
 import { AgentRoles, FundingUtxo, SignatureType } from '../common/types';
 import { initializeTemplates } from './init-templates';
 import { AgentDb } from '../common/agent-db';
-import { randomBytes } from 'crypto';
 
 export async function emulateSetup(
     proverAgentId: string,
@@ -23,11 +22,11 @@ export async function emulateSetup(
     const verifierDb = new AgentDb(verifierAgentId);
 
     try {
-        const setup = await proverDb.getSetup(setupId);
+        await proverDb.getSetup(setupId);
         console.log('Setup already exists: ', setupId);
         console.log('Use npm run start-db to reset the database');
         return;
-    } catch (e) {
+    } catch {
         console.log('creating setup...');
     }
 

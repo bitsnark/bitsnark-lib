@@ -78,7 +78,7 @@ export function regOptimizer(vm: VM) {
     console.log('Sort by interval');
 
     const witnes = dynamic.filter((r) => r.witness);
-    const others = dynamic.filter((r) => !r.witness).sort(_=> Math.random() - 0.5);
+    const others = dynamic.filter((r) => !r.witness).sort((_) => Math.random() - 0.5);
     let sorted = [...witnes, ...others];
     const roots = [];
 

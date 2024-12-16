@@ -98,7 +98,7 @@ export class BitcoinListener {
                 let received: ReceivedTransaction[] = [];
                 try {
                     received = await this.db.getReceivedTransactions(setup.id);
-                } catch (error) {
+                } catch {
                     //
                 }
 
@@ -110,7 +110,7 @@ export class BitcoinListener {
                         ...receivedTemplate
                     });
                 }
-            } catch (error) {
+            } catch {
                 if (templates) continue;
             }
         }

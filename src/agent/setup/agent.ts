@@ -89,7 +89,7 @@ export class Agent {
         }
         const tokens = data.split(' ');
         if (this.role == AgentRoles.PROVER && tokens.length == 4 && tokens[0] == '/create') {
-            const [proverAgentId, verifierAgentId, setupId] = tokens.slice(1);
+            const [proverAgentId, _, setupId] = tokens.slice(1);
             if (this.agentId != proverAgentId) return;
             context.sendText(`setupId: ${setupId}`);
         }
