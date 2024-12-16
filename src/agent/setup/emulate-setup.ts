@@ -7,25 +7,31 @@ import { getSpendingConditionByInput } from '../common/templates';
 import { verifySetup } from './verify-setup';
 import { generateWotsPublicKeys, mergeWots, setWotsPublicKeysForArgument } from './wots-keys';
 import { AgentRoles, FundingUtxo, SignatureType } from '../common/types';
-import { createSetupId } from './create-setup-id';
 import { initializeTemplates } from './init-templates';
 import { AgentDb } from '../common/agent-db';
-
-export const TEST_WOTS_SALT = 'salt';
+import { randomBytes } from 'crypto';
 
 export async function emulateSetup(
     proverAgentId: string,
     verifierAgentId: string,
     setupId: string,
-    generateFinal: boolean,
     lockedFunds: FundingUtxo,
-    proverStake: FundingUtxo
+    proverStake: FundingUtxo,
+    generateFinal: boolean
 ) {
     const proverDb = new AgentDb(proverAgentId);
     const verifierDb = new AgentDb(verifierAgentId);
 
-    console.log('creating setup...');
+    try {
+        const setup = await proverDb.getSetup(setupId);
+        console.log('Setup already exists: ', setupId);
+        console.log('Use npm run start-db to reset the database');
+        return;
+    } catch (e) {
+        console.log('creating setup...');
+    }
 
+    await proverDb.createSetup(setupId);
     await proverDb.updateSetup(setupId, {
         payloadTxid: lockedFunds.txid,
         payloadOutputIndex: lockedFunds.outputIndex,
@@ -35,8 +41,8 @@ export async function emulateSetup(
         stakeAmount: proverStake.amount
     });
 
-    await verifierDb.createSetup(setupId, TEST_WOTS_SALT);
-    await proverDb.updateSetup(setupId, {
+    await verifierDb.createSetup(setupId);
+    await verifierDb.updateSetup(setupId, {
         payloadTxid: lockedFunds.txid,
         payloadOutputIndex: lockedFunds.outputIndex,
         payloadAmount: lockedFunds.amount,
@@ -50,7 +56,6 @@ export async function emulateSetup(
     let proverTemplates = await initializeTemplates(
         AgentRoles.PROVER,
         setupId,
-        TEST_WOTS_SALT,
         BigInt('0x' + agentConf.keyPairs[proverAgentId].schnorrPublic),
         BigInt('0x' + agentConf.keyPairs[verifierAgentId].schnorrPublic),
         lockedFunds,
@@ -59,7 +64,6 @@ export async function emulateSetup(
     let verifierTemplates = await initializeTemplates(
         AgentRoles.VERIFIER,
         setupId,
-        TEST_WOTS_SALT,
         BigInt('0x' + agentConf.keyPairs[proverAgentId].schnorrPublic),
         BigInt('0x' + agentConf.keyPairs[verifierAgentId].schnorrPublic),
         lockedFunds,
@@ -92,7 +96,7 @@ export async function emulateSetup(
     proverTemplates = await addAmounts(proverAgentId, AgentRoles.PROVER, setupId, proverTemplates);
     verifierTemplates = await addAmounts(verifierAgentId, AgentRoles.VERIFIER, setupId, verifierTemplates);
 
-    console.log('writing templated to DB...');
+    console.log('writing templates to DB...');
 
     await proverDb.upsertTemplates(setupId, proverTemplates);
     await verifierDb.upsertTemplates(setupId, verifierTemplates);
@@ -138,21 +142,6 @@ export async function emulateSetup(
     console.log('done.');
 }
 
-async function main(
-    proverId: string,
-    verifierId: string,
-    lockedFunds: FundingUtxo,
-    proverStake: FundingUtxo,
-    generateFinal: boolean,
-    setupId?: string
-) {
-    if (!setupId) {
-        setupId = await createSetupId(proverId, verifierId);
-        console.log('generated setupId: ', setupId);
-    }
-    await emulateSetup(proverId, verifierId, setupId, generateFinal, lockedFunds, proverStake);
-}
-
 if (require.main === module) {
     const args = minimist(process.argv.slice(2));
     const proverId = 'bitsnark_prover_1';
@@ -171,9 +160,9 @@ if (require.main === module) {
         outputIndex: args.stake ? parseInt(args.stake.split(':')[1]) : 0,
         amount: agentConf.proverStakeAmount
     };
-    const setupId = args['setup-id'];
+    const setupId = args['setup-id'] ?? 'test_setup';
     const generateFinal = args.final;
-    main(proverId, verifierId, lockedFunds, proverStake, generateFinal, setupId).catch((error) => {
+    emulateSetup(proverId, verifierId, setupId, lockedFunds, proverStake, generateFinal).catch((error) => {
         throw error;
     });
 }

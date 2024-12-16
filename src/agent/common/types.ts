@@ -1,3 +1,4 @@
+import { RawTransaction } from 'bitcoin-core';
 import { WotsType } from './winternitz';
 
 export const iterations = 6;
@@ -58,7 +59,6 @@ export interface Setup {
     protocolVersion?: string;
     status: SetupStatus;
     lastCheckedBlockHeight?: number;
-    wotsSalt: string;
     payloadTxid?: string;
     payloadOutputIndex?: number;
     payloadAmount?: bigint;
@@ -135,4 +135,12 @@ export interface Template {
     inputs: Input[];
     outputs: Output[];
     status?: TemplateStatus;
+    protocolData?: string[][];
+}
+
+export interface ReceivedTransaction {
+    templateId: number;
+    height: number;
+    raw: RawTransaction;
+    blockHash: string;
 }

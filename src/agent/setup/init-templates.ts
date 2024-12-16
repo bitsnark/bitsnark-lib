@@ -14,7 +14,6 @@ import { generateWotsPublicKeys } from './wots-keys';
 export function initializeTemplates(
     role: AgentRoles,
     setupId: string,
-    wotsSalt: string,
     proverPublicKey: bigint,
     verifierPublicKey: bigint,
     payloadUtxo: FundingUtxo,
@@ -36,8 +35,6 @@ export function initializeTemplates(
         t.setupId = setupId;
         t.ordinal = i;
     }
-
-    generateWotsPublicKeys(wotsSalt, templates, role);
 
     // Copy timeouts from spending conditions to their inputs, so CHECKSEQUENCEVERIFY can verify the nSequence.
     for (const t of templates) {
@@ -74,6 +71,8 @@ export function initializeTemplates(
             }
         }
     }
+
+    generateWotsPublicKeys(setupId, templates, role);
 
     return templates;
 }

@@ -6,20 +6,21 @@ import { initTemplatesForTest } from '../test-utils/test-utils';
 import { createUniqueDataId } from '../../src/agent/setup/wots-keys';
 import { getTemplateByName, twoDigits } from '../../src/agent/common/templates';
 import { TemplateNames } from '../../src/agent/common/types';
-import { TEST_WOTS_SALT } from '../../src/agent/setup/emulate-setup';
+
+const setupId = 'test_setup';
 
 function makeSelectionPathUnparsed(selectionPath: number[]) {
     const spu: Buffer[][] = [];
     for (let i = 0; i < selectionPath.length; i++) {
         const tn = selectionPath[i];
-        const unique = createUniqueDataId(TEST_WOTS_SALT, TemplateNames.SELECT + '_' + twoDigits(i), 0, 0, 0);
+        const unique = createUniqueDataId(setupId, TemplateNames.SELECT + '_' + twoDigits(i), 0, 0, 0);
         spu.push(encodeWinternitz24(BigInt(tn), unique));
     }
     return spu;
 }
 
 async function init() {
-    const argument = new Argument(TEST_WOTS_SALT, proofBigint);
+    const argument = new Argument(setupId, proofBigint);
     const selectionPath = [1, 2, 3, 4, 5, 6];
     const argWitness = await argument.makeArgument(selectionPath, makeSelectionPathUnparsed(selectionPath));
     return { argument, selectionPath, argWitness };

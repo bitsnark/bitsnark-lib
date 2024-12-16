@@ -119,7 +119,7 @@ export class ProtocolVerifier extends ProtocolBase {
                 vin.txinwitness!.map((s) => Buffer.from(s, 'hex'))
             )
         );
-        const argument = new Argument(this.setup!.wotsSalt, proof);
+        const argument = new Argument(this.setup!.id, proof);
         const refutation = await argument.refute(this.templates!, argData, this.states);
 
         incoming.template.inputs[0].script = refutation.script;
@@ -131,7 +131,7 @@ export class ProtocolVerifier extends ProtocolBase {
             .map((n, dataIndex) =>
                 encodeWinternitz256_4(
                     n,
-                    createUniqueDataId(this.setup!.wotsSalt, TemplateNames.PROOF_REFUTED, 0, 0, dataIndex)
+                    createUniqueDataId(this.setup!.id, TemplateNames.PROOF_REFUTED, 0, 0, dataIndex)
                 )
             )
             .flat();
@@ -142,10 +142,7 @@ export class ProtocolVerifier extends ProtocolBase {
         const iteration = selectionPath.length;
         const txName = TemplateNames.SELECT + '_' + twoDigits(iteration);
         const selection = await findErrorState(proof, last(states), selectionPath);
-        const selectionWi = encodeWinternitz24(
-            BigInt(selection),
-            createUniqueDataId(this.setup!.wotsSalt, txName, 0, 0, 0)
-        );
+        const selectionWi = encodeWinternitz24(BigInt(selection), createUniqueDataId(this.setup!.id, txName, 0, 0, 0));
         this.sendTransaction(txName, [selectionWi]);
     }
 
@@ -163,9 +160,9 @@ export class ProtocolVerifier extends ProtocolBase {
 }
 
 export async function main(agentId: string) {
-    const db = new AgentDb(agentId);
-    const setups = await db.getActiveSetups();
     const doit = async () => {
+        const db = new AgentDb(agentId);
+        const setups = await db.getActiveSetups();
         for (const setup of setups) {
             const protocol = new ProtocolVerifier(agentId, setup.id);
             try {
@@ -185,7 +182,7 @@ export async function main(agentId: string) {
 
 if (require.main === module) {
     const args = minimist(process.argv.slice(2));
-    const agentId = args._[0] ?? args['agent-id'] ?? 'bitsnark_prover_1';
+    const agentId = args._[0] ?? args['agent-id'] ?? 'bitsnark_verifier_1';
     main(agentId).catch((error) => {
         throw error;
     });

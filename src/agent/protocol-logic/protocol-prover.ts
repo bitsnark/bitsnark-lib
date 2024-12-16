@@ -8,7 +8,7 @@ import { last } from '../common/array-utils';
 import { createUniqueDataId } from '../setup/wots-keys';
 import { AgentRoles, iterations, TemplateNames } from '../common/types';
 import { twoDigits } from '../common/templates';
-import { ListenerDb } from '../listener/listener-db';
+import { AgentDb } from '../common/agent-db';
 import { ProtocolBase } from './protocol-base';
 
 export class ProtocolProver extends ProtocolBase {
@@ -114,7 +114,7 @@ export class ProtocolProver extends ProtocolBase {
         }
         const data = proof
             .map((n, dataIndex) =>
-                encodeWinternitz256_4(n, createUniqueDataId(this.setup!.wotsSalt, TemplateNames.PROOF, 0, 1, dataIndex))
+                encodeWinternitz256_4(n, createUniqueDataId(this.setup!.id, TemplateNames.PROOF, 0, 0, dataIndex))
             )
             .flat();
         await this.sendTransaction(TemplateNames.PROOF, [data]);
@@ -125,7 +125,7 @@ export class ProtocolProver extends ProtocolBase {
     }
 
     private async sendArgument(proof: bigint[], selectionPath: number[], selectionPathUnparsed: Buffer[][]) {
-        const argument = new Argument(this.setup!.wotsSalt, proof);
+        const argument = new Argument(this.setup!.id, proof);
         const argumentData = await argument.makeArgument(selectionPath, selectionPathUnparsed);
         await this.sendTransaction(TemplateNames.ARGUMENT, argumentData);
     }
@@ -144,10 +144,7 @@ export class ProtocolProver extends ProtocolBase {
         const txName = TemplateNames.STATE + '_' + twoDigits(iteration);
         const statesWi = states
             .map((s, dataIndex) =>
-                encodeWinternitz256_4(
-                    bufferToBigintBE(s),
-                    createUniqueDataId(this.setup!.wotsSalt, txName, 0, 0, dataIndex)
-                )
+                encodeWinternitz256_4(bufferToBigintBE(s), createUniqueDataId(this.setup!.id, txName, 0, 0, dataIndex))
             )
             .flat();
         await this.sendTransaction(txName, [statesWi]);
@@ -155,9 +152,9 @@ export class ProtocolProver extends ProtocolBase {
 }
 
 export async function main(agentId: string) {
-    const db = new ListenerDb(agentId);
-    const setups = await db.getActiveSetups();
     const doit = async () => {
+        const db = new AgentDb(agentId);
+        const setups = await db.getActiveSetups();
         for (const setup of setups) {
             const protocol = new ProtocolProver(agentId, setup.id);
             try {

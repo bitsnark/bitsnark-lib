@@ -23,7 +23,6 @@ import { mergeWots, setWotsPublicKeysForArgument } from './wots-keys';
 import { BitcoinNode } from '../common/bitcoin-node';
 import { AgentDb, updateSetupPartial } from '../common/agent-db';
 import { getSpendingConditionByInput, getTemplateByName } from '../common/templates';
-import { createSetupId } from './create-setup-id';
 
 interface AgentInfo {
     agentId: string;
@@ -89,10 +88,9 @@ export class Agent {
             return;
         }
         const tokens = data.split(' ');
-        if (this.role == AgentRoles.PROVER && tokens.length == 3 && tokens[0] == '/create') {
-            const [proverAgentId, verifierAgentId] = tokens.slice(1);
+        if (this.role == AgentRoles.PROVER && tokens.length == 4 && tokens[0] == '/create') {
+            const [proverAgentId, verifierAgentId, setupId] = tokens.slice(1);
             if (this.agentId != proverAgentId) return;
-            const setupId = await createSetupId(proverAgentId, verifierAgentId);
             context.sendText(`setupId: ${setupId}`);
         }
         if (this.role == AgentRoles.PROVER && tokens.length == 6 && tokens[0] == '/start') {
@@ -197,7 +195,7 @@ export class Agent {
 
         this.verifyPubKey((message as StartMessage).schnorrPublicKey, message.agentId);
 
-        const setup = await this.db.createSetup(message.setupId, message.setupId);
+        const setup = await this.db.createSetup(message.setupId);
         setup.payloadTxid = message.payloadUtxo!.txid;
         setup.payloadOutputIndex = message.payloadUtxo!.outputIndex;
         setup.payloadAmount = message.payloadUtxo!.amount;
@@ -223,7 +221,6 @@ export class Agent {
         i.templates = await initializeTemplates(
             AgentRoles.VERIFIER,
             i.setupId,
-            setup!.wotsSalt,
             i.prover!.schnorrPublicKey!,
             i.verifier!.schnorrPublicKey!,
             { txid: setup.payloadTxid, outputIndex: setup.payloadOutputIndex, amount: setup.payloadAmount },
@@ -262,7 +259,6 @@ export class Agent {
         i.templates = await initializeTemplates(
             AgentRoles.PROVER,
             i.setupId,
-            i.setup!.wotsSalt,
             i.prover!.schnorrPublicKey!,
             i.verifier!.schnorrPublicKey!,
             { txid: setup.payloadTxid!, outputIndex: setup.payloadOutputIndex!, amount: setup.payloadAmount! },

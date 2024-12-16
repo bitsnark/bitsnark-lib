@@ -29,7 +29,7 @@
     "start-verifier": "./scripts/start-setup.sh bitsnark_verifier_1",
     "start-protocol-prover": "./scripts/start-protocol.sh bitsnark_prover_1",
     "start-protocol-verifier": "./scripts/start-protocol.sh bitsnark_verifier_1",
-    "create-setup-id": "ts-node ./src/agent/setup/create-setup-id.ts",
+    "create-external-addresses": "ts-node ./src/agent/setup/create-external-addresses.ts",
     "emulate-setup": "./scripts/emulate-setup.sh",
     "emulate-setup-final": "npm run emulate-setup -- --final",
     "emulate-setup-clear": "npm run start-db && npm run emulate-setup",

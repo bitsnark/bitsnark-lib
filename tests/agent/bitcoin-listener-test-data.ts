@@ -1,5 +1,5 @@
-import { ReceivedTemplate } from '@src/agent/listener/listener-db';
-import { AgentRoles, Input, SetupStatus, TemplateNames, TemplateStatus } from '../../src/agent/common/types';
+import { AgentRoles, Input, TemplateNames, TemplateStatus } from '../../src/agent/common/types';
+import { ReceivedTemplateRow } from '../../src/agent/listener/bitcoin-listener';
 
 const templates = [
     TemplateNames.LOCKED_FUNDS,
@@ -9,10 +9,9 @@ const templates = [
     TemplateNames.PROOF_UNCONTESTED
 ];
 
-const IncomingTransactionsBaseRow: ReceivedTemplate = {
+const IncomingTransactionsBaseRow: ReceivedTemplateRow = {
     setupId: 'setup_id',
     txid: 'tx_id',
-    setupStatus: SetupStatus.ACTIVE,
     lastCheckedBlockHeight: 100,
     name: 'transaction_name',
     role: AgentRoles.PROVER,
@@ -20,12 +19,12 @@ const IncomingTransactionsBaseRow: ReceivedTemplate = {
     ordinal: 4,
     inputs: [],
     outputs: [],
-    rawTransaction: null,
-    actualTxid: null,
-    blockHash: null,
-    blockHeight: null,
+    raw: undefined,
+    blockHash: undefined,
+    templateId: 0,
+    height: undefined,
     unknownTxid: false,
-    data: null
+    protocolData: undefined
 };
 
 const setups = ['test_setup_1'];
@@ -34,7 +33,7 @@ export function txIdBySetupAndName(setupId: string, name: string): string {
     return `${setupId}_tx_${name}`;
 }
 
-export const mockExpected = (function createSetupsIncomingTransactions(): ReceivedTemplate[] {
+export const mockExpected = (function createSetupsIncomingTransactions(): ReceivedTemplateRow[] {
     return setups.flatMap((setupId, setupIndex) => {
         return templates.map((templateName, index) => {
             return {
@@ -45,7 +44,7 @@ export const mockExpected = (function createSetupsIncomingTransactions(): Receiv
                 templateId: setupIndex * 100 + index,
                 inputs: getInputs(templateName),
                 unknownTxid: templateName === TemplateNames.CHALLENGE,
-                outgoingStatus: TemplateStatus.PENDING
+                status: TemplateStatus.PENDING
             };
         });
     });

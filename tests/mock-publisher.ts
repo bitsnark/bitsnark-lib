@@ -1,10 +1,12 @@
-import { test_Template, testAgentDb } from './test-utils/test-utils';
+import { TestAgentDb } from './test-utils/test-utils';
 import { BitcoinNode } from '../src/agent/common/bitcoin-node';
 import { ProtocolProver } from '../src/agent/protocol-logic/protocol-prover';
 import { proofBigint } from '../src/agent/common/constants';
 import { RawTransaction, Input } from 'bitcoin-core';
 import { agentConf } from '../src/agent/agent.conf';
-import { ReceivedTemplate } from '../src/agent/listener/listener-db';
+import { argv } from 'process';
+import { TemplateStatus, Template } from '../src/agent/common/types';
+import { ReceivedTemplateRow } from '../src/agent/listener/bitcoin-listener';
 
 export const mockRawTransaction: RawTransaction = {
     in_active_chain: true,
@@ -52,11 +54,11 @@ const mockVout = {
     }
 };
 
-export class MockPublisher {
+export class TestPublisher {
     agents: { prover: string; verifier: string };
-    dbs: { prover: testAgentDb; verifier: testAgentDb };
+    dbs: { prover: TestAgentDb; verifier: TestAgentDb };
     setupId: string;
-    templates: { prover: test_Template[]; verifier: test_Template[] } = { prover: [], verifier: [] };
+    templates: { prover: Template[]; verifier: Template[] } = { prover: [], verifier: [] };
     bitcoinClient: BitcoinNode;
     scheduler: NodeJS.Timeout | undefined;
     isRunning: boolean = false;
@@ -65,13 +67,13 @@ export class MockPublisher {
         this.agents = { prover: proverId, verifier: verifierId };
         this.setupId = setupId;
         this.bitcoinClient = new BitcoinNode();
-        this.dbs = { prover: new testAgentDb(proverId), verifier: new testAgentDb(verifierId) };
+        this.dbs = { prover: new TestAgentDb(proverId), verifier: new TestAgentDb(verifierId) };
     }
 
     async start() {
         if (!this.templates.prover.length || !this.templates.verifier.length) {
-            this.templates.prover = await this.dbs.prover.test_getTemplates(this.setupId);
-            this.templates.verifier = await this.dbs.verifier.test_getTemplates(this.setupId);
+            this.templates.prover = await this.dbs.prover.getTemplates(this.setupId);
+            this.templates.verifier = await this.dbs.verifier.getTemplates(this.setupId);
         }
 
         if (this.scheduler) clearInterval(this.scheduler);
@@ -84,8 +86,27 @@ export class MockPublisher {
                 await this.generateBlocks(1);
 
                 const readyToSendTemplates = {
-                    prover: await this.dbs.prover.test_getReadyToSendTemplates(this.setupId),
-                    verifier: await this.dbs.verifier.test_getReadyToSendTemplates(this.setupId)
+                    prover: (await this.dbs.prover.getTemplates(this.setupId)).filter(
+                        (t) => t.status === TemplateStatus.READY
+                    ),
+                    verifier: (await this.dbs.verifier.getTemplates(this.setupId)).filter(
+                        (t) => t.status === TemplateStatus.READY
+                    )
+                };
+
+                const receivedTransactions = {
+                    prover: (
+                        await this.dbs.prover.query(
+                            'SELECT received.txid FROM received, templates WHERE received.template_id = templates.id AND templates.setup_id = $1',
+                            [this.setupId]
+                        )
+                    ).rows,
+                    verifier: (
+                        await this.dbs.verifier.query(
+                            'SELECT received.txid FROM received, templates WHERE received.template_id = templates.id AND templates.setup_id = $1',
+                            [this.setupId]
+                        )
+                    ).rows
                 };
 
                 if (!readyToSendTemplates.prover.length && !readyToSendTemplates.verifier.length) {
@@ -103,7 +124,11 @@ export class MockPublisher {
                     const agentReadyTemplates = readyToSendTemplates[agent];
 
                     for (const readyTx of agentReadyTemplates) {
-                        console.log('readyTx.data', readyTx.data, readyTx.data ? readyTx.data[0] : 'NULL');
+                        console.log(
+                            'readyTx.data',
+                            readyTx.protocolData,
+                            readyTx.protocolData ? readyTx.protocolData[0] : 'NULL'
+                        );
                         const rawTx: RawTransaction = {
                             ...mockRawTransaction,
                             txid: readyTx.txid!,
@@ -112,30 +137,43 @@ export class MockPublisher {
                                 this.templates[agent].filter((t) => t.setupId === readyTx.setupId)
                             )
                         };
-
-                        await this.dbs[agent].listenerDb.markReceived(
-                            this.setupId,
+                        console.log(
+                            'Broadcasting transaction',
+                            readyTx.txid,
                             readyTx.name,
-                            readyTx.txid!,
-                            hash,
-                            tip,
-                            rawTx
+                            rawTx.vin[0].txinwitness ?? []
                         );
+
+                        if (receivedTransactions[agent].every((rt) => rt[0] !== readyTx.txid)) {
+                            console.log('Marking received in agent', readyTx.txid, readyTx.name);
+                            await this.dbs[agent].listenerDb.markReceived(
+                                this.setupId,
+                                readyTx.name,
+                                readyTx.txid!,
+                                hash,
+                                tip,
+                                rawTx
+                            );
+                        }
 
                         await this.dbs[agent].test_markPublished(this.setupId, readyTx.name);
+                        if (receivedTransactions[otherAgent].every((rt) => rt[0] !== readyTx.txid)) {
+                            console.log('Marking received in OTHER agent', readyTx.txid, readyTx.name);
 
-                        await this.dbs[otherAgent].listenerDb.markReceived(
-                            this.setupId,
-                            readyTx.name,
-                            readyTx.txid!,
-                            hash,
-                            tip,
-                            rawTx
-                        );
-
+                            await this.dbs[otherAgent].listenerDb.markReceived(
+                                this.setupId,
+                                readyTx.name,
+                                readyTx.txid!,
+                                hash,
+                                tip,
+                                rawTx
+                            );
+                        }
                         console.log('Received incoming transaction', readyTx.txid, readyTx.name);
                     }
                 }
+
+                // await this.findAndPublishReceived()
                 this.isRunning = false;
             } catch (e) {
                 console.error(e);
@@ -161,7 +199,7 @@ export class MockPublisher {
         }
     }
 
-    private mockInputs(template: ReceivedTemplate, templates: test_Template[]): Input[] {
+    private mockInputs(template: ReceivedTemplateRow, templates: Template[]): Input[] {
         return (
             templates
                 .find((t) => t.name === template.name)
@@ -172,7 +210,8 @@ export class MockPublisher {
                         ...mockVin,
                         txid: parentTemplate?.txid || '',
                         vout: input.outputIndex,
-                        txinwitness: template.data && template.data[index] ? template.data[index] : []
+                        txinwitness:
+                            template.protocolData && template.protocolData[index] ? template.protocolData[index] : []
                     };
                 }) || []
         );
@@ -182,28 +221,41 @@ export class MockPublisher {
     }
 }
 
-async function main() {
+async function main(isStartOver: boolean = false) {
     const proverId = 'bitsnark_prover_1';
     const verifierId = 'bitsnark_verifier_1';
-    const setupId = 'test_setup';
 
-    const dbProver = new testAgentDb(proverId);
-    const dbVerifier = new testAgentDb(verifierId);
-    await dbProver.test_restartSetup(setupId);
-    await dbVerifier.test_restartSetup(setupId);
+    const dbProver = new TestAgentDb(proverId);
+    const dbVerifier = new TestAgentDb(verifierId);
+    const setupId = (await dbProver.query('SELECT id FROM setups ORDER BY created_at LIMIT 1'))?.rows[0][0];
+    if (!setupId) {
+        console.error('No setup found');
+        return;
+    }
 
-    const prover = new ProtocolProver(proverId, setupId);
-    //Bad
-    const boojum = proofBigint;
-    boojum[0] = boojum[0] + 1n;
-    //await prover.pegOut(boojum);
-    // Good
-    await prover.pegOut(proofBigint);
-    console.log('proof sent:', proofBigint);
-    new MockPublisher(proverId, verifierId, setupId).start();
+    if (isStartOver) {
+        await dbProver.test_restartSetup(setupId);
+        await dbVerifier.test_restartSetup(setupId);
+
+        const prover = new ProtocolProver(proverId, setupId);
+        //Bad
+        const type = argv[3] ? argv[3] : 'g';
+        const proof = proofBigint;
+        if (type !== 'g') {
+            proof[0] = proof[0] + 1n;
+        }
+
+        await prover.pegOut(proof);
+        // Good
+        await prover.pegOut(proofBigint);
+        console.log('proof sent:', proofBigint);
+    }
+    new TestPublisher(proverId, verifierId, setupId).start();
 }
 
 if (require.main === module) {
     console.log('Starting mock publisher');
-    main();
+    const isStartOver = argv[2] ? Boolean(argv[2]) : true;
+
+    main(isStartOver);
 }

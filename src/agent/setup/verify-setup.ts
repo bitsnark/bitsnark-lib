@@ -62,6 +62,7 @@ export async function verifySetup(agentId: string, setupId: string, role: AgentR
 
     console.log('Check that all example witness parses correctly...');
     for (const template of templates) {
+        if (template.name == 'PROOF') console.log('foooo');
         for (const input of template.inputs) {
             const sc = getSpendingConditionByInput(templates, input);
             if (!sc.wotsSpec || sc.nextRole != role) continue;
@@ -105,7 +106,11 @@ export async function verifySetup(agentId: string, setupId: string, role: AgentR
 }
 
 if (require.main === module) {
-    verifySetup('bitsnark_prover_1', 'test_setup', AgentRoles.PROVER).catch((error) => {
+    verifySetup(
+        'bitsnark_prover_1',
+        'bcrt1pxypympdrev3h9zd3t92z6nqy2x4qz9key8qlcafkwc7s4q0drn0sjahmlz',
+        AgentRoles.PROVER
+    ).catch((error) => {
         console.log('Error:', error);
         throw error;
     });
