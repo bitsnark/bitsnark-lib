@@ -1,4 +1,4 @@
-import { test_Template, TestAgentDb } from './test-utils/test-utils';
+import { TestAgentDb } from './test-utils/test-utils';
 import { BitcoinNode } from '../src/agent/common/bitcoin-node';
 import { ProtocolProver } from '../src/agent/protocol-logic/protocol-prover';
 import { proofBigint } from '../src/agent/common/constants';
@@ -56,7 +56,7 @@ export class TestPublisher {
     agents: { prover: string; verifier: string };
     dbs: { prover: TestAgentDb; verifier: TestAgentDb };
     setupId: string;
-    templates: { prover: test_Template[]; verifier: test_Template[] } = { prover: [], verifier: [] };
+    templates: { prover: Template[]; verifier: Template[] } = { prover: [], verifier: [] };
     bitcoinClient: BitcoinNode;
     scheduler: NodeJS.Timeout | undefined;
     isRunning: boolean = false;
@@ -70,8 +70,8 @@ export class TestPublisher {
 
     async start() {
         if (!this.templates.prover.length || !this.templates.verifier.length) {
-            this.templates.prover = await this.dbs.prover.test_getTemplates(this.setupId);
-            this.templates.verifier = await this.dbs.verifier.test_getTemplates(this.setupId);
+            this.templates.prover = await this.dbs.prover.getTemplates(this.setupId);
+            this.templates.verifier = await this.dbs.verifier.getTemplates(this.setupId);
         }
 
         if (this.scheduler) clearInterval(this.scheduler);

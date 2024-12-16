@@ -1,12 +1,11 @@
 import { Setup, Template, TemplateStatus, ReceivedTransaction } from '../../src/agent/common/types';
 import { AgentDb, updateSetupPartial, UpdateTemplatePartial } from '../../src/agent/common/agent-db';
-import { test_Template, TestAgentDb } from './test-utils';
 
 async function waitAndReturn<T>(obj: T): Promise<T> {
     return new Promise((resolve) => setTimeout(() => resolve(obj), 1));
 }
 
-export class AgentDbMock extends TestAgentDb {
+export class AgentDbMock extends AgentDb {
     /*** SETUP ***/
 
     public createSetupReturn?: Setup;
@@ -116,38 +115,5 @@ export class AgentDbMock extends TestAgentDb {
     public async markTemplateToSend(setupId: string, templateName: string, data?: Buffer[][]) {
         this.markTemplateToSendCalledCount++;
         this.markTemplateToSendCalledParams = { setupId, templateName, data };
-        const templateId = this.gettestTemplatesReturn!.find((t: test_Template) => t.name === templateName)?.id;
-        this.gettestTemplatesReturn!.find((t: test_Template) => t.name === templateName)!.data = data ?? [];
-        this.gettestTemplatesReturn!.find((t: test_Template) => t.name === templateName)!.status = TemplateStatus.READY;
-    }
-
-    // Received Transactions
-
-    public getReceivedTransactionsReturn?: ReceivedTransaction[];
-    public getReceivedTransactionsCalledCount = 0;
-    public getReceivedTransactionsCalledParams?: { setupId: string };
-    public async getReceivedTransactions(setupId: string): Promise<ReceivedTransaction[]> {
-        console.log('MOCK getReceivedTransaction CALLED');
-        this.getReceivedTransactionsCalledCount++;
-        this.getReceivedTransactionsCalledParams = { setupId };
-        return waitAndReturn(this.getReceivedTransactionsReturn!);
-    }
-
-    //**** SET DATA */
-    public setSetup(setup: Setup) {
-        this.getSetupReturn = setup;
-    }
-
-    public setTemplates(templates: Template[]) {
-        this.getTemplatesReturn = templates;
-    }
-
-    public setReceivedTransaction(received: ReceivedTransaction[]) {
-        this.getReceivedTransactionsReturn = received;
-    }
-
-    public gettestTemplatesReturn?: test_Template[];
-    public test_getTemplates(): Promise<test_Template[]> {
-        return waitAndReturn(this.gettestTemplatesReturn ?? []);
     }
 }

@@ -135,34 +135,4 @@ export class TestAgentDb extends AgentDb {
             [TemplateStatus.PUBLISHED, setupId, templateName]
         );
     }
-
-    // async test_getReadyToSendTemplates(setupId: string): Promise<ReceivedTemplate[]> {
-    //     return (
-    //         await this.query<test_Template>(
-    //             `SELECT ${ListenerDb.templateFields}
-    //         FROM templates
-    //                 JOIN setups ON templates.setup_id = setups.id
-    //                 LEFT JOIN received ON templates.id = received.template_id
-    //         WHERE templates.status = 'READY'
-    //         AND setups.id = $1`,
-    //             [setupId]
-    //         )
-    //     ).rows.map(ListenerDb.receivedTemplateReader);
-    // }
-
-    public async test_getTemplates(setupId: string): Promise<test_Template[]> {
-        const testTemplateFields = templateFields.concat(['protocol_data']);
-        const rows = (
-            await this.query<test_Template>(
-                `SELECT  ${testTemplateFields.join(', ')}
-                    FROM templates WHERE setup_id = $1
-                    ORDER BY ordinal ASC`,
-                [setupId]
-            )
-        ).rows;
-        if (rows.length == 0) throw new Error(`No templates found, setupId: ${setupId}`);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const newRows = rows.map((row) => rowToObj(testTemplateFields, row as any, ['protocol_data']));
-        return newRows as test_Template[];
-    }
 }
