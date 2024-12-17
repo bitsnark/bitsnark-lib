@@ -1,6 +1,6 @@
 import Client from 'bitcoin-core';
 import { AgentRoles, TemplateNames } from '../../src/agent/common/types';
-import { getmockExpected, MockBlockchain, txIdBySetupAndName, mockExpected } from './bitcoin-listener-test-data';
+import { getmockExpected, MockBlockchain, txIdBySetupAndName, mockExpected } from './bitcoin-listener-test-utils';
 import { BitcoinListener } from '../../src/agent/listener/bitcoin-listener';
 import * as utils from '../../src/agent/listener/listener-utils';
 
@@ -63,28 +63,28 @@ describe('BitcoinListener', () => {
         Object.defineProperty(nodeListener, 'tipHeight', { value: height, writable: true });
     };
 
-    it("Doesn't monitor transmitted if no new block is detected", async () => {
+    it('does not monitor when no new block is detected', async () => {
         setMocks(100, 'hash100', 100);
         const monitorTransmittedSpy = jest.spyOn(nodeListener, 'monitorTransmitted').mockResolvedValue(undefined);
         await nodeListener.checkForNewBlock();
         expect(monitorTransmittedSpy).not.toHaveBeenCalled();
     });
 
-    it('Monitor transmitted if new block is detected', async () => {
+    it('calls monitorTransmitted when a new block is detected', async () => {
         setMocks(100, 'hash100', 101);
         const monitorTransmittedSpy = jest.spyOn(nodeListener, 'monitorTransmitted').mockResolvedValue(undefined);
         await nodeListener.checkForNewBlock();
         expect(monitorTransmittedSpy).toHaveBeenCalled();
     });
 
-    it("Won't query for raw transaction if no pending transactions were found", async () => {
+    it('does not query for raw transactions if no pending transactions are found', async () => {
         jest.spyOn(utils, 'getReceivedTemplates').mockResolvedValue([]);
         await nodeListener.monitorTransmitted();
         expect(nodeListener.client.getBlock).not.toHaveBeenCalled();
         expect(nodeListener.client.getRawTransaction).not.toHaveBeenCalled();
     });
 
-    it("Won't crawl if a new block exists but iy isn't finalizes", async () => {
+    it('does not crawl if a new block exists but is not finalized', async () => {
         setMocks(102, 'hash102', 106);
         (utils.getReceivedTemplates as jest.Mock).mockResolvedValue(getmockExpected());
         await nodeListener.monitorTransmitted();
@@ -95,7 +95,7 @@ describe('BitcoinListener', () => {
         expect(nodeListener.db.markReceived).not.toHaveBeenCalled();
     });
 
-    it('Will crawl if a new finalized block exists, and save txs in it', async () => {
+    it('crawls and saves transactions if a new finalized block exists', async () => {
         setMocks(107, 'hash107', 107);
         (utils.getReceivedTemplates as jest.Mock).mockResolvedValue(getmockExpected());
 
@@ -110,7 +110,7 @@ describe('BitcoinListener', () => {
         );
     });
 
-    it('IF parent tx was transmitted and its inputs were spent will go over all block txs', async () => {
+    it('processes all block transactions if parent of a temporary transaction was transmitted and its outputs are spent', async () => {
         setMocks(107, 'hash107', 107);
         const mockExpected = getmockExpected(
             new Set([
@@ -136,7 +136,7 @@ describe('BitcoinListener', () => {
         );
     });
 
-    it("Will not search for temporaryTxId transaction if parent published but required inputs arn't spent", async () => {
+    it('does not search for temporary transaction if the parent was transmitted but its outputs are not spent', async () => {
         setMocks(107, 'hash107', 108);
         const mockExpected = getmockExpected(
             new Set([
@@ -151,7 +151,7 @@ describe('BitcoinListener', () => {
         expect(nodeListener.client.getRawTransaction).toHaveBeenCalledTimes(1);
     });
 
-    it('should save new published transactions found by transaction ids', async () => {
+    it('saves new published transactions found by transaction IDs', async () => {
         setMocks(107, 'hash107', 107);
         const mockExpected = getmockExpected();
         (utils.getReceivedTemplates as jest.Mock).mockResolvedValue(mockExpected);
@@ -178,7 +178,7 @@ describe('BitcoinListener', () => {
         );
     });
 
-    it('Should save new published transactions found by inputs', async () => {
+    it('saves new published transactions found by inputs', async () => {
         setMocks(113, 'hash113', 107);
         const mockExpected = getmockExpected(
             new Set([
@@ -202,7 +202,7 @@ describe('BitcoinListener', () => {
         );
     });
 
-    it('Should update listener height in setups', async () => {
+    it('updates listener height in setups', async () => {
         setMocks(109, 'hash109', 109);
         (utils.getReceivedTemplates as jest.Mock).mockResolvedValue(mockExpected);
 
