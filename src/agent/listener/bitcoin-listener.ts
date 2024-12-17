@@ -1,19 +1,9 @@
 import { agentConf } from '../agent.conf';
 import { BitcoinNode } from '../common/bitcoin-node';
 import { RawTransaction } from 'bitcoin-core';
-import { Input, Template, ReceivedTransaction } from '../common/types';
+import { Input, Template } from '../common/types';
 import { AgentDb } from '../common/agent-db';
-
-export interface expectByInputs {
-    setupId: string;
-    name: string;
-    templateId: number;
-    vins: { outputtxid: string; outputIndex: number; vin: number }[];
-}
-
-export interface ReceivedTemplateRow extends Template, Partial<ReceivedTransaction> {
-    lastCheckedBlockHeight?: number;
-}
+import { getReceivedTemplates, ReceivedTemplateRow } from './listener-utils';
 
 export class BitcoinListener {
     tipHeight: number = 0;
@@ -37,7 +27,7 @@ export class BitcoinListener {
     }
 
     async monitorTransmitted(): Promise<void> {
-        const templates = await this.getReceivedTemplates();
+        const templates = await getReceivedTemplates(this.db);
         const pending = templates.filter((template) => !template.blockHash);
         if (pending.length === 0) return;
 
@@ -54,7 +44,11 @@ export class BitcoinListener {
         }
     }
 
-    async searchBlock(blockHeight: number, pending: Template[], templates: ReceivedTemplateRow[]): Promise<void> {
+    async searchBlock(
+        blockHeight: number,
+        pending: ReceivedTemplateRow[],
+        templates: ReceivedTemplateRow[]
+    ): Promise<void> {
         const blockHash = await this.client.getBlockHash(blockHeight);
 
         for (const pendingTx of pending) {
@@ -89,36 +83,6 @@ export class BitcoinListener {
                 continue;
             }
         }
-    }
-
-    async getReceivedTemplates() {
-        const listenerTemplates: ReceivedTemplateRow[] = [];
-
-        const activeSetups = await this.db.getActiveSetups();
-        for (const setup of activeSetups) {
-            let templates: Template[] | undefined;
-            try {
-                templates = await this.db.getTemplates(setup.id);
-                let received: ReceivedTransaction[] = [];
-                try {
-                    received = await this.db.getReceivedTransactions(setup.id);
-                } catch (error) {
-                    //
-                }
-
-                for (const template of templates) {
-                    const receivedTemplate = received.find((rt: ReceivedTransaction) => rt.templateId === template.id);
-                    listenerTemplates.push({
-                        lastCheckedBlockHeight: setup.lastCheckedBlockHeight,
-                        ...template,
-                        ...receivedTemplate
-                    });
-                }
-            } catch (error) {
-                if (templates) continue;
-            }
-        }
-        return listenerTemplates;
     }
 
     private async getTransactionByInputs(

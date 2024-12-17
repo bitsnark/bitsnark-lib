@@ -1,10 +1,6 @@
 import { agentConf } from '../agent.conf';
 import Client from 'bitcoin-core';
 
-export enum BitcoinNetwork {
-    TESTNET = 'testnet',
-    REGTEST = 'regtest'
-}
 export class BitcoinNode {
     public client;
 

@@ -1,6 +1,6 @@
 import { RawTransaction, TxOut, Block, Vin } from 'bitcoin-core';
 import { AgentRoles, Input, TemplateNames, TemplateStatus } from '../../src/agent/common/types';
-import { ReceivedTemplateRow } from '../../src/agent/listener/bitcoin-listener';
+import { ReceivedTemplateRow } from '../../src/agent/listener/listener-utils';
 
 const templates = [
     TemplateNames.LOCKED_FUNDS,

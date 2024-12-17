@@ -1,10 +1,13 @@
 import { AgentRoles, TemplateNames, SetupStatus } from '../../src/agent/common/types';
-import { TestAgent, setTestAgent } from '../test-utils/test-utils';
-import { BitcoinNetwork } from '../../src/agent/common/bitcoin-node';
+import { TestAgent, generateBlocks, setTestAgent } from '../test-utils/test-utils';
 import { agentConf } from '../../src/agent/agent.conf';
-import { cat } from '@src/agent/common/encoding';
+import { getReceivedTemplates } from '../../src/agent/listener/listener-utils';
 
 //python -m bitsnark.cli broadcast --setup-id test_setup --agent-id bitsnark_prover_1 --name $1
+export enum BitcoinNetwork {
+    TESTNET = 'testnet',
+    REGTEST = 'regtest'
+}
 
 const testnetTxs = [
     {
@@ -60,8 +63,8 @@ async function setDataToTest(templateName: TemplateNames, agent: TestAgent, test
         [testBlockHeight - 1, 'test_setup']
     );
 
-    agent.templates = await agent.db.listenerDb.getReceivedTemplates(agent.setupId);
-    agent.pending = agent.templates.filter((template) => !template.blockHash);
+    agent.templatesRows = await getReceivedTemplates(agent.db.listenerDb);
+    agent.pending = agent.templatesRows.filter((template) => !template.blockHash);
     if (testMode === BitcoinNetwork.TESTNET) {
         agent.pending = agent.pending.filter((template) => template.name === TemplateNames.PROOF);
     }
@@ -72,7 +75,7 @@ async function setDataToTest(templateName: TemplateNames, agent: TestAgent, test
 
 //REGTEST only
 async function overwriteDBTxidByBlockchainTxid(agent: TestAgent, templateName: TemplateNames, isRestart = true) {
-    await generateBlocks(agent, 1);
+    await generateBlocks(agent.listener.client, 1);
     const tip = await agent.listener.client.getBlockCount();
     const hash = await agent.listener.client.getBestBlockHash();
     const randomTx = (await agent.listener.client.getBlock(hash)).tx[0];
@@ -90,22 +93,6 @@ async function overwriteDBTxidByBlockchainTxid(agent: TestAgent, templateName: T
     return randomTx;
 }
 
-async function generateBlocks(agent: TestAgent, blocksToGenerate: number, address?: string) {
-    try {
-        // Replace with a valid regtest address
-        if (!address) address = (await agent.listener.client.command('getnewaddress')) as string;
-
-        const generatedBlocks = await agent.listener.client.command(
-            'generatetoaddress',
-            blocksToGenerate,
-            address as string
-        );
-        console.log('Generated Blocks:', generatedBlocks);
-    } catch (error) {
-        console.error('Error generating blocks:', error);
-    }
-}
-
 (agentConf.bitcoinNodeNetwork === BitcoinNetwork.REGTEST ? describe : describe.skip)(
     `Listener integration tests on regtest`,
     () => {
@@ -121,20 +108,18 @@ async function generateBlocks(agent: TestAgent, blocksToGenerate: number, addres
         it('Setup ready', async () => {
             const testBlockHeight = agents[0].listener.tipHeight;
             expect(
-                agents[0].templates.findIndex((tx) => {
+                agents[0].templatesRows.findIndex((tx) => {
                     return tx.name === TemplateNames.PROOF && tx.txid === proof;
                 })
             ).toBeGreaterThan(-1);
-            expect(agents[0].templates[0].setupStatus).toEqual(SetupStatus.ACTIVE);
-            expect(agents[0].templates[0].lastCheckedBlockHeight).toBe(testBlockHeight - 1);
+            expect(agents[0].templatesRows[0].setupStatus).toEqual(SetupStatus.ACTIVE);
+            expect(agents[0].templatesRows[0].lastCheckedBlockHeight).toBe(testBlockHeight - 1);
         }, 600000);
 
         it('Find PROOF by txid', async () => {
             const testBlockHeight = agents[0].listener.tipHeight;
-            await agents[0].listener.searchBlock(testBlockHeight, agents[0].pending, agents[0].templates);
-            const received = (await agents[0].db.listenerDb.getReceivedTemplates('test_setup')).filter(
-                (tx) => tx.blockHash
-            );
+            await agents[0].listener.searchBlock(testBlockHeight, agents[0].pending, agents[0].templatesRows);
+            const received = (await getReceivedTemplates(agents[0].db.listenerDb)).filter((tx) => tx.blockHash);
             expect(received.length).toEqual(1);
             expect(received[0].name).toEqual(TemplateNames.PROOF);
             expect(received[0].txid).toEqual(proof);
@@ -156,23 +141,21 @@ async function generateBlocks(agent: TestAgent, blocksToGenerate: number, addres
             const testBlockHeight = agents[0].listener.tipHeight;
             expect(
                 testnetTxs.every((tx) => {
-                    return agents[0].templates.some((template) => {
+                    return agents[0].templatesRows.some((template) => {
                         return template.name === tx.name && template.txid === tx.txId;
                     });
                 })
             ).toBe(true);
-            expect(agents[0].templates[0].setupStatus).toEqual(SetupStatus.ACTIVE);
-            expect(agents[0].templates[0].lastCheckedBlockHeight).toBe(testBlockHeight - 1);
+            expect(agents[0].templatesRows[0].setupStatus).toEqual(SetupStatus.ACTIVE);
+            expect(agents[0].templatesRows[0].lastCheckedBlockHeight).toBe(testBlockHeight - 1);
         }, 600000);
 
         it('Find PROOF by txid', async () => {
             const proof = testnetTxs.find((tx) => tx.name === TemplateNames.PROOF)!.txId;
 
             const testBlockHeight = agents[0].listener.tipHeight;
-            await agents[0].listener.searchBlock(testBlockHeight, agents[0].pending, agents[0].templates);
-            const received = (await agents[0].db.listenerDb.getReceivedTemplates('test_setup')).filter(
-                (tx) => tx.blockHash
-            );
+            await agents[0].listener.searchBlock(testBlockHeight, agents[0].pending, agents[0].templatesRows);
+            const received = (await getReceivedTemplates(agents[0].db.listenerDb)).filter((tx) => tx.blockHash);
             expect(received.length).toEqual(1);
             expect(received[0].name).toEqual(TemplateNames.PROOF);
             expect(received[0].txid).toEqual(proof);
