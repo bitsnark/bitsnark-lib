@@ -51,19 +51,6 @@ export class Proof {
         return Proof.fromWitness(t);
     }
 
-    public toWitness(): bigint[] {
-        return [
-            this.pi_a.x,
-            this.pi_a.y,
-            this.pi_b.x.x,
-            this.pi_b.x.x,
-            this.pi_b.y.x,
-            this.pi_b.y.x,
-            this.pi_c.x,
-            this.pi_c.y
-        ].map((t) => t.register.value);
-    }
-
     validate() {
         this.pi_a.assertPoint();
         this.pi_b.assertPoint();
