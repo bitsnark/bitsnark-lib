@@ -45,39 +45,6 @@ describe('Agent message signatures check', () => {
     const setupId: string = fakeSetup.id;
     let signedMessage: Message;
 
-    // it('Prover should create a new setupInstance & send a response when a message with /start is received', async () => {
-    //     const spySignMessageAndSend = jest.spyOn(prover, 'signMessageAndSend');
-    //     const spyStart = jest.spyOn(prover, 'start');
-    //     const message = `/start test_setup ${lockedFunds.txid} ${lockedFunds.amount} ${proverStake.txid} ${proverStake.amount}`;
-
-    //     mockProverDb.getSetupReturn = fakeSetup;
-    //     await prover.messageReceived(message, mockContext);
-
-    //     expect(spyStart).toHaveBeenCalledTimes(1);
-
-    //     let counter = 0;
-    //     for (const key of prover.instances.keys()) {
-    //         setupId = key;
-    //         counter++;
-    //     }
-    //     expect(setupId).toBeDefined();
-    //     expect(counter).toBe(1);
-
-    //     const messageStart = new StartMessage({
-    //         setupId,
-    //         agentId: prover.agentId,
-    //         schnorrPublicKey: prover.schnorrPublicKey,
-    //         payloadUtxo: lockedFunds,
-    //         proverUtxo: proverStake,
-    //         telegramMessageSig: ''
-    //     });
-
-    //     signedMessage = prover.signMessage(messageStart);
-
-    //     expect(spySignMessageAndSend).toHaveBeenCalledTimes(1);
-    //     expect(mockContext.send).toHaveBeenCalledWith(signedMessage);
-    // });
-
     it('Verifier on accepting the start message, should verify it, set its setupId and send a join message', async () => {
         const messageStart = new StartMessage({
             setupId,

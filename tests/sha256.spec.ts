@@ -1,7 +1,7 @@
-import { step2_vm } from '../../src/generator/32_vm/vm/vm';
-import { SHA256 } from '../../src/generator/32_vm/sha-256';
-import { Register } from '../../src/generator/common/register';
-import { _256To32BE, _32To256BE, hash, hashPair } from '../../src/agent/common/encoding';
+import { step2_vm } from '../src/generator/32_vm/vm/vm';
+import { SHA256 } from '../src/generator/32_vm/sha-256';
+import { Register } from '../src/generator/common/register';
+import { _256To32BE, _32To256BE, hash, hashPair } from '../src/agent/common/encoding';
 
 describe('SHA256 tests', function () {
     const n = 123456789012345678901234567890n;
