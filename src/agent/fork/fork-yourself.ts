@@ -2,7 +2,7 @@ import * as readline from 'readline';
 import { execFile } from 'node:child_process';
 import { jsonParseCustom, jsonStringifyCustom } from '../common/json';
 
-const tsNodePath = '/usr/local/bin/ts-node';
+const tsNodePath = './node_modules/.bin/ts-node';
 
 async function run(command: string, input: string): Promise<string> {
     return new Promise((resolve, reject) => {

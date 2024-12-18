@@ -89,6 +89,11 @@ export async function emulateSetup(
     await proverDb.upsertTemplates(setupId, proverTemplates);
     await verifierDb.upsertTemplates(setupId, verifierTemplates);
 
+    console.log('writing templates to DB before external script generation process...');
+
+    await proverDb.upsertTemplates(setupId, proverTemplates);
+    await verifierDb.upsertTemplates(setupId, verifierTemplates);
+
     console.log('generating scripts...');
 
     proverTemplates = await generateAllScripts(
@@ -111,7 +116,7 @@ export async function emulateSetup(
     proverTemplates = await addAmounts(proverAgentId, AgentRoles.PROVER, setupId, proverTemplates);
     verifierTemplates = await addAmounts(verifierAgentId, AgentRoles.VERIFIER, setupId, verifierTemplates);
 
-    console.log('writing templates to DB...');
+    console.log('writing templates to DB before external signature process...');
 
     await proverDb.upsertTemplates(setupId, proverTemplates);
     await verifierDb.upsertTemplates(setupId, verifierTemplates);
