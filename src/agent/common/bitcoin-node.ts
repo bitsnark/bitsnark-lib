@@ -1,5 +1,5 @@
 import { agentConf } from '../agent.conf';
-import Client from 'bitcoin-core';
+import Client, { RawTransaction, TransactionData } from 'bitcoin-core';
 
 export class BitcoinNode {
     public client;
@@ -20,8 +20,20 @@ export class BitcoinNode {
 }
 
 if (require.main === module) {
+    main();
+}
+
+async function main() {
     const node = new BitcoinNode();
-    node.getBlockCount().then(console.log);
-    node.client.getBestBlockHash().then(console.log);
-    node.client.command('getnetworkinfo').then(console.log);
+
+    const bestHash = await node.client.getBestBlockHash();
+    await node.client.getBlock(bestHash, 2).then((block) => {
+        const testTx = (block.tx as RawTransaction[])[2000].txid;
+        for (const [index, tx] of (block.tx as RawTransaction[]).entries()) {
+            if (tx.vin[0].txid === testTx) {
+                console.log('nested search:', index, tx.txid, tx.vin.length, tx.vin[0].txid);
+                break;
+            }
+        }
+    });
 }

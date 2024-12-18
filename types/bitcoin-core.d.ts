@@ -28,7 +28,7 @@ declare module "bitcoin-core" {
         version: number;                // The block version
         versionHex: string;             // The block version formatted in hexadecimal
         merkleroot: string;             // The merkle root
-        tx: string[];                   // Array of transaction IDs
+        tx: RawTransaction[] | string[];           // Array of Full transactions
         time: number;                   // The block time expressed in UNIX epoch time
         mediantime: number;             // The median block time expressed in UNIX epoch time
         nonce: number;                  // The nonce
@@ -39,6 +39,7 @@ declare module "bitcoin-core" {
         previousblockhash?: string;     // The hash of the previous block (optional, since it may not be present for the first block)
         nextblockhash?: string;         // The hash of the next block (optional, since it may not be present for the last block)
     }
+
 
     export interface RawTransaction {
         in_active_chain?: boolean;
