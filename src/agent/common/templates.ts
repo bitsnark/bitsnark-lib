@@ -375,7 +375,7 @@ export function makeProtocolSteps(): Template[] {
                         {
                             nextRole: AgentRoles.PROVER,
                             signatureType: SignatureType.BOTH,
-                            wotsSpec: array<WotsType>(11, WotsType._256_4)
+                            wotsSpec: array<WotsType>(13, WotsType._256_4)
                         }
                     ]
                 }))

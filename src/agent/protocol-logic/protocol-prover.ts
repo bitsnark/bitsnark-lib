@@ -125,7 +125,7 @@ export class ProtocolProver extends ProtocolBase {
     }
 
     private async sendArgument(proof: bigint[], selectionPath: number[], selectionPathUnparsed: Buffer[][]) {
-        const argument = new Argument(this.setup!.id, proof);
+        const argument = new Argument(this.agentId, this.setup!.id, proof);
         const argumentData = await argument.makeArgument(selectionPath, selectionPathUnparsed);
         await this.sendTransaction(TemplateNames.ARGUMENT, argumentData);
     }
