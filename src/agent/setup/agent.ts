@@ -231,8 +231,22 @@ export class Agent {
 
     // prover receives join message, generates templates
     async on_join(context: SimpleContext, message: JoinMessage) {
-        const i = this.getInstance(message.setupId);
-        if (i.state != SetupState.HELLO) throw new Error('Invalid state');
+        // let's see if the setup exists on my end
+        const setup = await this.db.getSetup(message.setupId);
+        if (!setup) {
+            throw new Error("Setup doesn't exist");
+        }
+
+        let i = this.instances.get(setup.id);
+        if (!i) {
+            // this setup was probably created from the cli
+            i = new SetupInstance(setup.id, setup, AgentRoles.PROVER, {
+                agentId: this.agentId,
+                schnorrPublicKey: stringToBigint(this.schnorrPublicKey)
+            });
+            this.instances.set(setup.id, i);
+            i.state = SetupState.HELLO;
+        }
 
         if (i.verifier) throw new Error('Verifier agent already registered');
 
@@ -244,8 +258,6 @@ export class Agent {
         };
 
         this.verifyMessage(message, i);
-
-        const setup = i.setup!;
 
         i.templates = await initializeTemplates(
             AgentRoles.PROVER,
