@@ -1285,8 +1285,7 @@ export class Bitcoin {
         this.OP_TOALTSTACK();
 
         for (let i = si.length - 1; i >= 0; i--) {
-            if (si[i].value as number > 0)
-                console.log('aaaaaaa');
+            if ((si[i].value as number) > 0) console.log('aaaaaaa');
             this.pick(si[i]); // n
             for (let j = 3; j >= 0; j--) {
                 const orig = this.stack.top().value as number;

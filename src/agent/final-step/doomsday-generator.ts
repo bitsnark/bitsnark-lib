@@ -1,26 +1,24 @@
-import groth16Verify, { Key, Proof as Step1_Proof } from '../../generator/ec_vm/verifier';
 import { InstrCode, Instruction } from '../../generator/ec_vm/vm/types';
-import { proof, vKey } from '../../generator/ec_vm/constants';
 import { Bitcoin, ScriptTemplate } from '../../generator/btc_vm/bitcoin';
 import { getSpendingConditionByInput, getTemplateByName, twoDigits } from '../common/templates';
 import { encodeWinternitz24, encodeWinternitz256_4, getWinternitzPublicKeys, WotsType } from '../common/winternitz';
-import { step1_vm } from '../../generator/ec_vm/vm/vm';
 import { StackItem } from '../../generator/btc_vm/stack';
 import { Compressor } from '../common/taptree';
 import { BLAKE3, Register } from './blake-3-4u';
-import { Decasector } from '../protocol-logic/decasector';
 import { blake3 as blake3_wasm } from 'hash-wasm';
 import { modInverse } from '../../generator/common/math-utils';
 import { prime_bigint } from '../common/constants';
 import { bufferToBigintBE } from '../common/encoding';
-import { bigintToNibbles_3, bigintToNibbles_4 } from './nibbles';
+import { bigintToNibbles_3 } from './nibbles';
 import { NegifyFinalStep } from './negify-final-step';
-import { AgentRoles, Template, TemplateNames } from '../common/types';
+import { Template, TemplateNames } from '../common/types';
 import { AgentDb } from '../common/agent-db';
 import { ForkCommand, ForkYourself } from '../fork/fork-yourself';
 import { GenerateFinalTaprootCommand } from '../fork/fork-entrypoint';
 import { parallelize } from '../common/parallelize';
 import { array } from '../common/array-utils';
+import { loadProgram } from '../setup/groth16-verify';
+import { Decasector } from '../setup/decasector';
 
 export enum RefutationType {
     INSTR,
@@ -48,10 +46,7 @@ export class DoomsdayGenerator {
     constructor(agentId: string, setupId: string) {
         this.agentId = agentId;
         this.setupId = setupId;
-        step1_vm.reset();
-        groth16Verify(Key.fromSnarkjs(vKey), Step1_Proof.fromSnarkjs(proof));
-        if (!step1_vm.success?.value) throw new Error('Failed.');
-        this.program = step1_vm.instructions;
+        this.program = loadProgram().program;
         this.decasector = new Decasector();
     }
 
@@ -485,8 +480,9 @@ export class DoomsdayGenerator {
 async function main() {
     const agentId = 'bitsnark_prover_1';
     const setupId = 'test_setup';
+    const parallel = process.argv.some((s) => s == '--parallel');
     const ddg = new DoomsdayGenerator(agentId, setupId);
-    const r = await ddg.generateFinalStepTaprootParallel();
+    const r = parallel ? await ddg.generateFinalStepTaprootParallel() : await ddg.generateFinalStepTaproot();
     console.log(r);
 }
 

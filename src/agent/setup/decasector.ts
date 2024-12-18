@@ -1,36 +1,15 @@
-import { proof as proofConst, vKey } from '../../generator/ec_vm/constants';
 import { step1_vm } from '../../generator/ec_vm/vm/vm';
-import groth16Verify, { Key, Proof as Step1_Proof } from '../../generator/ec_vm/verifier';
 import { SavedVm } from '../../generator/common/saved-vm';
 import { InstrCode } from '../../generator/ec_vm/vm/types';
 import { Runner } from '../../generator/ec_vm/vm/runner';
+import { loadProgram } from '../setup/groth16-verify';
 
-export interface RegsItem {
-    runtimeIndex: number;
-    value?: bigint;
-}
-
-export function getRegsAt(savedVm: SavedVm<InstrCode>, left: number, line: number, right: number): RegsItem[] {
+export function getRegsAt(savedVm: SavedVm<InstrCode>, left: number, line: number, right: number): bigint[] {
     right = Math.min(right, savedVm.program.length);
     const runner = Runner.load(savedVm);
-    const writtenFlags: boolean[] = [];
-    for (let i = left; i <= line; i++) {
-        const instr = runner.instructions[i];
-        writtenFlags[instr.target] = true;
-    }
-    const readFlags: boolean[] = [];
-    for (let i = line; i < right; i++) {
-        const instr = runner.instructions[i];
-        readFlags[instr.param1] = true;
-        if (instr.param2) readFlags[instr.param2] = true;
-    }
-    const map: RegsItem[] = [];
     runner.execute(line);
     const regs = runner.getRegisterValues();
-    for (let i = 0; i < regs.length; i++) {
-        if (writtenFlags[i] || readFlags[i]) map.push({ runtimeIndex: i, value: regs[i] });
-    }
-    return map;
+    return regs;
 }
 
 export class StateCommitment {
@@ -42,7 +21,6 @@ export class StateCommitment {
     public readonly savedVm: SavedVm<InstrCode>;
 
     private values?: bigint[];
-    private regIndexToRuntimeIndex?: number[];
 
     constructor(obj: Partial<StateCommitment>) {
         this.left = obj.left!;
@@ -55,26 +33,8 @@ export class StateCommitment {
 
     public getValues(): bigint[] {
         if (this.values) return this.values;
-        const regs = getRegsAt(this.savedVm, this.left, this.line, this.right);
-        this.values = regs.map((ri) => ri.value!);
-        // pad to 64 so our merkle proofs are the same size
-        while (this.values.length < 64) this.values.push(0n);
-        this.regIndexToRuntimeIndex = regs.map((ri) => ri.runtimeIndex ?? 0);
+        this.values = getRegsAt(this.savedVm, this.left, this.line, this.right);
         return this.values;
-    }
-
-    public getIndexForRuntimeIndex(runtimeIndex: number): number {
-        if (!this.regIndexToRuntimeIndex) this.getValues();
-        const index = this.regIndexToRuntimeIndex!.findIndex((ri) => ri === runtimeIndex);
-        if (index < 0) 
-            throw new Error('Runtime index not found in state commitment');
-        return index;
-    }
-
-    public getValueForRuntimeIndex(runtimeIndex: number): bigint {
-        if (!this.regIndexToRuntimeIndex) this.getValues();
-        const index = this.getIndexForRuntimeIndex(runtimeIndex);
-        return this.values![index];
     }
 }
 
@@ -82,47 +42,47 @@ export class Decasector {
     total: number;
     iterations: number;
     stateCommitmentByLine: StateCommitment[] = [];
-    proof: Step1_Proof;
     savedVm: SavedVm<InstrCode>;
 
     constructor(proof?: bigint[]) {
-        step1_vm.reset();
-        const key = Key.fromSnarkjs(vKey);
-        this.proof = proof ? Step1_Proof.fromWitness(proof) : Step1_Proof.fromSnarkjs(proofConst);
-        groth16Verify(key, this.proof);
-        if (!step1_vm.success?.value) throw new Error('Failed.');
-        const program = step1_vm.instructions;
-        this.savedVm = step1_vm.save();
-        this.iterations = Math.ceil(Math.log10(program.length));
+        this.savedVm = loadProgram(proof);
+        this.iterations = Math.ceil(Math.log10(this.savedVm.program.length));
         this.total = 10 ** this.iterations;
         this.stateCommitments();
     }
 
     private stateCommitments() {
         const _sc = (left: number, right: number, iter: number) => {
-            if (iter > this.iterations) return;
+            if (right - left < 10) return;
             const d = (right - left) / 10;
-            for (let i = 0; i <= 9; i++) {
+            for (let i = 0; i < 9; i++) {
                 const line = left + (i + 1) * d;
-                if (!this.stateCommitmentByLine[line]) {
-                    this.stateCommitmentByLine[line] = new StateCommitment({
-                        left,
-                        right,
-                        iteration: iter,
-                        selection: i,
-                        line,
-                        savedVm: this.savedVm
-                    });
-                }
+                if (this.stateCommitmentByLine[line]) throw new Error('I am a teapot');
+                this.stateCommitmentByLine[line] = new StateCommitment({
+                    left,
+                    right,
+                    iteration: iter,
+                    selection: i,
+                    line,
+                    savedVm: this.savedVm
+                });
                 _sc(left + i * d, left + (i + 1) * d, iter + 1);
             }
         };
         this.stateCommitmentByLine[0] = new StateCommitment({
             left: 0,
             right: this.total,
-            iteration: 1,
+            iteration: 0,
             selection: 0,
             line: 0,
+            savedVm: this.savedVm
+        });
+        this.stateCommitmentByLine[this.total] = new StateCommitment({
+            left: 0,
+            right: this.total,
+            iteration: 0,
+            selection: 0,
+            line: this.total,
             savedVm: this.savedVm
         });
         _sc(0, this.total, 1);

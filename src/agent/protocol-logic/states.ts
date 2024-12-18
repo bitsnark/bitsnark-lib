@@ -1,4 +1,4 @@
-import { Decasector } from './decasector';
+import { Decasector } from '../setup/decasector';
 import { FatMerkleProof } from './fat-merkle';
 
 export async function calculateStates(proof: bigint[], selectionPath: number[]): Promise<Buffer[]> {

@@ -2,7 +2,6 @@ import minimist from 'minimist';
 import { agentConf } from '../agent.conf';
 import { parseInput } from './parser';
 import { step1_vm } from '../../generator/ec_vm/vm/vm';
-import { vKey } from '../../generator/ec_vm/constants';
 import groth16Verify, { Key, Proof as Step1_Proof } from '../../generator/ec_vm/verifier';
 import { findErrorState } from './states';
 import { encodeWinternitz24, encodeWinternitz256_4 } from '../common/winternitz';
@@ -13,6 +12,7 @@ import { AgentRoles, TemplateNames } from '../common/types';
 import { AgentDb } from '../common/agent-db';
 import { getTemplateByName, twoDigits } from '../common/templates';
 import { Incoming, ProtocolBase } from './protocol-base';
+import { defaultVerificationKey } from '@src/generator/ec_vm/constants';
 
 export class ProtocolVerifier extends ProtocolBase {
     states: Buffer[][] = [];
@@ -106,7 +106,7 @@ export class ProtocolVerifier extends ProtocolBase {
 
     private checkProof(proof: bigint[]): boolean {
         step1_vm.reset();
-        groth16Verify(Key.fromSnarkjs(vKey), Step1_Proof.fromWitness(proof));
+        groth16Verify(Key.fromSnarkjs(defaultVerificationKey), Step1_Proof.fromWitness(proof));
         return step1_vm.success?.value === 1n;
     }
 

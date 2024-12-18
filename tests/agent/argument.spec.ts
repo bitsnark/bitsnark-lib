@@ -35,9 +35,9 @@ describe('Argument', () => {
         expect(argWitness[0].length).toBe(7 * WOTS_NIBBLES[WotsType._24]);
         expect(argument.checkIndex()).toBeTruthy();
         expect(argWitness[1].length).toBe(4 * WOTS_NIBBLES[WotsType._256_4]);
-        expect(argWitness[2].length).toBe(11 * WOTS_NIBBLES[WotsType._256_4]);
-        expect(argWitness[3].length).toBe(11 * WOTS_NIBBLES[WotsType._256_4]);
-        expect(argWitness[4].length).toBe(11 * WOTS_NIBBLES[WotsType._256_4]);
+        expect(argWitness[2].length).toBe(13 * WOTS_NIBBLES[WotsType._256_4]);
+        expect(argWitness[3].length).toBe(13 * WOTS_NIBBLES[WotsType._256_4]);
+        expect(argWitness[4].length).toBe(13 * WOTS_NIBBLES[WotsType._256_4]);
     }, 10000);
 
     it('break it', async () => {
