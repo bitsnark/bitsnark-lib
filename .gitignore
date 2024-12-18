@@ -13,5 +13,4 @@ venv/
 /analysis/BitSnark.toolbox/
 /dist/
 /expose/git-filter-repo
-/generated
 /coverage
