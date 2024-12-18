@@ -86,6 +86,9 @@ export async function emulateSetup(
     proverTemplates = setWotsPublicKeysForArgument(setupId, proverTemplates);
     verifierTemplates = setWotsPublicKeysForArgument(setupId, verifierTemplates);
 
+    await proverDb.upsertTemplates(setupId, proverTemplates);
+    await verifierDb.upsertTemplates(setupId, verifierTemplates);
+
     console.log('generating scripts...');
 
     proverTemplates = await generateAllScripts(
