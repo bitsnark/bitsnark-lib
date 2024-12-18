@@ -364,8 +364,8 @@ export class DoomsdayGenerator {
                 const sc = getSpendingConditionByInput(templates, input);
                 merkleProofKeysAll.push(...sc.wotsPublicKeys!);
             }
-            // divide these into 3 sets of 11
-            const merkleProofKeys: Buffer[][][] = [0, 1, 2].map((i) => merkleProofKeysAll.slice(i * 11, (i + 1) * 11));
+            // divide these into 3 sets of 13
+            const merkleProofKeys: Buffer[][][] = [0, 1, 2].map((i) => merkleProofKeysAll.slice(i * 13, (i + 1) * 13));
 
             // now add the value before the proof, and the root after it
             {
@@ -390,9 +390,9 @@ export class DoomsdayGenerator {
                 return this.renderScriptTemplateWithKeys(scriptTemplate!, [leftKeys, rightKeys, resultKeys]);
             };
 
-            // now there are 3 * 6 possible refutations
+            // now there are 3 * 7 possible refutations
             for (let i = 0; i < merkleProofKeys.length; i++) {
-                for (let j = 0; j < 12; j += 2) {
+                for (let j = 0; j < 14; j += 2) {
                     const script = await refuteHash(
                         merkleProofKeys[i][j],
                         merkleProofKeys[i][j + 1],
