@@ -42,7 +42,7 @@ describe('Agent message signatures check', () => {
     const mockVerifierDb = new AgentDbMock('bitsnark_prover_1');
     verifier.db = mockVerifierDb;
 
-    let setupId: string = fakeSetup.id;
+    const setupId: string = fakeSetup.id;
     let signedMessage: Message;
 
     // it('Prover should create a new setupInstance & send a response when a message with /start is received', async () => {
@@ -79,7 +79,6 @@ describe('Agent message signatures check', () => {
     // });
 
     it('Verifier on accepting the start message, should verify it, set its setupId and send a join message', async () => {
-        
         const messageStart = new StartMessage({
             setupId,
             agentId: prover.agentId,
