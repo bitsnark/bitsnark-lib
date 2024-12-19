@@ -11,6 +11,7 @@ def parse_bignum(s: str) -> int:
     if not s.endswith("n"):
         raise ValueError(f"Invalid suffix for bignum: {s}")
     ret = s.removeprefix("bigint:")[:-1]
+    print(ret)
     assert all(c in "0123456789abcdef" for c in ret)
     return int(ret, 16)
 
