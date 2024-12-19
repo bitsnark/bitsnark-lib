@@ -3,12 +3,12 @@
 . "$(dirname "$(realpath "$0")")/common.sh"
 activate_python_venv
 
-data_dir="$(mktemp -d)"
-snapshot_file="$(mktemp)"
+data_dir=/tmp/bitsnark-regtest
+snapshot_file=/tmp/bitsnark-regtest-snapshot.tar.gz
 cleanup() {
     rm -rf "$data_dir" "$snapshot_file"
 }
-trap cleanup EXIT
+[ "$1" = cleanup ] && trap cleanup EXIT
 
 snapshot() {
     bitcoin_cli stop
@@ -54,7 +54,7 @@ create_transaction() {
 }
 
 npm run start-db
-npm run start-regtest -- "$data_dir"
+npm run start-regtest "$data_dir"
 
 setup_id=test_setup
 locked_funds_tx=$(create_transaction bcrt1p0kxevp4v9eulwu0hsed4jwtlfe2nz6dqntyj6tp833u9js8re7rs6uqs99 10.0 0.005 0)
@@ -74,3 +74,6 @@ bitcoin_cli sendrawtransaction "$locked_funds_tx"
 bitcoin_cli sendrawtransaction "$prover_stake_tx"
 
 ts-node ./src/agent/protocol-logic/send-proof.ts bitsnark_prover_1 "$setup_id" --fudge
+
+cd python
+python -m bitsnark.cli fund_and_send --setup-id test_setup --agent-id bitsnark_verifier_1 --name CHALLENGE
