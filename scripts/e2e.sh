@@ -3,30 +3,6 @@
 . "$(dirname "$(realpath "$0")")/common.sh"
 activate_python_venv
 
-data_dir=/tmp/bitsnark-regtest
-snapshot_file=/tmp/bitsnark-regtest-snapshot.tar.gz
-cleanup() {
-    rm -rf "$data_dir" "$snapshot_file"
-}
-[ "$1" = cleanup ] && trap cleanup EXIT
-
-snapshot() {
-    bitcoin_cli stop
-    sleep 1
-    $docker_cmd rm -f "$regtest_container_name"
-    if [ "$1" = create ]; then
-        tar -czf "$snapshot_file" -C "$data_dir" .
-    elif [ "$1" = restore ]; then
-        rm -rf "$data_dir"
-        mkdir "$data_dir"
-        tar -xzf "$snapshot_file" -C "$data_dir"
-    else
-        echo "Invalid argument: $1"
-        exit 1
-    fi
-    npm run start-regtest -- "$data_dir"
-}
-
 create_transaction() {
     address=$1
     amount=$2
@@ -54,7 +30,7 @@ create_transaction() {
 }
 
 npm run start-db
-npm run start-regtest "$data_dir"
+npm run start-regtest
 
 setup_id=test_setup
 locked_funds_tx=$(create_transaction bcrt1p0kxevp4v9eulwu0hsed4jwtlfe2nz6dqntyj6tp833u9js8re7rs6uqs99 10.0 0.005 0)
@@ -76,4 +52,5 @@ bitcoin_cli sendrawtransaction "$prover_stake_tx"
 ts-node ./src/agent/protocol-logic/send-proof.ts bitsnark_prover_1 "$setup_id" --fudge
 
 cd python
-python -m bitsnark.cli fund_and_send --setup-id test_setup --agent-id bitsnark_verifier_1 --name CHALLENGE
+bitcoin_cli generatetoaddress 12 $(bitcoin_cli getnewaddress)
+python -m bitsnark.cli broadcast --setup-id test_setup --agent-id bitsnark_verifier_1 --name PROOF_UNCONTESTED
