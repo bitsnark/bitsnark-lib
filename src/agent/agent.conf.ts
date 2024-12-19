@@ -100,5 +100,5 @@ export const agentConf: AgentConf = {
     useMockProgram: parse.boolean('USE_MOCK_PROGRAM', false),
     protocolIntervalMs: parse.integer('PROTOCOL_INTERVAL_MS', 1000),
 
-    telegramChannelId: '-1002148850465'
+    telegramChannelId: parse.string('TELEGRAM_CHANNEL_ID', '-1002148850465')
 };
