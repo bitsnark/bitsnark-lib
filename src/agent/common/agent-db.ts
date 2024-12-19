@@ -264,7 +264,6 @@ export class AgentDb extends Db {
                 [setupId]
             )
         ).rows;
-        if (rows.length == 0) throw new Error(`No received transactions found, setupId: ${setupId}`);
         return rows.map((row) => {
             const [templateId, height, raw, blockHash] = row;
             return { templateId, height, raw, blockHash };
