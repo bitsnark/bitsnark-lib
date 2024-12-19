@@ -87,17 +87,7 @@ export class Agent {
             console.log('The Nothing is here');
             return;
         }
-        const tokens = data.split(' ');
-        if (this.role == AgentRoles.PROVER && tokens.length == 4 && tokens[0] == '/create') {
-            const [proverAgentId, verifierAgentId, setupId] = tokens.slice(1);
-            if (this.agentId != proverAgentId) return;
-            context.sendText(`setupId: ${setupId}`);
-        }
-        if (this.role == AgentRoles.PROVER && tokens.length == 6 && tokens[0] == '/start') {
-            const setupId = tokens[1];
-            const [payloadTxid, payloadAmount, stakeTxid, stakeAmount] = tokens.slice(2);
-            await this.start(context, setupId, payloadTxid, BigInt(payloadAmount), stakeTxid, BigInt(stakeAmount));
-        } else if (data.trim().startsWith('{') && data.trim().endsWith('}')) {
+        if (data.trim().startsWith('{') && data.trim().endsWith('}')) {
             const message = fromJson(data);
             console.log('Message received: ', message);
             if (message.agentId == this.agentId) return;
@@ -114,15 +104,16 @@ export class Agent {
         }
     }
 
-    public signMessage(context: SimpleContext, message: Message): Message {
+    public signMessage(message: Message): Message {
         const signature = signMessage(toJson(message), agentConf.keyPairs[this.agentId].schnorrPrivate);
         message.telegramMessageSig = signature;
         return message;
     }
 
-    public signMessageAndSend(context: SimpleContext, message: Message) {
-        const signedMessage = this.signMessage(context, message);
-        context.send(signedMessage);
+    public async signMessageAndSend(context: SimpleContext | null, message: Message) {
+        const signedMessage = this.signMessage(message);
+        if (context) await context.send(signedMessage);
+        else await this.bot.bot.telegram.sendMessage(agentConf.telegramChannelId, toJson(signedMessage));
     }
 
     public verifyMessage(message: Message, i: SetupInstance) {
@@ -148,7 +139,6 @@ export class Agent {
     /// PROTOCOL BEGINS
     // prover sends start message
     public async start(
-        context: SimpleContext,
         setupId: string,
         payloadTxid: string,
         payloadAmount: bigint,
@@ -157,6 +147,7 @@ export class Agent {
     ) {
         if (this.role != AgentRoles.PROVER) throw new Error("I'm not a prover");
 
+        await this.db.createSetup(setupId);
         let setup = await this.db.getSetup(setupId);
         if (!setup || setup.status != SetupStatus.PENDING) throw new Error(`Invalid setup state: ${setup.status}`);
 
@@ -185,7 +176,7 @@ export class Agent {
             schnorrPublicKey: this.schnorrPublicKey
         });
 
-        await this.signMessageAndSend(context, msg);
+        await this.signMessageAndSend(null, msg);
     }
 
     // verifier receives start message, generates templates, sends join message
@@ -240,8 +231,22 @@ export class Agent {
 
     // prover receives join message, generates templates
     async on_join(context: SimpleContext, message: JoinMessage) {
-        const i = this.getInstance(message.setupId);
-        if (i.state != SetupState.HELLO) throw new Error('Invalid state');
+        // let's see if the setup exists on my end
+        const setup = await this.db.getSetup(message.setupId);
+        if (!setup) {
+            throw new Error("Setup doesn't exist");
+        }
+
+        let i = this.instances.get(setup.id);
+        if (!i) {
+            // this setup was probably created from the cli
+            i = new SetupInstance(setup.id, setup, AgentRoles.PROVER, {
+                agentId: this.agentId,
+                schnorrPublicKey: stringToBigint(this.schnorrPublicKey)
+            });
+            this.instances.set(setup.id, i);
+            i.state = SetupState.HELLO;
+        }
 
         if (i.verifier) throw new Error('Verifier agent already registered');
 
@@ -253,8 +258,6 @@ export class Agent {
         };
 
         this.verifyMessage(message, i);
-
-        const setup = i.setup!;
 
         i.templates = await initializeTemplates(
             AgentRoles.PROVER,

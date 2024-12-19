@@ -9,7 +9,6 @@ import { generateWotsPublicKeys, mergeWots, setWotsPublicKeysForArgument } from 
 import { AgentRoles, FundingUtxo, SignatureType } from '../common/types';
 import { initializeTemplates } from './init-templates';
 import { AgentDb } from '../common/agent-db';
-import { randomBytes } from 'crypto';
 
 export async function emulateSetup(
     proverAgentId: string,
