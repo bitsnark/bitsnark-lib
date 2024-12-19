@@ -1,6 +1,6 @@
 import { AgentRoles, TemplateNames, SetupStatus } from '../../src/agent/common/types';
 import { TestAgent, generateBlocks, setTestAgent } from '../test-utils/test-utils';
-import { getReceivedTemplates } from '../../src/agent/listener/listener-utils';
+import { getTemplatesRows } from '../../src/agent/listener/listener-utils';
 
 const testnetTxs = [
     {
@@ -50,7 +50,7 @@ async function setDataToTest(templateName: TemplateNames, agent: TestAgent) {
         [testBlockHeight - 1, 'test_setup']
     );
 
-    agent.templatesRows = await getReceivedTemplates(agent.db.listenerDb);
+    agent.templatesRows = await getTemplatesRows(agent.db.listenerDb);
     agent.pending = agent.templatesRows.filter((template) => template.name === TemplateNames.PROOF);
 
     agent.listener.tipHeight = testBlockHeight;
@@ -80,13 +80,26 @@ describe('Listener integration on testnet', () => {
 
     it('Find PROOF by txid', async () => {
         const proof = testnetTxs.find((tx) => tx.name === TemplateNames.PROOF)!.txId;
+        expect(proof).toBeDefined();
 
         const testBlockHeight = agents[0].listener.tipHeight;
         await agents[0].listener.searchBlock(testBlockHeight, agents[0].pending, agents[0].templatesRows);
-        const received = (await getReceivedTemplates(agents[0].db.listenerDb)).filter((tx) => tx.blockHash);
+        const received = (await getTemplatesRows(agents[0].db.listenerDb)).filter((tx) => tx.blockHash);
         expect(received.length).toEqual(1);
         expect(received[0].name).toEqual(TemplateNames.PROOF);
         expect(received[0].txid).toEqual(proof);
-        expect(proof).toBeDefined();
+    }, 600000);
+
+
+    it('Find CHALLENGE by inputs', async () => {
+        const challenge = testnetTxs.find((tx) => tx.name === TemplateNames.CHALLENGE);
+        expect(challenge).toBeDefined();
+
+        const testBlockHeight = challenge!.blockHeight + 6;
+        await agents[0].listener.searchBlock(testBlockHeight, agents[0].pending, agents[0].templatesRows);
+        const received = (await getTemplatesRows(agents[0].db.listenerDb)).filter((tx) => tx.blockHash);
+        expect(received.length).toEqual(1);
+        expect(received[0].name).toEqual(TemplateNames.CHALLENGE);
+        expect(received[0].txid).toEqual(challenge!.txId);
     }, 600000);
 });

@@ -1,7 +1,7 @@
 import { RawTransaction } from 'bitcoin-core';
 import { agentConf } from '../agent.conf';
 import { array } from './array-utils';
-import { Db, DbValue, QueryArgs } from './db';
+import { Db, DbValue, QueryArgs, Query } from './db';
 import { jsonParseCustom, jsonStringifyCustom } from './json';
 import { Input, Output, ReceivedTransaction, Setup, SetupStatus, Template, TemplateStatus } from './types';
 
@@ -164,12 +164,7 @@ export class AgentDb extends Db {
         await this.query('UPDATE setups SET last_checked_block_height = $1 WHERE id = $2', [blockHeight, setupId]);
     }
 
-    public async updateSetupLastCheckedBlockHeightBatch(setupIds: string[], blockHeight: number) {
-        await this.query('UPDATE setups SET last_checked_block_height = $1 WHERE id = ANY($2)', [
-            blockHeight,
-            setupIds
-        ]);
-    }
+
 
     public async getActiveSetups(): Promise<Setup[]> {
         return Promise.all(
@@ -271,39 +266,36 @@ export class AgentDb extends Db {
         });
     }
 
-    public async markReceived(
-        setupId: string,
-        templateName: string,
-        txid: string,
-        blockHash: string,
-        blockHeight: number,
-        rawTransaction: RawTransaction,
-        indexInBlock: number = 0
-    ) {
-        // Assert that the setup is active.
-        const status = (await this.query('SELECT status FROM setups WHERE id = $1', [setupId]))
-            .rows[0]?.[0] as SetupStatus;
-        if (status != SetupStatus.ACTIVE) {
-            throw new Error(
-                `Status of ${setupId} is ${SetupStatus[status]} instead of ${SetupStatus[SetupStatus.ACTIVE]}`
-            );
-        }
+    // Prepare calles but do not execute them
+    public prepareCallUpdateSetupLastCheckedBlockHeightBatch(
+        setupIds: string[],
+        blockHeight: number) {
+        super.addQuery(
+            'UPDATE setups SET last_checked_block_height = $1 WHERE id = ANY($2)',
+            [blockHeight, setupIds]);
+    }
 
-        await this.query(
+    public prepareCallMarkReceived(template: Template, blockHeight: number, rawTransaction: RawTransaction, indexInBlock: number = 0
+    ) {
+        super.addQuery(
             `
                 INSERT INTO received (template_id, txid, block_hash, block_height, raw_transaction, index_in_block)
                 VALUES ((SELECT id FROM templates WHERE setup_id = $1 AND name = $2), $3, $4, $5, $6, $7)
             `,
             [
-                setupId,
-                templateName,
-                txid,
-                blockHash,
+                template.setupId,
+                template.name,
+                rawTransaction.txid,
+                rawTransaction.blockhash,
                 blockHeight,
                 jsonParseCustom(JSON.stringify(rawTransaction)),
                 indexInBlock
             ]
         );
+    }
+
+    public async runTransaction() {
+        await super.runTransaction();
     }
 
     // To assist debugging and mocking the DB in tests.

@@ -6,7 +6,7 @@ import { RawTransaction, Input } from 'bitcoin-core';
 import { agentConf } from '../src/agent/agent.conf';
 import { argv } from 'process';
 import { TemplateStatus, Template } from '../src/agent/common/types';
-import { ReceivedTemplateRow } from '../src/agent/listener/listener-utils';
+import { JoinedTemplate } from '../src/agent/listener/listener-utils';
 
 export const mockRawTransaction: RawTransaction = {
     in_active_chain: true,
@@ -169,7 +169,7 @@ export class TestPublisher {
         console.log(`Saved ${readyTx.txid} [${readyTx.name}] was received in ${agent} db`);
     }
 
-    private mockInputs(template: ReceivedTemplateRow, templates: Template[]): Input[] {
+    private mockInputs(template: JoinedTemplate, templates: Template[]): Input[] {
         return (
             templates
                 .find((t) => t.name === template.name)

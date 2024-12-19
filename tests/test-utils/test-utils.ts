@@ -7,7 +7,7 @@ import { BitcoinListener } from '../../src/agent/listener/bitcoin-listener';
 import { ProtocolProver } from '../../src/agent/protocol-logic/protocol-prover';
 import { ProtocolVerifier } from '../../src/agent/protocol-logic/protocol-verifier';
 import Client from 'bitcoin-core';
-import { ReceivedTemplateRow } from '../../src/agent/listener/listener-utils';
+import { JoinedTemplate } from '../../src/agent/listener/listener-utils';
 
 export const payloadUtxo = {
     txid: '0000000000000000000000000000000000000000000000000000000000000000',
@@ -68,8 +68,8 @@ export interface TestAgent {
     agentId: string;
     db: TestAgentDb;
     listener: BitcoinListener;
-    templatesRows: ReceivedTemplateRow[];
-    pending: ReceivedTemplateRow[];
+    templatesRows: JoinedTemplate[];
+    pending: JoinedTemplate[];
     setup?: Setup;
     received?: ReceivedTransaction[];
     protocol?: ProtocolProver | ProtocolVerifier;

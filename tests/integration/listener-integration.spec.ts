@@ -1,6 +1,6 @@
 import { AgentRoles, TemplateNames, SetupStatus } from '../../src/agent/common/types';
 import { TestAgent, generateBlocks, setTestAgent } from '../test-utils/test-utils';
-import { getReceivedTemplates } from '../../src/agent/listener/listener-utils';
+import { getTemplatesRows } from '../../src/agent/listener/listener-utils';
 
 async function setDataToTest(agent: TestAgent) {
     const testBlockHeight = await agent.listener.client.getBlockCount();
@@ -11,7 +11,7 @@ async function setDataToTest(agent: TestAgent) {
         [testBlockHeight - 1, 'test_setup']
     );
 
-    agent.templatesRows = await getReceivedTemplates(agent.db.listenerDb);
+    agent.templatesRows = await getTemplatesRows(agent.db.listenerDb);
     agent.pending = agent.templatesRows.filter((template) => !template.blockHash);
 
     agent.listener.tipHeight = testBlockHeight;
@@ -21,9 +21,8 @@ async function setDataToTest(agent: TestAgent) {
 //REGTEST only
 async function overwriteDBTxidByBlockchainTxid(agent: TestAgent, templateName: TemplateNames, isRestart = true) {
     await generateBlocks(agent.listener.client, 1);
-    const tip = await agent.listener.client.getBlockCount();
     const hash = await agent.listener.client.getBestBlockHash();
-    const randomTx = (await agent.listener.client.getBlock(hash)).tx[0];
+    const randomTx = ((await agent.listener.client.getBlock(hash)).tx as string[])[0];
 
     if (isRestart) await agent.db.test_restartSetup(agent.setupId || 'test_setup');
 
@@ -62,9 +61,10 @@ describe(`Listener integration tests on regtest`, () => {
     it('Find PROOF by txid', async () => {
         const testBlockHeight = agents[0].listener.tipHeight;
         await agents[0].listener.searchBlock(testBlockHeight, agents[0].pending, agents[0].templatesRows);
-        const received = (await getReceivedTemplates(agents[0].db.listenerDb)).filter((tx) => tx.blockHash);
+        const received = (await getTemplatesRows(agents[0].db.listenerDb)).filter((tx) => tx.blockHash);
         expect(received.length).toEqual(1);
         expect(received[0].name).toEqual(TemplateNames.PROOF);
         expect(received[0].txid).toEqual(proof);
     }, 600000);
+
 });

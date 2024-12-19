@@ -1,13 +1,13 @@
 import { AgentDb } from '../common/agent-db';
 import { ReceivedTransaction, SetupStatus, Template } from '../common/types';
 
-export interface ReceivedTemplateRow extends Template, Partial<ReceivedTransaction> {
+export interface JoinedTemplate extends Template, Partial<ReceivedTransaction> {
     lastCheckedBlockHeight?: number;
     setupStatus?: SetupStatus;
 }
 
-export async function getReceivedTemplates(db: AgentDb): Promise<ReceivedTemplateRow[]> {
-    const listenerTemplates: ReceivedTemplateRow[] = [];
+export async function getTemplatesRows(db: AgentDb): Promise<JoinedTemplate[]> {
+    const listenerTemplates: JoinedTemplate[] = [];
 
     const activeSetups = await db.getActiveSetups();
     for (const setup of activeSetups) {

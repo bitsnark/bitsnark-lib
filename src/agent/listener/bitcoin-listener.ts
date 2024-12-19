@@ -1,15 +1,17 @@
 import { agentConf } from '../agent.conf';
 import { BitcoinNode } from '../common/bitcoin-node';
-import { RawTransaction } from 'bitcoin-core';
-import { Input, Template } from '../common/types';
+import { RawTransaction, Block } from 'bitcoin-core';
+import { Input } from '../common/types';
 import { AgentDb } from '../common/agent-db';
-import { getReceivedTemplates, ReceivedTemplateRow } from './listener-utils';
+import { getTemplatesRows, JoinedTemplate } from './listener-utils';
+
 
 export class BitcoinListener {
     tipHeight: number = 0;
     tipHash: string = '';
     client;
     db: AgentDb;
+    joinedTemplates: JoinedTemplate[] = [];
 
     constructor(agentId: string) {
         this.client = new BitcoinNode().client;
@@ -27,101 +29,86 @@ export class BitcoinListener {
     }
 
     async monitorTransmitted(): Promise<void> {
-        const templates = await getReceivedTemplates(this.db);
-        const pending = templates.filter((template) => !template.blockHash);
+        this.joinedTemplates = await getTemplatesRows(this.db);
+        let pending = this.joinedTemplates.filter((template) => !template.blockHash);
         if (pending.length === 0) return;
 
         let blockHeight = (pending[0].lastCheckedBlockHeight ?? 0) + 1;
 
-        // No re-organization support - we just wait for blocks to be finalized.
+        // No re-organization support - we wait untile blocks are finalized
         while (blockHeight <= this.tipHeight - agentConf.blocksUntilFinalized) {
-            await this.searchBlock(blockHeight, pending, templates);
-            blockHeight++;
-            await this.db.updateSetupLastCheckedBlockHeightBatch(
-                [...pending.reduce((setupIds, template) => setupIds.add(template.setupId!), new Set<string>())],
-                blockHeight
+            const noTxFound = await this.searchBlock(blockHeight, pending);
+            if (noTxFound) {
+                blockHeight++;
+                await this.db.prepareCallUpdateSetupLastCheckedBlockHeightBatch(
+                    [...pending.reduce((setupIds, template) => setupIds.add(template.setupId!), new Set<string>())],
+                    blockHeight
+                );
+                await this.db.runTransaction();
+            } else {
+                pending = this.joinedTemplates.filter((template) => !template.blockHash);
+            }
+        }
+    }
+
+    async searchBlock(blockHeight: number, pending: JoinedTemplate[]): Promise<boolean> {
+        const blockHash = await this.client.getBlockHash(blockHeight);
+        const block = await this.client.getBlock(blockHash, 2);
+        const blockTxArr = block.tx as RawTransaction[];
+        const blockTxids = new Set(blockTxArr.map((raw) => raw.txid));
+        let noTxFound = true;
+
+        for (const currentTemplate of pending.filter((template) => !template.unknownTxid)) {
+            if (!blockTxids.has(currentTemplate.txid ?? '')) continue
+            const raw = blockTxArr.filter((raw) => raw.txid === currentTemplate.txid)[0];
+            if (raw) await this.prepareSave(currentTemplate, raw, blockTxids, blockHeight);
+            noTxFound = false;
+
+        };
+
+
+        //Find and save all pending templates with unknown txid that are in the block.
+        const blockVinsTxids = new Set(
+            blockTxArr.map((raw) => raw.vin.map((vin) => vin.txid)).flat()
+        );
+
+        for (const currentTemplate of pending.filter((template) => template.unknownTxid)) {
+            for (const input of currentTemplate.inputs) {
+                const parent = getParentByInput(input, currentTemplate, this.joinedTemplates);
+                if (!parent?.txid || !blockVinsTxids.has(parent.txid)) continue;
+                const raw = getRawByVinTxid(parent.txid, blockTxArr);
+                this.prepareSave(currentTemplate, raw!, blockTxids, blockHeight);
+                noTxFound = false;
+            }
+        }
+
+        function getParentByInput(input: Input, currentTemplate: JoinedTemplate,
+            templates: JoinedTemplate[]): JoinedTemplate | undefined {
+            return (
+                templates.filter((t) =>
+                    t.setupId! === currentTemplate.setupId! &&
+                    t.name == input.templateName)[0] ?? ''
             );
         }
+
+        function getRawByVinTxid(vinTxid: string, blockTxArr: RawTransaction[]): RawTransaction | undefined {
+            return blockTxArr.filter((raw) => raw.vin.some((vin) => vin.txid === vinTxid))[0];
+        }
+
+        return noTxFound;
     }
 
-    async searchBlock(
-        blockHeight: number,
-        pending: ReceivedTemplateRow[],
-        templates: ReceivedTemplateRow[]
-    ): Promise<void> {
-        const blockHash = await this.client.getBlockHash(blockHeight);
+    async prepareSave(currentTemplate: JoinedTemplate, raw: RawTransaction, blockTxids: Set<string>, blockHeight: number): Promise<void> {
+        const posInBlock = Array.from(blockTxids).indexOf(raw.txid);
 
-        for (const pendingTx of pending) {
-            try {
-                let transmittedTx: RawTransaction | undefined;
-                if (!pendingTx.unknownTxid)
-                    try {
-                        transmittedTx = await this.client.getRawTransaction(pendingTx.txid!, true, blockHash);
-                    } catch (error) {
-                        continue;
-                    }
-                else
-                    transmittedTx = await this.getTransactionByInputs(
-                        pendingTx.inputs,
-                        templates.filter((template) => template.setupId === pendingTx.setupId),
-                        blockHash
-                    );
+        await this.db.prepareCallMarkReceived(
+            currentTemplate,
+            blockHeight,
+            raw,
+            posInBlock
+        );
 
-                if (transmittedTx) {
-                    await this.db.markReceived(
-                        pendingTx.setupId!,
-                        pendingTx.name,
-                        transmittedTx.txid,
-                        transmittedTx.blockhash,
-                        blockHeight,
-                        transmittedTx
-                    );
-                    templates.find((template) => template.name === pendingTx.name)!.blockHash = transmittedTx.blockhash;
-                }
-            } catch (error) {
-                console.error(error);
-                continue;
-            }
-        }
-    }
-
-    private async getTransactionByInputs(
-        inputs: Input[],
-        templates: ReceivedTemplateRow[],
-        blockHash: string
-    ): Promise<RawTransaction | undefined> {
-        try {
-            const searchBy: [string, number][] = [];
-            for (const input of inputs) {
-                const parentTemplate = templates.find(
-                    (template) => input.templateName === template.name && template.txid
-                );
-
-                if (parentTemplate === undefined || !parentTemplate.blockHash) return undefined;
-
-                const utxo = await this.client.getTxOut(parentTemplate.txid!, input.outputIndex, false);
-                if (utxo !== null) return undefined;
-                searchBy.push([parentTemplate.txid!, input.outputIndex]);
-            }
-
-            const blockTxs = (await this.client.getBlock(blockHash)).tx;
-
-            for (const blockTx of blockTxs) {
-                const candidate = await this.client.getRawTransaction(blockTx, true, blockHash);
-                if (candidate.vin.length !== searchBy.length) continue;
-                if (
-                    searchBy.every(
-                        (search, index) =>
-                            candidate.vin[index].txid === search[0] && candidate.vin[index].vout === search[1]
-                    )
-                )
-                    return candidate;
-            }
-            return undefined;
-        } catch (error) {
-            console.log(error);
-            return undefined;
-        }
+        this.joinedTemplates.find((template) => template.txid === currentTemplate.txid)!.blockHash = raw.txid;
     }
 }
 

@@ -3,6 +3,7 @@ import { AgentRoles, TemplateNames } from '../../src/agent/common/types';
 import { getmockExpected, MockBlockchain, txIdBySetupAndName, mockExpected } from './bitcoin-listener-test-utils';
 import { BitcoinListener } from '../../src/agent/listener/bitcoin-listener';
 import * as utils from '../../src/agent/listener/listener-utils';
+import exp from 'constants';
 
 // const mockBlockchain = new MockBlockchain();
 
@@ -25,7 +26,7 @@ jest.mock('../../src/agent/agent.conf', () => ({
 }));
 
 jest.mock('../../src/agent/listener/listener-utils', () => ({
-    getReceivedTemplates: jest.fn()
+    getTemplatesRows: jest.fn()
 }));
 
 describe('BitcoinListener', () => {
@@ -35,9 +36,10 @@ describe('BitcoinListener', () => {
     beforeEach(() => {
         nodeListener = new BitcoinListener(AgentRoles.PROVER);
         jest.spyOn(nodeListener.db, 'query').mockImplementation(jest.fn());
-        jest.spyOn(nodeListener.db, 'markReceived').mockImplementation(jest.fn());
-        jest.spyOn(nodeListener.db, 'updateSetupLastCheckedBlockHeightBatch').mockImplementation(jest.fn());
-        jest.spyOn(utils, 'getReceivedTemplates').mockImplementation(jest.fn());
+        jest.spyOn(nodeListener.db, 'prepareCallMarkReceived').mockImplementation(jest.fn());
+        jest.spyOn(nodeListener.db, 'prepareCallUpdateSetupLastCheckedBlockHeightBatch').mockImplementation(jest.fn());
+        jest.spyOn(utils, 'getTemplatesRows').mockImplementation(jest.fn());
+        jest.spyOn(nodeListener.db, 'runTransaction').mockImplementation(jest.fn());
     });
 
     afterEach(() => {
@@ -51,10 +53,8 @@ describe('BitcoinListener', () => {
     }
 
     function setMockBlockchainSpy() {
-        jest.spyOn(nodeListener.client, 'getRawTransaction');
         jest.spyOn(nodeListener.client, 'getBlock');
         jest.spyOn(nodeListener.client, 'getBlockHash');
-        jest.spyOn(nodeListener.client, 'getTxOut');
         jest.spyOn(nodeListener.client, 'getBlockCount');
     }
 
@@ -78,104 +78,61 @@ describe('BitcoinListener', () => {
     });
 
     it('does not query for raw transactions if no pending transactions are found', async () => {
-        jest.spyOn(utils, 'getReceivedTemplates').mockResolvedValue([]);
+        jest.spyOn(utils, 'getTemplatesRows').mockResolvedValue([]);
         await nodeListener.monitorTransmitted();
         expect(nodeListener.client.getBlock).not.toHaveBeenCalled();
-        expect(nodeListener.client.getRawTransaction).not.toHaveBeenCalled();
+        // expect(nodeListener.client.getRawTransaction).not.toHaveBeenCalled();
     });
 
     it('does not crawl if a new block exists but is not finalized', async () => {
         setMocks(102, 'hash102', 106);
-        (utils.getReceivedTemplates as jest.Mock).mockResolvedValue(getmockExpected());
+        (utils.getTemplatesRows as jest.Mock).mockResolvedValue(getmockExpected());
         await nodeListener.monitorTransmitted();
 
         expect(nodeListener.client.getBlockHash).not.toHaveBeenCalled();
-        expect(nodeListener.client.getRawTransaction).not.toHaveBeenCalled();
-        expect(nodeListener.client.getTxOut).not.toHaveBeenCalled();
-        expect(nodeListener.db.markReceived).not.toHaveBeenCalled();
+        expect(nodeListener.db.prepareCallMarkReceived).not.toHaveBeenCalled();
     });
 
     it('crawls and saves transactions if a new finalized block exists', async () => {
         setMocks(107, 'hash107', 107);
-        (utils.getReceivedTemplates as jest.Mock).mockResolvedValue(getmockExpected());
-
+        (utils.getTemplatesRows as jest.Mock).mockResolvedValue(getmockExpected());
         await nodeListener.monitorTransmitted();
-
         expect(nodeListener.client.getBlockHash).toHaveBeenCalled();
-        expect(nodeListener.client.getRawTransaction).toHaveBeenCalledTimes(4);
-        expect(nodeListener.client.getRawTransaction).not.toHaveBeenCalledWith(
-            txIdBySetupAndName('test_setup_1', TemplateNames.CHALLENGE),
-            expect.any(Boolean),
-            'hash101'
-        );
-    });
-
-    it('processes all block transactions if parent of a temporary transaction was transmitted and its outputs are spent', async () => {
-        setMocks(107, 'hash107', 107);
-        const mockExpected = getmockExpected(
-            new Set([
-                txIdBySetupAndName('test_setup_1', TemplateNames.LOCKED_FUNDS),
-                txIdBySetupAndName('test_setup_1', TemplateNames.PROVER_STAKE),
-                txIdBySetupAndName('test_setup_1', TemplateNames.PROOF)
-            ])
-        );
-        (utils.getReceivedTemplates as jest.Mock).mockResolvedValue(mockExpected);
-
-        await nodeListener.monitorTransmitted();
-
-        //LOCKED_FUNDS & PROVER_STAKE are the txs in block 101
-        expect(nodeListener.client.getRawTransaction).toHaveBeenCalledWith(
-            txIdBySetupAndName('test_setup_1', TemplateNames.LOCKED_FUNDS),
-            expect.any(Boolean),
-            'hash101'
-        );
-        expect(nodeListener.client.getRawTransaction).toHaveBeenCalledWith(
-            txIdBySetupAndName('test_setup_1', TemplateNames.PROVER_STAKE),
-            expect.any(Boolean),
-            'hash101'
-        );
-    });
-
-    it('does not search for temporary transaction if the parent was transmitted but its outputs are not spent', async () => {
-        setMocks(107, 'hash107', 108);
-        const mockExpected = getmockExpected(
-            new Set([
-                txIdBySetupAndName('test_setup_1', TemplateNames.LOCKED_FUNDS),
-                txIdBySetupAndName('test_setup_1', TemplateNames.PROVER_STAKE),
-                txIdBySetupAndName('test_setup_1', TemplateNames.PROOF)
-            ])
-        );
-        (utils.getReceivedTemplates as jest.Mock).mockResolvedValue(mockExpected);
-        await nodeListener.monitorTransmitted();
-        expect(nodeListener.client.getTxOut).toHaveBeenCalled();
-        expect(nodeListener.client.getRawTransaction).toHaveBeenCalledTimes(1);
     });
 
     it('saves new published transactions found by transaction IDs', async () => {
         setMocks(107, 'hash107', 107);
         const mockExpected = getmockExpected();
-        (utils.getReceivedTemplates as jest.Mock).mockResolvedValue(mockExpected);
+        (utils.getTemplatesRows as jest.Mock).mockResolvedValue(mockExpected);
 
         await nodeListener.monitorTransmitted();
+        // expect(nodeListener.client.getRawTransaction).toHaveBeenCalledTimes(4);
+        expect(nodeListener.db.prepareCallMarkReceived).toHaveBeenCalledTimes(2);
+        expect(nodeListener.db.prepareCallMarkReceived).toHaveBeenCalledWith(
+            expect.objectContaining({
+                setupId: 'test_setup_1',
+                name: TemplateNames.LOCKED_FUNDS,
+            }),
+            101,
+            expect.objectContaining({
+                txid: 'test_setup_1_tx_LOCKED_FUNDS',
+                blockhash: 'hash101',
+            }),
+            0
+        );
+        expect(nodeListener.db.prepareCallMarkReceived).toHaveBeenCalledWith(
+            expect.objectContaining({
+                setupId: 'test_setup_1',
+                name: TemplateNames.PROVER_STAKE,
+            }),
+            101,
+            expect.objectContaining({
+                txid: 'test_setup_1_tx_PROVER_STAKE',
+                blockhash: 'hash101',
+            }),
+            1
+        );
 
-        expect(nodeListener.client.getRawTransaction).toHaveBeenCalledTimes(4);
-        expect(nodeListener.db.markReceived).toHaveBeenCalledTimes(2);
-        expect(nodeListener.db.markReceived).toHaveBeenCalledWith(
-            'test_setup_1',
-            TemplateNames.LOCKED_FUNDS,
-            expect.any(String),
-            expect.any(String),
-            expect.any(Number),
-            expect.any(Object)
-        );
-        expect(nodeListener.db.markReceived).toHaveBeenCalledWith(
-            'test_setup_1',
-            TemplateNames.PROVER_STAKE,
-            expect.any(String),
-            expect.any(String),
-            expect.any(Number),
-            expect.any(Object)
-        );
     });
 
     it('saves new published transactions found by inputs', async () => {
@@ -187,30 +144,37 @@ describe('BitcoinListener', () => {
                 txIdBySetupAndName('test_setup_1', TemplateNames.PROOF)
             ])
         );
-        (utils.getReceivedTemplates as jest.Mock).mockResolvedValue(mockExpected);
+        (utils.getTemplatesRows as jest.Mock).mockResolvedValue(mockExpected);
 
         await nodeListener.monitorTransmitted();
 
-        expect(nodeListener.db.markReceived).toHaveBeenCalledTimes(1);
-        expect(nodeListener.db.markReceived).toHaveBeenCalledWith(
-            'test_setup_1',
-            TemplateNames.CHALLENGE,
-            expect.any(String),
-            expect.any(String),
-            expect.any(Number),
-            expect.any(Object)
+        expect(nodeListener.db.prepareCallMarkReceived).toHaveBeenCalledTimes(1);
+        expect(nodeListener.db.prepareCallMarkReceived).toHaveBeenCalledWith(
+            expect.objectContaining({
+                setupId: 'test_setup_1',
+                name: TemplateNames.CHALLENGE,
+            }),
+            107,
+            expect.objectContaining({
+                txid: 'test_setup_1_tx_CHALLENGE',
+                blockhash: 'hash107',
+                vin: expect.arrayContaining([
+                    expect.objectContaining({ txid: 'test_setup_1_tx_PROOF' })
+                ]),
+            }),
+            0
         );
     });
 
     it('updates listener height in setups', async () => {
         setMocks(109, 'hash109', 109);
-        (utils.getReceivedTemplates as jest.Mock).mockResolvedValue(mockExpected);
+        (utils.getTemplatesRows as jest.Mock).mockResolvedValue(mockExpected);
 
         await nodeListener.monitorTransmitted();
 
-        expect(nodeListener.db.updateSetupLastCheckedBlockHeightBatch).toHaveBeenCalledTimes(3);
-        expect(nodeListener.db.updateSetupLastCheckedBlockHeightBatch).toHaveBeenCalledWith(['test_setup_1'], 102);
-        expect(nodeListener.db.updateSetupLastCheckedBlockHeightBatch).toHaveBeenCalledWith(['test_setup_1'], 103);
-        expect(nodeListener.db.updateSetupLastCheckedBlockHeightBatch).toHaveBeenCalledWith(['test_setup_1'], 104);
+        expect(nodeListener.db.prepareCallUpdateSetupLastCheckedBlockHeightBatch).toHaveBeenCalledTimes(3);
+        expect(nodeListener.db.prepareCallUpdateSetupLastCheckedBlockHeightBatch).toHaveBeenCalledWith(['test_setup_1'], 102);
+        expect(nodeListener.db.prepareCallUpdateSetupLastCheckedBlockHeightBatch).toHaveBeenCalledWith(['test_setup_1'], 103);
+        expect(nodeListener.db.prepareCallUpdateSetupLastCheckedBlockHeightBatch).toHaveBeenCalledWith(['test_setup_1'], 104);
     });
 });

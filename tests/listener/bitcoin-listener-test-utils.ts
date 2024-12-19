@@ -1,6 +1,6 @@
 import { RawTransaction, TxOut, Block, Vin } from 'bitcoin-core';
 import { AgentRoles, Input, TemplateNames, TemplateStatus } from '../../src/agent/common/types';
-import { ReceivedTemplateRow } from '../../src/agent/listener/listener-utils';
+import { JoinedTemplate } from '../../src/agent/listener/listener-utils';
 
 const templates = [
     TemplateNames.LOCKED_FUNDS,
@@ -10,7 +10,9 @@ const templates = [
     TemplateNames.PROOF_UNCONTESTED
 ];
 
-const IncomingTransactionsBaseRow: ReceivedTemplateRow = {
+
+
+const IncomingTransactionsBaseRow: JoinedTemplate = {
     setupId: 'setup_id',
     txid: 'tx_id',
     lastCheckedBlockHeight: 100,
@@ -50,6 +52,23 @@ const emptyBlock: Block = {
     nextblockhash: undefined
 };
 
+const emptyRawTransaction = {
+    txid: '',
+    hash: 'hash',
+    hex: 'hex',
+    size: 100,
+    vsize: 100,
+    weight: 100,
+    version: 1,
+    locktime: 1,
+    vin: [],
+    vout: [],
+    blockhash: 'block_hash',
+    confirmations: 100,
+    time: 100,
+    blocktime: 100
+}
+
 const setups = ['test_setup_1'];
 
 export function txIdBySetupAndName(setupId: string, name: string): string {
@@ -63,7 +82,7 @@ function extractNameFromTxid(str: string): string {
     return '';
 }
 
-export const mockExpected = (function createSetupsIncomingTransactions(): ReceivedTemplateRow[] {
+export const mockExpected = (function createSetupsIncomingTransactions(): JoinedTemplate[] {
     return setups.flatMap((setupId, setupIndex) => {
         return templates.map((templateName, index) => {
             return {
@@ -81,6 +100,10 @@ export const mockExpected = (function createSetupsIncomingTransactions(): Receiv
 })();
 
 function getInputs(templateName: string, isVin: boolean = false): (Input | Vin)[] {
+    if (templateName === TemplateNames.LOCKED_FUNDS || templateName === TemplateNames.PROVER_STAKE) {
+        return [getInput(0, 0, 'random_tx', 0, isVin)];
+    }
+
     if (templateName === TemplateNames.PROOF) {
         return [getInput(0, 0, TemplateNames.PROVER_STAKE, 0, isVin)];
     }
@@ -152,7 +175,7 @@ export function getmockExpected(markIncoming?: Set<string>) {
             return expectedTx;
         }
     });
-    return JSON.parse(JSON.stringify(copy)) as ReceivedTemplateRow[];
+    return JSON.parse(JSON.stringify(copy)) as JoinedTemplate[];
 }
 
 export function getMockRawChallengeTx(setupId: string, blockhash: string) {
@@ -172,32 +195,53 @@ async function waitAndReturn<T>(obj: T): Promise<T> {
     return new Promise((resolve) => setTimeout(() => resolve(obj), 1));
 }
 export class MockBlockchain {
+    private blocksToTemplates: Map<number, string[]> = new Map([
+        [101, [TemplateNames.LOCKED_FUNDS, TemplateNames.PROVER_STAKE]],
+        [102, [TemplateNames.PROOF]],
+        [107, [TemplateNames.CHALLENGE]],
+        [120, [TemplateNames.PROOF_UNCONTESTED]]
+    ]);
+
     blockchainTip: number;
     mockBlocks: Map<number, Block> = new Map();
 
     constructor(blockchainTip: number) {
         this.blockchainTip = blockchainTip;
-        this.mockBlocks.set(100, mockBlock(100, ['random_tx']));
+        this.mockBlocks.set(100, mockBlock(100));
 
         if (blockchainTip < 101) return;
-        this.mockBlocks.set(101, mockBlock(101, [TemplateNames.LOCKED_FUNDS, TemplateNames.PROVER_STAKE]));
+        this.mockBlocks.set(101, mockBlock(101));
 
         if (blockchainTip < 102) return;
-        this.mockBlocks.set(102, mockBlock(102, [TemplateNames.PROOF]));
+        this.mockBlocks.set(102, mockBlock(102));
 
         if (blockchainTip < 107) return;
-        this.mockBlocks.set(107, mockBlock(107, [TemplateNames.CHALLENGE]));
+        this.mockBlocks.set(107, mockBlock(107));
 
         if (blockchainTip < 120) return;
-        this.mockBlocks.set(120, mockBlock(120, [TemplateNames.PROOF_UNCONTESTED]));
+        this.mockBlocks.set(120, mockBlock(120));
 
-        function mockBlock(blockHeight: number, txs_names: string[]) {
+        function mockBlock(blockHeight: number) {
+            const blocksToTemplates: Map<number, string[]> = new Map([
+                [101, [TemplateNames.LOCKED_FUNDS, TemplateNames.PROVER_STAKE]],
+                [102, [TemplateNames.PROOF]],
+                [107, [TemplateNames.CHALLENGE]],
+                [120, [TemplateNames.PROOF_UNCONTESTED]]
+            ]);
+            const blockTemplates = blocksToTemplates.get(blockHeight) ?? [];
             return {
                 ...emptyBlock,
+                tx: blockTemplates.map((templateName) => {
+                    return {
+                        ...emptyRawTransaction,
+                        txid: txIdBySetupAndName('test_setup_1', templateName),
+                        blockhash: `hash${blockHeight}`,
+                        vin: getInputs(templateName, true).flat()
+                    }
+                }) as RawTransaction[],
                 hash: `hash${blockHeight}`,
-                height: blockHeight,
-                tx: txs_names.map((name) => txIdBySetupAndName('test_setup_1', name))
-            };
+                height: blockHeight
+            } as Block;
         }
     }
 
@@ -211,6 +255,7 @@ export class MockBlockchain {
     getBlock(blockHash: string, verbosity?: number): Promise<Block> {
         const blockHeight = parseInt(blockHash.replace('hash', ''));
         if (this.mockBlocks.get(blockHeight)) {
+            // console.log('getBlock', blockHash, (this.mockBlocks.get(blockHeight)!.tx as RawTransaction[]).map(tx => tx.txid).join(','));
             return waitAndReturn(this.mockBlocks.get(blockHeight)!);
         }
         return waitAndReturn(emptyBlock);
@@ -225,10 +270,10 @@ export class MockBlockchain {
 
     getRawTransaction(txid: string, verbose: boolean, blockhash: string): Promise<RawTransaction> {
         const blockHeight = parseInt(blockhash.replace('hash', ''));
-        if (this.mockBlocks.get(blockHeight)?.tx.includes(txid)) {
+        if ((this.mockBlocks.get(blockHeight)?.tx as RawTransaction[]).filter(tx => tx.txid === txid).length > 0) {
             return waitAndReturn({
                 txid: txid,
-                hash: '',
+                hash: blockhash,
                 hex: 'hex',
                 size: 100,
                 vsize: 100,
