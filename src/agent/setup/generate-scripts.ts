@@ -51,7 +51,7 @@ function setTaprootKey(transactions: Template[]) {
     }
 }
 
-export function generateBoilerplate(myRole: AgentRoles, spendingCondition: SpendingCondition, _: Input): Buffer {
+export function generateBoilerplate(myRole: AgentRoles, spendingCondition: SpendingCondition): Buffer {
     const bitcoin = new Bitcoin();
 
     bitcoin.throwOnFail = spendingCondition.nextRole == myRole;
@@ -170,7 +170,7 @@ export async function generateAllScripts(
                     script = generateProcessSelectionPath(sc);
                 } else {
                     const sc = getSpendingConditionByInput(templates, input);
-                    script = generateBoilerplate(myRole, sc, input);
+                    script = generateBoilerplate(myRole, sc);
                 }
 
                 sc.script = script;
