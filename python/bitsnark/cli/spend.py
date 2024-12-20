@@ -106,7 +106,7 @@ class SpendCommand(Command):
                 COutPoint(
                     hash=bytes.fromhex(prev_txid)[::-1],
                     n=prev_out_index,
-                ), nSequence=(spending_condition.get('timeLock') or 0xffffffff),
+                ), nSequence=(spending_condition.get('timeoutBlocks') or 0xffffffff),
             )
         ]
         outputs = [
