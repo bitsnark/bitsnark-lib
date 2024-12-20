@@ -73,7 +73,7 @@ export class DoomsdayGenerator {
     }
 
     // return true if the line succeeds!!!
-    public checkLine(index: number, a: bigint, b: bigint, c: bigint, _: bigint): boolean {
+    public checkLine(index: number, a: bigint, b: bigint, c: bigint): boolean {
         const line = this.program[index];
         switch (line.name) {
             case InstrCode.ADDMOD:
