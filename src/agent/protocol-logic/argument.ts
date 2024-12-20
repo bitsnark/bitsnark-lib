@@ -1,25 +1,27 @@
 import { FatMerkleProof } from './fat-merkle';
 import { encodeWinternitz24, encodeWinternitz256_4 } from '../common/winternitz';
 import { InstrCode, Instruction } from '../../generator/ec_vm/vm/types';
-import { Decasector, StateCommitment } from './decasector';
-import { DoomsdayGenerator, RefutationType } from '../final-step/doomsday-generator';
+import { DoomsdayGenerator } from '../final-step/doomsday-generator';
 import { prime_bigint } from '../common/constants';
 import { bigintToBufferBE, bufferToBigintBE } from '../common/encoding';
 import { Template, TemplateNames } from '../common/types';
 import { createUniqueDataId } from '../setup/wots-keys';
+import { Decasector, StateCommitment } from '../setup/decasector';
 
 function calculateD(a: bigint, b: bigint): bigint {
     return (a * b) / prime_bigint;
 }
 
 export class Argument {
+    agentId: string;
     setupId: string;
     selectionPath: number[] = [];
     selectionPathUnparsed: Buffer[][] = [];
     index: number = 0;
     proof: bigint[];
 
-    constructor(setupId: string, proof: bigint[]) {
+    constructor(agentId: string, setupId: string, proof: bigint[]) {
+        this.agentId = agentId;
         this.setupId = setupId;
         this.proof = proof;
     }
@@ -32,9 +34,9 @@ export class Argument {
     }
 
     private makeAbcdWitness(scBefore: StateCommitment, scAfter: StateCommitment, instr: Instruction): Buffer[] {
-        const aValue = scBefore.getValueForRuntimeIndex(instr.param1);
-        const bValue = instr.param2 ? scBefore.getValueForRuntimeIndex(instr.param2) : 0n;
-        const cValue = scAfter.getValueForRuntimeIndex(instr.target);
+        const aValue = scBefore.getValues()[instr.param1];
+        const bValue = instr.param2 ? scBefore.getValues()[instr.param2] : 0n;
+        const cValue = scAfter.getValues()[instr.target];
         const dValue =
             instr.name == InstrCode.MULMOD || instr.name == InstrCode.DIVMOD ? calculateD(aValue, bValue) : 0n;
         return [aValue, bValue, cValue, dValue]
@@ -51,14 +53,9 @@ export class Argument {
     ): Promise<Buffer[][]> {
         const valuesBefore = scBefore.getValues();
         const valuesAfter = scAfter.getValues();
-        const merkleProofA = await FatMerkleProof.fromRegs(
-            valuesBefore,
-            scBefore.getIndexForRuntimeIndex(instr.param1)
-        );
-        const merkleProofB = instr.param2
-            ? await FatMerkleProof.fromRegs(valuesBefore, scBefore.getIndexForRuntimeIndex(instr.param2!))
-            : merkleProofA;
-        const merkleProofC = await FatMerkleProof.fromRegs(valuesAfter, scAfter.getIndexForRuntimeIndex(instr.target));
+        const merkleProofA = await FatMerkleProof.fromRegs(valuesBefore, instr.param1);
+        const merkleProofB = instr.param2 ? await FatMerkleProof.fromRegs(valuesBefore, instr.param2!) : merkleProofA;
+        const merkleProofC = await FatMerkleProof.fromRegs(valuesAfter, instr.target);
 
         const hashes = [merkleProofA.toArgument(), merkleProofB.toArgument(), merkleProofC.toArgument()];
         const encoded = hashes.map((o, oi) =>
@@ -119,16 +116,18 @@ export class Argument {
         const [a, b, c, d] = argData[1];
 
         // let's check the instruction first
-        const doomsdayGenerator = new DoomsdayGenerator();
+        const doomsdayGenerator = new DoomsdayGenerator(this.agentId, this.setupId);
         if (!doomsdayGenerator.checkLine(this.index, a, b, c, d)) {
             // the line is false, attack it!
             const data = [a, b, c, d];
-            const { script, controlBlock } = await doomsdayGenerator.generateFinalStepTaproot(templates, {
-                refutationType: RefutationType.INSTR,
-                line: this.index
-            });
+            // TODO: Complete the functionality of DDG
+            // const { script, controlBlock } = await doomsdayGenerator.generateFinalStepTaproot(templates, {
+            //     refutationType: RefutationType.INSTR,
+            //     line: this.index
+            // });
 
-            return { data, script: script!, controlBlock: controlBlock! };
+            // return { data, script: script!, controlBlock: controlBlock! };
+            return { data, script: Buffer.from([]), controlBlock: Buffer.from([]) };
         }
 
         // if not the instruction, then it must be one of the hashes in the
@@ -160,13 +159,14 @@ export class Argument {
         const data = [...proofs[whichProof].hashes.slice(whichHash * 2, whichHash * 2 + 3)].map((b) =>
             bufferToBigintBE(b)
         );
-        const { script, controlBlock } = await doomsdayGenerator.generateFinalStepTaproot(templates, {
-            refutationType: RefutationType.HASH,
-            line: this.index,
-            whichProof,
-            whichHash
-        });
-
-        return { data, script: script!, controlBlock: controlBlock! };
+        // TODO: Complete the functionality of DDG
+        //     const { script, controlBlock } = await doomsdayGenerator.generateFinalStepTaproot(templates, {
+        //     refutationType: RefutationType.HASH,
+        //     line: this.index,
+        //     whichProof,
+        //     whichHash
+        // });
+        // return { data, script: script!, controlBlock: controlBlock! };
+        return { data, script: Buffer.from([]), controlBlock: Buffer.from([]) };
     }
 }

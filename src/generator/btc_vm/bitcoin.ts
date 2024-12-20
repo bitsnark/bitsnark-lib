@@ -1274,6 +1274,51 @@ export class Bitcoin {
         this.drop(tempIndex);
     }
 
+    nibbles4To3(si: StackItem[]): StackItem[] {
+        // break the input into bits and send them to altstack
+        // send MSB first so it comes out last
+
+        // two bits extra!
+        this.OP_0_16(0);
+        this.OP_TOALTSTACK();
+        this.OP_0_16(0);
+        this.OP_TOALTSTACK();
+
+        for (let i = si.length - 1; i >= 0; i--) {
+            this.pick(si[i]); // n
+            for (let j = 3; j >= 0; j--) {
+                const orig = this.stack.top().value as number;
+                this.OP_DUP(); // n n
+                this.OP_0_16(1 << j); // n n bitval
+                this.OP_GREATERTHANOREQUAL(); // n flag
+                this.OP_DUP(); // n flag flag
+                this.OP_TOALTSTACK(); // n flag
+                const flag = this.stack.top().value != 0;
+                this.OP_IF(); // n
+                this.OP_0_16(1 << j); // n bitval
+                this.OP_SUB(); // n
+                this.OP_ENDIF(); // n
+                this.stack.top().value = !flag ? orig : orig - (1 << j);
+            }
+            this.OP_DROP(); //
+        }
+
+        const result = this.newNibbles(Math.ceil((si.length * 4) / 3));
+        // now build the nibbles back in LSB order
+        for (let i = 0; i < result.length; i++) {
+            this.OP_FROMALTSTACK(); // bit0
+            this.OP_FROMALTSTACK(); // bit1
+            this.mul(2); // bit0 bit1*2
+            this.OP_ADD(); // bit0+bit1*2
+            this.OP_FROMALTSTACK(); // bit0+bit1*2 bit2
+            this.mul(4); // bit0+bit1*2 bit2*4
+            this.OP_ADD(); // bit0+bit1*2+bit2*4
+            this.replaceWithTop(result[i]); //
+        }
+
+        return result;
+    }
+
     /***  META ***/
 
     programSizeInBitcoinBytes(): number {

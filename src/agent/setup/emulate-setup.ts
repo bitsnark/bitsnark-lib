@@ -85,17 +85,37 @@ export async function emulateSetup(
     proverTemplates = setWotsPublicKeysForArgument(setupId, proverTemplates);
     verifierTemplates = setWotsPublicKeysForArgument(setupId, verifierTemplates);
 
+    await proverDb.upsertTemplates(setupId, proverTemplates);
+    await verifierDb.upsertTemplates(setupId, verifierTemplates);
+
+    console.log('writing templates to DB before external script generation process...');
+
+    await proverDb.upsertTemplates(setupId, proverTemplates);
+    await verifierDb.upsertTemplates(setupId, verifierTemplates);
+
     console.log('generating scripts...');
 
-    proverTemplates = await generateAllScripts(AgentRoles.PROVER, proverTemplates, generateFinal);
-    verifierTemplates = await generateAllScripts(AgentRoles.VERIFIER, verifierTemplates, generateFinal);
+    proverTemplates = await generateAllScripts(
+        proverAgentId,
+        setupId,
+        AgentRoles.PROVER,
+        proverTemplates,
+        generateFinal
+    );
+    verifierTemplates = await generateAllScripts(
+        verifierAgentId,
+        setupId,
+        AgentRoles.VERIFIER,
+        verifierTemplates,
+        generateFinal
+    );
 
     console.log('adding amounts...');
 
     proverTemplates = await addAmounts(proverAgentId, AgentRoles.PROVER, setupId, proverTemplates);
     verifierTemplates = await addAmounts(verifierAgentId, AgentRoles.VERIFIER, setupId, verifierTemplates);
 
-    console.log('writing templates to DB...');
+    console.log('writing templates to DB before external signature process...');
 
     await proverDb.upsertTemplates(setupId, proverTemplates);
     await verifierDb.upsertTemplates(setupId, verifierTemplates);
