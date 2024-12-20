@@ -1,7 +1,6 @@
 import { Bitcoin } from '../../generator/btc_vm/bitcoin';
 import { StackItem } from '../../generator/btc_vm/stack';
 import { last } from '../common/array-utils';
-import { nibblesToBigint_3 } from './nibbles';
 
 export function teaPot() {
     throw new Error("I'm a teapot");

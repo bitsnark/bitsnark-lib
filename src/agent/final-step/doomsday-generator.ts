@@ -174,7 +174,6 @@ export class DoomsdayGenerator {
             transactions,
             `${TemplateNames.SELECT}_${twoDigits(this.decasector.iterations - 1)}`
         );
-        const semiFinal = getTemplateByName(transactions, TemplateNames.ARGUMENT);
 
         const cache: { [key: string]: ScriptTemplate } = {};
 
