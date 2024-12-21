@@ -82,24 +82,22 @@ describe('Listener integration on testnet', () => {
         const proof = testnetTxs.find((tx) => tx.name === TemplateNames.PROOF)!.txId;
         expect(proof).toBeDefined();
 
-        const testBlockHeight = agents[0].listener.tipHeight;
-        await agents[0].listener.searchBlock(testBlockHeight, agents[0].pending, agents[0].templatesRows);
+        await agents[0].listener.monitorTransmitted();
         const received = (await getTemplatesRows(agents[0].db.listenerDb)).filter((tx) => tx.blockHash);
         expect(received.length).toEqual(1);
         expect(received[0].name).toEqual(TemplateNames.PROOF);
         expect(received[0].txid).toEqual(proof);
     }, 600000);
 
-
     it('Find CHALLENGE by inputs', async () => {
         const challenge = testnetTxs.find((tx) => tx.name === TemplateNames.CHALLENGE);
+        await setDataToTest(TemplateNames.CHALLENGE, agents[0]);
         expect(challenge).toBeDefined();
 
-        const testBlockHeight = challenge!.blockHeight + 6;
-        await agents[0].listener.searchBlock(testBlockHeight, agents[0].pending, agents[0].templatesRows);
+        await agents[0].listener.monitorTransmitted();
         const received = (await getTemplatesRows(agents[0].db.listenerDb)).filter((tx) => tx.blockHash);
-        expect(received.length).toEqual(1);
-        expect(received[0].name).toEqual(TemplateNames.CHALLENGE);
-        expect(received[0].txid).toEqual(challenge!.txId);
+        expect(received.length).toEqual(2);
+        expect(received[1].name).toEqual(TemplateNames.CHALLENGE);
+        expect(received[1].txid).toEqual(challenge!.txId);
     }, 600000);
 });

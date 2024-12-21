@@ -164,8 +164,6 @@ export class AgentDb extends Db {
         await this.query('UPDATE setups SET last_checked_block_height = $1 WHERE id = $2', [blockHeight, setupId]);
     }
 
-
-
     public async getActiveSetups(): Promise<Setup[]> {
         return Promise.all(
             (
@@ -267,15 +265,16 @@ export class AgentDb extends Db {
     }
 
     // Prepare calles but do not execute them
-    public prepareCallUpdateSetupLastCheckedBlockHeightBatch(
-        setupIds: string[],
-        blockHeight: number) {
-        super.addQuery(
-            'UPDATE setups SET last_checked_block_height = $1 WHERE id = ANY($2)',
-            [blockHeight, setupIds]);
+    public prepareCallUpdateSetupLastCheckedBlockHeightBatch(setupIds: string[], blockHeight: number) {
+        super.addQuery('UPDATE setups SET last_checked_block_height = $1 WHERE id = ANY($2)', [blockHeight, setupIds]);
     }
 
-    public prepareCallMarkReceived(template: Template, blockHeight: number, rawTransaction: RawTransaction, indexInBlock: number = 0
+    public prepareCallMarkReceived(
+        template: Template,
+        blockHeight: number,
+        blockHash: string,
+        rawTransaction: RawTransaction,
+        indexInBlock: number = 0
     ) {
         super.addQuery(
             `
@@ -286,7 +285,7 @@ export class AgentDb extends Db {
                 template.setupId,
                 template.name,
                 rawTransaction.txid,
-                rawTransaction.blockhash,
+                blockHash,
                 blockHeight,
                 jsonParseCustom(JSON.stringify(rawTransaction)),
                 indexInBlock

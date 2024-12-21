@@ -31,7 +31,6 @@ jest.mock('../../src/agent/listener/listener-utils', () => ({
 
 describe('BitcoinListener', () => {
     let nodeListener: BitcoinListener;
-    let clientMock: Client;
 
     beforeEach(() => {
         nodeListener = new BitcoinListener(AgentRoles.PROVER);
@@ -81,7 +80,6 @@ describe('BitcoinListener', () => {
         jest.spyOn(utils, 'getTemplatesRows').mockResolvedValue([]);
         await nodeListener.monitorTransmitted();
         expect(nodeListener.client.getBlock).not.toHaveBeenCalled();
-        // expect(nodeListener.client.getRawTransaction).not.toHaveBeenCalled();
     });
 
     it('does not crawl if a new block exists but is not finalized', async () => {
@@ -106,33 +104,33 @@ describe('BitcoinListener', () => {
         (utils.getTemplatesRows as jest.Mock).mockResolvedValue(mockExpected);
 
         await nodeListener.monitorTransmitted();
-        // expect(nodeListener.client.getRawTransaction).toHaveBeenCalledTimes(4);
         expect(nodeListener.db.prepareCallMarkReceived).toHaveBeenCalledTimes(2);
         expect(nodeListener.db.prepareCallMarkReceived).toHaveBeenCalledWith(
             expect.objectContaining({
                 setupId: 'test_setup_1',
-                name: TemplateNames.LOCKED_FUNDS,
+                name: TemplateNames.LOCKED_FUNDS
             }),
             101,
+            'hash101',
             expect.objectContaining({
                 txid: 'test_setup_1_tx_LOCKED_FUNDS',
-                blockhash: 'hash101',
+                blockhash: 'hash101'
             }),
             0
         );
         expect(nodeListener.db.prepareCallMarkReceived).toHaveBeenCalledWith(
             expect.objectContaining({
                 setupId: 'test_setup_1',
-                name: TemplateNames.PROVER_STAKE,
+                name: TemplateNames.PROVER_STAKE
             }),
             101,
+            'hash101',
             expect.objectContaining({
                 txid: 'test_setup_1_tx_PROVER_STAKE',
-                blockhash: 'hash101',
+                blockhash: 'hash101'
             }),
             1
         );
-
     });
 
     it('saves new published transactions found by inputs', async () => {
@@ -152,15 +150,14 @@ describe('BitcoinListener', () => {
         expect(nodeListener.db.prepareCallMarkReceived).toHaveBeenCalledWith(
             expect.objectContaining({
                 setupId: 'test_setup_1',
-                name: TemplateNames.CHALLENGE,
+                name: TemplateNames.CHALLENGE
             }),
             107,
+            'hash107',
             expect.objectContaining({
                 txid: 'test_setup_1_tx_CHALLENGE',
                 blockhash: 'hash107',
-                vin: expect.arrayContaining([
-                    expect.objectContaining({ txid: 'test_setup_1_tx_PROOF' })
-                ]),
+                vin: expect.arrayContaining([expect.objectContaining({ txid: 'test_setup_1_tx_PROOF' })])
             }),
             0
         );
@@ -173,8 +170,17 @@ describe('BitcoinListener', () => {
         await nodeListener.monitorTransmitted();
 
         expect(nodeListener.db.prepareCallUpdateSetupLastCheckedBlockHeightBatch).toHaveBeenCalledTimes(3);
-        expect(nodeListener.db.prepareCallUpdateSetupLastCheckedBlockHeightBatch).toHaveBeenCalledWith(['test_setup_1'], 102);
-        expect(nodeListener.db.prepareCallUpdateSetupLastCheckedBlockHeightBatch).toHaveBeenCalledWith(['test_setup_1'], 103);
-        expect(nodeListener.db.prepareCallUpdateSetupLastCheckedBlockHeightBatch).toHaveBeenCalledWith(['test_setup_1'], 104);
+        expect(nodeListener.db.prepareCallUpdateSetupLastCheckedBlockHeightBatch).toHaveBeenCalledWith(
+            ['test_setup_1'],
+            102
+        );
+        expect(nodeListener.db.prepareCallUpdateSetupLastCheckedBlockHeightBatch).toHaveBeenCalledWith(
+            ['test_setup_1'],
+            103
+        );
+        expect(nodeListener.db.prepareCallUpdateSetupLastCheckedBlockHeightBatch).toHaveBeenCalledWith(
+            ['test_setup_1'],
+            104
+        );
     });
 });

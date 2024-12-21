@@ -10,6 +10,7 @@ export async function getTemplatesRows(db: AgentDb): Promise<JoinedTemplate[]> {
     const listenerTemplates: JoinedTemplate[] = [];
 
     const activeSetups = await db.getActiveSetups();
+
     for (const setup of activeSetups) {
         let templates: Template[] | undefined;
         try {
@@ -22,12 +23,12 @@ export async function getTemplatesRows(db: AgentDb): Promise<JoinedTemplate[]> {
             }
 
             for (const template of templates) {
-                const receivedTemplate = received.find((rt: ReceivedTransaction) => rt.templateId === template.id);
+                const receivedTemplate = received.filter((rt: ReceivedTransaction) => rt.templateId === template.id);
                 listenerTemplates.push({
                     lastCheckedBlockHeight: setup.lastCheckedBlockHeight,
                     setupStatus: setup.status,
                     ...template,
-                    ...receivedTemplate
+                    ...receivedTemplate[0]
                 });
             }
         } catch (error) {

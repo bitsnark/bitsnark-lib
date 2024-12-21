@@ -14,6 +14,7 @@ async function setDataToTest(agent: TestAgent) {
     agent.templatesRows = await getTemplatesRows(agent.db.listenerDb);
     agent.pending = agent.templatesRows.filter((template) => !template.blockHash);
 
+    agent.listener.joinedTemplates = agent.templatesRows;
     agent.listener.tipHeight = testBlockHeight;
     agent.listener.tipHash = await agent.listener.client.getBlockHash(testBlockHeight);
 }
@@ -59,12 +60,11 @@ describe(`Listener integration tests on regtest`, () => {
     }, 600000);
 
     it('Find PROOF by txid', async () => {
-        const testBlockHeight = agents[0].listener.tipHeight;
-        await agents[0].listener.searchBlock(testBlockHeight, agents[0].pending, agents[0].templatesRows);
-        const received = (await getTemplatesRows(agents[0].db.listenerDb)).filter((tx) => tx.blockHash);
+        await agents[0].listener.monitorTransmitted();
+        const joined = await getTemplatesRows(agents[0].db.listenerDb);
+        const received = joined.filter((tx) => tx.blockHash);
         expect(received.length).toEqual(1);
         expect(received[0].name).toEqual(TemplateNames.PROOF);
         expect(received[0].txid).toEqual(proof);
     }, 600000);
-
 });

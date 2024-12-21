@@ -10,8 +10,6 @@ const templates = [
     TemplateNames.PROOF_UNCONTESTED
 ];
 
-
-
 const IncomingTransactionsBaseRow: JoinedTemplate = {
     setupId: 'setup_id',
     txid: 'tx_id',
@@ -24,7 +22,7 @@ const IncomingTransactionsBaseRow: JoinedTemplate = {
     outputs: [],
     raw: undefined,
     blockHash: undefined,
-    templateId: 0,
+    id: 0,
     height: undefined,
     unknownTxid: false,
     protocolData: undefined
@@ -63,11 +61,11 @@ const emptyRawTransaction = {
     locktime: 1,
     vin: [],
     vout: [],
-    blockhash: 'block_hash',
+    blockhash: 'blockHash',
     confirmations: 100,
     time: 100,
     blocktime: 100
-}
+};
 
 const setups = ['test_setup_1'];
 
@@ -90,7 +88,7 @@ export const mockExpected = (function createSetupsIncomingTransactions(): Joined
                 name: templateName,
                 setupId: setupId,
                 txid: txIdBySetupAndName(setupId, templateName),
-                templateId: setupIndex * 100 + index,
+                id: setupIndex * 100 + index,
                 inputs: getInputs(templateName) as Input[],
                 unknownTxid: templateName === TemplateNames.CHALLENGE,
                 status: TemplateStatus.PENDING
@@ -237,7 +235,7 @@ export class MockBlockchain {
                         txid: txIdBySetupAndName('test_setup_1', templateName),
                         blockhash: `hash${blockHeight}`,
                         vin: getInputs(templateName, true).flat()
-                    }
+                    };
                 }) as RawTransaction[],
                 hash: `hash${blockHeight}`,
                 height: blockHeight
@@ -270,7 +268,7 @@ export class MockBlockchain {
 
     getRawTransaction(txid: string, verbose: boolean, blockhash: string): Promise<RawTransaction> {
         const blockHeight = parseInt(blockhash.replace('hash', ''));
-        if ((this.mockBlocks.get(blockHeight)?.tx as RawTransaction[]).filter(tx => tx.txid === txid).length > 0) {
+        if ((this.mockBlocks.get(blockHeight)?.tx as RawTransaction[]).filter((tx) => tx.txid === txid).length > 0) {
             return waitAndReturn({
                 txid: txid,
                 hash: blockhash,

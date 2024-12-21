@@ -1,10 +1,9 @@
 import { agentConf } from '../agent.conf';
 import { BitcoinNode } from '../common/bitcoin-node';
-import { RawTransaction, Block } from 'bitcoin-core';
+import { RawTransaction } from 'bitcoin-core';
 import { Input } from '../common/types';
 import { AgentDb } from '../common/agent-db';
 import { getTemplatesRows, JoinedTemplate } from './listener-utils';
-
 
 export class BitcoinListener {
     tipHeight: number = 0;
@@ -59,35 +58,33 @@ export class BitcoinListener {
         let noTxFound = true;
 
         for (const currentTemplate of pending.filter((template) => !template.unknownTxid)) {
-            if (!blockTxids.has(currentTemplate.txid ?? '')) continue
+            if (!blockTxids.has(currentTemplate.txid ?? '')) continue;
             const raw = blockTxArr.filter((raw) => raw.txid === currentTemplate.txid)[0];
-            if (raw) await this.prepareSave(currentTemplate, raw, blockTxids, blockHeight);
+            if (raw) await this.prepareSave(currentTemplate, raw, blockTxids, blockHeight, blockHash);
             noTxFound = false;
-
-        };
-
+        }
 
         //Find and save all pending templates with unknown txid that are in the block.
-        const blockVinsTxids = new Set(
-            blockTxArr.map((raw) => raw.vin.map((vin) => vin.txid)).flat()
-        );
+        const blockVinsTxids = new Set(blockTxArr.map((raw) => raw.vin.map((vin) => vin.txid)).flat());
 
         for (const currentTemplate of pending.filter((template) => template.unknownTxid)) {
             for (const input of currentTemplate.inputs) {
                 const parent = getParentByInput(input, currentTemplate, this.joinedTemplates);
                 if (!parent?.txid || !blockVinsTxids.has(parent.txid)) continue;
                 const raw = getRawByVinTxid(parent.txid, blockTxArr);
-                this.prepareSave(currentTemplate, raw!, blockTxids, blockHeight);
+                this.prepareSave(currentTemplate, raw!, blockTxids, blockHeight, blockHash);
                 noTxFound = false;
             }
         }
 
-        function getParentByInput(input: Input, currentTemplate: JoinedTemplate,
-            templates: JoinedTemplate[]): JoinedTemplate | undefined {
+        function getParentByInput(
+            input: Input,
+            currentTemplate: JoinedTemplate,
+            templates: JoinedTemplate[]
+        ): JoinedTemplate | undefined {
             return (
-                templates.filter((t) =>
-                    t.setupId! === currentTemplate.setupId! &&
-                    t.name == input.templateName)[0] ?? ''
+                templates.filter((t) => t.setupId! === currentTemplate.setupId! && t.name == input.templateName)[0] ??
+                ''
             );
         }
 
@@ -98,17 +95,18 @@ export class BitcoinListener {
         return noTxFound;
     }
 
-    async prepareSave(currentTemplate: JoinedTemplate, raw: RawTransaction, blockTxids: Set<string>, blockHeight: number): Promise<void> {
+    async prepareSave(
+        currentTemplate: JoinedTemplate,
+        raw: RawTransaction,
+        blockTxids: Set<string>,
+        blockHeight: number,
+        blockHash: string
+    ): Promise<void> {
         const posInBlock = Array.from(blockTxids).indexOf(raw.txid);
 
-        await this.db.prepareCallMarkReceived(
-            currentTemplate,
-            blockHeight,
-            raw,
-            posInBlock
-        );
+        await this.db.prepareCallMarkReceived(currentTemplate, blockHeight, blockHash, raw, posInBlock);
 
-        this.joinedTemplates.find((template) => template.txid === currentTemplate.txid)!.blockHash = raw.txid;
+        this.joinedTemplates.find((template) => template.id === currentTemplate.id)!.blockHash = blockHash;
     }
 }
 

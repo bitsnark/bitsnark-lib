@@ -75,5 +75,4 @@ export class Db {
         if (isFirst) this.dbTransactionCalls = [];
         this.dbTransactionCalls.push({ sql, args });
     }
-
 }

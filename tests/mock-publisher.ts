@@ -165,7 +165,8 @@ export class TestPublisher {
         tip: number,
         rawTx: RawTransaction
     ) {
-        await this.dbs[agent].listenerDb.markReceived(this.setupId, readyTx.name, readyTx.txid!, hash, tip, rawTx);
+        await this.dbs[agent].listenerDb.prepareCallMarkReceived(readyTx, tip, hash, rawTx);
+        await this.dbs[agent].listenerDb.runTransaction();
         console.log(`Saved ${readyTx.txid} [${readyTx.name}] was received in ${agent} db`);
     }
 
