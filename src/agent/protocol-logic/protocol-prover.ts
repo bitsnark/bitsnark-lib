@@ -10,6 +10,7 @@ import { AgentRoles, iterations, TemplateNames } from '../common/types';
 import { twoDigits } from '../common/templates';
 import { AgentDb } from '../common/agent-db';
 import { ProtocolBase } from './protocol-base';
+import { sleep } from '../common/sleep';
 
 export class ProtocolProver extends ProtocolBase {
     constructor(agentId: string, setupId: string) {
@@ -167,7 +168,7 @@ export async function main(agentId: string) {
 
     do {
         doit();
-        await new Promise((r) => setTimeout(r, agentConf.protocolIntervalMs));
+        await sleep(agentConf.protocolIntervalMs);
         /*eslint no-constant-condition: "off"*/
     } while (true);
 }

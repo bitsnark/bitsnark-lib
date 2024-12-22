@@ -1,6 +1,7 @@
 import { range } from './array-utils';
+import { sleep } from './sleep';
 
-const parallelFactor = 4;
+const parallelFactor = 8;
 
 export async function parallelize<Tin, Tout>(inputs: Tin[], fn: (input: Tin) => Promise<Tout>): Promise<Tout[]> {
     const results: Tout[] = [];
@@ -24,7 +25,7 @@ export async function parallelize<Tin, Tout>(inputs: Tin[], fn: (input: Tin) => 
                 throw e;
             });
         while (!quitter && concurrent >= parallelFactor) {
-            await new Promise((resolve) => setTimeout(resolve, 100));
+            await sleep(100);
         }
     }
     return results;

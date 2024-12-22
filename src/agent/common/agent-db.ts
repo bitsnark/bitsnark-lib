@@ -136,6 +136,12 @@ export class AgentDb extends Db {
         return await this.getSetup(setupId);
     }
 
+    public async setupExists(setupId: string): Promise<boolean> {
+        const rows = (await this.query<Setup>(`SELECT ${setupFields.join(', ')} FROM setups WHERE id = $1`, [setupId]))
+            .rows;
+        return rows.length > 0;
+    }
+
     public async getSetup(setupId: string): Promise<Setup> {
         const rows = (await this.query<Setup>(`SELECT ${setupFields.join(', ')} FROM setups WHERE id = $1`, [setupId]))
             .rows;

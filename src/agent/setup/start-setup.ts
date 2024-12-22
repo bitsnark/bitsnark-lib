@@ -1,6 +1,40 @@
 import minimist from 'minimist';
-import { AgentRoles } from '../common/types';
+import { AgentRoles, SetupStatus } from '../common/types';
 import { Agent } from '../setup/agent';
+import { sleep } from '../common/sleep';
+import { AgentDb } from '../common/agent-db';
+
+async function startSetup(
+    agentId: string,
+    setupId: string,
+    lockedFundsTxid: string,
+    lockedFundsAmount: bigint,
+    proverStakeTxid: string,
+    proverStakeAmount: bigint
+) {
+    console.log('Starting setup...');
+
+    const agent = new Agent(agentId, AgentRoles.PROVER);
+    await agent.start(setupId, lockedFundsTxid, BigInt(lockedFundsAmount), proverStakeTxid, BigInt(proverStakeAmount));
+
+    console.log('Waiting for it to finish....');
+
+    const db = new AgentDb(agentId);
+    while (true) {
+        await sleep(1000);
+        if (await db.setupExists(setupId)) {
+            const setup = await db.getSetup(setupId);
+            if (setup.status == SetupStatus.FAILED) {
+                console.log('Setup failed :(');
+                return;
+            }
+            if (setup.status == SetupStatus.ACTIVE) {
+                console.log('Setup is active.');
+                return;
+            }
+        }
+    }
+}
 
 if (__filename == process.argv[1]) {
     console.log('Starting setup...');
@@ -24,9 +58,7 @@ if (__filename == process.argv[1]) {
         process.exit(-1);
     }
 
-    const agent = new Agent(agentId, AgentRoles.PROVER);
-    agent
-        .start(setupId, lockedFundsTxid, BigInt(lockedFundsAmount), proverStakeTxid, BigInt(proverStakeAmount))
+    startSetup(agentId, setupId, lockedFundsTxid, BigInt(lockedFundsAmount), proverStakeTxid, BigInt(proverStakeAmount))
         .then(() => {
             console.log('Message sent.');
         })
