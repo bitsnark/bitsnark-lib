@@ -1,6 +1,6 @@
 import { range } from './array-utils';
 
-const parallelFactor = 16;
+const parallelFactor = 4;
 
 export async function parallelize<Tin, Tout>(inputs: Tin[], fn: (input: Tin) => Promise<Tout>): Promise<Tout[]> {
     const results: Tout[] = [];
