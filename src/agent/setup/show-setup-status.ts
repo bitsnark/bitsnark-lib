@@ -3,11 +3,7 @@ import { SetupStatus } from '../common/types';
 import { sleep } from '../common/sleep';
 import { AgentDb } from '../common/agent-db';
 
-async function setupStatus(
-    agentId: string,
-    setupId: string,
-    loop: boolean
-) {
+async function setupStatus(agentId: string, setupId: string, loop: boolean) {
     const db = new AgentDb(agentId);
     if (!(await db.setupExists(setupId))) {
         console.log("Setup doesn't exist");
