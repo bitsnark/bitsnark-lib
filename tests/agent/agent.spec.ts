@@ -42,27 +42,10 @@ describe('Agent message signatures check', () => {
     const mockVerifierDb = new AgentDbMock('bitsnark_prover_1');
     verifier.db = mockVerifierDb;
 
-    let setupId: string;
+    const setupId: string = fakeSetup.id;
     let signedMessage: Message;
 
-    it('Prover should create a new setupInstance & send a response when a message with /start is received', async () => {
-        const spySignMessageAndSend = jest.spyOn(prover, 'signMessageAndSend');
-        const spyStart = jest.spyOn(prover, 'start');
-        const message = `/start test_setup ${lockedFunds.txid} ${lockedFunds.amount} ${proverStake.txid} ${proverStake.amount}`;
-
-        mockProverDb.getSetupReturn = fakeSetup;
-        await prover.messageReceived(message, mockContext);
-
-        expect(spyStart).toHaveBeenCalledTimes(1);
-
-        let counter = 0;
-        for (const key of prover.instances.keys()) {
-            setupId = key;
-            counter++;
-        }
-        expect(setupId).toBeDefined();
-        expect(counter).toBe(1);
-
+    it('Verifier on accepting the start message, should verify it, set its setupId and send a join message', async () => {
         const messageStart = new StartMessage({
             setupId,
             agentId: prover.agentId,
@@ -71,14 +54,8 @@ describe('Agent message signatures check', () => {
             proverUtxo: proverStake,
             telegramMessageSig: ''
         });
+        signedMessage = prover.signMessage(messageStart);
 
-        signedMessage = prover.signMessage(mockContext, messageStart);
-
-        expect(spySignMessageAndSend).toHaveBeenCalledTimes(1);
-        expect(mockContext.send).toHaveBeenCalledWith(signedMessage);
-    });
-
-    it('Verifier on accepting the start message, should verify it, set its setupId and send a join message', async () => {
         const spySignMessageAndSend = jest.spyOn(verifier, 'signMessageAndSend');
         const spyOntart = jest.spyOn(verifier, 'on_start');
 
@@ -95,7 +72,7 @@ describe('Agent message signatures check', () => {
 
         const messageJoin = new JoinMessage(verifier);
         messageJoin.setupId = setupId;
-        signedMessage = verifier.signMessage(mockContext, messageJoin);
+        signedMessage = verifier.signMessage(messageJoin);
         expect(mockContext.send).toHaveBeenCalledWith(signedMessage);
     });
 
@@ -103,10 +80,14 @@ describe('Agent message signatures check', () => {
         const spySignMessageAndSend = jest.spyOn(prover, 'signMessageAndSend');
         const spyVerifyMessage = jest.spyOn(prover, 'verifyMessage');
 
+        mockProverDb.getSetupReturn = fakeSetup;
         await prover.messageReceived(toJson(signedMessage), mockContext);
 
+        expect(mockVerifierDb.getSetupCalledCount).toBe(1);
+        expect(mockVerifierDb.getSetupCalledParams).toEqual({ setupId: fakeSetup.id });
+
         expect(verifier.instances.get(setupId)).toBeDefined();
-        expect(spySignMessageAndSend).toHaveBeenCalledTimes(2);
+        expect(spySignMessageAndSend).toHaveBeenCalledTimes(1);
         expect(spyVerifyMessage).not.toThrow('Invalid signature');
     });
 });

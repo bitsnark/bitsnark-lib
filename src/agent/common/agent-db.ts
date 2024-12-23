@@ -136,6 +136,12 @@ export class AgentDb extends Db {
         return await this.getSetup(setupId);
     }
 
+    public async setupExists(setupId: string): Promise<boolean> {
+        const rows = (await this.query<Setup>(`SELECT ${setupFields.join(', ')} FROM setups WHERE id = $1`, [setupId]))
+            .rows;
+        return rows.length > 0;
+    }
+
     public async getSetup(setupId: string): Promise<Setup> {
         const rows = (await this.query<Setup>(`SELECT ${setupFields.join(', ')} FROM setups WHERE id = $1`, [setupId]))
             .rows;
@@ -257,7 +263,6 @@ export class AgentDb extends Db {
                 [setupId]
             )
         ).rows;
-        if (rows.length == 0) throw new Error(`No received transactions found, setupId: ${setupId}`);
         return rows.map((row) => {
             const [templateId, height, raw, blockHash] = row;
             return { templateId, height, raw, blockHash };
@@ -278,24 +283,14 @@ export class AgentDb extends Db {
         rawTransaction: RawTransaction,
         indexInBlock: number = 0
     ) {
-        // Assert that the setup is active.
-        const status = (await this.query('SELECT status FROM setups WHERE id = $1', [template.setupId]))
-            .rows[0]?.[0] as SetupStatus;
-        if (status != SetupStatus.ACTIVE) {
-            throw new Error(
-                `Status of ${template.setupId} is ${SetupStatus[status]} instead of ${SetupStatus[SetupStatus.ACTIVE]}`
-            );
-        }
-
         await this.query(
             `
                 INSERT INTO received (template_id, txid, block_hash, block_height, raw_transaction, index_in_block)
-                VALUES ((SELECT id FROM templates WHERE setup_id = $1 AND name = $2), $3, $4, $5, $6, $7)
+                VALUES ($1, $2, $3, $4, $5, $6)
                 ON CONFLICT (txid) DO NOTHING
             `,
             [
-                template.setupId,
-                template.name,
+                template.id,
                 rawTransaction.txid,
                 blockHash,
                 blockHeight,

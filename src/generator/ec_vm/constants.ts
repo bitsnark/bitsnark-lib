@@ -1,4 +1,4 @@
-export const vKey = {
+export const defaultVerificationKey = {
     protocol: 'groth16',
     curve: 'bn128',
     nPublic: 2,
@@ -93,7 +93,7 @@ export const vKey = {
     ]
 };
 
-export const proof = {
+export const defaultValidProof = {
     pi_a: [
         '4531350982720745483183896166010272188780196700199407980342269744581989148149',
         '8537072424426339037594105475681425616791387434880920465097584850313527560965',

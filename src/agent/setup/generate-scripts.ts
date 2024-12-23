@@ -124,6 +124,8 @@ function generateProcessSelectionPath(sc: SpendingCondition): Buffer {
 }
 
 export async function generateAllScripts(
+    agentId: string,
+    setupId: string,
     myRole: AgentRoles,
     templates: Template[],
     generateFinal: boolean
@@ -145,10 +147,10 @@ export async function generateAllScripts(
         }
 
         if (t.name == TemplateNames.PROOF_REFUTED) {
-            const ddg = new DoomsdayGenerator();
+            const ddg = new DoomsdayGenerator(agentId, setupId);
             let taproot;
             if (generateFinal) {
-                taproot = (await ddg.generateFinalStepTaproot(templates)).taproot;
+                taproot = (await ddg.generateFinalStepTaprootParallel()).taprootPubKey;
             } else {
                 const mockSTT = new SimpleTapTree(agentConf.internalPubkey, [DEAD_SCRIPT, DEAD_SCRIPT]);
                 taproot = mockSTT.getTaprootPubkey();
@@ -205,7 +207,7 @@ async function main() {
     const generateFinal = process.argv.some((s) => s == '--final');
     const db = new AgentDb(agentId);
     const bareTemplates = await db.getTemplates(setupId);
-    const templates = await generateAllScripts(AgentRoles.PROVER, bareTemplates, generateFinal);
+    const templates = await generateAllScripts(agentId, setupId, AgentRoles.PROVER, bareTemplates, generateFinal);
     await db.upsertTemplates(setupId, templates);
 }
 

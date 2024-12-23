@@ -104,17 +104,17 @@ export class Compressor {
     private nextIndex: number = 0;
     private indexToSave: number;
     private indexesForProof: string[] = [];
+    private internalPubkey: bigint;
     public script?: Buffer;
     public proof: Buffer[] = [];
 
     constructor(
-        private internalPubkey: bigint,
         private leavesCount: number,
         indexToSave: number = -1
     ) {
         this.depth = Math.ceil(Math.log2(leavesCount)) + 1;
         this.data = array(this.depth, (_) => []);
-        this.internalPubkey = internalPubkey;
+        this.internalPubkey = agentConf.internalPubkey;
         this.indexToSave = indexToSave;
 
         if (indexToSave >= 0) {
@@ -155,16 +155,20 @@ export class Compressor {
         }
     }
 
-    public addItem(script: Buffer) {
+    public addHash(hash: Buffer) {
         if (this.nextIndex + 1 > 2 ** this.depth) throw new Error('Too many leaves');
+        last(this.data).push(hash);
+        this.nextIndex++;
+        this.compress();
+    }
+
+    public addItem(script: Buffer) {
         if (this.nextIndex === this.indexToSave) {
             this.script = script;
         }
         const hash = getHash(script);
         if ((this.nextIndex ^ 1) === this.indexToSave) this.proof![0] = hash;
-        last(this.data).push(hash);
-        this.nextIndex++;
-        this.compress();
+        this.addHash(hash);
     }
 
     public getRoot(): Buffer {
@@ -209,7 +213,7 @@ function test1() {
     const scripts = array(8, (i) => Buffer.from([i]));
     const stt = new SimpleTapTree(1n, scripts);
 
-    const c = new Compressor(1n, scripts.length, index);
+    const c = new Compressor(scripts.length, index);
     for (const s of scripts) c.addItem(s);
 
     const cRoot = c.getRoot();

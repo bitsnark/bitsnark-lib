@@ -32,8 +32,6 @@ export class BitcoinListener {
             console.log('New block detected:', tipHash, this.tipHeight);
             this.tipHash = tipHash;
             await this.monitorTransmitted();
-        } else {
-            console.log('No new block detected');
         }
     }
 
@@ -46,8 +44,8 @@ export class BitcoinListener {
 
         // No re-organization support - we wait until blocks are finalized
         while (blockHeight <= this.tipHeight - agentConf.blocksUntilFinalized) {
-            console.log('Checking block:', blockHeight);
             const noTxFound = await this.searchBlock(blockHeight, pending);
+            console.log(`Found ${noTxFound ? 'no ' : ''}new transactions in block ${blockHeight}`);
             if (noTxFound) {
                 blockHeight++;
                 await this.db.updateSetupLastCheckedBlockHeightBatch(
@@ -82,7 +80,7 @@ export class BitcoinListener {
                 const parent = getParentByInput(input, currentTemplate, this.joinedTemplates);
                 if (!parent?.txid || !blockVinsTxids.has(parent.txid)) continue;
                 const raw = getRawByVinTxid(parent.txid, blockTxArr);
-                this.markReceived(currentTemplate, raw!, blockTxids, blockHeight, blockHash);
+                await this.markReceived(currentTemplate, raw!, blockTxids, blockHeight, blockHash);
                 noTxFound = false;
             }
         }

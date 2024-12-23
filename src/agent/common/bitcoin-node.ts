@@ -19,10 +19,6 @@ export class BitcoinNode {
     }
 }
 
-if (require.main === module) {
-    main();
-}
-
 async function main() {
     const node = new BitcoinNode();
 
@@ -36,4 +32,8 @@ async function main() {
             }
         }
     });
+}
+
+if (require.main === module) {
+    main();
 }

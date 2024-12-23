@@ -3,6 +3,15 @@
 regtest_container_name=bitcoin-node
 postgres_container_name=postgres
 
+if docker ps 2>&1 > /dev/null; then
+    docker_cmd=docker
+elif sudo docker ps 2>&1 > /dev/null; then
+    docker_cmd='sudo docker'
+else
+    echo "Can't run docker commands, exiting."
+    return 1
+fi
+
 prompt() {
     read -p "$1" response
     echo "$response"
@@ -11,16 +20,21 @@ prompt() {
 if ! (return 0 2>/dev/null); then
     response=$(prompt "This script is intended to be sourced, not executed, continue? (y/N): ")
     [ "$response" = y ] || [ "$response" = Y ] || exit 1
+    scripts_dir="$(dirname "$(realpath "$0")")"
 fi
 
 if [ -z "$INIT_CWD" ]; then
     response=$(prompt "This script is intended to be run with npm run-script, continue? (y/N): ")
     [ "$response" = y ] || [ "$response" = Y ] || exit 1
-    scripts_dir="$(dirname "$(realpath "$0")")"
-    repo_root_dir="$(git -C "$scripts_dir" rev-parse --show-toplevel)"
-    cd "$repo_root_dir"
+    [ "$scripts_dir" ] || scripts_dir="$(realpath .)"
+    repo_root_dir="$(git -C "$scripts_dir" rev-parse --show-toplevel 2> /dev/null)"
+    if [ -d "$repo_root_dir" ]; then
+        echo "WARNING: Trying to cd to repo root dir: $repo_root_dir"
+        cd "$repo_root_dir"
+    else
+        echo "WARNING: Couldn't find repo root dir, using current dir as root"
+    fi
 fi
-
 
 missing_packages() {
     pip freeze | sort > /tmp/bitsnark_venv_installed
@@ -60,12 +74,12 @@ conditionally_remove_container() {
     echo "Container $container_name already exists."
     read -p "Do you want to remove the existing container? (y/n): " choice
     if [ "$choice" = y ] || [ "$choice" = Y ]; then
-        sudo docker rm -f "$container_name" && return 0
+        $docker_cmd rm -f "$container_name" && return 0
     fi
     echo Existing container was not removed - exiting.
     return 1
 }
 
 bitcoin_cli() {
-    sudo docker exec "$regtest_container_name" bitcoin-cli -regtest -rpcuser=rpcuser -rpcpassword=rpcpassword "$@"
+    $docker_cmd exec "$regtest_container_name" bitcoin-cli -regtest -rpcuser=rpcuser -rpcpassword=rpcpassword "$@"
 }

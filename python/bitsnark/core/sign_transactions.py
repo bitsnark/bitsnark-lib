@@ -214,12 +214,19 @@ def _handle_tx_template(
                     f"(required by {tx_template.name} input #{input_index})")
                 raise
 
+            spending_condition = prevout['spendingConditions'][inp['spendingConditionIndex']]
+            timeout_blocks = spending_condition.get('timeoutBlocks')
+            sequence = 0xffffffff
+            if timeout_blocks is not None:
+                sequence = timeout_blocks
+
             tx_inputs.append(
                 CTxIn(
-                    COutPoint(
+                    prevout=COutPoint(
                         hash=prev_tx_hash,
                         n=inp['outputIndex'],
-                    )
+                    ),
+                    nSequence=sequence,
                 )
             )
 
@@ -228,7 +235,6 @@ def _handle_tx_template(
                 scriptPubKey=CScript(parse_hex_bytes(prevout['taprootKey']))
             ))
 
-            spending_condition = prevout['spendingConditions'][inp['spendingConditionIndex']]
             script_raw = spending_condition.get('script')
             if script_raw is None:
                 print(

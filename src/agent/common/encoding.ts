@@ -83,14 +83,6 @@ export function bitsToBigint(bits: number[]): bigint {
     return n;
 }
 
-export function nibblesToBigint(nibbles: number[]): bigint {
-    let n = 0n;
-    for (let i = 0; i < nibbles.length; i++) {
-        n += BigInt(nibbles[i]) << (3n * BigInt(i));
-    }
-    return n;
-}
-
 export function _256To32LE(n: bigint): bigint[] {
     const r: bigint[] = [];
     for (let i = 0; i < 8; i++) {
