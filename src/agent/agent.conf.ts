@@ -59,8 +59,8 @@ export const agentConf: AgentConf = {
 
     winternitzSecret: parse.string('WOTS_SECRET', 'no rest for the wicked'),
     tokens: {
-        bitsnark_prover_1: parse.string('TELEGRAM_TOKEN_PROVER', '7368302319:AAGtvHOBQErcZPuJ0cD3Ele9G0FSDgg0Ct4'),
-        bitsnark_verifier_1: parse.string('TELEGRAM_TOKEN_VERIFIER', '7457777046:AAF7-6cNqn9MCP6sak2A30fcSOgD78QRn3Y')
+        bitsnark_prover_1: parse.string('TELEGRAM_TOKEN_PROVER', 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'),
+        bitsnark_verifier_1: parse.string('TELEGRAM_TOKEN_VERIFIER', 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')
     },
     keyPairs: {
         bitsnark_prover_1: {

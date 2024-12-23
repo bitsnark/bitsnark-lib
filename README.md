@@ -103,73 +103,42 @@ Since the transactions are linked to each other, most of the TXIDs have to be kn
 
 In reality, it is entirely possible for the two parties to add inputs and outputs that handle fees on any transactions along the way, as long as they are declared in advance. Moreover, we can probably use CPFP to allow the participants to add fees to fee-less transactions that are already in the mempool.
 
-## Running the Demo
+## The Demo
 
-Currently, the demo generates JSONs describing the transactions, with their scripts, without generating binary transactions or transmitting them to the Bitcoin network.
+The demo will run two agents, a prover and a verifier, that will interact with each other over a Telegram channel to create a new setup, and execute it on a local regtest Bitcoin network.
 
-### Requirements
+### Dependencies
 
 You will need:
-- Node.js v20.0.0 or later
-- Python 3.8 or later
+- Node.js v20.17.0
+- Python 3.12
 - libsecp256k1
+- Docker 26 (Python tests require 27 with the docker-compose plugin)
 
-The last can be installed on Ubuntu with:
-
-```sh
-sudo apt-get install libsecp256k1-0
-```
-
-Or on MacOS with:
+To get all this on a fresh Ubuntu Server 24.04 install, you can run the following commands:
 
 ```sh
-brew install libsecp256k1
+sudo apt-add-repository universe
+sudo apt install npm python3-venv libsecp256k1-1 docker.io
+sudo npm i -g n
+sudo n 20.17.0
 ```
 
-For development and testing, you will also need:
-- Docker (for running a local postgres database server and a local regtest Bitcoin network)
-
-### Initial Setup
+One you have all that, clone this repository, and from its root directory install the JS and TS dependencies:
 
 ```sh
 npm install
 ```
 
-### Running the tests
+### Running
+
+Before starting, make sure you have local `.env` file setting `TELEGRAM_TOKEN_PROVER` and `TELEGRAM_TOKEN_VERIFIER` to your Telegram bot tokens, and optionally `TELEGRAM_CHANNEL_ID`. Then run the demo with:
 
 ```sh
-npm test
+npm run e2e
 ```
-
-### Generating the Transactions
-
-The following will only work on top of the private repository, but should be coming to the public repository soon.
-
-The following requires docker for running a local postgres database server.
-
-```sh
-npm run start-db
-npm run emulate-setup
-```
-
-### Running the Agents
-
-The following will only work on top of the private repository, might take it some time till we release it to the public.
-
-Assuming the DB is running and available, run the following commands in separate terminals:
-
-```sh
-npm run start-prover
-```
-
-```sh
-npm run start-verifier
-```
-
-Then send the `/start` command to the telegram channel.
 
 ## Future Plans
 
-- [ ] Get this repo to the point where it can be opened to the public and allow them to run a prover-verifier demo on a local regtest network
-- [ ] Make that multi-verifier and over the network
+- [ ] Make the demo multi-verifier
 - [ ] Use the protocol to implement 2-way pegging between Bitcoin and an ERC20 token
