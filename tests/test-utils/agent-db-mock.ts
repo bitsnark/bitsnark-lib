@@ -1,8 +1,10 @@
 import { Setup, Template, TemplateStatus, ReceivedTransaction } from '../../src/agent/common/types';
 import { AgentDb, updateSetupPartial, UpdateTemplatePartial } from '../../src/agent/common/agent-db';
+import { sleep } from '../../src/agent/common/sleep';
 
 async function waitAndReturn<T>(obj: T): Promise<T> {
-    return new Promise((resolve) => setTimeout(() => resolve(obj), 1));
+    await sleep(1);
+    return obj;
 }
 
 export class AgentDbMock extends AgentDb {

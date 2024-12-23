@@ -298,7 +298,9 @@ export class Agent {
 
         if (this.role == AgentRoles.VERIFIER) await this.sendTransactions(context, i.setupId);
 
-        i.templates = await generateAllScripts(this.agentId, i.setupId, this.role, i.templates!, false);
+        await this.db.upsertTemplates(i.setupId, i.templates!);
+
+        i.templates = await generateAllScripts(this.agentId, i.setupId, this.role, i.templates!, true);
         i.templates = await addAmounts(this.agentId, this.role, i.setupId, i.templates!);
 
         await this.db.upsertTemplates(i.setupId, i.templates!);
@@ -411,6 +413,7 @@ if (__filename == process.argv[1]) {
     console.log('Starting');
 
     const agentId = process.argv[2] ?? 'bitsnark_prover_1';
+
     const role = agentId.indexOf('prover') >= 0 ? AgentRoles.PROVER : AgentRoles.VERIFIER;
 
     const agent = new Agent(agentId, role);
