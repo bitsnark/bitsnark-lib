@@ -36,6 +36,7 @@ interface AgentConf {
     protocolVersion: string;
     useMockProgram: boolean;
     protocolIntervalMs: number;
+    blockCheckIntervalMs: number;
 }
 
 export const agentConf: AgentConf = {
@@ -97,5 +98,6 @@ export const agentConf: AgentConf = {
     blocksUntilFinalized: parse.integer('BLOCKS_UNTIL_FINALIZED', 0), // 6
     protocolVersion: parse.string('PROTOCOL_VERSION', '0.2'),
     useMockProgram: parse.boolean('USE_MOCK_PROGRAM', false),
-    protocolIntervalMs: parse.integer('PROTOCOL_INTERVAL_MS', 1000)
+    protocolIntervalMs: parse.integer('PROTOCOL_INTERVAL_MS', 1000),
+    blockCheckIntervalMs: parse.integer('BLOCK_CHECK_INTERVAL_MS', 60000)
 };

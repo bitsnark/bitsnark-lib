@@ -264,22 +264,34 @@ export class AgentDb extends Db {
         });
     }
 
-    // Prepare calles but do not execute them
-    public prepareCallUpdateSetupLastCheckedBlockHeightBatch(setupIds: string[], blockHeight: number) {
-        super.addQuery('UPDATE setups SET last_checked_block_height = $1 WHERE id = ANY($2)', [blockHeight, setupIds]);
+    public async updateSetupLastCheckedBlockHeightBatch(setupIds: string[], blockHeight: number) {
+        await this.query('UPDATE setups SET last_checked_block_height = $1 WHERE id = ANY($2)', [
+            blockHeight,
+            setupIds
+        ]);
     }
 
-    public prepareCallMarkReceived(
+    public async markReceived(
         template: Template,
         blockHeight: number,
         blockHash: string,
         rawTransaction: RawTransaction,
         indexInBlock: number = 0
     ) {
-        super.addQuery(
+        // Assert that the setup is active.
+        const status = (await this.query('SELECT status FROM setups WHERE id = $1', [template.setupId]))
+            .rows[0]?.[0] as SetupStatus;
+        if (status != SetupStatus.ACTIVE) {
+            throw new Error(
+                `Status of ${template.setupId} is ${SetupStatus[status]} instead of ${SetupStatus[SetupStatus.ACTIVE]}`
+            );
+        }
+
+        await this.query(
             `
                 INSERT INTO received (template_id, txid, block_hash, block_height, raw_transaction, index_in_block)
                 VALUES ((SELECT id FROM templates WHERE setup_id = $1 AND name = $2), $3, $4, $5, $6, $7)
+                ON CONFLICT (txid) DO NOTHING
             `,
             [
                 template.setupId,
@@ -291,10 +303,6 @@ export class AgentDb extends Db {
                 indexInBlock
             ]
         );
-    }
-
-    public async runTransaction() {
-        await super.runTransaction();
     }
 
     // To assist debugging and mocking the DB in tests.

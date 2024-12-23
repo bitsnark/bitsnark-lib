@@ -35,10 +35,9 @@ describe('BitcoinListener', () => {
     beforeEach(() => {
         nodeListener = new BitcoinListener(AgentRoles.PROVER);
         jest.spyOn(nodeListener.db, 'query').mockImplementation(jest.fn());
-        jest.spyOn(nodeListener.db, 'prepareCallMarkReceived').mockImplementation(jest.fn());
-        jest.spyOn(nodeListener.db, 'prepareCallUpdateSetupLastCheckedBlockHeightBatch').mockImplementation(jest.fn());
+        jest.spyOn(nodeListener.db, 'markReceived').mockImplementation(jest.fn());
+        jest.spyOn(nodeListener.db, 'updateSetupLastCheckedBlockHeightBatch').mockImplementation(jest.fn());
         jest.spyOn(utils, 'getTemplatesRows').mockImplementation(jest.fn());
-        jest.spyOn(nodeListener.db, 'runTransaction').mockImplementation(jest.fn());
     });
 
     afterEach(() => {
@@ -88,7 +87,7 @@ describe('BitcoinListener', () => {
         await nodeListener.monitorTransmitted();
 
         expect(nodeListener.client.getBlockHash).not.toHaveBeenCalled();
-        expect(nodeListener.db.prepareCallMarkReceived).not.toHaveBeenCalled();
+        expect(nodeListener.db.markReceived).not.toHaveBeenCalled();
     });
 
     it('crawls and saves transactions if a new finalized block exists', async () => {
@@ -104,8 +103,8 @@ describe('BitcoinListener', () => {
         (utils.getTemplatesRows as jest.Mock).mockResolvedValue(mockExpected);
 
         await nodeListener.monitorTransmitted();
-        expect(nodeListener.db.prepareCallMarkReceived).toHaveBeenCalledTimes(2);
-        expect(nodeListener.db.prepareCallMarkReceived).toHaveBeenCalledWith(
+        expect(nodeListener.db.markReceived).toHaveBeenCalledTimes(2);
+        expect(nodeListener.db.markReceived).toHaveBeenCalledWith(
             expect.objectContaining({
                 setupId: 'test_setup_1',
                 name: TemplateNames.LOCKED_FUNDS
@@ -118,7 +117,7 @@ describe('BitcoinListener', () => {
             }),
             0
         );
-        expect(nodeListener.db.prepareCallMarkReceived).toHaveBeenCalledWith(
+        expect(nodeListener.db.markReceived).toHaveBeenCalledWith(
             expect.objectContaining({
                 setupId: 'test_setup_1',
                 name: TemplateNames.PROVER_STAKE
@@ -146,8 +145,8 @@ describe('BitcoinListener', () => {
 
         await nodeListener.monitorTransmitted();
 
-        expect(nodeListener.db.prepareCallMarkReceived).toHaveBeenCalledTimes(1);
-        expect(nodeListener.db.prepareCallMarkReceived).toHaveBeenCalledWith(
+        expect(nodeListener.db.markReceived).toHaveBeenCalledTimes(1);
+        expect(nodeListener.db.markReceived).toHaveBeenCalledWith(
             expect.objectContaining({
                 setupId: 'test_setup_1',
                 name: TemplateNames.CHALLENGE
@@ -169,18 +168,9 @@ describe('BitcoinListener', () => {
 
         await nodeListener.monitorTransmitted();
 
-        expect(nodeListener.db.prepareCallUpdateSetupLastCheckedBlockHeightBatch).toHaveBeenCalledTimes(3);
-        expect(nodeListener.db.prepareCallUpdateSetupLastCheckedBlockHeightBatch).toHaveBeenCalledWith(
-            ['test_setup_1'],
-            102
-        );
-        expect(nodeListener.db.prepareCallUpdateSetupLastCheckedBlockHeightBatch).toHaveBeenCalledWith(
-            ['test_setup_1'],
-            103
-        );
-        expect(nodeListener.db.prepareCallUpdateSetupLastCheckedBlockHeightBatch).toHaveBeenCalledWith(
-            ['test_setup_1'],
-            104
-        );
+        expect(nodeListener.db.updateSetupLastCheckedBlockHeightBatch).toHaveBeenCalledTimes(3);
+        expect(nodeListener.db.updateSetupLastCheckedBlockHeightBatch).toHaveBeenCalledWith(['test_setup_1'], 102);
+        expect(nodeListener.db.updateSetupLastCheckedBlockHeightBatch).toHaveBeenCalledWith(['test_setup_1'], 103);
+        expect(nodeListener.db.updateSetupLastCheckedBlockHeightBatch).toHaveBeenCalledWith(['test_setup_1'], 104);
     });
 });

@@ -17,13 +17,23 @@ export class BitcoinListener {
         this.db = new AgentDb(agentId);
     }
 
+    async startBlockchainCrawler(): Promise<void> {
+        do {
+            await this.checkForNewBlock();
+            await new Promise((r) => setTimeout(r, agentConf.blockCheckIntervalMs));
+            /*eslint no-constant-condition: "off"*/
+        } while (true);
+    }
+
     async checkForNewBlock() {
         const tipHash = await this.client.getBestBlockHash();
         if (tipHash !== this.tipHash) {
             this.tipHeight = await this.client.getBlockCount();
             console.log('New block detected:', tipHash, this.tipHeight);
             this.tipHash = tipHash;
-            this.monitorTransmitted();
+            await this.monitorTransmitted();
+        } else {
+            console.log('No new block detected');
         }
     }
 
@@ -34,16 +44,16 @@ export class BitcoinListener {
 
         let blockHeight = (pending[0].lastCheckedBlockHeight ?? 0) + 1;
 
-        // No re-organization support - we wait untile blocks are finalized
+        // No re-organization support - we wait until blocks are finalized
         while (blockHeight <= this.tipHeight - agentConf.blocksUntilFinalized) {
+            console.log('Checking block:', blockHeight);
             const noTxFound = await this.searchBlock(blockHeight, pending);
             if (noTxFound) {
                 blockHeight++;
-                await this.db.prepareCallUpdateSetupLastCheckedBlockHeightBatch(
+                await this.db.updateSetupLastCheckedBlockHeightBatch(
                     [...pending.reduce((setupIds, template) => setupIds.add(template.setupId!), new Set<string>())],
                     blockHeight
                 );
-                await this.db.runTransaction();
             } else {
                 pending = this.joinedTemplates.filter((template) => !template.blockHash);
             }
@@ -60,7 +70,7 @@ export class BitcoinListener {
         for (const currentTemplate of pending.filter((template) => !template.unknownTxid)) {
             if (!blockTxids.has(currentTemplate.txid ?? '')) continue;
             const raw = blockTxArr.filter((raw) => raw.txid === currentTemplate.txid)[0];
-            if (raw) await this.prepareSave(currentTemplate, raw, blockTxids, blockHeight, blockHash);
+            if (raw) await this.markReceived(currentTemplate, raw, blockTxids, blockHeight, blockHash);
             noTxFound = false;
         }
 
@@ -72,7 +82,7 @@ export class BitcoinListener {
                 const parent = getParentByInput(input, currentTemplate, this.joinedTemplates);
                 if (!parent?.txid || !blockVinsTxids.has(parent.txid)) continue;
                 const raw = getRawByVinTxid(parent.txid, blockTxArr);
-                this.prepareSave(currentTemplate, raw!, blockTxids, blockHeight, blockHash);
+                this.markReceived(currentTemplate, raw!, blockTxids, blockHeight, blockHash);
                 noTxFound = false;
             }
         }
@@ -95,7 +105,7 @@ export class BitcoinListener {
         return noTxFound;
     }
 
-    async prepareSave(
+    async markReceived(
         currentTemplate: JoinedTemplate,
         raw: RawTransaction,
         blockTxids: Set<string>,
@@ -104,7 +114,7 @@ export class BitcoinListener {
     ): Promise<void> {
         const posInBlock = Array.from(blockTxids).indexOf(raw.txid);
 
-        await this.db.prepareCallMarkReceived(currentTemplate, blockHeight, blockHash, raw, posInBlock);
+        await this.db.markReceived(currentTemplate, blockHeight, blockHash, raw, posInBlock);
 
         this.joinedTemplates.find((template) => template.id === currentTemplate.id)!.blockHash = blockHash;
     }
@@ -112,7 +122,9 @@ export class BitcoinListener {
 
 if (require.main === module) {
     Promise.all(
-        ['bitsnark_prover_1', 'bitsnark_verifier_1'].map((agentId) => new BitcoinListener(agentId).checkForNewBlock())
+        ['bitsnark_prover_1', 'bitsnark_verifier_1'].map((agentId) =>
+            new BitcoinListener(agentId).startBlockchainCrawler()
+        )
     ).catch((error) => {
         throw error;
     });
