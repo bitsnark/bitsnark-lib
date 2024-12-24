@@ -154,6 +154,10 @@ export class AgentDb extends Db {
         await this.query('UPDATE setups SET status = $1 WHERE id = $2', [SetupStatus[status], setupId]);
     }
 
+    public async markSetupUnsigned(setupId: string) {
+        await this.markSetupStatus(setupId, SetupStatus.UNSIGNED);
+    }
+
     public async markSetupPegoutActive(setupId: string) {
         await this.markSetupStatus(setupId, SetupStatus.ACTIVE);
     }

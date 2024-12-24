@@ -83,47 +83,46 @@ def sign_setup(setup_id: str, agent_id: str, role: Role, dbsession: Session, no_
         TransactionTemplate.setup_id == setup_id
     )
 
-    with dbsession.begin():
-        tx_templates = dbsession.execute(tx_template_query).scalars().all()
-        tx_template_map: dict[str, TransactionTemplate] = {}
+    tx_templates = dbsession.execute(tx_template_query).scalars().all()
+    tx_template_map: dict[str, TransactionTemplate] = {}
 
-        print(f"tx_template_map: {tx_template_map}")
-        print(f"Processing {len(tx_templates)} transaction templates...")
+    print(f"tx_template_map: {tx_template_map}")
+    print(f"Processing {len(tx_templates)} transaction templates...")
 
-        for tx in tx_templates:
-            print(f"Processing transaction #{tx.ordinal}: {tx.name}...")
-            success = _handle_tx_template(
-                tx_template=tx,
-                role=role,
-                agent_id=agent_id,
-                tx_template_map=tx_template_map,
-                use_mocked_inputs=not no_mocks,
-            )
-            if success:
-                successes.append(tx.name)
-                print(f"OK! {tx.txid}")
-            else:
-                # The script that will be used in the PROOF_REFUTED tx is undetermined at this point.
-                # This is a temporary fix until we figure out exactly what needs to be signed and when.
-                if tx.name == "PROOF_REFUTED":
-                    sys.stderr.write(f"FAIL! Hard-coded to ignore {tx.name}\n")
-                else:
-                    raise TransactionProcessingError(f"Rollback: Failed signing {tx.name}")
-
-            print("")
-
-        dbsession.execute(
-            update(Setups)
-            .where(Setups.id == setup_id)
-            .values(status=SetupStatus.SIGNED)
+    for tx in tx_templates:
+        print(f"Processing transaction #{tx.ordinal}: {tx.name}...")
+        success = _handle_tx_template(
+            tx_template=tx,
+            role=role,
+            agent_id=agent_id,
+            tx_template_map=tx_template_map,
+            use_mocked_inputs=not no_mocks,
         )
+        if success:
+            successes.append(tx.name)
+            print(f"OK! {tx.txid}")
+        else:
+            # The script that will be used in the PROOF_REFUTED tx is undetermined at this point.
+            # This is a temporary fix until we figure out exactly what needs to be signed and when.
+            if tx.name == "PROOF_REFUTED":
+                sys.stderr.write(f"FAIL! Hard-coded to ignore {tx.name}\n")
+            else:
+                raise TransactionProcessingError(f"Rollback: Failed signing {tx.name}")
 
-        # Print the final summary
         print("")
-        print("All done.")
-        print("")
-        print(f"Successes: {len(successes)}")
-        print(', '.join(successes))
+
+    dbsession.execute(
+        update(Setups)
+        .where(Setups.id == setup_id)
+        .values(status=SetupStatus.SIGNED)
+    )
+
+    # Print the final summary
+    print("")
+    print("All done.")
+    print("")
+    print(f"Successes: {len(successes)}")
+    print(', '.join(successes))
 
 
 def main(argv: Sequence[str] = None):
