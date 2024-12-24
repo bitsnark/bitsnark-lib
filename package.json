@@ -27,6 +27,8 @@
     "start-regtest": "./scripts/start-regtest.sh",
     "start-prover": "./scripts/start-setup.sh bitsnark_prover_1",
     "start-verifier": "./scripts/start-setup.sh bitsnark_verifier_1",
+    "start-bitcoin-listener": "./scripts/start-bitcoin-listener.sh",
+    "start-python-listener": "./scripts/start-python-listener.sh",
     "start-protocol-prover": "./scripts/start-protocol.sh bitsnark_prover_1",
     "start-protocol-verifier": "./scripts/start-protocol.sh bitsnark_verifier_1",
     "create-external-addresses": "ts-node ./src/agent/setup/create-external-addresses.ts",

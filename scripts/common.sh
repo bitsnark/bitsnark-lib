@@ -12,6 +12,25 @@ else
     return 1
 fi
 
+kill_pid() {
+    signal=15
+    while ps -p $1 > /dev/null; do
+        echo killing $1 with signal $signal
+        kill -$signal $1
+        sleep 1
+        [ $signal = 15 ] && signal=2
+        [ $signal = 2 ] && signal=1
+        [ $signal = 1 ] && signal=9
+    done
+}
+
+cleanup() {
+    trap - EXIT INT HUP
+    jobs -p | while read -r job; do
+        kill_pid "$job" 2>/dev/null
+    done
+}
+
 prompt() {
     read -p "$1" response
     echo "$response"

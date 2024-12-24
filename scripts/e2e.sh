@@ -2,23 +2,17 @@
 
 . "$(dirname "$(realpath "$0")")/common.sh"
 activate_python_venv
+trap cleanup EXIT HUP INT QUIT TERM
 
 npm run start-db
 npm run start-regtest
 
-cleanup() {
-    trap - EXIT INT HUP
-    for pid in $pids; do
-        kill $pid
-    done
-}
-trap cleanup EXIT INT HUP
 
 echo Running Python listeners in the background:
 cd python
-python -m bitsnark.core.db_listener --role prover --agent-id bitsnark_prover_1 &
+npm run start-python-listener -- bitsnark_prover_1 prover &
 pids="$pids $!"
-python -m bitsnark.core.db_listener --role verifier --agent-id bitsnark_verifier_1 &
+npm run start-python-listener -- bitsnark_verifier_1 verifier &
 pids="$pids $!"
 cd ..
 
@@ -47,7 +41,8 @@ bitcoin_cli sendrawtransaction "$prover_stake_tx"
 echo Sending fudged proof and running the listener and the agents
 ts-node ./src/agent/protocol-logic/send-proof.ts bitsnark_prover_1 "$setup_id" --fudge
 bitcoin_cli generatetoaddress 1 $(bitcoin_cli getnewaddress) > /dev/null
-./node_modules/.bin/ts-node ./src/agent/listener/bitcoin-listener.ts
+npm run start-bitcoin-listener &
+pids="$pids $!"
 
 echo Running the protocol agents
 npm run start-protocol-prover &
