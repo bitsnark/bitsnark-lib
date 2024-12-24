@@ -74,7 +74,7 @@ for keypairs in KEYPAIRS.values():
     assert keypairs['public'] == XOnlyPubKey(keypairs['private'].pub)
 
 
-def sign_setup(setup_id: str, agent_id: str, role: Role, dbsession: Session, no_mocks: bool = False):
+def sign_setup(setup_id: str, agent_id: str, role: Role, dbsession: Session, mocks: bool = False):
     successes = []
 
     tx_template_query = (select(TransactionTemplate).order_by(TransactionTemplate.ordinal))
@@ -96,7 +96,7 @@ def sign_setup(setup_id: str, agent_id: str, role: Role, dbsession: Session, no_
             role=role,
             agent_id=agent_id,
             tx_template_map=tx_template_map,
-            use_mocked_inputs=not no_mocks,
+            use_mocked_inputs=mocks,
         )
         if success:
             successes.append(tx.name)
@@ -160,7 +160,6 @@ def _handle_tx_template(
 ):
     if tx_template.is_external:
         # Requierd for signing next transactions
-        tx_template.txid = tx_template.txid
         tx_template_map[tx_template.name] = tx_template
         if not use_mocked_inputs:
             # We don't want to sign external transactions
