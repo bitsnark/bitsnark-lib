@@ -3,31 +3,20 @@
 . "$(dirname "$(realpath "$0")")/common.sh"
 activate_python_venv
 
-create_transaction() {
-    address=$1
-    amount=$2
-    fee=$3
-    utxo_idx=$4
-    utxo=$(bitcoin_cli listunspent 0 | jq -r "[.[] | select(.spendable == true)][$utxo_idx]")
-    txid=$(echo "$utxo" | jq -r '.txid')
-    vout=$(echo "$utxo" | jq -r '.vout')
-    utxo_amount=$(echo "$utxo" | jq -r '.amount')
-
-    if [ -z "$txid" ]; then
-        echo "No spendable UTXO found."
-        return 1
-    fi
-
-    change_amount=$(echo "$utxo_amount - $amount - $fee" | bc)
-    change_address=$(bitcoin_cli getnewaddress)
-
-    unsigned=$(bitcoin_cli createrawtransaction \
-        "[{\"txid\":\"$txid\",\"vout\":$vout}]" \
-        "{\"$address\":$amount,\"$change_address\":$change_amount}")
-    signed=$(bitcoin_cli signrawtransactionwithwallet "$unsigned" | jq -r '.hex')
-
-    echo $signed
+pids=''
+run_in_bg() {
+    local id="$1"
+    shift
+    "$@" | while read line; do echo "$id: $line"; done &
+    pids="$pids $!"
 }
+cleanup() {
+    trap - EXIT INT HUP
+    for pid in $pids; do
+        kill $pid
+    done
+}
+trap cleanup EXIT INT HUP
 
 npm run start-db
 npm run start-regtest
@@ -38,6 +27,12 @@ prover_stake_tx=$(create_transaction bcrt1p0e73ksayxrmxj23mmmtu5502uaanamx7hxml9
 locked_funds_txid=$(bitcoin_cli decoderawtransaction "$locked_funds_tx" | jq -r '.txid')
 prover_stake_txid=$(bitcoin_cli decoderawtransaction "$prover_stake_tx" | jq -r '.txid')
 
+echo Running Python listeners in the background:
+cd python
+run_in_bg prover_python python -m bitsnark.core.db_listener --role prover --agent-id bitsnark_prover_1
+run_in_bg verifier_python python -m bitsnark.core.db_listener --role verifier --agent-id bitsnark_verifier_1
+cd ..
+
 # Just assuming bitcoin-cli will always use the first output for the value.
 locked_funds_output_index=0
 prover_stake_output_index=0
@@ -46,11 +41,15 @@ npm run emulate-setup -- --setup-id $setup_id \
     --locked $locked_funds_txid:$locked_funds_output_index \
     --stake $prover_stake_txid:$prover_stake_output_index
 
+echo Sending locked funds:
 bitcoin_cli sendrawtransaction "$locked_funds_tx"
+
+echo Sending prover stake:
 bitcoin_cli sendrawtransaction "$prover_stake_tx"
 
+echo Sending proof:
 ts-node ./src/agent/protocol-logic/send-proof.ts bitsnark_prover_1 "$setup_id" --fudge
 
-cd python
-bitcoin_cli generatetoaddress 12 $(bitcoin_cli getnewaddress)
-python -m bitsnark.cli broadcast --setup-id test_setup --agent-id bitsnark_verifier_1 --name PROOF_UNCONTESTED
+echo Running the protocol agents
+run_in_bg prover_protocol npm run start-protocol-prover
+run_in_bg verifier_protocol npm run start-protocol-verifier

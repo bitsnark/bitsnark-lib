@@ -48,7 +48,7 @@ venv_dir="./python/venv"
 python_command="${PYTHON:-python3}"
 activate_python_venv() {
     [ "$bitsnark_python_env" ] && return
-    if ! [ -d "$venv_dir" ]; then
+    if ! [ -r "$venv_dir/bin/activate" ]; then
         echo "Creating virtual environment in $venv_dir"
         "$python_command" -m venv "$venv_dir"
     fi
@@ -82,4 +82,42 @@ conditionally_remove_container() {
 
 bitcoin_cli() {
     $docker_cmd exec "$regtest_container_name" bitcoin-cli -regtest -rpcuser=rpcuser -rpcpassword=rpcpassword "$@"
+}
+
+create_transaction() {
+    local address=$1
+    local amount=$2
+    local fee=$3
+    local utxo_idx=$4
+    local utxo=$(bitcoin_cli listunspent 0 | jq -r "[.[] | select(.spendable == true)][$utxo_idx]")
+    local txid=$(echo "$utxo" | jq -r '.txid')
+    local vout=$(echo "$utxo" | jq -r '.vout')
+    local utxo_amount=$(echo "$utxo" | jq -r '.amount')
+
+    if [ -z "$txid" ]; then
+        echo "No spendable UTXO found."
+        return 1
+    fi
+
+    local change_amount=$(echo "$utxo_amount - $amount - $fee" | bc)
+    local change_address=$(bitcoin_cli getnewaddress)
+
+    local unsigned=$(bitcoin_cli createrawtransaction \
+        "[{\"txid\":\"$txid\",\"vout\":$vout}]" \
+        "{\"$address\":$amount,\"$change_address\":$change_amount}")
+    local signed=$(bitcoin_cli signrawtransactionwithwallet "$unsigned" | jq -r '.hex')
+
+    echo $signed
+}
+
+get_all_txids() {
+    local block_count=$(bitcoin_cli getblockcount)
+    echo getting $block_count blocks >&2
+    (for height in $(seq 432 $block_count); do
+        local block_hash=$(bitcoin_cli getblockhash $height)
+        echo getting transactions for block $height >&2
+        local block_data=$(bitcoin_cli getblock $block_hash)
+        local block_txids=$(echo "$block_data" | jq -r '.tx[1:][]')
+        echo $block_txids
+    done) | grep -v '^$' | tr ' ' '\n'
 }

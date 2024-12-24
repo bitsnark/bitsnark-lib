@@ -145,8 +145,8 @@ export async function emulateSetup(
 
     console.log('Update listener data...');
 
-    await proverDb.updateSetupLastCheckedBlockHeight(setupId, 100);
-    await verifierDb.updateSetupLastCheckedBlockHeight(setupId, 100);
+    await proverDb.updateSetupLastCheckedBlockHeight(setupId, 432);
+    await verifierDb.updateSetupLastCheckedBlockHeight(setupId, 432);
 
     console.log('Verify setups...');
 

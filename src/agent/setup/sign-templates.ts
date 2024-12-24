@@ -1,5 +1,4 @@
-import { runPython } from '../common/python';
-import { AgentRoles, SignatureType, Template, TemplateNames } from '../common/types';
+import { AgentRoles, SetupStatus, SignatureType, Template, TemplateNames } from '../common/types';
 import { AgentDb } from '../common/agent-db';
 import { randomBytes } from 'crypto';
 import { getSpendingConditionByInput } from '../common/templates';
@@ -52,8 +51,8 @@ export async function signTemplates(
     let setup;
     do {
         setup = await db.getSetup(setupId);
-        if (setup.status == 'SIGNED') break;
-        if (setup.status == 'FAILED') throw new Error('Setup rejected');
+        if (setup.status == SetupStatus.SIGNED) break;
+        if (setup.status == SetupStatus.FAILED) throw new Error('Setup rejected');
     } while (!(await sleep(1000)));
 
     templates = await db.getTemplates(setupId);

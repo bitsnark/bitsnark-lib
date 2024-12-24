@@ -193,6 +193,19 @@ export class AgentDb extends Db {
 
     /*** Templates ***/
 
+    public async getTemplate(setupId: string, templateName: string): Promise<Template> {
+        const rows = (
+            await this.query<Template>(
+                `SELECT ${templateFields.join(', ')}
+                    FROM templates WHERE setup_id = $1 AND name = $2`,
+                [setupId, templateName]
+            )
+        ).rows;
+        if (rows.length != 1) throw new Error(`Template not found, setupId: ${setupId}, name: ${templateName}`);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        return rowToObj<Template>(templateFields, rows[0] as any, ['inputs', 'outputs', 'protocol_data']);
+    }
+
     public async getTemplates(setupId: string): Promise<Template[]> {
         const rows = (
             await this.query<Template>(
@@ -248,8 +261,6 @@ export class AgentDb extends Db {
     }
 
     public async markTemplateToSend(setupId: string, templateName: string, data?: Buffer[][]) {
-        console.log(setupId, templateName, 'DATA', data ?? []);
-
         await this.query(
             `UPDATE templates
                 SET updated_at = NOW(), protocol_data = $1, status = $2
