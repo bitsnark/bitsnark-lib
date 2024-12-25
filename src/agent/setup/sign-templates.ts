@@ -47,7 +47,7 @@ export async function signTemplates(
 ): Promise<Template[]> {
     const db = new AgentDb(agentId);
     await db.markSetupUnsigned(setupId);
-    console.log('Waiting for setup to be signed (make sure Python DB listener is running)');
+    console.log('Waiting for setup to be signed (make sure signer is running: npm run start-bitcoin-signer)');
     let setup;
     do {
         setup = await db.getSetup(setupId);

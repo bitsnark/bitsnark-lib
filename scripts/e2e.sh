@@ -24,13 +24,13 @@ npm run emulate-setup -- --setup-id $setup_id \
     --locked $locked_funds_txid:$locked_funds_output_index \
     --stake $prover_stake_txid:$prover_stake_output_index
 
-echo Running Python listeners in the background
+echo Running bitcoin sender in the background
 cleanup() {
     pkill -f 'python -m bitsnark.core.db_listener'
 }
 trap cleanup EXIT HUP INT QUIT TERM
-npm run start-python-listener -- bitsnark_prover_1 prover &
-npm run start-python-listener -- bitsnark_verifier_1 verifier &
+npm run start-bitcoin-sender -- bitsnark_prover_1 prover &
+npm run start-bitcoin-sender -- bitsnark_verifier_1 verifier &
 
 echo Sending locked funds:
 bitcoin_cli sendrawtransaction "$locked_funds_tx"

@@ -50,7 +50,9 @@ export class ProtocolBase {
 
     async sendTransaction(name: string, data?: Buffer[][]) {
         await this.db.markTemplateToSend(this.setupId, name, data);
-        console.log('Waiting for template to be broadcasted (make sure Python DB listener is running)');
+        console.log(
+            'Waiting for template to be broadcasted (make sure broadcaster is listening: npm run start-bitcoin-sender)'
+        );
         let template;
         do {
             template = await this.db.getTemplate(this.setupId, name);

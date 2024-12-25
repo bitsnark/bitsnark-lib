@@ -51,10 +51,12 @@ def broadcast_transactions(dbsession, bitcoin_rpc):
         dbsession.commit()
 
 
-def listen(dbsession, agent_id, role, bitcoin_rpc):
+def listen(dbsession, bitcoin_rpc, args):
     'Main loop step.'
-    sign_setups(dbsession, agent_id, role)
-    broadcast_transactions(dbsession, bitcoin_rpc)
+    if args.sign:
+        sign_setups(dbsession, args.agent_id, args.role)
+    if args.broadcast:
+        broadcast_transactions(dbsession, bitcoin_rpc)
 
 
 def main(argv: typing.Sequence[str] = None):
@@ -63,6 +65,8 @@ def main(argv: typing.Sequence[str] = None):
     parser.add_argument('--agent-id', required=True, help='Process only transactions with this agent ID')
     parser.add_argument('--role', required=True, choices=['prover', 'verifier'],
                         help='Role of the agent (prover or verifier)')
+    parser.add_argument('--sign', required=False, action='store_true', help='Sign transactions')
+    parser.add_argument('--broadcast', required=False, action='store_true', help='Broadcast transactions')
     parser.add_argument('--loop', required=False, action='store_true', help='Run in a loop')
 
     args = parser.parse_args(argv)
@@ -71,17 +75,18 @@ def main(argv: typing.Sequence[str] = None):
         parser.error("Must specify --agent-id")
     if not args.role:
         parser.error("Must specify --role")
+    if not args.sign and not args.broadcast:
+        parser.error("Must specify --sign or --broadcast")
 
     engine = create_engine(f"{POSTGRES_BASE_URL}/{args.agent_id}")
     dbsession = Session(engine)
     bitcoin_rpc = BitcoinRPC('http://rpcuser:rpcpassword@localhost:18443/wallet/testwallet')
-    listen(dbsession, args.agent_id, args.role, bitcoin_rpc)
+    listen(dbsession, bitcoin_rpc, args)
 
     if args.loop:
         while True:
             time.sleep(10)
-            sign_setups(dbsession, args.agent_id, args.role)
-            broadcast_transactions(dbsession, bitcoin_rpc)
+            listen(dbsession, bitcoin_rpc, args)
 
 
 if __name__ == "__main__":
