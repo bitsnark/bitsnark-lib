@@ -40,14 +40,15 @@ export class BitcoinListener {
         let pending = this.joinedTemplates.filter((template) => !template.blockHash);
         if (pending.length === 0) return;
 
-        let blockHeight = (pending[0].lastCheckedBlockHeight ?? 0) + 1;
-
         // No re-organization support - we wait until blocks are finalized
-        while (blockHeight <= this.tipHeight - agentConf.blocksUntilFinalized) {
+        for (
+            let blockHeight = (pending[0].lastCheckedBlockHeight ?? 0) + 1;
+            blockHeight <= this.tipHeight - agentConf.blocksUntilFinalized;
+            blockHeight++
+        ) {
             const noTxFound = await this.searchBlock(blockHeight, pending);
             console.log(`Found ${noTxFound ? 'no ' : ''}new transactions in block ${blockHeight}`);
             if (noTxFound) {
-                blockHeight++;
                 await this.db.updateSetupLastCheckedBlockHeightBatch(
                     [...pending.reduce((setupIds, template) => setupIds.add(template.setupId!), new Set<string>())],
                     blockHeight
