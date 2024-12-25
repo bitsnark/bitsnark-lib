@@ -19,9 +19,18 @@ echo Prover stake txid: $prover_stake_txid
 locked_funds_output_index=0
 prover_stake_output_index=0
 
+echo 'Emulating setup (this will move to a real setup later)'
 npm run emulate-setup -- --setup-id $setup_id \
     --locked $locked_funds_txid:$locked_funds_output_index \
     --stake $prover_stake_txid:$prover_stake_output_index
+
+echo Running Python listeners in the background
+cleanup() {
+    pkill -f 'python -m bitsnark.core.db_listener'
+}
+trap cleanup EXIT HUP INT QUIT TERM
+npm run start-python-listener -- bitsnark_prover_1 prover &
+npm run start-python-listener -- bitsnark_verifier_1 verifier &
 
 echo Sending locked funds:
 bitcoin_cli sendrawtransaction "$locked_funds_tx"
@@ -32,9 +41,7 @@ bitcoin_cli sendrawtransaction "$prover_stake_tx"
 generate_blocks
 
 echo Sending fudged proof and running the listener and the agents
-ts-node ./src/agent/protocol-logic/send-proof.ts bitsnark_prover_1 "$setup_id" --fudge &
-npm run start-python-listener -- bitsnark_prover_1 prover no-loop
-wait
+ts-node ./src/agent/protocol-logic/send-proof.ts bitsnark_prover_1 "$setup_id" --fudge
 generate_blocks
 
 echo Running the Bitcoin listener in the background
@@ -43,15 +50,5 @@ npm run start-bitcoin-listener &
 echo Running the protocol agents in the background
 npm run start-protocol-prover &
 npm run start-protocol-verifier &
-
-echo Running Python listeners in the background
-cleanup() {
-    pkill -f 'python -m bitsnark.core.db_listener'
-}
-trap cleanup EXIT HUP INT QUIT TERM
-cd python
-npm run start-python-listener -- bitsnark_prover_1 prover &
-npm run start-python-listener -- bitsnark_verifier_1 verifier &
-cd ..
 
 wait
