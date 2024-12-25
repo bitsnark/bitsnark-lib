@@ -9,9 +9,10 @@ from sqlalchemy.orm.session import Session
 from sqlalchemy.orm.attributes import flag_modified
 
 from bitsnark.conf import POSTGRES_BASE_URL
-from bitsnark.btc.rpc import BitcoinRPC
+from bitsnark.btc.rpc import BitcoinRPC, JSONRPCError
 from .models import TransactionTemplate, Setups, SetupStatus, OutgoingStatus
 from .sign_transactions import sign_setup, TransactionProcessingError
+from .fund_transactions import fund_transactions
 from ..cli.broadcast import broadcast_transaction
 
 logger = logging.getLogger(__name__)
@@ -40,6 +41,15 @@ def broadcast_transactions(dbsession, bitcoin_rpc):
     ).scalars().all()
     for tx in ready_transactions:
         logger.info("Processing transaction %s...", tx.name)
+        if tx.name == 'CHALLENGE':
+            try:
+                logger.info("Funding transaction %s...", tx.name)
+                fund_transactions(dbsession, bitcoin_rpc, tx.setup_id, [tx.name], 20)
+            except JSONRPCError:
+                logger.exception("Error funding transaction %s", tx.name)
+                tx.status = OutgoingStatus.REJECTED
+                dbsession.commit()
+                continue
         try:
             txid = broadcast_transaction(tx, dbsession, bitcoin_rpc)
             tx.tx_data['txid'] = txid
