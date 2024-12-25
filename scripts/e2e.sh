@@ -3,6 +3,9 @@
 . "$(dirname "$(realpath "$0")")/common.sh"
 activate_python_venv
 
+prover=bitsnark_prover_1
+verifier=bitsnark_verifier_1
+
 npm run start-db
 npm run start-regtest
 
@@ -24,13 +27,21 @@ npm run emulate-setup -- --setup-id $setup_id \
     --locked $locked_funds_txid:$locked_funds_output_index \
     --stake $prover_stake_txid:$prover_stake_output_index
 
-echo Running bitcoin sender in the background
+echo Running bitcoin senders, bitcoin listeners and protocol agents in the background
 cleanup() {
     pkill -f 'python -m bitsnark.core.db_listener'
+    pkill -f 'ts-node ./src/agent/listener/bitcoin-listener.ts'
+
 }
 trap cleanup EXIT HUP INT QUIT TERM
-npm run start-bitcoin-sender -- bitsnark_prover_1 prover &
-npm run start-bitcoin-sender -- bitsnark_verifier_1 verifier &
+npm run start-bitcoin-sender -- $prover prover &
+npm run start-bitcoin-sender -- $verifier verifier &
+npm run start-bitcoin-listener $prover &
+npm run start-bitcoin-listener $verifier &
+npm run start-protocol-prover &
+npm run start-protocol-verifier &
+
+sleep 5
 
 echo Sending locked funds:
 bitcoin_cli sendrawtransaction "$locked_funds_tx"
@@ -40,15 +51,22 @@ echo Sending prover stake:
 bitcoin_cli sendrawtransaction "$prover_stake_tx"
 generate_blocks 6
 
-echo Sending fudged proof and running the listener and the agents
-ts-node ./src/agent/protocol-logic/send-proof.ts bitsnark_prover_1 "$setup_id" --fudge
+sleep 5
+
+read -p "Fudge the proof? (y/n): " response
+echo -n 'Sending '
+if [ "$response" = y ] || [ "$response" = Y ]; then
+    fudge="--fudge"
+    echo -n 'fudged '
+fi
+echo proof
+ts-node ./src/agent/protocol-logic/send-proof.ts $prover "$setup_id" $fudge
 generate_blocks 6
 
-echo Running the Bitcoin listener in the background
-npm run start-bitcoin-listener &
-
-echo Running the protocol agents in the background
-npm run start-protocol-prover &
-npm run start-protocol-verifier &
-
-wait
+while true; do
+    sleep 5
+    read -p "How many blocks to generate (zero or NaN to exit)? " blocks
+    [ "$blocks" -gt 0 ] 2>/dev/null || break
+    generate_blocks $blocks
+done
+exit

@@ -1,3 +1,4 @@
+import minimist from 'minimist';
 import { agentConf } from '../agent.conf';
 import { BitcoinNode } from '../common/bitcoin-node';
 import { RawTransaction } from 'bitcoin-core';
@@ -120,11 +121,9 @@ export class BitcoinListener {
 }
 
 if (require.main === module) {
-    Promise.all(
-        ['bitsnark_prover_1', 'bitsnark_verifier_1'].map((agentId) =>
-            new BitcoinListener(agentId).startBlockchainCrawler()
-        )
-    ).catch((error) => {
+    const args = minimist(process.argv.slice(2));
+    const agentId = args._[0] ?? 'bitsnark_prover_1';
+    new BitcoinListener(agentId).startBlockchainCrawler().catch((error) => {
         throw error;
     });
 }
