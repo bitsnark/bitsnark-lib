@@ -120,7 +120,7 @@ export async function emulateSetup(
     await proverDb.upsertTemplates(setupId, proverTemplates);
     await verifierDb.upsertTemplates(setupId, verifierTemplates);
 
-    console.log('running Python to sign transactions...');
+    console.log('Waiting for Python to sign transactions...');
 
     proverTemplates = await signTemplates(AgentRoles.PROVER, proverAgentId, setupId, proverTemplates);
     verifierTemplates = await signTemplates(AgentRoles.VERIFIER, verifierAgentId, setupId, verifierTemplates);
@@ -145,8 +145,8 @@ export async function emulateSetup(
 
     console.log('Update listener data...');
 
-    await proverDb.updateSetupLastCheckedBlockHeight(setupId, 100);
-    await verifierDb.updateSetupLastCheckedBlockHeight(setupId, 100);
+    await proverDb.updateSetupLastCheckedBlockHeight(setupId, 432);
+    await verifierDb.updateSetupLastCheckedBlockHeight(setupId, 432);
 
     console.log('Verify setups...');
 

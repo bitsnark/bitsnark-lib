@@ -1,11 +1,11 @@
 import { RawTransaction } from 'bitcoin-core';
 import { BitcoinNode } from '../common/bitcoin-node';
 import { parseInput } from './parser';
-import { AgentRoles, Setup, SpendingCondition, Template, ReceivedTransaction } from '../common/types';
+import { AgentRoles, Setup, SpendingCondition, Template, TemplateStatus, ReceivedTransaction } from '../common/types';
 import { getTemplateByTemplateId } from '../common/templates';
 import { AgentDb } from '../common/agent-db';
+import { sleep } from '../common/sleep';
 import { bigintToBufferBE } from '../common/encoding';
-import { broadcastTransaction } from './broadcast-transaction';
 
 export interface Incoming {
     received: ReceivedTransaction;
@@ -49,9 +49,11 @@ export class ProtocolBase {
     }
 
     async sendTransaction(name: string, data?: Buffer[][]) {
+        const template = await this.db.getTemplate(this.setupId, name);
+        if (template.status == TemplateStatus.REJECTED) throw new Error('Template rejected');
+        if (template.status == TemplateStatus.READY) return;
         await this.db.markTemplateToSend(this.setupId, name, data);
-        console.warn(`Sending transaction ${name} manually for now`);
-        await broadcastTransaction(this.agentId, this.setupId, name);
+        console.log('Marked template for sending (make sure sender is listening: npm run start-bitcoin-sender)');
     }
 
     parseProof(incoming: Incoming): bigint[] {

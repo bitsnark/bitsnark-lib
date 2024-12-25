@@ -15,5 +15,3 @@ else
 fi
 
 ts-node "./src/agent/protocol-logic/$module" "$@"
-
-

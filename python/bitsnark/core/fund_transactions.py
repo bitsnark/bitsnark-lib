@@ -48,7 +48,7 @@ def main(argv: Sequence[str] = None):
     else:
         raise ValueError(f"Unknown chain {blockchain_info['chain']}")
 
-    change_address  = args.change_address
+    change_address = args.change_address
     if change_address == 'generate':
         change_address = bitcoin_rpc.call('getnewaddress')
         print(f"Generated a new change address: {change_address}")
