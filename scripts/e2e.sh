@@ -34,15 +34,15 @@ npm run start-bitcoin-sender -- bitsnark_verifier_1 verifier &
 
 echo Sending locked funds:
 bitcoin_cli sendrawtransaction "$locked_funds_tx"
-generate_blocks
+generate_blocks 6
 
 echo Sending prover stake:
 bitcoin_cli sendrawtransaction "$prover_stake_tx"
-generate_blocks
+generate_blocks 6
 
 echo Sending fudged proof and running the listener and the agents
 ts-node ./src/agent/protocol-logic/send-proof.ts bitsnark_prover_1 "$setup_id" --fudge
-generate_blocks
+generate_blocks 6
 
 echo Running the Bitcoin listener in the background
 npm run start-bitcoin-listener &
