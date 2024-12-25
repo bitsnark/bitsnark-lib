@@ -51,13 +51,19 @@ def broadcast_transactions(dbsession, bitcoin_rpc):
         dbsession.commit()
 
 
+def listen(dbsession, agent_id, role, bitcoin_rpc):
+    'Main loop step.'
+    sign_setups(dbsession, agent_id, role)
+    broadcast_transactions(dbsession, bitcoin_rpc)
+
+
 def main(argv: typing.Sequence[str] = None):
-    'Main loop.'
+    'Entry point.'
     parser = argparse.ArgumentParser()
-    parser.add_argument('--agent-id', required=True,
-                        help='Process only transactions with this agent ID')
+    parser.add_argument('--agent-id', required=True, help='Process only transactions with this agent ID')
     parser.add_argument('--role', required=True, choices=['prover', 'verifier'],
                         help='Role of the agent (prover or verifier)')
+    parser.add_argument('--loop', required=False, action='store_true', help='Run in a loop')
 
     args = parser.parse_args(argv)
 
@@ -69,11 +75,13 @@ def main(argv: typing.Sequence[str] = None):
     engine = create_engine(f"{POSTGRES_BASE_URL}/{args.agent_id}")
     dbsession = Session(engine)
     bitcoin_rpc = BitcoinRPC('http://rpcuser:rpcpassword@localhost:18443/wallet/testwallet')
+    listen(dbsession, args.agent_id, args.role, bitcoin_rpc)
 
-    while True:
-        sign_setups(dbsession, args.agent_id, args.role)
-        broadcast_transactions(dbsession, bitcoin_rpc)
-        time.sleep(10)
+    if args.loop:
+        while True:
+            time.sleep(10)
+            sign_setups(dbsession, args.agent_id, args.role)
+            broadcast_transactions(dbsession, bitcoin_rpc)
 
 
 if __name__ == "__main__":

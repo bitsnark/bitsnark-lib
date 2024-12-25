@@ -3,47 +3,15 @@
 regtest_container_name=bitcoin-node
 postgres_container_name=postgres
 
-if docker ps 2>&1 > /dev/null; then
-    docker_cmd=docker
-elif sudo docker ps 2>&1 > /dev/null; then
-    docker_cmd='sudo docker'
-else
-    echo "Can't run docker commands, exiting."
-    return 1
-fi
-
-kill_pid() {
-    signal=15
-    while ps -p $1 > /dev/null; do
-        echo killing $1 with signal $signal
-        kill -$signal $1
-        sleep 1
-        [ $signal = 15 ] && signal=2
-        [ $signal = 2 ] && signal=1
-        [ $signal = 1 ] && signal=9
-    done
-}
-
-cleanup() {
-    trap - EXIT INT HUP
-    jobs -p | while read -r job; do
-        kill_pid "$job" 2>/dev/null
-    done
-}
-
-prompt() {
-    read -p "$1" response
-    echo "$response"
-}
-
 if ! (return 0 2>/dev/null); then
-    response=$(prompt "This script is intended to be sourced, not executed, continue? (y/N): ")
+
+    read -p "This script is intended to be sourced, not executed, continue? (y/N): " response
     [ "$response" = y ] || [ "$response" = Y ] || exit 1
     scripts_dir="$(dirname "$(realpath "$0")")"
 fi
 
 if [ -z "$INIT_CWD" ]; then
-    response=$(prompt "This script is intended to be run with npm run-script, continue? (y/N): ")
+    read -p "This script is intended to be run with npm run-script, continue? (y/N): " response
     [ "$response" = y ] || [ "$response" = Y ] || exit 1
     [ "$scripts_dir" ] || scripts_dir="$(realpath .)"
     repo_root_dir="$(git -C "$scripts_dir" rev-parse --show-toplevel 2> /dev/null)"
@@ -53,6 +21,15 @@ if [ -z "$INIT_CWD" ]; then
     else
         echo "WARNING: Couldn't find repo root dir, using current dir as root"
     fi
+fi
+
+if docker ps 2>&1 > /dev/null; then
+    docker_cmd=docker
+elif sudo docker ps 2>&1 > /dev/null; then
+    docker_cmd='sudo docker'
+else
+    echo "Can't run docker commands, exiting."
+    return 1
 fi
 
 missing_packages() {
@@ -101,6 +78,12 @@ conditionally_remove_container() {
 
 bitcoin_cli() {
     $docker_cmd exec "$regtest_container_name" bitcoin-cli -regtest -rpcuser=rpcuser -rpcpassword=rpcpassword "$@"
+}
+
+generate_blocks() {
+    local count=${1:-1}
+    local address=$(bitcoin_cli getnewaddress)
+    bitcoin_cli generatetoaddress $count $address > /dev/null
 }
 
 create_transaction() {

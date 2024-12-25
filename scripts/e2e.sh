@@ -2,20 +2,11 @@
 
 . "$(dirname "$(realpath "$0")")/common.sh"
 activate_python_venv
-trap cleanup EXIT HUP INT QUIT TERM
 
 npm run start-db
 npm run start-regtest
 
-
-echo Running Python listeners in the background:
-cd python
-npm run start-python-listener -- bitsnark_prover_1 prover &
-pids="$pids $!"
-npm run start-python-listener -- bitsnark_verifier_1 verifier &
-pids="$pids $!"
-cd ..
-
+echo Generating extrenal transactions
 setup_id=test_setup
 locked_funds_tx=$(create_transaction bcrt1p0kxevp4v9eulwu0hsed4jwtlfe2nz6dqntyj6tp833u9js8re7rs6uqs99 10.0 0.005 0)
 prover_stake_tx=$(create_transaction bcrt1p0e73ksayxrmxj23mmmtu5502uaanamx7hxml9j60ycu24x95gg4qagarnf 2.0 0.005 1)
@@ -34,20 +25,33 @@ npm run emulate-setup -- --setup-id $setup_id \
 
 echo Sending locked funds:
 bitcoin_cli sendrawtransaction "$locked_funds_tx"
+generate_blocks
 
 echo Sending prover stake:
 bitcoin_cli sendrawtransaction "$prover_stake_tx"
+generate_blocks
 
 echo Sending fudged proof and running the listener and the agents
-ts-node ./src/agent/protocol-logic/send-proof.ts bitsnark_prover_1 "$setup_id" --fudge
-bitcoin_cli generatetoaddress 1 $(bitcoin_cli getnewaddress) > /dev/null
-npm run start-bitcoin-listener &
-pids="$pids $!"
+ts-node ./src/agent/protocol-logic/send-proof.ts bitsnark_prover_1 "$setup_id" --fudge &
+npm run start-python-listener -- bitsnark_prover_1 prover no-loop
+wait
+generate_blocks
 
-echo Running the protocol agents
+echo Running the Bitcoin listener in the background
+npm run start-bitcoin-listener &
+
+echo Running the protocol agents in the background
 npm run start-protocol-prover &
-pids="$pids $!"
 npm run start-protocol-verifier &
-pids="$pids $!"
+
+echo Running Python listeners in the background
+cleanup() {
+    pkill -f 'python -m bitsnark.core.db_listener'
+}
+trap cleanup EXIT HUP INT QUIT TERM
+cd python
+npm run start-python-listener -- bitsnark_prover_1 prover &
+npm run start-python-listener -- bitsnark_verifier_1 verifier &
+cd ..
 
 wait
