@@ -8,7 +8,7 @@ async function main(agentId: string, setupId: string, fudge: boolean = false) {
     if (fudge) {
         proof[0] = proof[0] + 1n;
     }
-    await protocol.pegOut(proofBigint);
+    await protocol.pegOut(proof);
 }
 
 if (require.main === module) {
