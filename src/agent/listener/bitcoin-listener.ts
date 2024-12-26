@@ -1,7 +1,7 @@
 import minimist from 'minimist';
 import { agentConf } from '../agent.conf';
 import { BitcoinNode } from '../common/bitcoin-node';
-import { RawTransaction } from 'bitcoin-core';
+import { BlockVerbosity, RawTransaction } from 'bitcoin-core';
 import { Input } from '../common/types';
 import { AgentDb } from '../common/agent-db';
 import { getTemplatesRows, JoinedTemplate } from './listener-utils';
@@ -20,7 +20,11 @@ export class BitcoinListener {
 
     async startBlockchainCrawler(): Promise<void> {
         do {
-            await this.checkForNewBlock();
+            try {
+                await this.checkForNewBlock();
+            } catch (error) {
+                console.error('Error in blockchain listener:', error);
+            }
             await new Promise((r) => setTimeout(r, agentConf.blockCheckIntervalMs));
             /*eslint no-constant-condition: "off"*/
         } while (true);
@@ -62,7 +66,7 @@ export class BitcoinListener {
 
     async searchBlock(blockHeight: number, pending: JoinedTemplate[]): Promise<boolean> {
         const blockHash = await this.client.getBlockHash(blockHeight);
-        const block = await this.client.getBlock(blockHash, 2);
+        const block = await this.client.getBlock(blockHash, BlockVerbosity.jsonWithTxs);
         const blockTxArr = block.tx as RawTransaction[];
         const blockTxids = new Set(blockTxArr.map((raw) => raw.txid));
         let noTxFound = true;

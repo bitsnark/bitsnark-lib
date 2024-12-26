@@ -137,4 +137,9 @@ declare module "bitcoin-core" {
         coinbase: boolean;
     }
 
+    export const enum BlockVerbosity {
+        hex = 0,
+        json = 1,
+        jsonWithTxs = 2
+    }
 }
