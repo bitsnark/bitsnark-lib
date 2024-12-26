@@ -50,10 +50,14 @@ export class ProtocolBase {
 
     async sendTransaction(name: string, data?: Buffer[][]) {
         const template = await this.db.getTemplate(this.setupId, name);
-        if (template.status == TemplateStatus.REJECTED) throw new Error('Template rejected');
+        if (template.status == TemplateStatus.REJECTED) throw new Error(`Template ${name} was rejected`);
         if (template.status == TemplateStatus.READY) return;
+        if (template.status == TemplateStatus.PUBLISHED) {
+            console.log(`Template ${name} published`);
+            return;
+        }
         await this.db.markTemplateToSend(this.setupId, name, data);
-        console.log('Marked template for sending (make sure sender is listening: npm run start-bitcoin-sender)');
+        console.log(`Asking to send template ${name} (make sure sender is listening: npm run start-bitcoin-sender)`);
     }
 
     parseProof(incoming: Incoming): bigint[] {

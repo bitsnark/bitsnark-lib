@@ -9,6 +9,7 @@ import { generateWotsPublicKeys, mergeWots, setWotsPublicKeysForArgument } from 
 import { AgentRoles, FundingUtxo, SignatureType } from '../common/types';
 import { initializeTemplates } from './init-templates';
 import { AgentDb } from '../common/agent-db';
+import { BitcoinNode } from '../common/bitcoin-node';
 
 export async function emulateSetup(
     proverAgentId: string,
@@ -20,6 +21,7 @@ export async function emulateSetup(
 ) {
     const proverDb = new AgentDb(proverAgentId);
     const verifierDb = new AgentDb(verifierAgentId);
+    const blockchainClient = new BitcoinNode().client;
 
     try {
         const setup = await proverDb.getSetup(setupId);
@@ -145,8 +147,9 @@ export async function emulateSetup(
 
     console.log('Update listener data...');
 
-    await proverDb.updateSetupLastCheckedBlockHeight(setupId, 432);
-    await verifierDb.updateSetupLastCheckedBlockHeight(setupId, 432);
+    const currentBlockHeight = await blockchainClient.getBlockCount();
+    await proverDb.updateSetupLastCheckedBlockHeight(setupId, currentBlockHeight);
+    await verifierDb.updateSetupLastCheckedBlockHeight(setupId, currentBlockHeight);
 
     console.log('Verify setups...');
 

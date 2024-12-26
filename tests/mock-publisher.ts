@@ -1,4 +1,4 @@
-import { TestAgentDb } from './test-utils/test-utils';
+import { generateBlocks, TestAgentDb } from './test-utils/test-utils';
 import { BitcoinNode } from '../src/agent/common/bitcoin-node';
 import { ProtocolProver } from '../src/agent/protocol-logic/protocol-prover';
 import { proofBigint } from '../src/agent/common/constants';
@@ -6,7 +6,7 @@ import { RawTransaction, Input } from 'bitcoin-core';
 import { agentConf } from '../src/agent/agent.conf';
 import { argv } from 'process';
 import { TemplateStatus, Template } from '../src/agent/common/types';
-import { ReceivedTemplateRow } from '../src/agent/listener/bitcoin-listener';
+import { JoinedTemplate } from '../src/agent/listener/listener-utils';
 
 export const mockRawTransaction: RawTransaction = {
     in_active_chain: true,
@@ -82,7 +82,7 @@ export class TestPublisher {
                 if (this.isRunning) return;
                 this.isRunning = true;
 
-                await this.generateBlocks(1);
+                await generateBlocks(this.bitcoinClient.client, 1);
 
                 const readyToSendTemplates = {
                     prover: (await this.dbs.prover.getTemplates(this.setupId)).filter(
@@ -123,11 +123,6 @@ export class TestPublisher {
                     const agentReadyTemplates = readyToSendTemplates[agent];
 
                     for (const readyTx of agentReadyTemplates) {
-                        console.log(
-                            'readyTx.data',
-                            readyTx.protocolData,
-                            readyTx.protocolData ? readyTx.protocolData[0] : 'NULL'
-                        );
                         const rawTx: RawTransaction = {
                             ...mockRawTransaction,
                             txid: readyTx.txid!,
@@ -137,42 +132,24 @@ export class TestPublisher {
                             )
                         };
                         console.log(
-                            'Broadcasting transaction',
+                            'Mock broadcasting transaction',
                             readyTx.txid,
                             readyTx.name,
                             rawTx.vin[0].txinwitness ?? []
                         );
 
                         if (receivedTransactions[agent].every((rt) => rt[0] !== readyTx.txid)) {
-                            console.log('Marking received in agent', readyTx.txid, readyTx.name);
-                            await this.dbs[agent].listenerDb.markReceived(
-                                this.setupId,
-                                readyTx.name,
-                                readyTx.txid!,
-                                hash,
-                                tip,
-                                rawTx
-                            );
+                            await this.markReceived(agent, readyTx, hash, tip, rawTx);
                         }
 
                         await this.dbs[agent].test_markPublished(this.setupId, readyTx.name);
-                        if (receivedTransactions[otherAgent].every((rt) => rt[0] !== readyTx.txid)) {
-                            console.log('Marking received in OTHER agent', readyTx.txid, readyTx.name);
 
-                            await this.dbs[otherAgent].listenerDb.markReceived(
-                                this.setupId,
-                                readyTx.name,
-                                readyTx.txid!,
-                                hash,
-                                tip,
-                                rawTx
-                            );
+                        if (receivedTransactions[otherAgent].every((rt) => rt[0] !== readyTx.txid)) {
+                            this.markReceived(otherAgent, readyTx, hash, tip, rawTx);
                         }
-                        console.log('Received incoming transaction', readyTx.txid, readyTx.name);
                     }
                 }
 
-                // await this.findAndPublishReceived()
                 this.isRunning = false;
             } catch (e) {
                 console.error(e);
@@ -181,24 +158,18 @@ export class TestPublisher {
         }, agentConf.protocolIntervalMs / 3);
     }
 
-    async generateBlocks(blocksToGenerate: number) {
-        try {
-            // Replace with a valid regtest address
-            const address = await this.bitcoinClient.client.command('getnewaddress');
-            console.log('Generated Address:', address);
-
-            const generatedBlocks = await this.bitcoinClient.client.command(
-                'generatetoaddress',
-                blocksToGenerate,
-                address as string
-            );
-            console.log('Generated Blocks:', generatedBlocks);
-        } catch (error) {
-            console.error('Error generating blocks:', error);
-        }
+    async markReceived(
+        agent: 'prover' | 'verifier',
+        readyTx: Template,
+        hash: string,
+        tip: number,
+        rawTx: RawTransaction
+    ) {
+        await this.dbs[agent].listenerDb.markReceived(readyTx, tip, hash, rawTx);
+        console.log(`Saved ${readyTx.txid} [${readyTx.name}] was received in ${agent} db`);
     }
 
-    private mockInputs(template: ReceivedTemplateRow, templates: Template[]): Input[] {
+    private mockInputs(template: JoinedTemplate, templates: Template[]): Input[] {
         return (
             templates
                 .find((t) => t.name === template.name)
@@ -214,9 +185,6 @@ export class TestPublisher {
                     };
                 }) || []
         );
-    }
-    async stop() {
-        // Do nothing
     }
 }
 
@@ -254,7 +222,7 @@ async function main(isStartOver: boolean = false) {
 
 if (require.main === module) {
     console.log('Starting mock publisher');
-    const isStartOver = argv[2] ? Boolean(argv[2]) : true;
+    const isStartOver = argv[2] && argv[2] === 'new' ? true : false;
 
     main(isStartOver);
 }

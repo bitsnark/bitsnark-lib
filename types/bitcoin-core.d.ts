@@ -4,7 +4,6 @@ declare module "bitcoin-core" {
         getBlock(blockHash: string): Promise<Block>;
         getRawTransaction(txid: string, verbose: boolean, blockhash: string): Promise<RawTransaction>;
         getBestBlockHash(): Promise<string>;
-        getTransaction(txid: string): Promise<TransactionData>;
         getBlock(blockHash: string, verbosity?: number): Promise<Block>;
         getBlockCount(): Promise<number>;
         getBlockHash(blockHeight: number): Promise<string>;
@@ -29,7 +28,7 @@ declare module "bitcoin-core" {
         version: number;                // The block version
         versionHex: string;             // The block version formatted in hexadecimal
         merkleroot: string;             // The merkle root
-        tx: string[];                   // Array of transaction IDs
+        tx: RawTransaction[] | string[];           // Array of Full transactions
         time: number;                   // The block time expressed in UNIX epoch time
         mediantime: number;             // The median block time expressed in UNIX epoch time
         nonce: number;                  // The nonce
@@ -41,6 +40,7 @@ declare module "bitcoin-core" {
         nextblockhash?: string;         // The hash of the next block (optional, since it may not be present for the last block)
     }
 
+
     export interface RawTransaction {
         in_active_chain?: boolean;
         hex: string;
@@ -51,7 +51,7 @@ declare module "bitcoin-core" {
         weight: number;
         version: number;
         locktime: number;
-        vin: Array<Input>;
+        vin: Array<Vin>;
         vout: Array<{
             value: number;
             n: number;
@@ -70,6 +70,16 @@ declare module "bitcoin-core" {
         setupId?: string; // Optional field
     }
 
+    export interface Vin {
+        txid: string;
+        vout: number;
+        scriptSig: {
+            asm: string;
+            hex: string;
+        };
+        sequence: number;
+        txinwitness?: string[];
+    }
     export interface TransactionData {
         amount: number;
         fee: number;
@@ -127,4 +137,9 @@ declare module "bitcoin-core" {
         coinbase: boolean;
     }
 
+    export const enum BlockVerbosity {
+        hex = 0,
+        json = 1,
+        jsonWithTxs = 2
+    }
 }

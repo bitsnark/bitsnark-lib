@@ -36,6 +36,7 @@ interface AgentConf {
     protocolVersion: string;
     useMockProgram: boolean;
     protocolIntervalMs: number;
+    blockCheckIntervalMs: number;
     telegramChannelId: string;
 }
 
@@ -99,6 +100,6 @@ export const agentConf: AgentConf = {
     protocolVersion: parse.string('PROTOCOL_VERSION', '0.2'),
     useMockProgram: parse.boolean('USE_MOCK_PROGRAM', false),
     protocolIntervalMs: parse.integer('PROTOCOL_INTERVAL_MS', 1000),
-
+    blockCheckIntervalMs: parse.integer('BLOCK_CHECK_INTERVAL_MS', 1000),
     telegramChannelId: parse.string('TELEGRAM_CHANNEL_ID', '-1002148850465')
 };

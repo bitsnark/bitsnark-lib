@@ -37,7 +37,7 @@ CREATE INDEX templates_status_idx ON templates (status);
 
 CREATE TABLE received (
     template_id INTEGER NOT NULL PRIMARY KEY REFERENCES templates ON DELETE CASCADE,
-    txid CHARACTER VARYING NOT NULL,
+    txid CHARACTER VARYING NOT NULL UNIQUE,
     block_hash CHARACTER VARYING NOT NULL,
     block_height INTEGER NOT NULL,
     raw_transaction JSONB NOT NULL,
