@@ -11,7 +11,7 @@ import { initializeTemplates } from './init-templates';
 import { AgentDb } from '../common/agent-db';
 import { BitcoinNode } from '../common/bitcoin-node';
 import { satsToBtc } from '../bitcoin/common';
-import { createFundingTxid } from '../bitcoin/external-transactions';
+import { createFundingTxid, sendExternalTransaction } from '../bitcoin/external-transactions';
 import { createLockedFundsExternalAddresses, createProverStakeExternalAddresses } from './create-external-addresses';
 
 export async function emulateSetup(
@@ -194,6 +194,11 @@ async function main(setupId: string, generateFinal: boolean) {
         },
         generateFinal
     );
+
+    console.log('Sending external transactions...');
+
+    await sendExternalTransaction(lockedFundsAddress, satsToBtc(agentConf.payloadAmount));
+    await sendExternalTransaction(proverStakeAddress, satsToBtc(agentConf.proverStakeAmount));
 }
 
 if (require.main === module) {
