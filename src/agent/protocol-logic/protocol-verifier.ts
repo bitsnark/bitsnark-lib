@@ -40,7 +40,6 @@ export class ProtocolVerifier extends ProtocolBase {
         const selectionPath: number[] = [];
         const selectionPathUnparsed: Buffer[][] = [];
         let proof: bigint[] = [];
-        const states: Buffer[][] = [];
 
         // examine each one
         for (const incoming of incomingArray) {
@@ -83,7 +82,7 @@ export class ProtocolVerifier extends ProtocolBase {
             if (incoming.template.name.startsWith(TemplateNames.STATE)) {
                 const state = this.parseState(incoming);
                 this.states.push(state);
-                await this.sendSelect(proof, states, selectionPath);
+                await this.sendSelect(proof, selectionPath);
             } else if (incoming.template.name.startsWith(TemplateNames.STATE_UNCONTESTED)) {
                 // we lost, mark it
                 await this.db.markSetupPegoutSuccessful(this.setupId);
@@ -139,10 +138,10 @@ export class ProtocolVerifier extends ProtocolBase {
         this.sendTransaction(TemplateNames.PROOF_REFUTED, [data]);
     }
 
-    private async sendSelect(proof: bigint[], states: Buffer[][], selectionPath: number[]) {
+    private async sendSelect(proof: bigint[], selectionPath: number[]) {
         const iteration = selectionPath.length;
         const txName = TemplateNames.SELECT + '_' + twoDigits(iteration);
-        const selection = await findErrorState(proof, last(states), selectionPath);
+        const selection = await findErrorState(proof, last(this.states), selectionPath);
         const selectionWi = encodeWinternitz24(BigInt(selection), createUniqueDataId(this.setup!.id, txName, 0, 0, 0));
         this.sendTransaction(txName, [selectionWi]);
     }
