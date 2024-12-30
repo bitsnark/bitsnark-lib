@@ -73,6 +73,12 @@ export async function createFundingTxid(taprootAddress: string, amountInBtc: num
     return await rawTransactionToTxid(rawTxHex);
 }
 
+export async function sendExternalTransaction(taprootAddress: string, amountInBtc: number): Promise<string> {
+    const rawTxHex = await createRawTx(taprootAddress, amountInBtc);
+    const txid = (await client.command('sendrawtransaction', rawTxHex)) as string;
+    return txid;
+}
+
 async function main() {
     const args = minimist(process.argv.slice(2), { boolean: ['send'] });
     const proverAgentId = args['prover-agent-id'] ?? 'bitsnark_prover_1';
