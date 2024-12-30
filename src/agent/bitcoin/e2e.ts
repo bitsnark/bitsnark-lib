@@ -8,7 +8,6 @@ import { agentConf } from '../agent.conf';
 import { createFundingTxid } from './external-transactions';
 import { satsToBtc } from './common';
 import { randomBytes } from 'node:crypto';
-import { sendTransaction } from './send-external-transaction';
 
 async function main() {
     const args = minimist(process.argv.slice(2));

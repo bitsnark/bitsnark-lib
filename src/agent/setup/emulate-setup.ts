@@ -206,5 +206,5 @@ if (require.main === module) {
     const setupId = args['setup-id'] ?? 'test_setup';
     const generateFinal = args.final;
 
-    main(setupId, generateFinal).catch(error => console.error(error));
+    main(setupId, generateFinal).catch((error) => console.error(error));
 }
