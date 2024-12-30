@@ -9,6 +9,7 @@ import { generateWotsPublicKeys, mergeWots, setWotsPublicKeysForArgument } from 
 import { AgentRoles, FundingUtxo, SignatureType } from '../common/types';
 import { initializeTemplates } from './init-templates';
 import { AgentDb } from '../common/agent-db';
+import { BitcoinNode } from '../common/bitcoin-node';
 
 export async function emulateSetup(
     proverAgentId: string,
@@ -20,7 +21,9 @@ export async function emulateSetup(
 ) {
     const proverDb = new AgentDb(proverAgentId);
     const verifierDb = new AgentDb(verifierAgentId);
+    const blockchainClient = new BitcoinNode().client;
 
+    // TODO: Fix this to not require try/catch
     try {
         await proverDb.getSetup(setupId);
         console.log('Setup already exists: ', setupId);
@@ -120,7 +123,7 @@ export async function emulateSetup(
     await proverDb.upsertTemplates(setupId, proverTemplates);
     await verifierDb.upsertTemplates(setupId, verifierTemplates);
 
-    console.log('running Python to sign transactions...');
+    console.log('Waiting for Python to sign transactions...');
 
     proverTemplates = await signTemplates(AgentRoles.PROVER, proverAgentId, setupId, proverTemplates);
     verifierTemplates = await signTemplates(AgentRoles.VERIFIER, verifierAgentId, setupId, verifierTemplates);
@@ -145,8 +148,9 @@ export async function emulateSetup(
 
     console.log('Update listener data...');
 
-    await proverDb.updateSetupLastCheckedBlockHeight(setupId, 100);
-    await verifierDb.updateSetupLastCheckedBlockHeight(setupId, 100);
+    const currentBlockHeight = await blockchainClient.getBlockCount();
+    await proverDb.updateSetupLastCheckedBlockHeight(setupId, currentBlockHeight);
+    await verifierDb.updateSetupLastCheckedBlockHeight(setupId, currentBlockHeight);
 
     console.log('Verify setups...');
 

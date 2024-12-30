@@ -125,6 +125,12 @@ export class AgentDb extends Db {
         return await this.getSetup(setupId);
     }
 
+    public async setupExists(setupId: string): Promise<boolean> {
+        const rows = (await this.query<Setup>(`SELECT ${setupFields.join(', ')} FROM setups WHERE id = $1`, [setupId]))
+            .rows;
+        return rows.length > 0;
+    }
+
     public async getSetup(setupId: string): Promise<Setup> {
         const rows = (await this.query<Setup>(`SELECT ${setupFields.join(', ')} FROM setups WHERE id = $1`, [setupId]))
             .rows;
@@ -135,6 +141,10 @@ export class AgentDb extends Db {
 
     private async markSetupStatus(setupId: string, status: SetupStatus) {
         await this.query('UPDATE setups SET status = $1 WHERE id = $2', [SetupStatus[status], setupId]);
+    }
+
+    public async markSetupUnsigned(setupId: string) {
+        await this.markSetupStatus(setupId, SetupStatus.UNSIGNED);
     }
 
     public async markSetupPegoutActive(setupId: string) {
@@ -153,13 +163,6 @@ export class AgentDb extends Db {
         await this.query('UPDATE setups SET last_checked_block_height = $1 WHERE id = $2', [blockHeight, setupId]);
     }
 
-    public async updateSetupLastCheckedBlockHeightBatch(setupIds: string[], blockHeight: number) {
-        await this.query('UPDATE setups SET last_checked_block_height = $1 WHERE id = ANY($2)', [
-            blockHeight,
-            setupIds
-        ]);
-    }
-
     public async getActiveSetups(): Promise<Setup[]> {
         return Promise.all(
             (
@@ -171,6 +174,19 @@ export class AgentDb extends Db {
     }
 
     /*** Templates ***/
+
+    public async getTemplate(setupId: string, templateName: string): Promise<Template> {
+        const rows = (
+            await this.query<Template>(
+                `SELECT ${templateFields.join(', ')}
+                    FROM templates WHERE setup_id = $1 AND name = $2`,
+                [setupId, templateName]
+            )
+        ).rows;
+        if (rows.length != 1) throw new Error(`Template not found, setupId: ${setupId}, name: ${templateName}`);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        return rowToObj<Template>(templateFields, rows[0] as any, ['inputs', 'outputs', 'protocol_data']);
+    }
 
     public async getTemplates(setupId: string): Promise<Template[]> {
         const rows = (
@@ -227,8 +243,6 @@ export class AgentDb extends Db {
     }
 
     public async markTemplateToSend(setupId: string, templateName: string, data?: Buffer[][]) {
-        console.log(setupId, templateName, 'DATA', data ?? []);
-
         await this.query(
             `UPDATE templates
                 SET updated_at = NOW(), protocol_data = $1, status = $2
@@ -253,40 +267,35 @@ export class AgentDb extends Db {
                 [setupId]
             )
         ).rows;
-        if (rows.length == 0) throw new Error(`No received transactions found, setupId: ${setupId}`);
         return rows.map((row) => {
             const [templateId, height, raw, blockHash] = row;
             return { templateId, height, raw, blockHash };
         });
     }
 
+    public async updateSetupLastCheckedBlockHeightBatch(setupIds: string[], blockHeight: number) {
+        await this.query('UPDATE setups SET last_checked_block_height = $1 WHERE id = ANY($2)', [
+            blockHeight,
+            setupIds
+        ]);
+    }
+
     public async markReceived(
-        setupId: string,
-        templateName: string,
-        txid: string,
-        blockHash: string,
+        template: Template,
         blockHeight: number,
+        blockHash: string,
         rawTransaction: RawTransaction,
         indexInBlock: number = 0
     ) {
-        // Assert that the setup is active.
-        const status = (await this.query('SELECT status FROM setups WHERE id = $1', [setupId]))
-            .rows[0]?.[0] as SetupStatus;
-        if (status != SetupStatus.ACTIVE) {
-            throw new Error(
-                `Status of ${setupId} is ${SetupStatus[status]} instead of ${SetupStatus[SetupStatus.ACTIVE]}`
-            );
-        }
-
         await this.query(
             `
                 INSERT INTO received (template_id, txid, block_hash, block_height, raw_transaction, index_in_block)
-                VALUES ((SELECT id FROM templates WHERE setup_id = $1 AND name = $2), $3, $4, $5, $6, $7)
+                VALUES ($1, $2, $3, $4, $5, $6)
+                ON CONFLICT (txid) DO NOTHING
             `,
             [
-                setupId,
-                templateName,
-                txid,
+                template.id,
+                rawTransaction.txid,
                 blockHash,
                 blockHeight,
                 jsonParseCustom(JSON.stringify(rawTransaction)),

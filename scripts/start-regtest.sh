@@ -15,7 +15,7 @@ if [ "$bitcoin_data_dir" ]; then
 fi
 echo ...
 
-sudo docker run -d --name "$regtest_container_name" $volume_mount -p 18443:18443 -p 18444:18444 \
+$docker_cmd run -d --name "$regtest_container_name" $volume_mount -p 18443:18443 -p 18444:18444 \
     ruimarinho/bitcoin-core:latest -regtest \
     -rpcuser=rpcuser -rpcpassword=rpcpassword \
     -rpcallowip=0.0.0.0/0 -rpcbind=0.0.0.0
@@ -34,4 +34,4 @@ bitcoin_cli loadwallet testwallet 2>/dev/null || true
 # Segwit needs 432 blocks, at least according to this:
 # https://gist.github.com/t4sk/0bc6b35a26998b9007d68f376a852636
 echo Generating initial blocks and activating segwit...
-bitcoin_cli generatetoaddress 432 $(bitcoin_cli getnewaddress) > /dev/null
+generate_blocks 432

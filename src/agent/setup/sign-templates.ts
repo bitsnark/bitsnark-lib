@@ -1,8 +1,8 @@
-import { runPython } from '../common/python';
-import { AgentRoles, SignatureType, Template, TemplateNames } from '../common/types';
+import { AgentRoles, SetupStatus, SignatureType, Template, TemplateNames } from '../common/types';
 import { AgentDb } from '../common/agent-db';
 import { randomBytes } from 'crypto';
 import { getSpendingConditionByInput } from '../common/templates';
+import { sleep } from '../common/sleep';
 
 function verifyTemplates(templates: Template[], role: AgentRoles) {
     for (const template of templates) {
@@ -45,24 +45,18 @@ export async function signTemplates(
     setupId: string,
     templates: Template[]
 ): Promise<Template[]> {
-    const result = await runPython([
-        '-m',
-        'bitsnark.core.sign_transactions',
-        '--role',
-        role.toLowerCase(),
-        '--agent-id',
-        agentId,
-        '--setup-id',
-        setupId,
-        '--no-mocks'
-    ]);
-    console.log('done');
-    console.log(result.toString('ascii'));
-
     const db = new AgentDb(agentId);
+    await db.markSetupUnsigned(setupId);
+    console.log('Waiting for setup to be signed (make sure signer is running: npm run start-bitcoin-signer)');
+    let setup;
+    do {
+        setup = await db.getSetup(setupId);
+        if (setup.status == SetupStatus.SIGNED) break;
+        if (setup.status == SetupStatus.FAILED) throw new Error('Setup rejected');
+    } while (!(await sleep(1000)));
+
     templates = await db.getTemplates(setupId);
     verifyTemplates(templates, role);
-
     return templates;
 }
 

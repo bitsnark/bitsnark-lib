@@ -6,7 +6,8 @@ import { AgentDb } from '../../src/agent/common/agent-db';
 import { BitcoinListener } from '../../src/agent/listener/bitcoin-listener';
 import { ProtocolProver } from '../../src/agent/protocol-logic/protocol-prover';
 import { ProtocolVerifier } from '../../src/agent/protocol-logic/protocol-verifier';
-import { AgentDbMock } from './agent-db-mock';
+import Client from 'bitcoin-core';
+import { JoinedTemplate } from '../../src/agent/listener/listener-utils';
 
 export const payloadUtxo = {
     txid: '0000000000000000000000000000000000000000000000000000000000000000',
@@ -65,10 +66,10 @@ export interface TestAgent {
     setupId: string;
     role: string;
     agentId: string;
-    db: TestAgentDb | AgentDbMock;
+    db: TestAgentDb;
     listener: BitcoinListener;
-    templates: Template[];
-    pending: Template[];
+    templatesRows: JoinedTemplate[];
+    pending: JoinedTemplate[];
     setup?: Setup;
     received?: ReceivedTransaction[];
     protocol?: ProtocolProver | ProtocolVerifier;
@@ -82,14 +83,10 @@ export function setTestAgent(role: AgentRoles): TestAgent {
         agentId: agentId,
         db: new TestAgentDb(agentId),
         listener: new BitcoinListener(agentId),
-        templates: [],
+        templatesRows: [],
         pending: [],
         received: []
     };
-}
-
-export interface test_Template extends Template {
-    data: Buffer[][];
 }
 
 export class TestAgentDb extends AgentDb {
@@ -133,5 +130,17 @@ export class TestAgentDb extends AgentDb {
             `,
             [TemplateStatus.PUBLISHED, setupId, templateName]
         );
+    }
+}
+
+export async function generateBlocks(bitcoinClient: Client, blocksToGenerate: number, address?: string) {
+    try {
+        // Replace with a valid regtest address
+        if (!address) address = (await bitcoinClient.command('getnewaddress')) as string;
+
+        const generatedBlocks = await bitcoinClient.command('generatetoaddress', blocksToGenerate, address as string);
+        console.log('Generated Blocks:', generatedBlocks);
+    } catch (error) {
+        console.error('Error generating blocks:', error);
     }
 }

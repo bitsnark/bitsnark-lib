@@ -131,8 +131,6 @@ export async function generateAllScripts(
     generateFinal: boolean
 ): Promise<Template[]> {
     for (const t of templates.filter((t) => !t.isExternal)) {
-        console.log('generating scripts for: ', t.name);
-
         // check that all sc have wots public keys if they need them
         for (const output of t.outputs) {
             for (const sc of output.spendingConditions) {

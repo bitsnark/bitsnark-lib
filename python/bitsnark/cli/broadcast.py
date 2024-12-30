@@ -1,3 +1,4 @@
+'Quick and dirty transaction broadcaster.'
 import argparse
 import itertools
 import logging
@@ -12,6 +13,102 @@ from ..core.models import TransactionTemplate
 from ..scripteval import eval_tapscript
 
 logger = logging.getLogger(__name__)
+
+
+def broadcast_transaction(
+    tx_template: TransactionTemplate,
+    dbsession,
+    bitcoin_rpc,
+    evaluate_inputs: bool = False,
+    no_test_mempool_accept: bool = False
+) -> str:
+    logger.info("Attempting to broadcast %s", tx_template.name)
+    signed_serialized_tx = tx_template.tx_data.get('signedSerializedTx')
+    if not signed_serialized_tx:
+        raise ValueError(f"Transaction {tx_template.name} has no signedSerializedTx")
+
+    signed_serialized_tx = parse_hex_str(signed_serialized_tx)
+
+    tx = CMutableTransaction.deserialize(bytes.fromhex(signed_serialized_tx))
+    input_witnesses = []
+
+    for input_index, inp in enumerate(tx_template.inputs):
+        verifier_signature_raw = inp.get('verifierSignature')
+        if not verifier_signature_raw:
+            raise ValueError(f"Transaction {tx_template.name} input #{input_index} has no verifierSignature")
+        verifier_signature = parse_hex_bytes(verifier_signature_raw)
+
+        prover_signature_raw = inp.get('proverSignature')
+        if not prover_signature_raw:
+            raise ValueError(f"Transaction {tx_template.name} input #{input_index} has no proverSignature")
+        prover_signature = parse_hex_bytes(prover_signature_raw)
+
+        prev_tx = dbsession.execute(
+            select(TransactionTemplate).filter_by(
+                setup_id=tx_template.setup_id,
+                name=inp['templateName'],
+            )
+        ).scalar_one()
+
+        prevout_index = inp['outputIndex']
+        prevout = prev_tx.outputs[prevout_index]
+        spending_condition = prevout['spendingConditions'][
+            inp['spendingConditionIndex']
+        ]
+
+        tapscript = CScript(parse_hex_bytes(spending_condition['script']))
+
+        witness_raw = tx_template.protocol_data or []
+        witness = [
+            parse_hex_bytes(s) for s in
+            # This flattens the list of lists
+            itertools.chain.from_iterable(witness_raw)
+        ]
+
+        control_block = parse_hex_bytes(spending_condition['controlBlock'])
+
+        input_witness = CTxInWitness(CScriptWitness(
+            stack=[
+                *witness,
+                verifier_signature,
+                prover_signature,
+                tapscript,
+                control_block,
+            ],
+        ))
+        input_witnesses.append(input_witness)
+
+    tx.wit = CTxWitness(vtxinwit=input_witnesses)
+
+    if evaluate_inputs:
+        for input_index, input_witness in enumerate(input_witnesses):
+            logger.info("Evaluating input %s", input_index)
+            *witness_elems, tapscript, _ = input_witness.scriptWitness.stack
+            eval_tapscript(
+                witness_elems=witness_elems,
+                script=CScript(tapscript),
+                inIdx=input_index,
+                txTo=tx,
+                # TODO: would be swell to get it working without ignore_signature_errors!
+                ignore_signature_errors=True,
+            )
+
+    signed_serialized_tx = tx.serialize().hex()
+
+    if not no_test_mempool_accept:
+        mempoolaccept_ret = bitcoin_rpc.call(
+            'testmempoolaccept',
+            [signed_serialized_tx],
+        )
+        logger.info("Test mempool accept result: %s", mempoolaccept_ret)
+        if not mempoolaccept_ret[0]['allowed']:
+            raise ValueError(
+                f"Transaction {tx_template.name!r} not accepted by mempool: {mempoolaccept_ret[0]['reject-reason']}")
+
+    txid = bitcoin_rpc.call('sendrawtransaction', signed_serialized_tx)
+    assert txid == tx_template.txid
+    logger.info("Transaction broadcast: %s", txid)
+    return txid
 
 
 class BroadcastCommand(Command):
@@ -41,94 +138,11 @@ class BroadcastCommand(Command):
         bitcoin_rpc = context.bitcoin_rpc
         dbsession = context.dbsession
         evaluate_inputs = getattr(context.args, 'eval_inputs')
-
-        logger.info("Attempting to broadcast %s", tx_template.name)
-        signed_serialized_tx = tx_template.tx_data.get('signedSerializedTx')
-        if not signed_serialized_tx:
-            raise ValueError(f"Transaction {tx_template.name} has no signedSerializedTx")
-
-        signed_serialized_tx = parse_hex_str(signed_serialized_tx)
-
-        tx = CMutableTransaction.deserialize(bytes.fromhex(signed_serialized_tx))
-        input_witnesses = []
-
-        for input_index, inp in enumerate(tx_template.inputs):
-            verifier_signature_raw = inp.get('verifierSignature')
-            if not verifier_signature_raw:
-                raise ValueError(f"Transaction {tx_template.name} input #{input_index} has no verifierSignature")
-            verifier_signature = parse_hex_bytes(verifier_signature_raw)
-
-            prover_signature_raw = inp.get('proverSignature')
-            if not prover_signature_raw:
-                raise ValueError(f"Transaction {tx_template.name} input #{input_index} has no proverSignature")
-            prover_signature = parse_hex_bytes(prover_signature_raw)
-
-            prev_tx = dbsession.execute(
-                select(TransactionTemplate).filter_by(
-                    setup_id=tx_template.setup_id,
-                    name=inp['templateName'],
-                )
-            ).scalar_one()
-
-            prevout_index = inp['outputIndex']
-            prevout = prev_tx.outputs[prevout_index]
-            spending_condition = prevout['spendingConditions'][
-                inp['spendingConditionIndex']
-            ]
-
-            tapscript = CScript(parse_hex_bytes(spending_condition['script']))
-
-            witness_raw = tx_template.protocol_data or []
-            witness = [
-                parse_hex_bytes(s) for s in
-                # This flattens the list of lists
-                itertools.chain.from_iterable(witness_raw)
-            ]
-
-            control_block = parse_hex_bytes(spending_condition['controlBlock'])
-
-            input_witness = CTxInWitness(CScriptWitness(
-                stack=[
-                    *witness,
-                    verifier_signature,
-                    prover_signature,
-                    tapscript,
-                    control_block,
-                ],
-            ))
-            input_witnesses.append(input_witness)
-
-        tx.wit = CTxWitness(vtxinwit=input_witnesses)
-
-        if evaluate_inputs:
-            for input_index, input_witness in enumerate(input_witnesses):
-                logger.info("Evaluating input %s", input_index)
-                *witness_elems, tapscript, _ = input_witness.scriptWitness.stack
-                eval_tapscript(
-                    witness_elems=witness_elems,
-                    script=CScript(tapscript),
-                    inIdx=input_index,
-                    txTo=tx,
-                    # TODO: would be swell to get it working without ignore_signature_errors!
-                    ignore_signature_errors=True,
-                )
-
-        signed_serialized_tx = tx.serialize().hex()
-
-        if not context.args.no_test_mempool_accept:
-            mempoolaccept_ret = bitcoin_rpc.call(
-                'testmempoolaccept',
-                [signed_serialized_tx],
-            )
-            logger.info("Test mempool accept result: %s", mempoolaccept_ret)
-            if not mempoolaccept_ret[0]['allowed']:
-                raise ValueError(f"Transaction {tx_template.name!r} not accepted by mempool: {mempoolaccept_ret[0]['reject-reason']}")
-
-        txid = bitcoin_rpc.call(
-            'sendrawtransaction',
-            signed_serialized_tx,
+        no_test_mempool_accept = getattr(context.args, 'no_test_mempool_accept')
+        return broadcast_transaction(
+            tx_template=tx_template,
+            dbsession=dbsession,
+            bitcoin_rpc=bitcoin_rpc,
+            evaluate_inputs=evaluate_inputs,
+            no_test_mempool_accept=no_test_mempool_accept,
         )
-        # print(txid)
-        assert txid == tx_template.txid
-        logger.info(f"Transaction broadcast: {txid}")
-        return txid

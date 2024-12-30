@@ -12,7 +12,8 @@ import { AgentRoles, TemplateNames } from '../common/types';
 import { AgentDb } from '../common/agent-db';
 import { getTemplateByName, twoDigits } from '../common/templates';
 import { Incoming, ProtocolBase } from './protocol-base';
-import { defaultVerificationKey } from '@src/generator/ec_vm/constants';
+import { defaultVerificationKey } from '../../generator/ec_vm/constants';
+import { sleep } from '../common/sleep';
 
 export class ProtocolVerifier extends ProtocolBase {
     states: Buffer[][] = [];
@@ -175,7 +176,7 @@ export async function main(agentId: string) {
 
     do {
         doit();
-        await new Promise((r) => setTimeout(r, agentConf.protocolIntervalMs));
+        await sleep(agentConf.protocolIntervalMs);
         /*eslint no-constant-condition: "off"*/
     } while (true);
 }

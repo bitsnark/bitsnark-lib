@@ -3,74 +3,70 @@
 . "$(dirname "$(realpath "$0")")/common.sh"
 activate_python_venv
 
-data_dir="$(mktemp -d)"
-snapshot_file="$(mktemp)"
-cleanup() {
-    rm -rf "$data_dir" "$snapshot_file"
-}
-trap cleanup EXIT
-
-snapshot() {
-    bitcoin_cli stop
-    sleep 1
-    sudo docker rm -f "$regtest_container_name"
-    if [ "$1" = create ]; then
-        tar -czf "$snapshot_file" -C "$data_dir" .
-    elif [ "$1" = restore ]; then
-        rm -rf "$data_dir"
-        mkdir "$data_dir"
-        tar -xzf "$snapshot_file" -C "$data_dir"
-    else
-        echo "Invalid argument: $1"
-        exit 1
-    fi
-    npm run start-regtest -- "$data_dir"
-}
-
-create_transaction() {
-    address=$1
-    amount=$2
-    fee=$3
-    utxo_idx=$4
-    utxo=$(bitcoin_cli listunspent 0 | jq -r "[.[] | select(.spendable == true)][$utxo_idx]")
-    txid=$(echo "$utxo" | jq -r '.txid')
-    vout=$(echo "$utxo" | jq -r '.vout')
-    utxo_amount=$(echo "$utxo" | jq -r '.amount')
-
-    if [ -z "$txid" ]; then
-        echo "No spendable UTXO found."
-        return 1
-    fi
-
-    change_amount=$(echo "$utxo_amount - $amount - $fee" | bc)
-    change_address=$(bitcoin_cli getnewaddress)
-
-    unsigned=$(bitcoin_cli createrawtransaction \
-        "[{\"txid\":\"$txid\",\"vout\":$vout}]" \
-        "{\"$address\":$amount,\"$change_address\":$change_amount}")
-    signed=$(bitcoin_cli signrawtransactionwithwallet "$unsigned" | jq -r '.hex')
-
-    echo $signed
-}
+prover=bitsnark_prover_1
+verifier=bitsnark_verifier_1
 
 npm run start-db
-npm run start-regtest -- "$data_dir"
+npm run start-regtest
 
+echo Generating extrenal transactions
 setup_id=test_setup
 locked_funds_tx=$(create_transaction bcrt1p0kxevp4v9eulwu0hsed4jwtlfe2nz6dqntyj6tp833u9js8re7rs6uqs99 10.0 0.005 0)
 prover_stake_tx=$(create_transaction bcrt1p0e73ksayxrmxj23mmmtu5502uaanamx7hxml9j60ycu24x95gg4qagarnf 2.0 0.005 1)
 locked_funds_txid=$(bitcoin_cli decoderawtransaction "$locked_funds_tx" | jq -r '.txid')
 prover_stake_txid=$(bitcoin_cli decoderawtransaction "$prover_stake_tx" | jq -r '.txid')
+echo Locked funds txid: $locked_funds_txid
+echo Prover stake txid: $prover_stake_txid
 
 # Just assuming bitcoin-cli will always use the first output for the value.
 locked_funds_output_index=0
 prover_stake_output_index=0
 
+echo 'Emulating setup (this will move to a real setup later)'
 npm run emulate-setup -- --setup-id $setup_id \
     --locked $locked_funds_txid:$locked_funds_output_index \
     --stake $prover_stake_txid:$prover_stake_output_index
 
-bitcoin_cli sendrawtransaction "$locked_funds_tx"
-bitcoin_cli sendrawtransaction "$prover_stake_tx"
+echo Running bitcoin senders, bitcoin listeners and protocol agents in the background
+cleanup() {
+    pkill -f 'python -m bitsnark.core.db_listener'
+    pkill -f 'ts-node ./src/agent/listener/bitcoin-listener.ts'
 
-ts-node ./src/agent/protocol-logic/send-proof.ts bitsnark_prover_1 "$setup_id" --fudge
+}
+trap cleanup EXIT HUP INT QUIT TERM
+npm run start-bitcoin-sender -- $prover prover &
+npm run start-bitcoin-sender -- $verifier verifier &
+npm run start-bitcoin-listener $prover &
+npm run start-bitcoin-listener $verifier &
+npm run start-protocol-prover &
+npm run start-protocol-verifier &
+
+sleep 5
+
+echo Sending locked funds:
+bitcoin_cli sendrawtransaction "$locked_funds_tx"
+generate_blocks 6
+
+echo Sending prover stake:
+bitcoin_cli sendrawtransaction "$prover_stake_tx"
+generate_blocks 6
+
+sleep 5
+
+read -p "Fudge the proof? (y/n): " response
+echo -n 'Sending '
+if [ "$response" = y ] || [ "$response" = Y ]; then
+    fudge="--fudge"
+    echo -n 'fudged '
+fi
+echo proof
+ts-node ./src/agent/protocol-logic/send-proof.ts $prover "$setup_id" $fudge
+generate_blocks 6
+
+while true; do
+    sleep 5
+    read -p "How many blocks to generate (zero or NaN to exit)? " blocks
+    [ "$blocks" -gt 0 ] 2>/dev/null || break
+    generate_blocks $blocks
+done
+exit

@@ -406,7 +406,7 @@ export class DoomsdayGenerator {
 
     chunkTheWork(): GenerateFinalTaprootCommand[] {
         const lines = this.program.length;
-        const chunks = 128;
+        const chunks = 16;
         const chunk = Math.ceil(lines / chunks);
         const inputs: GenerateFinalTaprootCommand[] = array(chunks, (i) => ({
             agentId: this.agentId,

@@ -36,6 +36,7 @@ interface AgentConf {
     protocolVersion: string;
     useMockProgram: boolean;
     protocolIntervalMs: number;
+    blockCheckIntervalMs: number;
     telegramChannelId: string;
 }
 
@@ -59,8 +60,8 @@ export const agentConf: AgentConf = {
 
     winternitzSecret: parse.string('WOTS_SECRET', 'no rest for the wicked'),
     tokens: {
-        bitsnark_prover_1: parse.string('TELEGRAM_TOKEN_PROVER', '7368302319:AAGtvHOBQErcZPuJ0cD3Ele9G0FSDgg0Ct4'),
-        bitsnark_verifier_1: parse.string('TELEGRAM_TOKEN_VERIFIER', '7457777046:AAF7-6cNqn9MCP6sak2A30fcSOgD78QRn3Y')
+        bitsnark_prover_1: parse.string('TELEGRAM_TOKEN_PROVER', 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'),
+        bitsnark_verifier_1: parse.string('TELEGRAM_TOKEN_VERIFIER', 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')
     },
     keyPairs: {
         bitsnark_prover_1: {
@@ -99,6 +100,6 @@ export const agentConf: AgentConf = {
     protocolVersion: parse.string('PROTOCOL_VERSION', '0.2'),
     useMockProgram: parse.boolean('USE_MOCK_PROGRAM', false),
     protocolIntervalMs: parse.integer('PROTOCOL_INTERVAL_MS', 1000),
-
+    blockCheckIntervalMs: parse.integer('BLOCK_CHECK_INTERVAL_MS', 1000),
     telegramChannelId: parse.string('TELEGRAM_CHANNEL_ID', '-1002148850465')
 };

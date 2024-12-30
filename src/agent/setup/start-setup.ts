@@ -2,6 +2,22 @@ import minimist from 'minimist';
 import { AgentRoles } from '../common/types';
 import { Agent } from '../setup/agent';
 
+async function startSetup(
+    agentId: string,
+    setupId: string,
+    lockedFundsTxid: string,
+    lockedFundsAmount: bigint,
+    proverStakeTxid: string,
+    proverStakeAmount: bigint
+) {
+    console.log('Starting setup...');
+
+    const agent = new Agent(agentId, AgentRoles.PROVER);
+    await agent.start(setupId, lockedFundsTxid, BigInt(lockedFundsAmount), proverStakeTxid, BigInt(proverStakeAmount));
+
+    console.log('Message sent.');
+}
+
 if (__filename == process.argv[1]) {
     console.log('Starting setup...');
 
@@ -17,16 +33,12 @@ if (__filename == process.argv[1]) {
         'prover-stake-amount': proverStakeAmount
     } = args;
 
-    console.log([agentId, setupId, lockedFundsTxid, lockedFundsAmount, proverStakeTxid, proverStakeAmount]);
-
     if (![agentId, setupId, lockedFundsTxid, lockedFundsAmount, proverStakeTxid, proverStakeAmount].every((t) => t)) {
         console.log('Missing parameters');
         process.exit(-1);
     }
 
-    const agent = new Agent(agentId, AgentRoles.PROVER);
-    agent
-        .start(setupId, lockedFundsTxid, BigInt(lockedFundsAmount), proverStakeTxid, BigInt(proverStakeAmount))
+    startSetup(agentId, setupId, lockedFundsTxid, BigInt(lockedFundsAmount), proverStakeTxid, BigInt(proverStakeAmount))
         .then(() => {
             console.log('Message sent.');
         })

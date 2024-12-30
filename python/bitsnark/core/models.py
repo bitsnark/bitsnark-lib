@@ -9,7 +9,7 @@ from sqlalchemy.schema import FetchedValue
 
 class SetupStatus(enum.Enum):
     PENDING = 'PENDING'
-    READY = 'READY'
+    UNSIGNED = 'UNSIGNED'
     SIGNED = 'SIGNED'
     FAILED = 'FAILED'
 
