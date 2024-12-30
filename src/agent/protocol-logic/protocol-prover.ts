@@ -143,10 +143,12 @@ export class ProtocolProver extends ProtocolBase {
         const iteration = selectionPath.length;
         const states = await calculateStates(proof, selectionPath);
         const txName = TemplateNames.STATE + '_' + twoDigits(iteration);
+        const spendingConditionIndex = iteration == 0 ? 1 : 0;
         const statesWi = states
             .map((s, dataIndex) =>
-                encodeWinternitz256_4(bufferToBigintBE(s), createUniqueDataId(this.setup!.id, txName, 0, 0, dataIndex))
-            )
+                encodeWinternitz256_4(
+                    bufferToBigintBE(s), 
+                createUniqueDataId(this.setup!.id, txName, 0, spendingConditionIndex, dataIndex)))
             .flat();
         await this.sendTransaction(txName, [statesWi]);
     }
