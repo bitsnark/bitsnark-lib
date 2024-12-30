@@ -1,4 +1,4 @@
-import { generateBlocks, TestAgentDb } from './test-utils/test-utils';
+import { generateBlocks, mockVin, TestAgentDb } from './test-utils/test-utils';
 import { BitcoinNode } from '../src/agent/common/bitcoin-node';
 import { ProtocolProver } from '../src/agent/protocol-logic/protocol-prover';
 import { proofBigint } from '../src/agent/common/constants';
@@ -25,20 +25,6 @@ export const mockRawTransaction: RawTransaction = {
     blocktime: 1690000000,
     time: 1690000200,
     setupId: 'mock-setup-id'
-};
-
-export const mockVin = {
-    txid: 'abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdef',
-    vout: 1,
-    scriptSig: {
-        asm: '3045022100abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdef022100abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdef012103abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdef',
-        hex: '483045022100abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdef022100abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdef012103abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdef'
-    },
-    sequence: 4294967295,
-    txinwitness: [
-        'abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdef',
-        'abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdef'
-    ]
 };
 
 export class TestPublisher {

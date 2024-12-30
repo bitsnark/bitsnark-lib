@@ -43,8 +43,8 @@ function setTaprootKey(transactions: Template[]) {
             for (const [scIndex, sc] of output.spendingConditions.entries()) {
                 try {
                     sc.controlBlock = stt.getControlBlock(scIndex);
-                } catch {
-                    throw new Error(`No control block for: ${t.name}, output: ${outputIndex}, sc: ${scIndex}`);
+                } catch (error) {
+                    throw new Error(`No control block for: ${t.name}, output: ${outputIndex}, sc: ${scIndex}. ${error}`);
                 }
             }
         }
