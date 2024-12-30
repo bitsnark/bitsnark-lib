@@ -44,7 +44,9 @@ function setTaprootKey(transactions: Template[]) {
                 try {
                     sc.controlBlock = stt.getControlBlock(scIndex);
                 } catch (error) {
-                    throw new Error(`No control block for: ${t.name}, output: ${outputIndex}, sc: ${scIndex}. ${error}`);
+                    throw new Error(
+                        `No control block for: ${t.name}, output: ${outputIndex}, sc: ${scIndex}. ${error}`
+                    );
                 }
             }
         }
