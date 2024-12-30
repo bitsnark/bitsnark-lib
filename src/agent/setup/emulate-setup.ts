@@ -27,15 +27,15 @@ export async function emulateSetup(
     const blockchainClient = new BitcoinNode().client;
 
     try {
-        const setup = await proverDb.getSetup(setupId);
-        console.log('Setup already exists: ', setupId);
-        console.log('Use npm run start-db to reset the database');
-        return;
-    } catch (e) {
         console.log('creating setup...');
+        await proverDb.createSetup(setupId);
+        await verifierDb.createSetup(setupId);
+    } catch (error) {
+        console.log('setup already exists: ', setupId);
+        console.log('Use npm run start-db to reset the database');
+        throw error;
     }
 
-    await proverDb.createSetup(setupId);
     await proverDb.updateSetup(setupId, {
         payloadTxid: lockedFunds.txid,
         payloadOutputIndex: lockedFunds.outputIndex,
@@ -45,7 +45,6 @@ export async function emulateSetup(
         stakeAmount: proverStake.amount
     });
 
-    await verifierDb.createSetup(setupId);
     await verifierDb.updateSetup(setupId, {
         payloadTxid: lockedFunds.txid,
         payloadOutputIndex: lockedFunds.outputIndex,
@@ -148,18 +147,18 @@ export async function emulateSetup(
     await proverDb.upsertTemplates(setupId, proverTemplates);
     await verifierDb.upsertTemplates(setupId, verifierTemplates);
 
-    console.log('Update listener data...');
+    console.log('update listener data...');
 
     const currentBlockHeight = await blockchainClient.getBlockCount();
     await proverDb.updateSetupLastCheckedBlockHeight(setupId, currentBlockHeight);
     await verifierDb.updateSetupLastCheckedBlockHeight(setupId, currentBlockHeight);
 
-    console.log('Verify setups...');
+    console.log('verify setups...');
 
     await verifySetup(proverAgentId, setupId, AgentRoles.PROVER);
     await verifySetup(verifierAgentId, setupId, AgentRoles.VERIFIER);
 
-    console.log('Mark setups as active...');
+    console.log('mark setups as active...');
 
     await proverDb.markSetupPegoutActive(setupId);
     await verifierDb.markSetupPegoutActive(setupId);
@@ -167,44 +166,67 @@ export async function emulateSetup(
     console.log('done.');
 }
 
-async function main(setupId: string, generateFinal: boolean) {
-    const proverAgentId = 'bitsnark_prover_1';
-    const verifierAgentId = 'bitsnark_verifier_1';
+async function main(
+    setupId: string = 'test_setup',
+    proverId: string = 'bitsnark_prover_1',
+    verifierId: string = 'bitsnark_verifier_1',
+    generateFinal: boolean = false,
+    lockedFundsString: string | undefined,
+    proverStakeString: string | undefined
+) {
 
-    const lockedFundsAddress = createLockedFundsExternalAddresses(proverAgentId, verifierAgentId, setupId);
-    const proverStakeAddress = createProverStakeExternalAddresses(proverAgentId, verifierAgentId, setupId);
-    const lockedFundsTxid = await createFundingTxid(lockedFundsAddress, satsToBtc(agentConf.payloadAmount));
-    console.log('lockedFundsTxid:', lockedFundsTxid);
-    const proverStakeTxid = await createFundingTxid(proverStakeAddress, satsToBtc(agentConf.proverStakeAmount));
-    console.log('proverStakeTxid:', proverStakeTxid);
+    let lockedFundsAddress, lockedFundsTxid, lockedFundsOutputIndex;
+    if (lockedFundsString) {
+        lockedFundsTxid = lockedFundsString.split(':')[0];
+        lockedFundsOutputIndex = parseInt(lockedFundsString.split(':')[1]);
+    } else {
+        lockedFundsAddress = createLockedFundsExternalAddresses(proverId, verifierId, setupId);
+        lockedFundsTxid = await createFundingTxid(lockedFundsAddress, satsToBtc(agentConf.payloadAmount));
+        lockedFundsOutputIndex = 0;
+    }
+    const lockedFunds: FundingUtxo = {
+        txid: lockedFundsTxid,
+        outputIndex: lockedFundsOutputIndex,
+        amount: agentConf.payloadAmount
+    };
 
-    await emulateSetup(
-        proverAgentId,
-        verifierAgentId,
-        setupId,
-        {
-            txid: lockedFundsTxid,
-            outputIndex: 0,
-            amount: agentConf.payloadAmount
-        },
-        {
-            txid: proverStakeTxid,
-            outputIndex: 0,
-            amount: agentConf.proverStakeAmount
-        },
-        generateFinal
-    );
+    let proverStakeAddress, proverStakeTxid, proverStakeOutputIndex;
+    if (proverStakeString) {
+        proverStakeTxid = proverStakeString.split(':')[0];
+        proverStakeOutputIndex = parseInt(proverStakeString.split(':')[1]);
+    } else {
+        const proverStakeAddress = createProverStakeExternalAddresses(proverId, verifierId, setupId);
+        proverStakeTxid = await createFundingTxid(proverStakeAddress, satsToBtc(agentConf.proverStakeAmount));
+        proverStakeOutputIndex = 0;
+    }
+    const proverStake: FundingUtxo = {
+        txid: proverStakeTxid,
+        outputIndex: proverStakeOutputIndex,
+        amount: agentConf.proverStakeAmount
+    };
 
-    console.log('Sending external transactions...');
+    console.log('locked funds txid:', lockedFundsTxid);
+    console.log('prover stake txid:', proverStakeTxid);
 
-    await sendExternalTransaction(lockedFundsAddress, satsToBtc(agentConf.payloadAmount));
-    await sendExternalTransaction(proverStakeAddress, satsToBtc(agentConf.proverStakeAmount));
+    await emulateSetup(proverId, verifierId, setupId, lockedFunds, proverStake, generateFinal);
+
+    if (lockedFundsAddress) {
+        console.log('sending locked funds...');
+        await sendExternalTransaction(lockedFundsAddress, satsToBtc(agentConf.payloadAmount));
+    }
+    if (proverStakeAddress) {
+        console.log('sending prover stake...');
+        await sendExternalTransaction(proverStakeAddress, satsToBtc(agentConf.proverStakeAmount));
+    }
 }
 
 if (require.main === module) {
     const args = minimist(process.argv.slice(2));
-    const setupId = args['setup-id'] ?? 'test_setup';
+    const setupId = args['setup-id'];
+    const proverId = args['prover-id'];
+    const verifierId = args['verifier-id'];
+    const lockedFunds = args.locked;
+    const proverStake = args.stake;
     const generateFinal = args.final;
-
-    main(setupId, generateFinal).catch((error) => console.error(error));
+    main(setupId, proverId, verifierId, generateFinal, lockedFunds, proverStake).catch((error) => { throw error; });
 }
