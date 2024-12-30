@@ -1,5 +1,5 @@
 import { agentConf } from '../agent.conf';
-import Client, { RawTransaction, TransactionData } from 'bitcoin-core';
+import Client, { RawTransaction } from 'bitcoin-core';
 
 export class BitcoinNode {
     public client;

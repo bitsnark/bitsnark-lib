@@ -61,7 +61,6 @@ if [ "$response" = y ] || [ "$response" = Y ]; then
 fi
 echo proof
 ts-node ./src/agent/protocol-logic/send-proof.ts $prover "$setup_id" $fudge
-generate_blocks 6
 
 while true; do
     sleep 5

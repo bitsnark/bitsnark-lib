@@ -62,7 +62,6 @@ export async function verifySetup(agentId: string, setupId: string, role: AgentR
 
     console.log('Check that all example witness parses correctly...');
     for (const template of templates) {
-        if (template.name == 'PROOF') console.log('foooo');
         for (const input of template.inputs) {
             const sc = getSpendingConditionByInput(templates, input);
             if (!sc.wotsSpec || sc.nextRole != role) continue;
