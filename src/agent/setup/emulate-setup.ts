@@ -10,6 +10,9 @@ import { AgentRoles, FundingUtxo, SignatureType } from '../common/types';
 import { initializeTemplates } from './init-templates';
 import { AgentDb } from '../common/agent-db';
 import { BitcoinNode } from '../common/bitcoin-node';
+import { satsToBtc } from '../bitcoin/common';
+import { createFundingTxid } from '../bitcoin/external-transactions';
+import { createLockedFundsExternalAddresses, createProverStakeExternalAddresses } from './create-external-addresses';
 
 export async function emulateSetup(
     proverAgentId: string,
@@ -164,27 +167,39 @@ export async function emulateSetup(
     console.log('done.');
 }
 
+async function main(setupId: string, generateFinal: boolean) {
+    const proverAgentId = 'bitsnark_prover_1';
+    const verifierAgentId = 'bitsnark_verifier_1';
+
+    const lockedFundsAddress = createLockedFundsExternalAddresses(proverAgentId, verifierAgentId, setupId);
+    const proverStakeAddress = createProverStakeExternalAddresses(proverAgentId, verifierAgentId, setupId);
+    const lockedFundsTxid = await createFundingTxid(lockedFundsAddress, satsToBtc(agentConf.payloadAmount));
+    console.log('lockedFundsTxid:', lockedFundsTxid);
+    const proverStakeTxid = await createFundingTxid(proverStakeAddress, satsToBtc(agentConf.proverStakeAmount));
+    console.log('proverStakeTxid:', proverStakeTxid);
+
+    await emulateSetup(
+        proverAgentId,
+        verifierAgentId,
+        setupId,
+        {
+            txid: lockedFundsTxid,
+            outputIndex: 0,
+            amount: agentConf.payloadAmount
+        },
+        {
+            txid: proverStakeTxid,
+            outputIndex: 0,
+            amount: agentConf.proverStakeAmount
+        },
+        generateFinal
+    );
+}
+
 if (require.main === module) {
     const args = minimist(process.argv.slice(2));
-    const proverId = 'bitsnark_prover_1';
-    const verifierId = 'bitsnark_verifier_1';
-    const lockedFunds: FundingUtxo = {
-        txid: args.locked
-            ? args.locked.split(':')[0]
-            : '1111111111111111111111111111111111111111111111111111111111111111',
-        outputIndex: args.locked ? parseInt(args.locked.split(':')[1]) : 0,
-        amount: agentConf.payloadAmount
-    };
-    const proverStake: FundingUtxo = {
-        txid: args.stake
-            ? args.stake.split(':')[0]
-            : '0000000000000000000000000000000000000000000000000000000000000000',
-        outputIndex: args.stake ? parseInt(args.stake.split(':')[1]) : 0,
-        amount: agentConf.proverStakeAmount
-    };
     const setupId = args['setup-id'] ?? 'test_setup';
     const generateFinal = args.final;
-    emulateSetup(proverId, verifierId, setupId, lockedFunds, proverStake, generateFinal).catch((error) => {
-        throw error;
-    });
+
+    main(setupId, generateFinal).catch(error => console.error(error));
 }
