@@ -112,14 +112,25 @@ create_transaction() {
     echo $signed
 }
 
-get_all_txids() {
+get_transactions_in_block() {
+    local block_hash=$1
+    local block_data=$(bitcoin_cli getblock $block_hash)
+    local block_txids=$(echo "$block_data" | jq -r '.tx[1:][]')
+    echo $block_txids
+}
+
+get_blocks() {
     local block_count=$(bitcoin_cli getblockcount)
-    echo getting $block_count blocks >&2
-    (for height in $(seq 432 $block_count); do
+    for height in $(seq 432 $block_count); do
         local block_hash=$(bitcoin_cli getblockhash $height)
-        echo getting transactions for block $height >&2
-        local block_data=$(bitcoin_cli getblock $block_hash)
-        local block_txids=$(echo "$block_data" | jq -r '.tx[1:][]')
-        echo $block_txids
-    done) | grep -v '^$' | tr ' ' '\n'
+        echo $block_hash
+    done
+}
+
+get_transactions() {
+    for block in $(get_blocks); do
+        for txid in $(get_transactions_in_block $block); do
+            echo "$block $txid"
+        done
+    done
 }

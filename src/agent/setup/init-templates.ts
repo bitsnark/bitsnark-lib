@@ -43,7 +43,7 @@ export function initializeTemplates(
         }
     }
 
-    // put index in each object to make it easier later!
+    // Put index in each object to make it easier later!
     for (const template of templates) {
         for (const [inputIndex, input] of template.inputs.entries()) {
             input.index = inputIndex;
@@ -56,7 +56,7 @@ export function initializeTemplates(
         }
     }
 
-    // put schnorr keys where needed
+    // Put schnorr keys where needed.
     for (const t of templates) {
         for (const [inputIndex, input] of t.inputs.entries()) {
             const output = findOutputByInput(templates, input);

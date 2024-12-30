@@ -82,6 +82,8 @@ export const protocolStart: Template[] = [
                 ]
             },
             {
+                // Add some extra value to make CHALLENGE output high enough to pass dust limit.
+                amount: agentConf.symbolicOutputAmount * 2n,
                 spendingConditions: [
                     {
                         // challenge
@@ -105,7 +107,6 @@ export const protocolStart: Template[] = [
         ],
         outputs: [
             {
-                amount: agentConf.verifierPaymentAmount,
                 spendingConditions: [
                     {
                         nextRole: AgentRoles.PROVER,
