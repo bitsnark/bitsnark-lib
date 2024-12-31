@@ -2,7 +2,11 @@ import { proofBigint } from '../common/constants';
 import { Decasector } from '../setup/decasector';
 import { FatMerkleProof } from './fat-merkle';
 
-export async function calculateStates(proof: bigint[], selectionPath: number[], forceSuccess: boolean): Promise<Buffer[]> {
+export async function calculateStates(
+    proof: bigint[],
+    selectionPath: number[],
+    forceSuccess: boolean
+): Promise<Buffer[]> {
     const decasector = new Decasector(proof);
     const lines = decasector.getLinesForSelectionPath(selectionPath);
     const states: Buffer[] = [];

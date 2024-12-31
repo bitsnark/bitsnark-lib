@@ -55,7 +55,7 @@ export class VM {
         console.error(msg);
 
         // in case of failure all vars should be 0
-        this.registers.forEach((r) => r.value = 0n);
+        this.registers.forEach((r) => (r.value = 0n));
     }
 
     public newRegister(): Register {

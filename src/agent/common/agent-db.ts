@@ -175,10 +175,9 @@ export class AgentDb extends Db {
     }
 
     public async getSetups(): Promise<Setup[]> {
-        const rows = 
-            (await this.query<Setup>(`SELECT ${setupFields.join(', ')} FROM setups`, [])).rows;
+        const rows = (await this.query<Setup>(`SELECT ${setupFields.join(', ')} FROM setups`, [])).rows;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        return rows.map(row => rowToObj<Setup>(setupFields, row as any, ['payload_amount', 'stake_amount']));
+        return rows.map((row) => rowToObj<Setup>(setupFields, row as any, ['payload_amount', 'stake_amount']));
     }
 
     public async getActiveSetups(): Promise<Setup[]> {

@@ -95,21 +95,17 @@ export class ProtocolBase {
     }
 
     async checkTimeout(incoming: Incoming): Promise<SpendingCondition | null> {
-
-        // TODO: remove this
+        // check if any spending condition has a timeout that already expired
+        const currentBlockHeight = await this.getCurrentBlockHeight();
+        for (const output of incoming.template.outputs) {
+            for (const sc of output.spendingConditions) {
+                if (sc.nextRole != this.role) continue;
+                if (sc.timeoutBlocks && incoming.received.height! + sc.timeoutBlocks <= currentBlockHeight) {
+                    // found one, send the relevant tx
+                    return sc;
+                }
+            }
+        }
         return null;
-
-        // // check if any spending condition has a timeout that already expired
-        // const currentBlockHeight = await this.getCurrentBlockHeight();
-        // for (const output of incoming.template.outputs) {
-        //     for (const sc of output.spendingConditions) {
-        //         if (sc.nextRole != this.role) continue;
-        //         if (sc.timeoutBlocks && incoming.received.height! + sc.timeoutBlocks <= currentBlockHeight) {
-        //             // found one, send the relevant tx
-        //             return sc;
-        //         }
-        //     }
-        // }
-        // return null;
     }
 }

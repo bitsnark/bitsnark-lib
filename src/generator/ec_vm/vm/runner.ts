@@ -124,14 +124,14 @@ export class Runner {
                 if (param1.value != 1n) {
                     target.value = 0n;
                     // in case of failure all vars should be 0
-                    this.registers.forEach((r) => r.value = 0n);
+                    this.registers.forEach((r) => (r.value = 0n));
                 }
                 break;
             case InstrCode.ASSERTZERO:
                 if (param1.value != 0n) {
                     target.value = 0n;
                     // in case of failure all vars should be 0
-                    this.registers.forEach((r) => r.value = 0n);
+                    this.registers.forEach((r) => (r.value = 0n));
                 }
                 break;
         }
@@ -165,6 +165,6 @@ export class Runner {
     }
 
     public getRegsForSuccess() {
-        return this.registers.map((r) => r == this.registers[this.successIndex] ? 1n : 0n);
+        return this.registers.map((r) => (r == this.registers[this.successIndex] ? 1n : 0n));
     }
 }

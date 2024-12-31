@@ -66,7 +66,7 @@ activate_python_venv() {
 
 conditionally_remove_container() {
     local container_name="$1"
-    test -z "$(sudo docker ps -aq -f name=$container_name)" && return 0
+    test -z "$($docker_cmd ps -aq -f name=$container_name)" && return 0
     echo "Container $container_name already exists."
     read -p "Do you want to remove the existing container? (y/n): " response
     if [ "$response" = y ] || [ "$response" = Y ]; then
@@ -81,9 +81,10 @@ bitcoin_cli() {
 }
 
 generate_blocks() {
-    local count=${1:-1}
+    [ "$1" -gt 0 ] 2>/dev/null && local count=$1 || count=1
+    echo "Generating $count blocks"
     local address=$(bitcoin_cli getnewaddress)
-    bitcoin_cli generatetoaddress $count $address > /dev/null
+    bitcoin_cli generatetoaddress $count $address
 }
 
 create_transaction() {

@@ -11,8 +11,6 @@ import { twoDigits } from '../common/templates';
 import { AgentDb } from '../common/agent-db';
 import { ProtocolBase } from './protocol-base';
 import { sleep } from '../common/sleep';
-import { Runner } from '@src/generator/ec_vm/vm/runner';
-import { Decasector } from '../setup/decasector';
 
 export class ProtocolProver extends ProtocolBase {
     constructor(agentId: string, setupId: string) {
@@ -120,7 +118,7 @@ export class ProtocolProver extends ProtocolBase {
                 encodeWinternitz256_4(n, createUniqueDataId(this.setup!.id, TemplateNames.PROOF, 0, 0, dataIndex))
             )
             .flat();
-            
+
         await this.sendTransaction(TemplateNames.PROOF, [data]);
     }
 
@@ -150,8 +148,10 @@ export class ProtocolProver extends ProtocolBase {
         const statesWi = states
             .map((s, dataIndex) =>
                 encodeWinternitz256_4(
-                    bufferToBigintBE(s), 
-                createUniqueDataId(this.setup!.id, txName, 0, spendingConditionIndex, dataIndex)))
+                    bufferToBigintBE(s),
+                    createUniqueDataId(this.setup!.id, txName, 0, spendingConditionIndex, dataIndex)
+                )
+            )
             .flat();
         await this.sendTransaction(txName, [statesWi]);
     }
