@@ -218,6 +218,8 @@ async function main(
         console.log('sending prover stake...');
         await sendExternalTransaction(proverStakeAddress, satsToBtc(agentConf.proverStakeAmount));
     }
+
+    process.exit(0);
 }
 
 if (require.main === module) {

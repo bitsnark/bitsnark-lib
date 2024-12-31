@@ -11,6 +11,8 @@ import { twoDigits } from '../common/templates';
 import { AgentDb } from '../common/agent-db';
 import { ProtocolBase } from './protocol-base';
 import { sleep } from '../common/sleep';
+import { Runner } from '@src/generator/ec_vm/vm/runner';
+import { Decasector } from '../setup/decasector';
 
 export class ProtocolProver extends ProtocolBase {
     constructor(agentId: string, setupId: string) {
@@ -97,7 +99,7 @@ export class ProtocolProver extends ProtocolBase {
                 const selection = this.parseSelection(incoming);
                 selectionPath.push(selection);
                 if (lastFlag) {
-                    if (selectionPath.length + 1 < iterations) await this.sendState(proof, selectionPath);
+                    if (selectionPath.length < iterations) await this.sendState(proof, selectionPath);
                     else await this.sendArgument(proof, selectionPath, selectionPathUnparsed);
                 }
             }
@@ -118,6 +120,7 @@ export class ProtocolProver extends ProtocolBase {
                 encodeWinternitz256_4(n, createUniqueDataId(this.setup!.id, TemplateNames.PROOF, 0, 0, dataIndex))
             )
             .flat();
+            
         await this.sendTransaction(TemplateNames.PROOF, [data]);
     }
 
@@ -141,7 +144,7 @@ export class ProtocolProver extends ProtocolBase {
 
     private async sendState(proof: bigint[], selectionPath: number[]) {
         const iteration = selectionPath.length;
-        const states = await calculateStates(proof, selectionPath);
+        const states = await calculateStates(proof, selectionPath, iteration == 0);
         const txName = TemplateNames.STATE + '_' + twoDigits(iteration);
         const spendingConditionIndex = iteration == 0 ? 1 : 0;
         const statesWi = states

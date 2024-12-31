@@ -16,8 +16,6 @@ import { defaultVerificationKey } from '../../generator/ec_vm/constants';
 import { sleep } from '../common/sleep';
 
 export class ProtocolVerifier extends ProtocolBase {
-    states: Buffer[][] = [];
-
     constructor(agentId: string, setupId: string) {
         super(agentId, setupId, AgentRoles.VERIFIER);
     }
@@ -40,6 +38,7 @@ export class ProtocolVerifier extends ProtocolBase {
         const selectionPath: number[] = [];
         const selectionPathUnparsed: Buffer[][] = [];
         let proof: bigint[] = [];
+        const states: Buffer[][] = [];
 
         // examine each one
         for (const incoming of incomingArray) {
@@ -70,7 +69,7 @@ export class ProtocolVerifier extends ProtocolBase {
                     break;
                 case TemplateNames.ARGUMENT:
                     if (lastFlag) {
-                        this.refuteArgument(proof, incoming);
+                        this.refuteArgument(proof, states, incoming);
                     }
                     break;
                 case TemplateNames.ARGUMENT_UNCONTESTED:
@@ -81,8 +80,10 @@ export class ProtocolVerifier extends ProtocolBase {
 
             if (incoming.template.name.startsWith(TemplateNames.STATE)) {
                 const state = this.parseState(incoming);
-                this.states.push(state);
-                await this.sendSelect(proof, selectionPath);
+                states.push(state);
+                if (lastFlag) {
+                    await this.sendSelect(proof, selectionPath, states);
+                }
             } else if (incoming.template.name.startsWith(TemplateNames.STATE_UNCONTESTED)) {
                 // we lost, mark it
                 await this.db.markSetupPegoutSuccessful(this.setupId);
@@ -110,7 +111,7 @@ export class ProtocolVerifier extends ProtocolBase {
         return step1_vm.success?.value === 1n;
     }
 
-    private async refuteArgument(proof: bigint[], incoming: Incoming) {
+    private async refuteArgument(proof: bigint[], states: Buffer[][], incoming: Incoming) {
         const rawTx = incoming.received.raw;
         const argData = rawTx.vin.map((vin, i) =>
             parseInput(
@@ -120,7 +121,7 @@ export class ProtocolVerifier extends ProtocolBase {
             )
         );
         const argument = new Argument(this.agentId, this.setup!.id, proof);
-        const refutation = await argument.refute(this.templates!, argData, this.states);
+        const refutation = await argument.refute(this.templates!, argData, states);
 
         incoming.template.inputs[0].script = refutation.script;
         incoming.template.inputs[0].controlBlock = refutation.controlBlock;
@@ -138,10 +139,10 @@ export class ProtocolVerifier extends ProtocolBase {
         this.sendTransaction(TemplateNames.PROOF_REFUTED, [data]);
     }
 
-    private async sendSelect(proof: bigint[], selectionPath: number[]) {
+    private async sendSelect(proof: bigint[], selectionPath: number[], states: Buffer[][]) {
         const iteration = selectionPath.length;
         const txName = TemplateNames.SELECT + '_' + twoDigits(iteration);
-        const selection = await findErrorState(proof, last(this.states), selectionPath);
+        const selection = await findErrorState(proof, last(states), selectionPath);
         const selectionWi = encodeWinternitz24(BigInt(selection), createUniqueDataId(this.setup!.id, txName, 0, 0, 0));
         this.sendTransaction(txName, [selectionWi]);
     }

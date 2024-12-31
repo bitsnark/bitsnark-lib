@@ -53,7 +53,9 @@ export class VM {
     private fail(msg: string) {
         if (!this.success) throw new Error('Program not in running state');
         console.error(msg);
-        this.success.value = 0n;
+
+        // in case of failure all vars should be 0
+        this.registers.forEach((r) => r.value = 0n);
     }
 
     public newRegister(): Register {
