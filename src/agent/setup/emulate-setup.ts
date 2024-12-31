@@ -11,7 +11,7 @@ import { initializeTemplates } from './init-templates';
 import { AgentDb } from '../common/agent-db';
 import { BitcoinNode } from '../common/bitcoin-node';
 import { satsToBtc } from '../bitcoin/common';
-import { createFundingTxid, sendExternalTransaction } from '../bitcoin/external-transactions';
+import { createRawTx, rawTransactionToTxid, transmitRawTransaction } from '../bitcoin/external-transactions';
 import { createLockedFundsExternalAddresses, createProverStakeExternalAddresses } from './create-external-addresses';
 
 export async function emulateSetup(
@@ -175,13 +175,14 @@ async function main(
     proverStakeString: string | undefined
 ) {
 
-    let lockedFundsAddress, lockedFundsTxid, lockedFundsOutputIndex;
+    let lockedFundsTx, lockedFundsTxid, lockedFundsOutputIndex;
     if (lockedFundsString) {
         lockedFundsTxid = lockedFundsString.split(':')[0];
         lockedFundsOutputIndex = parseInt(lockedFundsString.split(':')[1]);
     } else {
-        lockedFundsAddress = createLockedFundsExternalAddresses(proverId, verifierId, setupId);
-        lockedFundsTxid = await createFundingTxid(lockedFundsAddress, satsToBtc(agentConf.payloadAmount));
+        const lockedFundsAddress = createLockedFundsExternalAddresses(proverId, verifierId, setupId);
+        lockedFundsTx = await createRawTx(lockedFundsAddress, satsToBtc(agentConf.payloadAmount));
+        lockedFundsTxid = await rawTransactionToTxid(lockedFundsTx);
         lockedFundsOutputIndex = 0;
     }
     const lockedFunds: FundingUtxo = {
@@ -190,13 +191,14 @@ async function main(
         amount: agentConf.payloadAmount
     };
 
-    let proverStakeAddress, proverStakeTxid, proverStakeOutputIndex;
+    let proverStakeTx, proverStakeTxid, proverStakeOutputIndex;
     if (proverStakeString) {
         proverStakeTxid = proverStakeString.split(':')[0];
         proverStakeOutputIndex = parseInt(proverStakeString.split(':')[1]);
     } else {
-        proverStakeAddress = createProverStakeExternalAddresses(proverId, verifierId, setupId);
-        proverStakeTxid = await createFundingTxid(proverStakeAddress, satsToBtc(agentConf.proverStakeAmount));
+        const proverStakeAddress = createProverStakeExternalAddresses(proverId, verifierId, setupId);
+        proverStakeTx = await createRawTx(proverStakeAddress, satsToBtc(agentConf.proverStakeAmount));
+        proverStakeTxid = await rawTransactionToTxid(proverStakeTx);
         proverStakeOutputIndex = 0;
     }
     const proverStake: FundingUtxo = {
@@ -210,12 +212,12 @@ async function main(
 
     await emulateSetup(proverId, verifierId, setupId, lockedFunds, proverStake, generateFinal);
 
-    if (lockedFundsAddress) {
-        const txid = await sendExternalTransaction(lockedFundsAddress, satsToBtc(agentConf.payloadAmount));
+    if (lockedFundsTx) {
+        const txid = await transmitRawTransaction(lockedFundsTx);
         console.log(`locked funds sent: ${txid}`);
     }
-    if (proverStakeAddress) {
-        await sendExternalTransaction(proverStakeAddress, satsToBtc(agentConf.proverStakeAmount));
+    if (proverStakeTx) {
+        await transmitRawTransaction(proverStakeTx);
         console.log(`prover stake sent: ${proverStakeTxid}`);
     }
 }

@@ -9,12 +9,12 @@ prover=bitsnark_prover_1
 verifier=bitsnark_verifier_1
 npm run start-db
 npm run start-regtest
-nohup npm run start-bitcoin-signer -- bitsnark_prover_1 prover &
-nohup npm run start-bitcoin-signer -- bitsnark_verifier_1 verifier &
-nohup npm run start-bitcoin-sender -- $prover prover &
-nohup npm run start-bitcoin-sender -- $verifier verifier &
-nohup npm run start-bitcoin-listener $prover &
-nohup npm run start-bitcoin-listener $verifier &
+npm run start-bitcoin-signer -- bitsnark_prover_1 prover &
+npm run start-bitcoin-signer -- bitsnark_verifier_1 verifier &
+npm run start-bitcoin-sender -- $prover prover &
+npm run start-bitcoin-sender -- $verifier verifier &
+npm run start-bitcoin-listener $prover &
+npm run start-bitcoin-listener $verifier &
 npm run start-protocol-prover &
 npm run start-protocol-verifier &
 wait
