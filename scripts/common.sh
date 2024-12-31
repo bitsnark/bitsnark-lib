@@ -61,6 +61,9 @@ activate_python_venv() {
             return 1
         fi
     fi
+
+    DYLD_FALLBACK_LIBRARY_PATH="$DYLD_FALLBACK_LIBRARY_PATH:/usr/local/lib:/opt/homebrew/lib"
+    export DYLD_FALLBACK_LIBRARY_PATH
     bitsnark_python_env=1
     export bitsnark_python_env
 }
