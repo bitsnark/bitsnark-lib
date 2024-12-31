@@ -56,9 +56,18 @@ function parseBoolean(value: string): boolean {
     throw makeParsingError(value, 'boolean');
 }
 
+function parseNumber(value: string): number {
+    const parsed = parseFloat(value);
+    if (Number.isNaN(parsed)) {
+        throw makeParsingError(value, 'number');
+    }
+    return parsed;
+}
+
 export const parse = {
     string: (name: string, defaultValue?: string): string => parseEnv(name, parseString, defaultValue) as string,
     integer: (name: string, defaultValue?: number): number => parseEnv(name, parseInteger, defaultValue) as number,
     bigint: (name: string, defaultValue?: bigint): bigint => parseEnv(name, parseBigInt, defaultValue) as bigint,
-    boolean: (name: string, defaultValue?: boolean): boolean => parseEnv(name, parseBoolean, defaultValue) as boolean
+    boolean: (name: string, defaultValue?: boolean): boolean => parseEnv(name, parseBoolean, defaultValue) as boolean,
+    number: (name: string, defaultValue?: number): number => parseEnv(name, parseNumber, defaultValue) as number
 };
