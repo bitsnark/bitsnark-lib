@@ -1,8 +1,10 @@
+import minimist from 'minimist';
 import { AgentDb } from '../common/agent-db';
 import { getSpendingConditionByInput } from '../common/templates';
 import { AgentRoles, SignatureType, TemplateNames } from '../common/types';
 import { decodeWinternitz } from '../common/winternitz';
 import { validateTransactionFees } from './amounts';
+import { Agent } from 'http';
 
 const failures: string[] = [];
 function fail(msg: string) {
@@ -105,11 +107,11 @@ export async function verifySetup(agentId: string, setupId: string, role: AgentR
 }
 
 if (require.main === module) {
-    verifySetup(
-        'bitsnark_prover_1',
-        'bcrt1pxypympdrev3h9zd3t92z6nqy2x4qz9key8qlcafkwc7s4q0drn0sjahmlz',
-        AgentRoles.PROVER
-    ).catch((error) => {
+    const args = minimist(process.argv.slice(2));
+    const agentId = args._[0] ?? args['agent-id'] ?? 'bitsnark_prover_1';
+    const setupId = args._[1] ?? args['setup-id'] ?? 'test_setup';
+    const role = args.role == 'verifier' ? AgentRoles.VERIFIER : AgentRoles.PROVER;
+    verifySetup(agentId, setupId, role).catch((error) => {
         console.log('Error:', error);
         throw error;
     });
