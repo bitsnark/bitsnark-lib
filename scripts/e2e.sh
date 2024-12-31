@@ -7,10 +7,16 @@ prover=bitsnark_prover_1
 verifier=bitsnark_verifier_1
 setup_id=test_setup
 
+npm run start-db
+npm run start-regtest
+
 echo 'Emulating setup (this will move to a real setup later)'
 npm run emulate-setup
+npm run start-protocol-prover &
+npm run start-protocol-verifier &
 generate_blocks 6
 sleep 1
+
 
 read -p 'Fudge the proof? (y/n): ' response
 echo -n 'Sending '
@@ -26,4 +32,4 @@ while true; do
     read blocks
     generate_blocks $blocks
 done
-exit
+wait

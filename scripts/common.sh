@@ -1,7 +1,8 @@
 #!/bin/sh
 
-regtest_container_name=bitcoin-node
+bitcoin_container_name=bitcoin-node
 postgres_container_name=postgres
+bitcoin_data_dir=/tmp/bitcoin-data
 
 if ! (return 0 2>/dev/null); then
 
@@ -77,7 +78,7 @@ conditionally_remove_container() {
 }
 
 bitcoin_cli() {
-    $docker_cmd exec "$regtest_container_name" bitcoin-cli -regtest -rpcuser=rpcuser -rpcpassword=rpcpassword "$@"
+    $docker_cmd exec "$bitcoin_container_name" bitcoin-cli -regtest -rpcuser=rpcuser -rpcpassword=rpcpassword "$@"
 }
 
 generate_blocks() {

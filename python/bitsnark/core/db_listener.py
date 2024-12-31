@@ -1,6 +1,7 @@
 'Monitor DB to sign and broadcast transactions.'
 import argparse
 import logging
+import os
 import typing
 import time
 
@@ -15,6 +16,9 @@ from .sign_transactions import sign_setup, TransactionProcessingError
 from ..cli.broadcast import broadcast_transaction
 
 logger = logging.getLogger(__name__)
+
+
+BITCON_NODE_ADDR = f"http://rpcuser:rpcpassword@localhost:{os.getenv('BITCOIN_NODE_PORT', '18443')}/wallet/testwallet"
 
 
 def sign_setups(dbsession, agent_id, role):
@@ -73,7 +77,7 @@ def main(argv: typing.Sequence[str] = None):
     engine = create_engine(f"{POSTGRES_BASE_URL}/{args.agent_id}")
     dbsession = Session(engine)
     if args.broadcast:
-        bitcoin_rpc = BitcoinRPC('http://rpcuser:rpcpassword@localhost:18443/wallet/testwallet')
+        bitcoin_rpc = BitcoinRPC(BITCON_NODE_ADDR)
 
     def listen():
         if args.sign:
