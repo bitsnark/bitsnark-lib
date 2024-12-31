@@ -23,6 +23,7 @@ import { mergeWots, setWotsPublicKeysForArgument } from './wots-keys';
 import { BitcoinNode } from '../common/bitcoin-node';
 import { AgentDb, updateSetupPartial } from '../common/agent-db';
 import { getSpendingConditionByInput, getTemplateByName } from '../common/templates';
+import { transmitRawTransaction } from '../bitcoin/external-transactions';
 
 interface AgentInfo {
     agentId: string;
@@ -62,6 +63,7 @@ export class Agent {
     bot: TelegramBot;
     bitcoinClient: BitcoinNode;
     db: AgentDb;
+    rawTransactions: Map<string, string> = new Map<string, string>();
 
     constructor(agentId: string, role: AgentRoles) {
         this.agentId = agentId;
@@ -141,11 +143,16 @@ export class Agent {
     public async start(
         setupId: string,
         payloadTxid: string,
+        payloadTx: string,
         payloadAmount: bigint,
         stakeTxid: string,
+        stakeTx: string,
         stakeAmount: bigint
     ) {
         if (this.role != AgentRoles.PROVER) throw new Error("I'm not a prover");
+
+        this.rawTransactions.set(payloadTxid, payloadTx);
+        this.rawTransactions.set(stakeTxid, stakeTx);
 
         await this.db.createSetup(setupId);
         let setup = await this.db.getSetup(setupId);
@@ -385,13 +392,26 @@ export class Agent {
 
         if (this.role == AgentRoles.PROVER) {
             await verifySetup(this.agentId, i.setupId, this.role);
+
             await this.db.markSetupPegoutActive(i.setupId);
             await this.signMessageAndSend(context, new DoneMessage({ setupId: i.setupId, agentId: this.agentId }));
             i.state = SetupState.DONE;
+
+            await this.sendExternalTransactions(i.setup!);
         } else {
             await this.sendSignatures(context, i.setupId);
             i.state = SetupState.DONE;
         }
+    }
+
+    async sendExternalTransactions(setup: Setup) {
+        const proverStakeTx = this.rawTransactions.get(setup.stakeTxid!);
+        if (!proverStakeTx) throw new Error('Missing prover stake tx');
+        await transmitRawTransaction(proverStakeTx);
+
+        const lockedFundsTx = this.rawTransactions.get(setup.payloadTxid!);
+        if (!lockedFundsTx) throw new Error('Missing locked funds tx');
+        await transmitRawTransaction(lockedFundsTx);
     }
 
     async on_done(context: SimpleContext, message: SignaturesMessage) {

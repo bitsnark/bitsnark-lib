@@ -38,8 +38,8 @@ export async function main(proverAgentId: string, verifierAgentId: string) {
 
 if (require.main === module) {
     const args = minimist(process.argv.slice(2));
-    const proverAgentId = args._[0] ?? args['prover-agent-id'] ?? 'bitsnark_prover_1';
-    const verifierAgentId = args._[0] ?? args['verifier-agent-id'] ?? 'bitsnark_verifier_1';
+    const proverAgentId = args['prover-agent-id'] ?? 'bitsnark_prover_1';
+    const verifierAgentId = args['verifier-agent-id'] ?? 'bitsnark_verifier_1';
     main(proverAgentId, verifierAgentId).catch((error) => {
         throw error;
     });
