@@ -12,7 +12,6 @@ from bitsnark.conf import POSTGRES_BASE_URL
 from bitsnark.btc.rpc import BitcoinRPC
 from .models import TransactionTemplate, Setups, SetupStatus, OutgoingStatus
 from .sign_transactions import sign_setup, TransactionProcessingError
-from .fund_transactions import fund_transactions
 from ..cli.broadcast import broadcast_transaction
 
 logger = logging.getLogger(__name__)
@@ -52,14 +51,6 @@ def broadcast_transactions(dbsession, bitcoin_rpc):
         dbsession.commit()
 
 
-def listen(dbsession, bitcoin_rpc, args):
-    'Main loop step.'
-    if args.sign:
-        sign_setups(dbsession, args.agent_id, args.role)
-    if args.broadcast:
-        broadcast_transactions(dbsession, bitcoin_rpc)
-
-
 def main(argv: typing.Sequence[str] = None):
     'Entry point.'
     parser = argparse.ArgumentParser()
@@ -81,13 +72,20 @@ def main(argv: typing.Sequence[str] = None):
 
     engine = create_engine(f"{POSTGRES_BASE_URL}/{args.agent_id}")
     dbsession = Session(engine)
-    bitcoin_rpc = BitcoinRPC('http://rpcuser:rpcpassword@localhost:18443/wallet/testwallet')
-    listen(dbsession, bitcoin_rpc, args)
+    if args.broadcast:
+        bitcoin_rpc = BitcoinRPC('http://rpcuser:rpcpassword@localhost:18443/wallet/testwallet')
 
+    def listen():
+        if args.sign:
+            sign_setups(dbsession, args.agent_id, args.role)
+        if args.broadcast:
+            broadcast_transactions(dbsession, bitcoin_rpc)
+
+    listen()
     if args.loop:
         while True:
             time.sleep(10)
-            listen(dbsession, bitcoin_rpc, args)
+            listen()
 
 
 if __name__ == "__main__":
