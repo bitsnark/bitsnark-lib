@@ -6,7 +6,7 @@ activate_python_venv
 # Start the python database listener if it is not already running.
 if ! pgrep -f 'python -m bitsnark.core.db_listener' > /dev/null; then
     emulate_setup_cleanup() {
-        pkill -f 'python -m bitsnark.core.db_listener'
+        pkill -f '[pP]ython -m bitsnark.core.db_listener' || true
     }
     trap emulate_setup_cleanup EXIT HUP INT QUIT TERM
 
