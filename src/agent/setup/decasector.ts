@@ -110,6 +110,12 @@ export class Decasector {
         }
         return { left, right };
     }
+
+    public getRegsForSuccess() {
+        const runner = Runner.load(this.savedVm);
+        runner.execute(this.savedVm.programLength);
+        return runner.getRegsForSuccess();
+    }
 }
 
 const scriptName = __filename;
