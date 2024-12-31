@@ -229,7 +229,9 @@ if (require.main === module) {
     const lockedFunds = args.locked;
     const proverStake = args.stake;
     const generateFinal = args.final;
-    main(setupId, proverId, verifierId, generateFinal, lockedFunds, proverStake).catch((error) => {
+    main(setupId, proverId, verifierId, generateFinal, lockedFunds, proverStake).then(() => {
+        process.exit(0);
+    }).catch((error) => {
         throw error;
     });
 }
