@@ -66,7 +66,7 @@ activate_python_venv() {
 
 conditionally_remove_container() {
     local container_name="$1"
-    test -z "$(sudo docker ps -aq -f name=$container_name)" && return 0
+    test -z "$($docker_cmd ps -aq -f name=$container_name)" && return 0
     echo "Container $container_name already exists."
     read -p "Do you want to remove the existing container? (y/n): " response
     if [ "$response" = y ] || [ "$response" = Y ]; then
@@ -81,9 +81,10 @@ bitcoin_cli() {
 }
 
 generate_blocks() {
-    local count=${1:-1}
+    [ "$1" -gt 0 ] 2>/dev/null && local count=$1 || count=1
+    echo "Generating $count blocks"
     local address=$(bitcoin_cli getnewaddress)
-    bitcoin_cli generatetoaddress $count $address > /dev/null
+    bitcoin_cli generatetoaddress $count $address
 }
 
 create_transaction() {
@@ -112,14 +113,25 @@ create_transaction() {
     echo $signed
 }
 
-get_all_txids() {
+get_transactions_in_block() {
+    local block_hash=$1
+    local block_data=$(bitcoin_cli getblock $block_hash)
+    local block_txids=$(echo "$block_data" | jq -r '.tx[1:][]')
+    echo $block_txids
+}
+
+get_blocks() {
     local block_count=$(bitcoin_cli getblockcount)
-    echo getting $block_count blocks >&2
-    (for height in $(seq 432 $block_count); do
+    for height in $(seq 432 $block_count); do
         local block_hash=$(bitcoin_cli getblockhash $height)
-        echo getting transactions for block $height >&2
-        local block_data=$(bitcoin_cli getblock $block_hash)
-        local block_txids=$(echo "$block_data" | jq -r '.tx[1:][]')
-        echo $block_txids
-    done) | grep -v '^$' | tr ' ' '\n'
+        echo $block_hash
+    done
+}
+
+get_transactions() {
+    for block in $(get_blocks); do
+        for txid in $(get_transactions_in_block $block); do
+            echo "$block $txid"
+        done
+    done
 }

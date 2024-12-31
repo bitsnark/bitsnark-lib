@@ -57,7 +57,6 @@ export class Decasector {
             const d = (right - left) / 10;
             for (let i = 0; i < 9; i++) {
                 const line = left + (i + 1) * d;
-                if (this.stateCommitmentByLine[line]) throw new Error('I am a teapot');
                 this.stateCommitmentByLine[line] = new StateCommitment({
                     left,
                     right,
@@ -94,7 +93,7 @@ export class Decasector {
         const { left, right } = this.getRangeForSelectionPath(selectionPath);
         const d = (right - left) / 10;
         for (let i = 1; i <= 9; i++) {
-            rows[i] = left + i * d;
+            rows.push(left + i * d);
         }
         return rows;
     }

@@ -10,6 +10,9 @@ import { AgentRoles, FundingUtxo, SignatureType } from '../common/types';
 import { initializeTemplates } from './init-templates';
 import { AgentDb } from '../common/agent-db';
 import { BitcoinNode } from '../common/bitcoin-node';
+import { satsToBtc } from '../bitcoin/common';
+import { createRawTx, rawTransactionToTxid, transmitRawTransaction } from '../bitcoin/external-transactions';
+import { createLockedFundsExternalAddresses, createProverStakeExternalAddresses } from './create-external-addresses';
 
 export async function emulateSetup(
     proverAgentId: string,
@@ -24,15 +27,15 @@ export async function emulateSetup(
     const blockchainClient = new BitcoinNode().client;
 
     try {
-        const setup = await proverDb.getSetup(setupId);
-        console.log('Setup already exists: ', setupId);
-        console.log('Use npm run start-db to reset the database');
-        return;
-    } catch (e) {
         console.log('creating setup...');
+        await proverDb.createSetup(setupId);
+        await verifierDb.createSetup(setupId);
+    } catch (error) {
+        console.log('setup already exists: ', setupId);
+        console.log('Use npm run start-db to reset the database');
+        throw error;
     }
 
-    await proverDb.createSetup(setupId);
     await proverDb.updateSetup(setupId, {
         payloadTxid: lockedFunds.txid,
         payloadOutputIndex: lockedFunds.outputIndex,
@@ -42,7 +45,6 @@ export async function emulateSetup(
         stakeAmount: proverStake.amount
     });
 
-    await verifierDb.createSetup(setupId);
     await verifierDb.updateSetup(setupId, {
         payloadTxid: lockedFunds.txid,
         payloadOutputIndex: lockedFunds.outputIndex,
@@ -145,18 +147,18 @@ export async function emulateSetup(
     await proverDb.upsertTemplates(setupId, proverTemplates);
     await verifierDb.upsertTemplates(setupId, verifierTemplates);
 
-    console.log('Update listener data...');
+    console.log('update listener data...');
 
     const currentBlockHeight = await blockchainClient.getBlockCount();
     await proverDb.updateSetupLastCheckedBlockHeight(setupId, currentBlockHeight);
     await verifierDb.updateSetupLastCheckedBlockHeight(setupId, currentBlockHeight);
 
-    console.log('Verify setups...');
+    console.log('verify setups...');
 
     await verifySetup(proverAgentId, setupId, AgentRoles.PROVER);
     await verifySetup(verifierAgentId, setupId, AgentRoles.VERIFIER);
 
-    console.log('Mark setups as active...');
+    console.log('mark setups as active...');
 
     await proverDb.markSetupPegoutActive(setupId);
     await verifierDb.markSetupPegoutActive(setupId);
@@ -164,27 +166,70 @@ export async function emulateSetup(
     console.log('done.');
 }
 
-if (require.main === module) {
-    const args = minimist(process.argv.slice(2));
-    const proverId = 'bitsnark_prover_1';
-    const verifierId = 'bitsnark_verifier_1';
+async function main(
+    setupId: string = 'test_setup',
+    proverId: string = 'bitsnark_prover_1',
+    verifierId: string = 'bitsnark_verifier_1',
+    generateFinal: boolean = false,
+    lockedFundsString: string | undefined,
+    proverStakeString: string | undefined
+) {
+    let lockedFundsTx, lockedFundsTxid, lockedFundsOutputIndex;
+    if (lockedFundsString) {
+        lockedFundsTxid = lockedFundsString.split(':')[0];
+        lockedFundsOutputIndex = parseInt(lockedFundsString.split(':')[1]);
+    } else {
+        const lockedFundsAddress = createLockedFundsExternalAddresses(proverId, verifierId, setupId);
+        lockedFundsTx = await createRawTx(lockedFundsAddress, satsToBtc(agentConf.payloadAmount));
+        lockedFundsTxid = await rawTransactionToTxid(lockedFundsTx);
+        lockedFundsOutputIndex = 0;
+    }
     const lockedFunds: FundingUtxo = {
-        txid: args.locked
-            ? args.locked.split(':')[0]
-            : '1111111111111111111111111111111111111111111111111111111111111111',
-        outputIndex: args.locked ? parseInt(args.locked.split(':')[1]) : 0,
+        txid: lockedFundsTxid,
+        outputIndex: lockedFundsOutputIndex,
         amount: agentConf.payloadAmount
     };
+
+    let proverStakeTx, proverStakeTxid, proverStakeOutputIndex;
+    if (proverStakeString) {
+        proverStakeTxid = proverStakeString.split(':')[0];
+        proverStakeOutputIndex = parseInt(proverStakeString.split(':')[1]);
+    } else {
+        const proverStakeAddress = createProverStakeExternalAddresses(proverId, verifierId, setupId);
+        proverStakeTx = await createRawTx(proverStakeAddress, satsToBtc(agentConf.proverStakeAmount));
+        proverStakeTxid = await rawTransactionToTxid(proverStakeTx);
+        proverStakeOutputIndex = 0;
+    }
     const proverStake: FundingUtxo = {
-        txid: args.stake
-            ? args.stake.split(':')[0]
-            : '0000000000000000000000000000000000000000000000000000000000000000',
-        outputIndex: args.stake ? parseInt(args.stake.split(':')[1]) : 0,
+        txid: proverStakeTxid,
+        outputIndex: proverStakeOutputIndex,
         amount: agentConf.proverStakeAmount
     };
-    const setupId = args['setup-id'] ?? 'test_setup';
+
+    console.log('locked funds txid:', lockedFundsTxid);
+    console.log('prover stake txid:', proverStakeTxid);
+
+    await emulateSetup(proverId, verifierId, setupId, lockedFunds, proverStake, generateFinal);
+
+    if (lockedFundsTx) {
+        const txid = await transmitRawTransaction(lockedFundsTx);
+        console.log(`locked funds sent: ${txid}`);
+    }
+    if (proverStakeTx) {
+        await transmitRawTransaction(proverStakeTx);
+        console.log(`prover stake sent: ${proverStakeTxid}`);
+    }
+}
+
+if (require.main === module) {
+    const args = minimist(process.argv.slice(2));
+    const setupId = args['setup-id'];
+    const proverId = args['prover-id'];
+    const verifierId = args['verifier-id'];
+    const lockedFunds = args.locked;
+    const proverStake = args.stake;
     const generateFinal = args.final;
-    emulateSetup(proverId, verifierId, setupId, lockedFunds, proverStake, generateFinal).catch((error) => {
+    main(setupId, proverId, verifierId, generateFinal, lockedFunds, proverStake).catch((error) => {
         throw error;
     });
 }
