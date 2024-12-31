@@ -174,7 +174,6 @@ async function main(
     lockedFundsString: string | undefined,
     proverStakeString: string | undefined
 ) {
-
     let lockedFundsTx, lockedFundsTxid, lockedFundsOutputIndex;
     if (lockedFundsString) {
         lockedFundsTxid = lockedFundsString.split(':')[0];
@@ -230,5 +229,7 @@ if (require.main === module) {
     const lockedFunds = args.locked;
     const proverStake = args.stake;
     const generateFinal = args.final;
-    main(setupId, proverId, verifierId, generateFinal, lockedFunds, proverStake).catch((error) => { throw error; });
+    main(setupId, proverId, verifierId, generateFinal, lockedFunds, proverStake).catch((error) => {
+        throw error;
+    });
 }
