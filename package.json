@@ -34,6 +34,7 @@
     "start-setup-verifier": "./scripts/start-setup.sh bitsnark_verifier_1",
     "start-protocol-prover": "./scripts/start-protocol.sh bitsnark_prover_1",
     "start-protocol-verifier": "./scripts/start-protocol.sh bitsnark_verifier_1",
+    "start-e2e-services": "./scripts/start-services.sh",
     "create-external-addresses": "ts-node ./src/agent/setup/create-external-addresses.ts",
     "emulate-setup": "./scripts/emulate-setup.sh",
     "emulate-setup-final": "npm run emulate-setup -- --final",
