@@ -4,7 +4,6 @@ import { getSpendingConditionByInput } from '../common/templates';
 import { AgentRoles, SignatureType, TemplateNames } from '../common/types';
 import { decodeWinternitz } from '../common/winternitz';
 import { validateTransactionFees } from './amounts';
-import { Agent } from 'http';
 
 const failures: string[] = [];
 function fail(msg: string) {
