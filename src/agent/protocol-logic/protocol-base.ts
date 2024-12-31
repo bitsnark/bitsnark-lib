@@ -4,7 +4,6 @@ import { parseInput } from './parser';
 import { AgentRoles, Setup, SpendingCondition, Template, TemplateStatus, ReceivedTransaction } from '../common/types';
 import { getTemplateByTemplateId } from '../common/templates';
 import { AgentDb } from '../common/agent-db';
-import { sleep } from '../common/sleep';
 import { bigintToBufferBE } from '../common/encoding';
 
 export interface Incoming {
