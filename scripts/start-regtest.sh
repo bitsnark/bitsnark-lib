@@ -34,4 +34,4 @@ bitcoin_cli loadwallet testwallet 2>/dev/null || true
 # Segwit needs 432 blocks, at least according to this:
 # https://gist.github.com/t4sk/0bc6b35a26998b9007d68f376a852636
 echo Generating initial blocks and activating segwit...
-generate_blocks 432
+generate_blocks 432 > /dev/null
