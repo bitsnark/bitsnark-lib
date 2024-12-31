@@ -19,10 +19,10 @@ sleep 1
 
 
 read -p 'Fudge the proof? (y/n): ' response
-echo -n 'Sending '
+printf 'Sending '
 if [ "$response" = y ] || [ "$response" = Y ]; then
     fudge='--fudge'
-    echo -n 'fudged '
+    printf 'fudged '
 fi
 echo proof
 ts-node ./src/agent/protocol-logic/send-proof.ts $prover "$setup_id" $fudge

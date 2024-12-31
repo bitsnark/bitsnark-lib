@@ -7,6 +7,7 @@ pkill -f 'ts-node ./src/agent/listener/bitcoin-listener.ts' > /dev/null || true
 
 prover=bitsnark_prover_1
 verifier=bitsnark_verifier_1
+
 npm run start-bitcoin-signer -- bitsnark_prover_1 prover &
 npm run start-bitcoin-signer -- bitsnark_verifier_1 verifier &
 npm run start-bitcoin-sender -- $prover prover &
