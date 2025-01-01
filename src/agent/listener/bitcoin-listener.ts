@@ -5,6 +5,7 @@ import { BlockVerbosity, RawTransaction } from 'bitcoin-core';
 import { Input } from '../common/types';
 import { AgentDb } from '../common/agent-db';
 import { getTemplatesRows, JoinedTemplate } from './listener-utils';
+import { sleep } from '../common/sleep';
 
 export class BitcoinListener {
     tipHeight: number = 0;
@@ -25,7 +26,7 @@ export class BitcoinListener {
             } catch (error) {
                 console.error('Error in blockchain listener:', error);
             }
-            await new Promise((r) => setTimeout(r, agentConf.blockCheckIntervalMs));
+            await sleep(agentConf.blockCheckIntervalMs);
             /*eslint no-constant-condition: "off"*/
         } while (true);
     }
