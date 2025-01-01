@@ -4,6 +4,11 @@ bitcoin_container_name=bitcoin-node
 postgres_container_name=postgres
 bitcoin_data_dir=/tmp/bitcoin-data
 
+# On macOS, "System Integrety Protection" clears the DYLD_FALLBACK_LIBRARY_PATH,
+# which leaves the Python executable unable to find the secp256k1 library installed by Homebrew.
+DYLD_FALLBACK_LIBRARY_PATH="$DYLD_FALLBACK_LIBRARY_PATH:/usr/local/lib:/opt/homebrew/lib"
+export DYLD_FALLBACK_LIBRARY_PATH
+
 if ! (return 0 2>/dev/null); then
 
     read -p "This script is intended to be sourced, not executed, continue? (y/N): " response
