@@ -38,18 +38,22 @@ export async function emulateSetup(
 
     await proverDb.updateSetup(setupId, {
         payloadTxid: lockedFunds.txid,
+        payloadTx: lockedFunds.rawTx ?? '',
         payloadOutputIndex: lockedFunds.outputIndex,
         payloadAmount: lockedFunds.amount,
         stakeTxid: proverStake.txid,
+        stakeTx: proverStake.rawTx ?? '',
         stakeOutputIndex: proverStake.outputIndex,
         stakeAmount: proverStake.amount
     });
 
     await verifierDb.updateSetup(setupId, {
         payloadTxid: lockedFunds.txid,
+        payloadTx: lockedFunds.rawTx ?? '',
         payloadOutputIndex: lockedFunds.outputIndex,
         payloadAmount: lockedFunds.amount,
         stakeTxid: proverStake.txid,
+        stakeTx: proverStake.rawTx ?? '',
         stakeOutputIndex: proverStake.outputIndex,
         stakeAmount: proverStake.amount
     });
@@ -187,7 +191,8 @@ async function main(
     const lockedFunds: FundingUtxo = {
         txid: lockedFundsTxid,
         outputIndex: lockedFundsOutputIndex,
-        amount: agentConf.payloadAmount
+        amount: agentConf.payloadAmount,
+        rawTx: lockedFundsTx
     };
 
     let proverStakeTx, proverStakeTxid, proverStakeOutputIndex;
@@ -203,7 +208,8 @@ async function main(
     const proverStake: FundingUtxo = {
         txid: proverStakeTxid,
         outputIndex: proverStakeOutputIndex,
-        amount: agentConf.proverStakeAmount
+        amount: agentConf.proverStakeAmount,
+        rawTx: proverStakeTx
     };
 
     console.log('locked funds txid:', lockedFundsTxid);

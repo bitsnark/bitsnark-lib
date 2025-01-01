@@ -52,6 +52,7 @@ export interface FundingUtxo {
     txid: string;
     outputIndex: number;
     amount: bigint;
+    rawTx?: string;
 }
 
 export interface Setup {
