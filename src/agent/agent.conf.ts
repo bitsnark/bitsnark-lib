@@ -38,7 +38,7 @@ interface AgentConf {
     protocolIntervalMs: number;
     blockCheckIntervalMs: number;
     telegramChannelId: string;
-    bitcoinFeeRate: number;
+    bitcoinFeeRateForExternal: number;
 }
 
 export const agentConf: AgentConf = {
@@ -103,5 +103,5 @@ export const agentConf: AgentConf = {
     protocolIntervalMs: parse.integer('PROTOCOL_INTERVAL_MS', 1000),
     blockCheckIntervalMs: parse.integer('BLOCK_CHECK_INTERVAL_MS', 1000),
     telegramChannelId: parse.string('TELEGRAM_CHANNEL_ID', '-1002148850465'),
-    bitcoinFeeRate: parse.integer('BITCOIN_FEE_RATE', 0.0001)
+    bitcoinFeeRateForExternal: parse.integer('BITCOIN_FEE_RATE', 0.0001) // fee rate in BTC per KB
 };
