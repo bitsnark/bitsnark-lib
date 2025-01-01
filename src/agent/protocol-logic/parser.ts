@@ -60,3 +60,7 @@ export function parseInput(templates: Template[], input: Input, data: Buffer[]):
     }
     return result;
 }
+
+export function parseInputs(templates: Template[], inputs: Input[], witnesses: Buffer[][]): bigint[][] {
+    return inputs.map((input, i) => parseInput(templates, input, witnesses[i]));
+}

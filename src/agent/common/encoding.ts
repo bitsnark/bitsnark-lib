@@ -122,8 +122,13 @@ export function _32To256BE(na: bigint[]): bigint {
     return n;
 }
 
-export function bigintToString(n: bigint): string {
-    return n.toString(16);
+export function bigintToString(n: bigint, bits?: number): string {
+    const s = n.toString(16);
+    if (bits) {
+        const hexLen = Math.ceil(bits / 4);
+        return s.padStart(hexLen, '0');
+    }
+    return s;
 }
 
 export function stringToBigint(s: string): bigint {

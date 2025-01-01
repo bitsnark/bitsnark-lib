@@ -124,7 +124,7 @@ export class Agent {
         const verified = verifyMessage(
             toJson({ ...message, telegramMessageSig: '' }),
             message.telegramMessageSig,
-            bigintToString(otherPubKey)
+            bigintToString(otherPubKey, 256)
         );
         if (!verified) throw new Error('Invalid signature');
         console.log('Message signature verified');
@@ -307,7 +307,7 @@ export class Agent {
 
         await this.db.upsertTemplates(i.setupId, i.templates!);
 
-        i.templates = await generateAllScripts(this.agentId, i.setupId, this.role, i.templates!, true);
+        i.templates = await generateAllScripts(this.agentId, i.setupId, this.role, i.templates!, false);
         i.templates = await addAmounts(this.agentId, this.role, i.setupId, i.templates!);
 
         await this.db.upsertTemplates(i.setupId, i.templates!);

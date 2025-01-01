@@ -101,7 +101,6 @@ export class Argument {
     }
 
     public async refute(
-        templates: Template[],
         argData: bigint[][],
         states: Buffer[][]
     ): Promise<{ data: bigint[]; script: Buffer; controlBlock: Buffer }> {

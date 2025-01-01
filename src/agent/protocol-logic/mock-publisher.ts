@@ -1,12 +1,18 @@
-import { generateBlocks, TestAgentDb } from './test-utils/test-utils';
-import { BitcoinNode } from '../src/agent/common/bitcoin-node';
-import { ProtocolProver } from '../src/agent/protocol-logic/protocol-prover';
-import { proofBigint } from '../src/agent/common/constants';
-import { RawTransaction, Input } from 'bitcoin-core';
-import { agentConf } from '../src/agent/agent.conf';
-import { argv } from 'process';
-import { TemplateStatus, Template } from '../src/agent/common/types';
-import { JoinedTemplate } from '../src/agent/listener/listener-utils';
+import { TestAgentDb } from '../../../tests/test-utils/test-utils';
+import { BitcoinNode } from '../common/bitcoin-node';
+import Client, { RawTransaction, Input } from 'bitcoin-core';
+import { agentConf } from '../agent.conf';
+import { TemplateStatus, Template } from '../common/types';
+import { JoinedTemplate } from '../listener/listener-utils';
+
+export async function generateBlocks(bitcoinClient: Client, blocksToGenerate: number, address?: string) {
+    try {
+        if (!address) address = (await bitcoinClient.command('getnewaddress')) as string;
+        await bitcoinClient.command('generatetoaddress', blocksToGenerate, address as string);
+    } catch (error) {
+        console.error('Error generating blocks:', error);
+    }
+}
 
 export const mockRawTransaction: RawTransaction = {
     in_active_chain: true,
@@ -53,7 +59,7 @@ const mockVout = {
     }
 };
 
-export class TestPublisher {
+export class MockPublisher {
     agents: { prover: string; verifier: string };
     dbs: { prover: TestAgentDb; verifier: TestAgentDb };
     setupId: string;
@@ -109,14 +115,12 @@ export class TestPublisher {
                 };
 
                 if (!readyToSendTemplates.prover.length && !readyToSendTemplates.verifier.length) {
-                    console.log(`No templates to publish`);
                     this.isRunning = false;
                     return;
                 }
 
                 const tip = await this.bitcoinClient.client.getBlockCount();
                 const hash = await this.bitcoinClient.client.getBlockHash(tip);
-                console.log('Curent blockchain tip', tip);
 
                 for (const agent of ['prover', 'verifier'] as const) {
                     const otherAgent = agent === 'prover' ? 'verifier' : 'prover';
@@ -188,41 +192,15 @@ export class TestPublisher {
     }
 }
 
-async function main(isStartOver: boolean = false) {
+async function main() {
     const proverId = 'bitsnark_prover_1';
     const verifierId = 'bitsnark_verifier_1';
+    const setupId = 'test_setup';
 
-    const dbProver = new TestAgentDb(proverId);
-    const dbVerifier = new TestAgentDb(verifierId);
-    const setupId = (await dbProver.query('SELECT id FROM setups ORDER BY created_at LIMIT 1'))?.rows[0][0];
-    if (!setupId) {
-        console.error('No setup found');
-        return;
-    }
-
-    if (isStartOver) {
-        await dbProver.test_restartSetup(setupId);
-        await dbVerifier.test_restartSetup(setupId);
-
-        const prover = new ProtocolProver(proverId, setupId);
-        //Bad
-        const type = argv[3] ? argv[3] : 'g';
-        const proof = proofBigint;
-        if (type !== 'g') {
-            proof[0] = proof[0] + 1n;
-        }
-
-        await prover.pegOut(proof);
-        // Good
-        await prover.pegOut(proofBigint);
-        console.log('proof sent:', proofBigint);
-    }
-    new TestPublisher(proverId, verifierId, setupId).start();
+    new MockPublisher(proverId, verifierId, setupId).start();
 }
 
 if (require.main === module) {
     console.log('Starting mock publisher');
-    const isStartOver = argv[2] && argv[2] === 'new' ? true : false;
-
-    main(isStartOver);
+    main();
 }

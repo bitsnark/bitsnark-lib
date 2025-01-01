@@ -1,6 +1,6 @@
 import minimist from 'minimist';
 import { agentConf } from '../agent.conf';
-import { parseInput } from './parser';
+import { parseInputs } from './parser';
 import { step1_vm } from '../../generator/ec_vm/vm/vm';
 import groth16Verify, { Key, Proof as Step1_Proof } from '../../generator/ec_vm/verifier';
 import { findErrorState } from './states';
@@ -113,15 +113,11 @@ export class ProtocolVerifier extends ProtocolBase {
 
     private async refuteArgument(proof: bigint[], states: Buffer[][], incoming: Incoming) {
         const rawTx = incoming.received.raw;
-        const argData = rawTx.vin.map((vin, i) =>
-            parseInput(
-                this.templates!,
-                incoming.template.inputs[i],
-                vin.txinwitness!.map((s) => Buffer.from(s, 'hex'))
-            )
-        );
+        const witnesses = 
+            rawTx.vin.map(vin => vin.txinwitness!.map((s) => Buffer.from(s, 'hex')));
+        const argData = parseInputs(this.templates!, incoming.template.inputs, witnesses);
         const argument = new Argument(this.agentId, this.setup!.id, proof);
-        const refutation = await argument.refute(this.templates!, argData, states);
+        const refutation = await argument.refute(argData, states);
 
         incoming.template.inputs[0].script = refutation.script;
         incoming.template.inputs[0].controlBlock = refutation.controlBlock;
