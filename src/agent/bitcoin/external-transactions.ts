@@ -31,7 +31,7 @@ export async function createRawTx(taprootAddress: string, amountInBtc: number): 
         locktime: 0, // Optional: Set locktime (e.g., current block height for timelocks)
         options: {
             changePosition: 1,
-            feeRate: agentConf.bitcoinFeeRate // Optional: Set fee rate in satoshis per byte
+            feeRate: agentConf.bitcoinFeeRate // Optional: Set fee rate in BTC per KB
         }
     };
     const psbt = (await client.command(
