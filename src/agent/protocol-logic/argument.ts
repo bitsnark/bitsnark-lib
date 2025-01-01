@@ -4,7 +4,7 @@ import { InstrCode, Instruction } from '../../generator/ec_vm/vm/types';
 import { DoomsdayGenerator } from '../final-step/doomsday-generator';
 import { prime_bigint } from '../common/constants';
 import { bigintToBufferBE, bufferToBigintBE } from '../common/encoding';
-import { Template, TemplateNames } from '../common/types';
+import { TemplateNames } from '../common/types';
 import { createUniqueDataId } from '../setup/wots-keys';
 import { Decasector, StateCommitment } from '../setup/decasector';
 
@@ -75,11 +75,9 @@ export class Argument {
         this.selectionPath = selectionPath;
         this.selectionPathUnparsed = selectionPathUnparsed;
 
-        this.index = 0;
-        for (const s of this.selectionPath) {
-            this.index = this.index * 10 + s;
-        }
         const decasector = new Decasector(this.proof);
+        this.index = decasector.getLineBySelectionPath(this.selectionPath);
+
         const scBefore = decasector.stateCommitmentByLine[this.index - 1];
         const scAfter = decasector.stateCommitmentByLine[this.index];
         const instr = decasector.savedVm.program[this.index];
@@ -93,10 +91,8 @@ export class Argument {
 
     public checkIndex() {
         // lets make sure it's correct for sanity sake
-        let tempIndex = 0;
-        for (const selection of this.selectionPath) {
-            tempIndex = tempIndex * 10 + selection;
-        }
+        const decasector = new Decasector(this.proof);
+        const tempIndex = decasector.getLineBySelectionPath(this.selectionPath);
         return tempIndex == this.index;
     }
 
@@ -105,9 +101,9 @@ export class Argument {
         states: Buffer[][]
     ): Promise<{ data: bigint[]; script: Buffer; controlBlock: Buffer }> {
         // first input is the selection path, 6 selections and then the index
-        // the selection path can't be wrong, becaue of the winternitz signature on it
+        // the selection path can't be wrong, because of the winternitz signature on it
         this.selectionPath = argData[0].slice(0, 6).map((n) => Number(n));
-        this.index = Number(argData[6]);
+        this.index = Number(argData[0][6]);
 
         if (!this.checkIndex()) throw new Error('Invalid selection path or index');
 

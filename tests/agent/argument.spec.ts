@@ -23,8 +23,7 @@ function makeSelectionPathUnparsed(selectionPath: number[]) {
 async function init() {
     const argument = new Argument(agentId, setupId, proofBigint);
     const selectionPath = [1, 2, 3, 4, 5, 6];
-    const argWitness = 
-        await argument.makeArgument(selectionPath, makeSelectionPathUnparsed(selectionPath));
+    const argWitness = await argument.makeArgument(selectionPath, makeSelectionPathUnparsed(selectionPath));
     return { argument, selectionPath, argWitness };
 }
 

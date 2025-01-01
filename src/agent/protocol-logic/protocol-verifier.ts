@@ -113,8 +113,7 @@ export class ProtocolVerifier extends ProtocolBase {
 
     private async refuteArgument(proof: bigint[], states: Buffer[][], incoming: Incoming) {
         const rawTx = incoming.received.raw;
-        const witnesses = 
-            rawTx.vin.map(vin => vin.txinwitness!.map((s) => Buffer.from(s, 'hex')));
+        const witnesses = rawTx.vin.map((vin) => vin.txinwitness!.map((s) => Buffer.from(s, 'hex')));
         const argData = parseInputs(this.templates!, incoming.template.inputs, witnesses);
         const argument = new Argument(this.agentId, this.setup!.id, proof);
         const refutation = await argument.refute(argData, states);
@@ -139,6 +138,7 @@ export class ProtocolVerifier extends ProtocolBase {
         const iteration = selectionPath.length;
         const txName = TemplateNames.SELECT + '_' + twoDigits(iteration);
         const selection = await findErrorState(proof, last(states), selectionPath);
+        if (selection < 0) throw new Error('Could not find error state');
         const selectionWi = encodeWinternitz24(BigInt(selection), createUniqueDataId(this.setup!.id, txName, 0, 0, 0));
         this.sendTransaction(txName, [selectionWi]);
     }
@@ -171,7 +171,7 @@ export async function main(agentId: string) {
     };
 
     do {
-        doit();
+        await doit();
         await sleep(agentConf.protocolIntervalMs);
         /*eslint no-constant-condition: "off"*/
     } while (true);

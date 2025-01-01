@@ -4,6 +4,7 @@ import Client, { RawTransaction, Input } from 'bitcoin-core';
 import { agentConf } from '../agent.conf';
 import { TemplateStatus, Template } from '../common/types';
 import { JoinedTemplate } from '../listener/listener-utils';
+import { randomBytes } from 'node:crypto';
 
 export async function generateBlocks(bitcoinClient: Client, blocksToGenerate: number, address?: string) {
     try {
@@ -135,12 +136,9 @@ export class MockPublisher {
                                 this.templates[agent].filter((t) => t.setupId === readyTx.setupId)
                             )
                         };
-                        console.log(
-                            'Mock broadcasting transaction',
-                            readyTx.txid,
-                            readyTx.name,
-                            rawTx.vin[0].txinwitness ?? []
-                        );
+                        console.log('Mock broadcasting transaction:', readyTx.name);
+
+                        if (!rawTx.txid || rawTx.txid == 'undefined') rawTx.txid = randomBytes(32).toString('hex');
 
                         if (receivedTransactions[agent].every((rt) => rt[0] !== readyTx.txid)) {
                             await this.markReceived(agent, readyTx, hash, tip, rawTx);
@@ -201,6 +199,6 @@ async function main() {
 }
 
 if (require.main === module) {
-    console.log('Starting mock publisher');
+    console.log('Starting mock publisher...');
     main();
 }

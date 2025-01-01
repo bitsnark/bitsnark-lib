@@ -12,7 +12,6 @@ import { startSetup } from './setup/start-setup';
 import { AgentDb } from './common/agent-db';
 
 export async function main(proverAgentId: string, verifierAgentId: string, setupId?: string) {
-
     if (!setupId) {
         setupId = randomBytes(32).toString('hex');
 
@@ -24,14 +23,22 @@ export async function main(proverAgentId: string, verifierAgentId: string, setup
 
         await startSetup(proverAgentId, verifierAgentId, setupId);
 
-        const db = new AgentDb(proverAgentId);
+        const proverDb = new AgentDb(proverAgentId);
+        const verifierDb = new AgentDb(verifierAgentId);
 
-        // wait for setup to be active
+        // Wait for setup to be active
         while (true) {
-            const setup = await db.getSetup(setupId);
-            if (setup.status === SetupStatus.ACTIVE) {
+            const setup1 = await proverDb.getSetup(setupId);
+
+            // The verifier may not have the setup yet
+            const setup2 = await verifierDb.getSetupOrNull(setupId);
+
+            // Are they both active?
+            if (setup1.status === SetupStatus.ACTIVE && setup2 && setup2.status === SetupStatus.ACTIVE) {
                 break;
             }
+
+            // Wait a bit
             await sleep(100);
         }
     }
@@ -42,7 +49,7 @@ export async function main(proverAgentId: string, verifierAgentId: string, setup
     const prover = new ProtocolProver(proverAgentId, setupId);
     const verifier = new ProtocolVerifier(verifierAgentId, setupId);
 
-    const proof = proofBigint.map(p => p);
+    const proof = proofBigint.map((p) => p);
     proof[0] = 0n;
 
     prover.pegOut(proof);
@@ -62,7 +69,7 @@ export async function main(proverAgentId: string, verifierAgentId: string, setup
     };
 
     do {
-        doit();
+        await doit();
         await sleep(agentConf.protocolIntervalMs);
         /*eslint no-constant-condition: "off"*/
     } while (true);
@@ -72,7 +79,7 @@ if (require.main === module) {
     const args = minimist(process.argv.slice(2));
     const proverAgentId = args['prover-agent-id'] ?? 'bitsnark_prover_1';
     const verifierAgentId = args['verifier-agent-id'] ?? 'bitsnark_verifier_1';
-    const setupId = args['setup-id']; // if null, create a new setup 
+    const setupId = args['setup-id']; // if null, create a new setup
 
     main(proverAgentId, verifierAgentId, setupId).catch((error) => {
         console.error(error);
