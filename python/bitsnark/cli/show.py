@@ -106,4 +106,4 @@ class ShowCommand(Command):
 
         print_size("- Witness data", total_witness_data_size)
         print_size("- Witness script", total_witness_script_size)
-        print_size("- Witness cblock", total_witness_cblock_size)
+        print_size("- Witness control block", total_witness_cblock_size)
