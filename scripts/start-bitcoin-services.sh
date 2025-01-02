@@ -12,6 +12,6 @@ npm run start-bitcoin-signer -- bitsnark_prover_1 prover &
 npm run start-bitcoin-signer -- bitsnark_verifier_1 verifier &
 npm run start-bitcoin-sender -- $prover prover &
 npm run start-bitcoin-sender -- $verifier verifier &
-npm run start-bitcoin-listener $prover &
-npm run start-bitcoin-listener $verifier &
+#npm run start-bitcoin-listener $prover &
+#npm run start-bitcoin-listener $verifier &
 wait

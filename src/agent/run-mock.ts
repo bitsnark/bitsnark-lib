@@ -1,15 +1,18 @@
 import minimist from 'minimist';
+import { Agent } from './setup/agent';
+import { AgentDb } from './common/agent-db';
+import { agentConf } from './agent.conf';
+import { AgentRoles, SetupStatus } from './common/types';
 import { ProtocolProver } from './protocol-logic/protocol-prover';
 import { ProtocolVerifier } from './protocol-logic/protocol-verifier';
 import { sleep } from './common/sleep';
-import { agentConf } from './agent.conf';
-import { MockPublisher } from './protocol-logic/mock-publisher';
 import { proofBigint } from './common/constants';
 import { randomBytes } from 'node:crypto';
-import { Agent } from './setup/agent';
-import { AgentRoles, SetupStatus } from './common/types';
 import { startSetup } from './setup/start-setup';
-import { AgentDb } from './common/agent-db';
+import { BitcoinListener } from './listener/bitcoin-listener';
+import { MockPublisher } from './protocol-logic/mock-publisher';
+
+const MOCK = false;
 
 export async function main(proverAgentId: string, verifierAgentId: string, setupId?: string) {
     if (!setupId) {
@@ -43,8 +46,13 @@ export async function main(proverAgentId: string, verifierAgentId: string, setup
         }
     }
 
-    const listener = new MockPublisher(proverAgentId, verifierAgentId, setupId);
-    listener.start();
+    if (MOCK) {
+        new MockPublisher(proverAgentId, verifierAgentId, setupId).start();
+    } else {
+        for (const agentId of [proverAgentId, verifierAgentId]) {
+            new BitcoinListener(agentId).startBlockchainCrawler();
+        }
+    }
 
     const prover = new ProtocolProver(proverAgentId, setupId);
     const verifier = new ProtocolVerifier(verifierAgentId, setupId);

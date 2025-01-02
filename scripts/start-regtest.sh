@@ -5,11 +5,13 @@
 # returns error (and therefore exits) if container exists but not removed.
 conditionally_remove_container $bitcoin_container_name
 
-echo -n Starting the Bitcoin node in regtest mode
+[ "$1" = persist ] || rm -rf "$bitcoin_data_dir"
+
+printf Starting the Bitcoin node in regtest mode
 if [ "$bitcoin_data_dir" ]; then
     mkdir -p "$bitcoin_data_dir"
     volume_mount="-v $bitcoin_data_dir:/home/bitcoin/.bitcoin"
-    echo -n " with data directory $bitcoin_data_dir"
+    printf " with data directory $bitcoin_data_dir"
 fi
 echo ...
 
