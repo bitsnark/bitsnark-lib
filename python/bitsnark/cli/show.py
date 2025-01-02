@@ -81,9 +81,29 @@ class ShowCommand(Command):
 
         # Deserialized tx stuff
         tx = create_tx_with_witness(tx_template=tx_template, dbsession=dbsession)
-        print(f"Transaction virtual size: {tx.get_virtual_size()} vB")
-        witness_size = len(tx.wit.serialize())
-        print(
-            f"Witness size: {witness_size} B ({witness_size / 4} vB, "
-            f"{witness_size / 4 / tx.get_virtual_size() * 100:.2f}% of tx size)"
-        )
+        tx_virtual_size = tx.get_virtual_size()
+        print("")
+        print(f"Transaction virtual size: {tx_virtual_size} vB")
+
+        def print_size(prefix, size):
+            print(f"{prefix} size: {size} B ({size / 4} vB, {size / 4 / tx_virtual_size * 100:.2f}% of tx size)")
+
+        print_size("Witness", len(tx.wit.serialize()))
+
+        total_witness_data_size = 0
+        total_witness_script_size = 0
+        total_witness_cblock_size = 0
+
+        for i, input_witness in enumerate(tx.wit.vtxinwit):
+            *witness_elems, tapscript, cblock = input_witness.scriptWitness.stack
+            witness_data_size = sum(len(e) for e in witness_elems)
+            witness_script_size = len(tapscript)
+            witness_cblock_size = len(cblock)
+            # print(f"- Input witness {i}: data {witness_data_size} B, script {witness_script_size} B, cblock {witness_cblock_size} B")
+            total_witness_data_size += witness_data_size
+            total_witness_script_size += witness_script_size
+            total_witness_cblock_size += witness_cblock_size
+
+        print_size("- Witness data", total_witness_data_size)
+        print_size("- Witness script", total_witness_script_size)
+        print_size("- Witness cblock", total_witness_cblock_size)
