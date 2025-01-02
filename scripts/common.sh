@@ -16,18 +16,18 @@ if ! (return 0 2>/dev/null); then
     scripts_dir="$(dirname "$(realpath "$0")")"
 fi
 
-#if [ -z "$INIT_CWD" ]; then
-#    read -p "This script is intended to be run with npm run-script, continue? (y/N): " response
-#    [ "$response" = y ] || [ "$response" = Y ] || exit 1
-#    [ "$scripts_dir" ] || scripts_dir="$(realpath .)"
-#    repo_root_dir="$(git -C "$scripts_dir" rev-parse --show-toplevel 2> /dev/null)"
-#    if [ -d "$repo_root_dir" ]; then
-#        echo "WARNING: Trying to cd to repo root dir: $repo_root_dir"
-#        cd "$repo_root_dir"
-#    else
-#        echo "WARNING: Couldn't find repo root dir, using current dir as root"
-#    fi
-#fi
+if [ -z "$INIT_CWD" ]; then
+    read -p "This script is intended to be run with npm run-script, continue? (y/N): " response
+    [ "$response" = y ] || [ "$response" = Y ] || exit 1
+    [ "$scripts_dir" ] || scripts_dir="$(realpath .)"
+    repo_root_dir="$(git -C "$scripts_dir" rev-parse --show-toplevel 2> /dev/null)"
+    if [ -d "$repo_root_dir" ]; then
+        echo "WARNING: Trying to cd to repo root dir: $repo_root_dir"
+        cd "$repo_root_dir"
+    else
+        echo "WARNING: Couldn't find repo root dir, using current dir as root"
+    fi
+fi
 
 if docker ps 2>&1 > /dev/null; then
     docker_cmd=docker
