@@ -24,6 +24,7 @@ import { BitcoinNode } from '../common/bitcoin-node';
 import { AgentDb, updateSetupPartial } from '../common/agent-db';
 import { getSpendingConditionByInput, getTemplateByName } from '../common/templates';
 import { transmitRawTransaction } from '../bitcoin/external-transactions';
+import minimist from 'minimist';
 
 interface AgentInfo {
     agentId: string;
@@ -426,13 +427,13 @@ export class Agent {
 }
 
 if (__filename == process.argv[1]) {
-    console.log('Starting');
 
-    const agentId = process.argv[2] ?? 'bitsnark_prover_1';
-
+    const args = minimist(process.argv.slice(2));
+    const agentId = args['agent-id'] ?? 'bitsnark_prover_1';1
     const role = agentId.indexOf('prover') >= 0 ? AgentRoles.PROVER : AgentRoles.VERIFIER;
 
     const agent = new Agent(agentId, role);
+    console.log('Launching agent', agentId);
     agent.launch().then(() => {
         console.log('Quitting');
     });

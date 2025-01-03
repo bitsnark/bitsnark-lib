@@ -7,8 +7,9 @@ import { jsonStringifyCustom } from '../common/json';
 export interface GenerateFinalTaprootCommand {
     agentId: string;
     setupId: string;
-    indexFrom: number;
-    indexTo: number;
+    from: number;
+    to: number;
+    requestedScriptIndex?: number;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -17,12 +18,12 @@ const commands: { [key: string]: (input: any) => any } = {
         const ddg = new DoomsdayGenerator(input.agentId, input.setupId);
         const db = new AgentDb(input.agentId);
         const templates = await db.getTemplates(input.setupId);
-        const result = ddg.generateFinalStepTaprootChunk(templates, input.indexFrom ?? 0, input.indexTo ?? 0);
+        const result = ddg.generateFinalStepTaprootChunk(templates, input.from, input.to, input.requestedScriptIndex);
         return result;
     }
 };
 
-export async function main() {
+async function main() {
     const command = process.argv[2];
     if (!command) {
         console.error('I need a command to run');
@@ -37,14 +38,17 @@ export async function main() {
         input: process.stdin,
         output: process.stdout
     });
-    rl.on('line', async (line: string) => {
-        const result = await fun(JSON.parse(line));
-        console.log(jsonStringifyCustom(result) + '\n');
-        process.exit(0);
+    return new Promise<void>((resolve, reject) => {
+        rl.on('line', async (line: string) => {
+            try {
+                const result = await fun(JSON.parse(line));
+                console.log(jsonStringifyCustom(result) + '\n');
+                resolve();
+            } catch (error) {
+                reject(error);
+            }
+        });
     });
 }
 
-const scriptName = __filename;
-if (process.argv[1] == scriptName) {
-    main();
-}
+main();

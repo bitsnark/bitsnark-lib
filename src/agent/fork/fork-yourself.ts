@@ -1,27 +1,29 @@
-import * as readline from 'readline';
-import { execFile } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import { jsonParseCustom, jsonStringifyCustom } from '../common/json';
 
 const tsNodePath = './node_modules/.bin/ts-node';
 
 async function run(command: string, input: string): Promise<string> {
+
+    let result = '';
+
     return new Promise((resolve, reject) => {
-        const child = execFile(
+        const child = spawn(
             tsNodePath,
             ['./src/agent/fork/fork-entrypoint.ts', command],
-            { cwd: '.' },
-            (error, stdout, stderr) => {
-                console.error(stderr);
-                if (error) {
-                    reject(error);
-                    return;
-                }
-                resolve(stdout);
+        { stdio: ['pipe', 'pipe', 'pipe'] });
+        child.stdout.on('data', (data: Buffer) => {
+            const s = data.toString('utf-8');
+            result += s;
+            if (result.includes('\n')) {
+                resolve(result.split('\n')[0]);
             }
-        );
-        readline.createInterface({ input: child.stdout! }).on('line', (line) => console.log(line));
-        readline.createInterface({ input: child.stderr! }).on('line', (line) => console.error(line));
+        });
         child.stdin!.write(input.split('\n').join('') + '\n');
+        child.on('error', (error) => {
+            console.error(error);
+            reject(error);
+        });
     });
 }
 
