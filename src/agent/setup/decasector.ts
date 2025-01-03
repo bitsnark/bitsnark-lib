@@ -19,6 +19,7 @@ export class StateCommitment {
     public readonly selection: number;
     public readonly line: number;
     public readonly savedVm: SavedVm<InstrCode>;
+    public readonly selectionPath: number[];
 
     private values?: bigint[];
 
@@ -29,6 +30,7 @@ export class StateCommitment {
         this.selection = obj.selection!;
         this.savedVm = obj.savedVm!;
         this.line = obj.line!;
+        this.selectionPath = obj.selectionPath!;
     }
 
     public getValues(): bigint[] {
@@ -46,17 +48,18 @@ export class Decasector {
 
     constructor(proof?: bigint[]) {
         this.savedVm = loadProgram(proof);
-        this.iterations = Math.ceil(Math.log10(this.savedVm.program.length));
-        this.total = 10 ** this.iterations;
+        this.total = this.savedVm.program.length;
+        this.iterations = Math.ceil(Math.log10(this.total));
         this.stateCommitments();
     }
 
     private stateCommitments() {
-        const _sc = (left: number, right: number, iter: number) => {
-            if (right - left < 10) return;
+        const _sc = (left: number, right: number, iter: number, selectionPath: number[]) => {
+            if (iter > this.iterations) return;
             const d = (right - left) / 10;
             for (let i = 0; i < 9; i++) {
-                const line = left + (i + 1) * d;
+                const line = Math.round(left + (i + 1) * d);
+                if (this.stateCommitmentByLine[line]) continue;
                 this.stateCommitmentByLine[line] = new StateCommitment({
                     left,
                     right,
@@ -65,9 +68,9 @@ export class Decasector {
                     line,
                     savedVm: this.savedVm
                 });
-                _sc(left + i * d, left + (i + 1) * d, iter + 1);
+                _sc(Math.round(left + i * d), Math.round(left + (i + 1) * d), iter + 1, [...selectionPath, i]);
             }
-            _sc(left + 9 * d, left + (9 + 1) * d, iter + 1);
+            _sc(Math.round(left + 9 * d), Math.round(left + (9 + 1) * d), iter + 1, [...selectionPath, 9]);
         };
         this.stateCommitmentByLine[0] = new StateCommitment({
             left: 0,
@@ -85,7 +88,7 @@ export class Decasector {
             line: this.total,
             savedVm: this.savedVm
         });
-        _sc(0, this.total, 1);
+        _sc(0, this.total, 1, []);
     }
 
     public getLinesForSelectionPath(selectionPath: number[]): number[] {
@@ -93,7 +96,7 @@ export class Decasector {
         const { left, right } = this.getRangeForSelectionPath(selectionPath);
         const d = (right - left) / 10;
         for (let i = 1; i <= 9; i++) {
-            rows.push(left + i * d);
+            rows.push(Math.round(left + i * d));
         }
         return rows;
     }
@@ -103,8 +106,8 @@ export class Decasector {
         let right = this.total;
         for (const selection of selectionPath) {
             const d = (right - left) / 10;
-            const tl = left + selection * d;
-            const tr = left + (selection + 1) * d;
+            const tl = Math.round(left + selection * d);
+            const tr = Math.round(left + (selection + 1) * d);
             left = tl;
             right = tr;
         }
@@ -115,6 +118,19 @@ export class Decasector {
         const runner = Runner.load(this.savedVm);
         runner.execute(this.savedVm.programLength);
         return runner.getRegsForSuccess();
+    }
+
+    public getLineBySelectionPath(selectionPath: number[]): number {
+        let left = 0;
+        let right = this.total;
+        for (const selection of selectionPath) {
+            const d = (right - left) / 10;
+            const tl = Math.round(left + selection * d);
+            const tr = Math.round(left + (selection + 1) * d);
+            left = tl;
+            right = tr;
+        }
+        return right;
     }
 }
 

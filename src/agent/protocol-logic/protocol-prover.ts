@@ -142,7 +142,7 @@ export class ProtocolProver extends ProtocolBase {
 
     private async sendState(proof: bigint[], selectionPath: number[]) {
         const iteration = selectionPath.length;
-        const states = await calculateStates(proof, selectionPath, iteration == 0);
+        const states = await calculateStates(AgentRoles.PROVER, proof, selectionPath);
         const txName = TemplateNames.STATE + '_' + twoDigits(iteration);
         const spendingConditionIndex = iteration == 0 ? 1 : 0;
         const statesWi = states
@@ -172,7 +172,7 @@ export async function main(agentId: string) {
     };
 
     do {
-        doit();
+        await doit();
         await sleep(agentConf.protocolIntervalMs);
         /*eslint no-constant-condition: "off"*/
     } while (true);

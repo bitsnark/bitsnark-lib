@@ -6,7 +6,7 @@ import { createLockedFundsExternalAddresses, createProverStakeExternalAddresses 
 import { createRawTx, rawTransactionToTxid } from '../bitcoin/external-transactions';
 import { satsToBtc } from '../bitcoin/common';
 
-async function startSetup(proverAgentId: string, verifierAgentId: string, setupId: string) {
+export async function startSetup(proverAgentId: string, verifierAgentId: string, setupId: string) {
     console.log('Starting setup...');
 
     const lockedFundsAddress = createLockedFundsExternalAddresses(proverAgentId, verifierAgentId, setupId);

@@ -52,6 +52,7 @@ export interface FundingUtxo {
     txid: string;
     outputIndex: number;
     amount: bigint;
+    rawTx?: string;
 }
 
 export interface Setup {
@@ -60,9 +61,11 @@ export interface Setup {
     status: SetupStatus;
     lastCheckedBlockHeight?: number;
     payloadTxid?: string;
+    payloadTx?: string;
     payloadOutputIndex?: number;
     payloadAmount?: bigint;
     stakeTxid?: string;
+    stakeTx?: string;
     stakeOutputIndex?: number;
     stakeAmount?: bigint;
 }

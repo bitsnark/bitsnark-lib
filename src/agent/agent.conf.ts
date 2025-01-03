@@ -44,8 +44,8 @@ interface AgentConf {
 export const agentConf: AgentConf = {
     internalPubkey: parse.bigint('INTERNAL_PUBKEY', 1n),
     timeoutBlocks: parse.integer('TIMEOUT_BLOCKS', 5),
-    smallTimeoutBlocks: parse.integer('SMALL_TIMEOUT_BLOCKS', 6),
-    largeTimeoutBlocks: parse.integer('LARGE_TIMEOUT_BLOCKS', 18),
+    smallTimeoutBlocks: parse.integer('SMALL_TIMEOUT_BLOCKS', 18),
+    largeTimeoutBlocks: parse.integer('LARGE_TIMEOUT_BLOCKS', 36),
 
     payloadAmount: parse.bigint('PAYLOAD_AMOUNT', ONE_BITCOIN * 10n),
     proverStakeAmount: parse.bigint('PROVER_STAKE_AMOUNT', ONE_BITCOIN * 2n),
@@ -103,5 +103,5 @@ export const agentConf: AgentConf = {
     protocolIntervalMs: parse.integer('PROTOCOL_INTERVAL_MS', 1000),
     blockCheckIntervalMs: parse.integer('BLOCK_CHECK_INTERVAL_MS', 1000),
     telegramChannelId: parse.string('TELEGRAM_CHANNEL_ID', '-1002148850465'),
-    bitcoinFeeRateForExternal: parse.integer('BITCOIN_FEE_RATE', 0.0001) // fee rate in BTC per KB
+    bitcoinFeeRateForExternal: parse.integer('BITCOIN_FEE_RATE', 0.001) // fee rate in BTC per KB
 };
