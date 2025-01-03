@@ -17,6 +17,7 @@ from .test_spending_conditions import TestSpendingConditionsCommand
 from .test_scripts import TestScriptsCommand
 from .broadcast import BroadcastCommand
 from .calculate_script_optimizations import CalculateScriptOptimizationsCommand
+from .verify_signatures import VerifySignaturesCommand
 
 COMMAND_CLASSES = [
     FundAndSendCommand,
@@ -26,6 +27,7 @@ COMMAND_CLASSES = [
     TestScriptsCommand,
     BroadcastCommand,
     CalculateScriptOptimizationsCommand,
+    VerifySignaturesCommand,
 ]
 
 

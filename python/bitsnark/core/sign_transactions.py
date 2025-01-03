@@ -14,9 +14,9 @@ from sqlalchemy.orm.attributes import flag_modified
 from bitsnark.conf import POSTGRES_BASE_URL
 from bitsnark.core.parsing import parse_bignum, parse_hex_bytes, serialize_hex
 from .models import TransactionTemplate, Setups, SetupStatus, OutgoingStatus
+from .types import Role
 from .signing import sign_input
 
-Role = Literal['prover', 'verifier']
 
 
 @dataclass
