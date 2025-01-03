@@ -1,4 +1,4 @@
-import { Instruction } from '../../generator/ec_vm/vm/types';
+import { InstrCode, Instruction } from '../../generator/ec_vm/vm/types';
 import { Compressor } from '../common/taptree';
 import { Template } from '../common/types';
 import { AgentDb } from '../common/agent-db';
@@ -17,15 +17,16 @@ import {
     RefutationDescriptor
 } from './refutation';
 import { getHash } from '../../../src/common/taproot-common';
+import { prime_bigint } from '../common/constants';
+import { modInverse } from '../../generator/common/math-utils';
 
 function timeStr(ms: number): string {
     ms /= 1000;
-    let h, m, s;
-    h = `${Math.round(ms / 3600)}h`;
+    const h = `${Math.round(ms / 3600)}h`;
     ms %= 3600; // remove hours
-    m = `${Math.round(ms / 60)}m`;
+    const m = `${Math.round(ms / 60)}m`;
     ms %= 60; // remove minutes
-    s = `${Math.round(ms)}s`;
+    const s = `${Math.round(ms)}s`;
     return [h, m, s].filter((x) => x).join(':');
 }
 
@@ -66,6 +67,43 @@ export class DoomsdayGenerator {
             requestedScriptIndex
         }));
         return inputs;
+    }
+
+    // return true if the line succeeds!!!
+    public checkLine(index: number, a: bigint, b: bigint, c: bigint, d?: bigint): boolean {
+        const line = this.program[index];
+        switch (line.name) {
+            case InstrCode.ADDMOD:
+                return c == (a + b) % prime_bigint;
+            case InstrCode.ANDBIT:
+                return c == (a & (1n << BigInt(line.bit!)) ? b : 0n);
+            case InstrCode.ANDNOTBIT:
+                return c == (a & (1n << BigInt(line.bit!)) ? 0n : b);
+            case InstrCode.MOV:
+                return a == c;
+            case InstrCode.EQUAL:
+                return c != 0n ? a == b : a != b;
+            case InstrCode.MULMOD:
+                return c == (a * b) % prime_bigint;
+            case InstrCode.OR:
+                return c != 0n ? a != 0n || b != 0n : a == 0n && b == 0n;
+            case InstrCode.AND:
+                return c != 0n ? a != 0n && b != 0n : a == 0n || b == 0n;
+            case InstrCode.NOT:
+                return c != 0n ? a == 0n : a != 0n;
+            case InstrCode.SUBMOD:
+                return c == (prime_bigint + a - b) % prime_bigint;
+            case InstrCode.DIVMOD:
+                try {
+                    return c == a * modInverse(b, prime_bigint);
+                } catch (e) {
+                    return false;
+                }
+            case InstrCode.ASSERTONE:
+                return a == 1n;
+            case InstrCode.ASSERTZERO:
+                return a == 0n;
+        }
     }
 
     async generateFinalStepTaprootChunk(

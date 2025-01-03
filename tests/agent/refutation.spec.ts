@@ -25,7 +25,7 @@ describe('Refutation', () => {
                     };
                     const index = getRefutationIndex(rd!);
                     const rd2 = getRefutationDescriptor(decasector, index);
-                    expect(rd2).toEqual(rd!);    
+                    expect(rd2).toEqual(rd!);
                 } else {
                     for (let whichProof = 0; whichProof < totalRefutationProofs; whichProof++) {
                         for (let whichHash = 0; whichHash < totalRefutationHashes; whichHash++) {
@@ -38,11 +38,10 @@ describe('Refutation', () => {
                             };
                             const index = getRefutationIndex(rd!);
                             const rd2 = getRefutationDescriptor(decasector, index);
-                            expect(rd2).toEqual(rd!);            
+                            expect(rd2).toEqual(rd!);
                         }
                     }
                 }
-
             }
         }
     }, 10000);

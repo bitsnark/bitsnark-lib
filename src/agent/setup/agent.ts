@@ -427,9 +427,8 @@ export class Agent {
 }
 
 if (__filename == process.argv[1]) {
-
     const args = minimist(process.argv.slice(2));
-    const agentId = args['agent-id'] ?? 'bitsnark_prover_1';1
+    const agentId = args['agent-id'] ?? 'bitsnark_prover_1';
     const role = agentId.indexOf('prover') >= 0 ? AgentRoles.PROVER : AgentRoles.VERIFIER;
 
     const agent = new Agent(agentId, role);

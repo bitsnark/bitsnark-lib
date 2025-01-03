@@ -4,14 +4,12 @@ import { jsonParseCustom, jsonStringifyCustom } from '../common/json';
 const tsNodePath = './node_modules/.bin/ts-node';
 
 async function run(command: string, input: string): Promise<string> {
-
     let result = '';
 
     return new Promise((resolve, reject) => {
-        const child = spawn(
-            tsNodePath,
-            ['./src/agent/fork/fork-entrypoint.ts', command],
-        { stdio: ['pipe', 'pipe', 'pipe'] });
+        const child = spawn(tsNodePath, ['./src/agent/fork/fork-entrypoint.ts', command], {
+            stdio: ['pipe', 'pipe', 'pipe']
+        });
         child.stdout.on('data', (data: Buffer) => {
             const s = data.toString('utf-8');
             result += s;

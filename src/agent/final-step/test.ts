@@ -1,6 +1,4 @@
-import { randomBytes } from "crypto";
-
-
+import { randomBytes } from 'crypto';
 
 const ba = [];
 for (let i = 0; i < 310000 + 310000 * 3 * 8; i++) {
