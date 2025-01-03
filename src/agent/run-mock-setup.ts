@@ -12,46 +12,43 @@ import { startSetup } from './setup/start-setup';
 import { BitcoinListener } from './listener/bitcoin-listener';
 import { MockPublisher } from './protocol-logic/mock-publisher';
 
-const MOCK = false;
+export async function main(proverAgentId: string, verifierAgentId: string, setupId: string, regtest?: boolean) {
+    console.log(`Starting mock setup ${setupId} with prover ${proverAgentId} and verifier ${verifierAgentId}`);
+    console.log('Make sure the bitcoin services are running:');
+    console.log(`npm run start-bitcoin-services ${proverAgentId} ${verifierAgentId}`);
 
-export async function main(proverAgentId: string, verifierAgentId: string, setupId?: string) {
-    if (!setupId) {
-        setupId = randomBytes(32).toString('hex');
+    const proverAgent = new Agent(proverAgentId, AgentRoles.PROVER);
+    proverAgent.launch();
 
-        const proverAgent = new Agent(proverAgentId, AgentRoles.PROVER);
-        proverAgent.launch();
+    const verifierAgent = new Agent(verifierAgentId, AgentRoles.VERIFIER);
+    verifierAgent.launch();
 
-        const verifierAgent = new Agent(verifierAgentId, AgentRoles.VERIFIER);
-        verifierAgent.launch();
+    await startSetup(proverAgentId, verifierAgentId, setupId);
 
-        await startSetup(proverAgentId, verifierAgentId, setupId);
+    const proverDb = new AgentDb(proverAgentId);
+    const verifierDb = new AgentDb(verifierAgentId);
 
-        const proverDb = new AgentDb(proverAgentId);
-        const verifierDb = new AgentDb(verifierAgentId);
+    // Wait for setup to be active
+    while ((await sleep(100)) == undefined) {
+        const proverSetup = await proverDb.getSetup(setupId);
 
-        // Wait for setup to be active
-        while (true) {
-            const setup1 = await proverDb.getSetup(setupId);
+        // The verifier may not have the setup yet
+        const verifierSetup = await verifierDb.getSetupOrNull(setupId);
 
-            // The verifier may not have the setup yet
-            const setup2 = await verifierDb.getSetupOrNull(setupId);
-
-            // Are they both active?
-            if (setup1.status === SetupStatus.ACTIVE && setup2 && setup2.status === SetupStatus.ACTIVE) {
-                break;
-            }
-
-            // Wait a bit
-            await sleep(100);
+        // Are they both active?
+        if (proverSetup.status === SetupStatus.ACTIVE && verifierSetup && verifierSetup.status === SetupStatus.ACTIVE) {
+            break;
         }
     }
 
-    if (MOCK) {
-        new MockPublisher(proverAgentId, verifierAgentId, setupId).start();
-    } else {
+    if (regtest) {
         for (const agentId of [proverAgentId, verifierAgentId]) {
+            console.log(`Starting blockchain listener for ${agentId}`);
             new BitcoinListener(agentId).startBlockchainCrawler();
         }
+    } else {
+        console.log('Starting mock publisher');
+        new MockPublisher(proverAgentId, verifierAgentId, setupId).start();
     }
 
     const prover = new ProtocolProver(proverAgentId, setupId);
@@ -78,18 +75,17 @@ export async function main(proverAgentId: string, verifierAgentId: string, setup
 
     do {
         await doit();
-        await sleep(agentConf.protocolIntervalMs);
-        /*eslint no-constant-condition: "off"*/
-    } while (true);
+    } while ((await sleep(agentConf.protocolIntervalMs)) == undefined);
 }
 
 if (require.main === module) {
     const args = minimist(process.argv.slice(2));
     const proverAgentId = args['prover-agent-id'] ?? 'bitsnark_prover_1';
     const verifierAgentId = args['verifier-agent-id'] ?? 'bitsnark_verifier_1';
-    const setupId = args['setup-id']; // if null, create a new setup
+    const setupId = args['setup-id'] ?? 'test_setup';
+    const regtest = args['regtest'] ?? false;
 
-    main(proverAgentId, verifierAgentId, setupId).catch((error) => {
+    main(proverAgentId, verifierAgentId, setupId, regtest).catch((error) => {
         console.error(error);
         throw error;
     });
