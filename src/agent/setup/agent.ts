@@ -349,7 +349,7 @@ export class Agent {
         this.verifyMessage(message, i);
 
         await this.db.upsertTemplates(i.setupId, i.templates!);
-        i.templates = await fakeSignTemplates(this.role, this.agentId, i.setupId, i.templates!);
+        i.templates = await signTemplates(this.role, this.agentId, i.setupId, i.templates!);
 
         for (const s of message.signatures) {
             const template = getTemplateByName(i.templates!, s.templateName);

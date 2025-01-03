@@ -31,11 +31,13 @@ export async function startSetup(proverAgentId: string, verifierAgentId: string,
     console.log('Message sent.');
 }
 
-if (__filename == process.argv[1]) {
+if (require.main === module) {
     console.log('Starting setup...');
 
     const args = minimist(process.argv.slice(2));
-    const { 'prover-agent-id': proverAgentId, 'verifier-agent-id': verifierAgentId, 'setup-id': setupId } = args;
+    const setupId = args['setup-id'] ?? args._[0];
+    const proverAgentId = args['prover-agent-id'] ?? args._[1];
+    const verifierAgentId = args['verifier-agent-id'] ?? args._[2];
 
     if (!proverAgentId || !agentConf.keyPairs[proverAgentId]) {
         console.error('Prover agent not found in config:', proverAgentId);
@@ -51,5 +53,7 @@ if (__filename == process.argv[1]) {
         .then(() => {
             console.log('Message sent.');
         })
-        .catch((e) => console.error(e));
+        .catch((error) => {
+            throw error;
+        });
 }

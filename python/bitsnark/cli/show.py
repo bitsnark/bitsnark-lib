@@ -1,5 +1,6 @@
 import argparse
 import os
+import io
 
 from bitcointx.core.script import CScript
 from bitcointx.wallet import CCoinAddress
@@ -9,6 +10,7 @@ import sqlalchemy as sa
 from bitsnark.core.models import TransactionTemplate
 from bitsnark.core.parsing import parse_bignum, parse_hex_bytes
 from ._base import Command, add_tx_template_args, find_tx_template, Context
+from .broadcast import create_tx_with_witness
 
 
 class ShowCommand(Command):
@@ -55,7 +57,10 @@ class ShowCommand(Command):
             prevout_index = inp['outputIndex']
             sc_index = inp['spendingConditionIndex']
             index = inp['index']
-            print(f"- input {index}: {prev_txid}:{prevout_index} (tx: {prev_tx_name}, spendingCondition: {sc_index})")
+            print(
+                f"- input {index}: {prev_txid}:{prevout_index} "
+                f"(tx: {prev_tx_name}, output: {prevout_index}, spendingCondition: {sc_index})"
+            )
         print("Outputs:")
         for outp in tx_template.outputs:
             index = outp['index']
@@ -76,3 +81,32 @@ class ShowCommand(Command):
                         value = value[:maxwidth] + "..."
                     key = f"{key}:".ljust(25)
                     print(f'      - {key} {value}')
+
+        # Deserialized tx stuff
+        tx = create_tx_with_witness(tx_template=tx_template, dbsession=dbsession)
+        tx_virtual_size = tx.get_virtual_size()
+        print("")
+        print(f"Transaction virtual size: {tx_virtual_size} vB")
+
+        def print_size(prefix, size):
+            print(f"{prefix} size: {size} B ({size / 4} vB, {size / 4 / tx_virtual_size * 100:.2f}% of tx size)")
+
+        print_size("Witness", len(tx.wit.serialize()))
+
+        total_witness_data_size = 0
+        total_witness_script_size = 0
+        total_witness_cblock_size = 0
+
+        for i, input_witness in enumerate(tx.wit.vtxinwit):
+            *witness_elems, tapscript, cblock = input_witness.scriptWitness.stack
+            witness_data_size = sum(len(e) for e in witness_elems)
+            witness_script_size = len(tapscript)
+            witness_cblock_size = len(cblock)
+            # print(f"- Input witness {i}: data {witness_data_size} B, script {witness_script_size} B, cblock {witness_cblock_size} B, stack elems: {len(witness_elems)}")
+            total_witness_data_size += witness_data_size
+            total_witness_script_size += witness_script_size
+            total_witness_cblock_size += witness_cblock_size
+
+        print_size("- Witness data", total_witness_data_size)
+        print_size("- Witness script", total_witness_script_size)
+        print_size("- Witness control block", total_witness_cblock_size)
