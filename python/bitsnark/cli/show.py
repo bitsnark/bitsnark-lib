@@ -57,7 +57,10 @@ class ShowCommand(Command):
             prevout_index = inp['outputIndex']
             sc_index = inp['spendingConditionIndex']
             index = inp['index']
-            print(f"- input {index}: {prev_txid}:{prevout_index} (tx: {prev_tx_name}, spendingCondition: {sc_index})")
+            print(
+                f"- input {index}: {prev_txid}:{prevout_index} "
+                f"(tx: {prev_tx_name}, output: {prevout_index}, spendingCondition: {sc_index})"
+            )
         print("Outputs:")
         for outp in tx_template.outputs:
             index = outp['index']
@@ -99,7 +102,7 @@ class ShowCommand(Command):
             witness_data_size = sum(len(e) for e in witness_elems)
             witness_script_size = len(tapscript)
             witness_cblock_size = len(cblock)
-            # print(f"- Input witness {i}: data {witness_data_size} B, script {witness_script_size} B, cblock {witness_cblock_size} B")
+            # print(f"- Input witness {i}: data {witness_data_size} B, script {witness_script_size} B, cblock {witness_cblock_size} B, stack elems: {len(witness_elems)}")
             total_witness_data_size += witness_data_size
             total_witness_script_size += witness_script_size
             total_witness_cblock_size += witness_cblock_size
