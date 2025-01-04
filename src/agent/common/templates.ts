@@ -174,7 +174,7 @@ export const protocolEnd: Template[] = [
     {
         role: AgentRoles.PROVER,
         name: TemplateNames.ARGUMENT,
-        inputs: array(5, (i) => ({
+        inputs: array(6, (i) => ({
             templateName: `${TemplateNames.SELECT}_${twoDigits(iterations - 1)}`,
             outputIndex: i,
             spendingConditionIndex: 0
@@ -388,7 +388,7 @@ export function makeProtocolSteps(): Template[] {
                             wotsSpec: array<WotsType>(3, WotsType._256_4)
                         }
                     ]
-                }                
+                }
             ];
         }
 

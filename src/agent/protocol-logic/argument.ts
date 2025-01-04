@@ -141,8 +141,11 @@ export class Argument {
         const decasector = new Decasector(this.proof);
         const instr = decasector.savedVm.program[this.index];
 
+        // reorder arg data for proofs
+        const argProofs = chunk(argData.slice(2).flat(), 15);
+
         const makeProof = async (i: number) => {
-            const hashes = argData[2 + i].map((n) => bigintToBufferBE(n, 256));
+            const hashes = argProofs[i].map((n) => bigintToBufferBE(n, 256));
             const iter = decasector.stateCommitmentByLine[this.index].iteration;
             const which = decasector.stateCommitmentByLine[this.index].selection;
             const root = states[iter][which];
