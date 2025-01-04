@@ -52,11 +52,19 @@ export class Argument {
         scAfter: StateCommitment,
         instr: Instruction
     ): Promise<Buffer[][]> {
+
         const valuesBefore = scBefore.getValues();
         const valuesAfter = scAfter.getValues();
+
+        if (valuesBefore.length != 256 || valuesAfter.length != 256)
+            throw new Error('Invalid number of values in state commitment');
+
         const merkleProofA = await FatMerkleProof.fromRegs(valuesBefore, instr.param1);
         const merkleProofB = instr.param2 ? await FatMerkleProof.fromRegs(valuesBefore, instr.param2!) : merkleProofA;
         const merkleProofC = await FatMerkleProof.fromRegs(valuesAfter, instr.target);
+
+        if (merkleProofA.hashes.length != 17 || merkleProofB.hashes.length != 17 || merkleProofC.hashes.length != 17)
+            throw new Error('Invalid number of hashes in merkle proof');
 
         const hashes = [merkleProofA.toArgument(), merkleProofB.toArgument(), merkleProofC.toArgument()];
         const inputHashes = chunk(hashes.flat(), 14);

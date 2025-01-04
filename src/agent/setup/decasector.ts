@@ -36,6 +36,8 @@ export class StateCommitment {
     public getValues(): bigint[] {
         if (this.values) return this.values;
         this.values = getRegsAt(this.savedVm, this.left, this.line, this.right);
+        // pad with zeros so we always have the same size merkle proof
+        while (this.values.length < 256) this.values.push(0n);
         return this.values;
     }
 }
