@@ -7,17 +7,10 @@ import { bigintToBufferBE, bufferToBigintBE } from '../common/encoding';
 import { TemplateNames } from '../common/types';
 import { createUniqueDataId } from '../setup/wots-keys';
 import { Decasector, StateCommitment } from '../setup/decasector';
+import { chunk } from '../common/array-utils';
 
 function calculateD(a: bigint, b: bigint): bigint {
     return (a * b) / prime_bigint;
-}
-
-function chunk<T>(arr: T[], size: number): T[][] {
-    const chunks = [];
-    for (let i = 0; i < arr.length; i += size) {
-        chunks.push(arr.slice(i, i + size));
-    }
-    return chunks;
 }
 
 export class Argument {

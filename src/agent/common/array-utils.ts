@@ -22,3 +22,11 @@ export function butLast<T>(a: T[]): T[] {
 export function butFirst<T>(a: T[]): T[] {
     return a.slice(1);
 }
+
+export function chunk<T>(arr: T[], size: number): T[][] {
+    const chunks = [];
+    for (let i = 0; i < arr.length; i += size) {
+        chunks.push(arr.slice(i, i + size));
+    }
+    return chunks;
+}
