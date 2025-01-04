@@ -52,7 +52,6 @@ export class Argument {
         scAfter: StateCommitment,
         instr: Instruction
     ): Promise<Buffer[][]> {
-
         const valuesBefore = scBefore.getValues();
         const valuesAfter = scAfter.getValues();
 
