@@ -12,6 +12,14 @@ function calculateD(a: bigint, b: bigint): bigint {
     return (a * b) / prime_bigint;
 }
 
+function chunk<T>(arr: T[], size: number): T[][] {
+    const chunks = [];
+    for (let i = 0; i < arr.length; i += size) {
+        chunks.push(arr.slice(i, i + size));
+    }
+    return chunks;
+}
+
 export class Argument {
     agentId: string;
     setupId: string;
@@ -58,7 +66,8 @@ export class Argument {
         const merkleProofC = await FatMerkleProof.fromRegs(valuesAfter, instr.target);
 
         const hashes = [merkleProofA.toArgument(), merkleProofB.toArgument(), merkleProofC.toArgument()];
-        const encoded = hashes.map((o, oi) =>
+        const inputHashes = chunk(hashes.flat(), 14);
+        const encoded = inputHashes.map((o, oi) =>
             o
                 .map((b, dataIndex) =>
                     encodeWinternitz256_4(

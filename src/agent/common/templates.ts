@@ -376,10 +376,19 @@ export function makeProtocolSteps(): Template[] {
                         {
                             nextRole: AgentRoles.PROVER,
                             signatureType: SignatureType.BOTH,
-                            wotsSpec: array<WotsType>(13, WotsType._256_4)
+                            wotsSpec: array<WotsType>(14, WotsType._256_4)
                         }
                     ]
-                }))
+                })),
+                {
+                    spendingConditions: [
+                        {
+                            nextRole: AgentRoles.PROVER,
+                            signatureType: SignatureType.BOTH,
+                            wotsSpec: array<WotsType>(3, WotsType._256_4)
+                        }
+                    ]
+                }                
             ];
         }
 
