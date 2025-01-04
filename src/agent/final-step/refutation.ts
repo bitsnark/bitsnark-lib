@@ -156,7 +156,7 @@ export function getRefutationDescriptor(decasector: Decasector, index: number): 
     return { refutationType: RefutationType.HASH, line, totalLines: decasector.total, whichProof, whichHash };
 }
 
-function assertPairHash(
+function negifyPairHash(
     blake3: BLAKE3,
     leftNibbles: StackItem[],
     rightNibbles: StackItem[],
@@ -211,7 +211,7 @@ async function createRefuteHashScriptTemplate(): Promise<ScriptTemplate> {
     bitcoin.winternitzDecode256_4(resultSi, resultWi, resultKeys);
     bitcoin.drop(resultWi);
 
-    assertPairHash(blake3, rightSi, leftSi, resultSi);
+    negifyPairHash(blake3, rightSi, leftSi, resultSi);
     return bitcoin.programToTemplate({ validateStack: true });
 }
 

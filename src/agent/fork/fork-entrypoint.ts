@@ -51,4 +51,9 @@ async function main() {
     });
 }
 
-main();
+if (require.main === module) {
+    main().catch((error) => {
+        console.error('Error: ', error);
+        process.exit(-1);
+    });
+}
