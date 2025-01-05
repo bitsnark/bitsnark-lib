@@ -51,7 +51,11 @@ export class ProtocolBase {
         const template = await this.db.getTemplate(this.setupId, name);
         if (template.status == TemplateStatus.REJECTED) throw new Error(`Template ${name} was rejected`);
         if (template.status == TemplateStatus.READY) return;
-        if (template.status == TemplateStatus.PUBLISHED) return;
+        if (template.status == TemplateStatus.PUBLISHED) {
+            // Please keep this log message as long as we manually mine blocks in `npm run e2e`.
+            console.log(`Template ${name} published`);
+            return;
+        }
         await this.db.markTemplateToSend(this.setupId, name, data);
         console.log(`Asking to send template ${name} (make sure sender is listening: npm run start-bitcoin-sender)`);
     }
