@@ -1,12 +1,12 @@
-import { Bitcoin, executeProgram } from "../../../src/generator/btc_vm/bitcoin";
-import { AgentDb } from "../common/agent-db";
-import { proofBigint } from "../common/constants";
-import { getSpendingConditionByInput, getTemplateByName, twoDigits } from "../common/templates";
-import { TemplateNames } from "../common/types";
-import { encodeWinternitz24 } from "../common/winternitz";
-import { generateProcessSelectionPath } from "../setup/generate-scripts";
-import { createUniqueDataId } from "../setup/wots-keys";
-import { Argument } from "./argument";
+import { Bitcoin, executeProgram } from '../../../src/generator/btc_vm/bitcoin';
+import { AgentDb } from '../common/agent-db';
+import { proofBigint } from '../common/constants';
+import { getSpendingConditionByInput, getTemplateByName, twoDigits } from '../common/templates';
+import { TemplateNames } from '../common/types';
+import { encodeWinternitz24 } from '../common/winternitz';
+import { generateProcessSelectionPath } from '../setup/generate-scripts';
+import { createUniqueDataId } from '../setup/wots-keys';
+import { Argument } from './argument';
 
 const agentId = 'bitsnark_prover_1';
 const setupId = 'test_setup';
@@ -29,25 +29,22 @@ async function init() {
 }
 
 async function main() {
-
     const db = new AgentDb(agentId);
     const templates = await db.getTemplates(setupId);
     const argumentTemplate = getTemplateByName(templates, TemplateNames.ARGUMENT);
 
-    const script0a = generateProcessSelectionPath(getSpendingConditionByInput(templates, argumentTemplate.inputs[0]))
+    const script0a = generateProcessSelectionPath(getSpendingConditionByInput(templates, argumentTemplate.inputs[0]));
     const script0b = argumentTemplate.inputs[0].script!;
 
     console.log('scripts equal: ', script0a.compare(script0b) == 0);
 
     const { argument, argWitness } = await init();
     const bitcoin = new Bitcoin();
-    argWitness[0].forEach(b => bitcoin.addWitness(b));
-    [Buffer.alloc(64), Buffer.alloc(64)].forEach(b => bitcoin.addWitness(b));
+    argWitness[0].forEach((b) => bitcoin.addWitness(b));
+    [Buffer.alloc(64), Buffer.alloc(64)].forEach((b) => bitcoin.addWitness(b));
     bitcoin.throwOnFail = true;
     executeProgram(bitcoin, script0a, true);
     expect(bitcoin.fail).toBeFalsy();
 }
 
 main();
-
-

@@ -28,7 +28,6 @@ async function init() {
 }
 
 describe('Argument', () => {
-
     it('make it', async () => {
         const { argument, argWitness } = await init();
 
@@ -59,4 +58,3 @@ describe('Argument', () => {
         expect(decoded[5].length).toBe(9);
     });
 });
-

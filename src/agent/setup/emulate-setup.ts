@@ -232,9 +232,9 @@ if (require.main === module) {
         'prover-agent-id': proverAgentId,
         'verifier-agent-id': verifierAgentId,
         'setup-id': setupId,
-        'locked': lockedFunds,
-        'stake': proverStake,
-        'final': generateFinal
+        locked: lockedFunds,
+        stake: proverStake,
+        final: generateFinal
     } = minimist(process.argv.slice(2));
     main(setupId, proverAgentId, verifierAgentId, generateFinal, lockedFunds, proverStake).catch((error) => {
         throw error;
