@@ -152,9 +152,41 @@ def _eval_tapscript(
     v_bytes: bytes
     v_int: int
     v_bool: bool
+
+    for i, elt in enumerate(stack):
+        if isinstance(elt, int):
+            elt_len = len(CScript([elt]))
+        else:
+            elt_len = len(elt)
+
+        # Disallow stack item size > MAX_SCRIPT_ELEMENT_SIZE in witness stack
+        if elt_len > MAX_SCRIPT_ELEMENT_SIZE:
+            raise EvalScriptError(
+                "maximum push size exceeded by an item at position {} "
+                "on witness stack (initial witness elements)".format(i),
+                ScriptEvalState(
+                    stack=stack,
+                    scriptIn=scriptIn,
+                    txTo=txTo,
+                    inIdx=inIdx,
+                    flags=flags,
+                    altstack=altstack,
+                    vfExec=vfExec,
+                    pbegincodehash=pbegincodehash,
+                    nOpCount=nOpCount[0]
+                )
+            )
+
     for sop_index, (sop, sop_data, sop_pc) in enumerate(scriptIn.raw_iter()):
-        logger.info("%5d: %s %s (start byte: %s)", sop_index, sop, sop_data.hex() if sop_data is not None else '(No data)', sop_pc)
         fExec = _CheckExec(vfExec)
+        logger.info(
+            "%5d: %s %s (start byte: %s) (%s)",
+            sop_index,
+            sop,
+            sop_data.hex() if sop_data is not None else '(No data)',
+            sop_pc,
+            'executed' if fExec else 'not executed',
+        )
 
         def get_eval_state() -> ScriptEvalState:
             return ScriptEvalState(
