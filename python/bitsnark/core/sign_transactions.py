@@ -59,15 +59,15 @@ HARDCODED_MOCK_INPUTS: dict[str, list[MockInput]] = {
 KEYPAIRS = {
     'bitsnark_prover_1': {
         'public': XOnlyPubKey.fromhex(
-            os.getenv('PROVER_SCHNORR_PUBLIC', 'ae2ea39bca4b6b14567e3c38b9680f6483ceeef4ae17f8dceb5a5a0866999b75')),
+            os.getenv('PROVER_SCHNORR_PUBLIC', '0823708a1af73ad048fb00cb59f39a42b246fbd62554e4a24765695e9794ecb5')),
         'private': CKey.fromhex(
-            os.getenv('PROVER_SCHNORR_PRIVATE', '415c69b837f4146019574f59c223054c8c144ac61b6ae87bc26824c0f8d034e2')),
+            os.getenv('PROVER_SCHNORR_PRIVATE', '7af2071f11cf8f5de0556d53dae4c4ac35b4854d316e3a503725ce55a7d336de')),
     },
     'bitsnark_verifier_1': {
         'public': XOnlyPubKey.fromhex(
-            os.getenv('VERIFIER_SCHNORR_PUBLIC', '86ad52a51b65ab3aed9a64e7202a7aa1f2bd3da7a6a2dae0f5c8e28bda29de79')),
+            os.getenv('VERIFIER_SCHNORR_PUBLIC', '20f4daa2368b68bf5f37b5f5ef1cb9eff591e6dcd6434bfa5fe9d605f86ab95b')),
         'private': CKey.fromhex(
-            os.getenv('VERIFIER_SCHNORR_PRIVATE', 'd4067af1132afcb352b0edef53d8aa2a5fc713df61dee31b1d937e69ece0ebf0')),
+            os.getenv('VERIFIER_SCHNORR_PRIVATE', 'd8f3272c2c1ff80fa22fb9a0a9cc30e306feac5643627234dc624003e79b2c43')),
     },
 }
 for keypairs in KEYPAIRS.values():
@@ -283,6 +283,7 @@ def _handle_tx_template(
     tx_template.tx_data = dict(
         tx_template.tx_data or {}, signedSerializedTx=serialize_hex(tx.serialize())
     )
+    print('!!!!!!!!!!!!!!!!!!!!!', KEYPAIRS[agent_id]['private'])
     for i, inp in enumerate(tx_inputs):
         signature = sign_input(
             script=input_tapscripts[i],
