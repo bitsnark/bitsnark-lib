@@ -22,6 +22,7 @@ pure_eval==0.2.3
 Pygments==2.18.0
 pytest==8.3.3
 python-bitcointx==1.1.5
+python-dotenv==1.0.1
 requests==2.32.3
 six==1.16.0
 SQLAlchemy==2.0.35

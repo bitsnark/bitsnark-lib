@@ -11,6 +11,7 @@ from sqlalchemy.orm.session import Session
 from sqlalchemy.orm.attributes import flag_modified
 
 from bitsnark.conf import POSTGRES_BASE_URL
+from bitsnark.core.environ import load_bitsnark_dotenv
 from bitsnark.core.parsing import parse_bignum, parse_hex_bytes, serialize_hex
 from .models import TransactionTemplate
 from ..btc.rpc import BitcoinRPC, JSONRPCError
@@ -131,6 +132,8 @@ def fund_transactions(
 
 
 def main(argv: Sequence[str] = None):
+    load_bitsnark_dotenv()
+
     parser = argparse.ArgumentParser()
     parser.add_argument('--db', default=POSTGRES_BASE_URL)
     parser.add_argument('--rpc', help='Bitcoin RPC url including the wallet',

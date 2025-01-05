@@ -1,4 +1,4 @@
-'Monitor DB to sign and broadcast transactions.'
+"""Monitor DB to sign and broadcast transactions."""
 import argparse
 import logging
 import os
@@ -11,6 +11,7 @@ from sqlalchemy.orm.attributes import flag_modified
 
 from bitsnark.conf import POSTGRES_BASE_URL
 from bitsnark.btc.rpc import BitcoinRPC
+from bitsnark.core.environ import load_bitsnark_dotenv
 from .models import TransactionTemplate, Setups, SetupStatus, OutgoingStatus
 from .sign_transactions import sign_setup, TransactionProcessingError
 from ..cli.broadcast import broadcast_transaction
@@ -60,7 +61,10 @@ def broadcast_transactions(dbsession, bitcoin_rpc):
 
 
 def main(argv: typing.Sequence[str] = None):
-    'Entry point.'
+    """Entry point"""
+
+    load_bitsnark_dotenv()
+
     parser = argparse.ArgumentParser()
     parser.add_argument('--agent-id', required=True, help='Process only transactions with this agent ID')
     parser.add_argument('--role', required=True, choices=['prover', 'verifier'],
