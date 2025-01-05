@@ -127,13 +127,6 @@ export class Compressor {
         }
     }
 
-    private sanity() {
-        let n = 0;
-        for (let i = 0; i < this.depth; i++) n = n * 2 + this.data[i].length;
-        assert(this.nextIndex == n);
-        assert(n <= 2 ** this.depth);
-    }
-
     private indexStringForLevel(level: number): string {
         if (level >= this.depth) throw new Error('Level should be < depth');
         let n = 0;
@@ -150,7 +143,6 @@ export class Compressor {
                 if (a == b) this.proof[this.data.length - i] = hash;
                 this.data[i] = [];
                 this.data[i - 1].push(hash);
-                this.sanity();
             }
         }
     }

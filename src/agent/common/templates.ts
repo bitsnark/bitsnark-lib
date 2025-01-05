@@ -212,11 +212,6 @@ export const protocolEnd: Template[] = [
                     {
                         nextRole: AgentRoles.VERIFIER,
                         signatureType: SignatureType.VERIFIER
-                    },
-                    {
-                        nextRole: AgentRoles.PROVER,
-                        timeoutBlocks: agentConf.smallTimeoutBlocks,
-                        signatureType: SignatureType.BOTH
                     }
                 ]
             }
