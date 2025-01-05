@@ -27,9 +27,7 @@ fi
 echo proof
 ts-node ./src/agent/protocol-logic/send-proof.ts $prover "$setup_id" $fudge
 
-echo Hit enter to advance a block or precede with a number to generate that many blocks
-while true; do
-    read blocks
-    generate_blocks $blocks
+while sleep 1; do
+    [ $(bitcoin_cli getmempoolinfo | jq .unbroadcastcount) -gt 0 ] && generate_blocks
 done
 wait

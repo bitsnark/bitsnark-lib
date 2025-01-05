@@ -1,6 +1,5 @@
 'Quick and dirty transaction broadcaster.'
 import argparse
-import itertools
 import logging
 from sqlalchemy import select
 from sqlalchemy.orm.session import Session
@@ -47,7 +46,7 @@ def broadcast_transaction(
 
     if dump:
         dump_filename = f"{tx_template.name}-signed-serialized-.dump"
-        with open(dump_filename, "w") as f:
+        with open(dump_filename, "w", encoding="utf-8") as f:
             f.write(signed_serialized_tx)
         print("Dump written to", dump_filename)
 
@@ -110,13 +109,9 @@ def create_tx_with_witness(
 
         tapscript = CScript(parse_hex_bytes(spending_condition['script']))
 
-        witness_raw = tx_template.protocol_data or []
         try:
-            witness = [
-                parse_hex_bytes(s) for s in
-                witness_raw[input_index]
-            ]
-        except IndexError:
+            witness = [parse_hex_bytes(datum) for datum in tx_template.protocol_data[input_index]]
+        except (TypeError, IndexError):
             witness = []
 
         control_block = parse_hex_bytes(spending_condition['controlBlock'])
