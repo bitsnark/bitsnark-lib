@@ -62,8 +62,8 @@ def find_tx_template(context: Context) -> TransactionTemplate:
 
 
 def get_default_prover_privkey_hex() -> str:
-    return os.getenv('PROVER_SCHNORR_PRIVATE', '415c69b837f4146019574f59c223054c8c144ac61b6ae87bc26824c0f8d034e2')
+    return os.getenv('PROVER_SCHNORR_PRIVATE', 'Please use the environment variable PROVER_SCHNORR_PRIVATE')
 
 
 def get_default_verifier_privkey_hex() -> str:
-    return os.getenv('VERIFIER_SCHNORR_PRIVATE', 'd4067af1132afcb352b0edef53d8aa2a5fc713df61dee31b1d937e69ece0ebf0')
+    return os.getenv('VERIFIER_SCHNORR_PRIVATE', 'Please use the environment variable VERIFIER_SCHNORR_PRIVATE')

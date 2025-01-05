@@ -9,6 +9,7 @@ from sqlalchemy.orm.session import Session
 
 from bitsnark.btc.rpc import BitcoinRPC
 from bitsnark.conf import POSTGRES_BASE_URL
+from bitsnark.core.environ import load_bitsnark_dotenv
 from ._base import Context
 from .fund_and_send import FundAndSendCommand
 from .show import ShowCommand
@@ -32,6 +33,8 @@ COMMAND_CLASSES = [
 
 
 def main(argv: Sequence[str] = None):
+    load_bitsnark_dotenv()
+
     parser = argparse.ArgumentParser()
     parser.add_argument('--db', help='database url', default=POSTGRES_BASE_URL)
     parser.add_argument('--rpc', help='bitcoin rpc url, including wallet',
