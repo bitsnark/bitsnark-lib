@@ -113,8 +113,7 @@ def create_tx_with_witness(
         witness_raw = tx_template.protocol_data or []
         witness = [
             parse_hex_bytes(s) for s in
-            # This flattens the list of lists
-            itertools.chain.from_iterable(witness_raw)
+            witness_raw[input_index]
         ]
 
         control_block = parse_hex_bytes(spending_condition['controlBlock'])
