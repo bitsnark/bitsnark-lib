@@ -5,6 +5,7 @@ import { AgentRoles, Setup, SpendingCondition, Template, TemplateStatus, Receive
 import { getTemplateByTemplateId } from '../common/templates';
 import { AgentDb } from '../common/agent-db';
 import { bigintToBufferBE } from '../common/encoding';
+import { WOTS_NIBBLES, WotsType } from '../common/winternitz';
 
 export interface Incoming {
     received: ReceivedTransaction;
@@ -70,13 +71,15 @@ export class ProtocolBase {
         return proof;
     }
 
-    parseSelection(incoming: Incoming): number {
+    parseSelection(incoming: Incoming, selectionPathUnparsed: Buffer[][]): number {
         const rawTx = incoming.received.raw as RawTransaction;
+        const usableWitness = rawTx.vin[0].txinwitness!.slice(0, WOTS_NIBBLES[WotsType._24]);
         const data = parseInput(
             this.templates!,
             incoming.template.inputs[0],
-            rawTx.vin[0].txinwitness!.map((s) => Buffer.from(s, 'hex'))
+            usableWitness.map((s) => Buffer.from(s, 'hex'))
         );
+        selectionPathUnparsed.push(usableWitness.map((s) => Buffer.from(s, 'hex')));
         return Number(data[0]);
     }
 

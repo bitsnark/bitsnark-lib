@@ -89,7 +89,7 @@ export class ProtocolVerifier extends ProtocolBase {
                 await this.db.markSetupPegoutSuccessful(this.setupId);
                 break;
             } else if (incoming.template.name.startsWith(TemplateNames.SELECT)) {
-                const selection = this.parseSelection(incoming);
+                const selection = this.parseSelection(incoming, selectionPathUnparsed);
                 selectionPath.push(selection);
                 const rawTx = incoming.received.raw;
                 selectionPathUnparsed.push(rawTx.vin[0].txinwitness!.map((s) => Buffer.from(s, 'hex')));
