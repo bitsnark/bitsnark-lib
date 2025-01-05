@@ -111,10 +111,13 @@ def create_tx_with_witness(
         tapscript = CScript(parse_hex_bytes(spending_condition['script']))
 
         witness_raw = tx_template.protocol_data or []
-        witness = [
-            parse_hex_bytes(s) for s in
-            witness_raw[input_index]
-        ]
+        try:
+            witness = [
+                parse_hex_bytes(s) for s in
+                witness_raw[input_index]
+            ]
+        except IndexError:
+            witness = []
 
         control_block = parse_hex_bytes(spending_condition['controlBlock'])
 
