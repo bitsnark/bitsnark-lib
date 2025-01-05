@@ -66,7 +66,7 @@ export class Argument {
             throw new Error('Invalid number of hashes in merkle proof');
 
         const hashes = [merkleProofA.toArgument(), merkleProofB.toArgument(), merkleProofC.toArgument()];
-        const inputHashes = chunk(hashes.flat(), 14);
+        const inputHashes = chunk(hashes.flat(), 12);
         const encoded = inputHashes.map((o, oi) =>
             o
                 .map((b, dataIndex) =>

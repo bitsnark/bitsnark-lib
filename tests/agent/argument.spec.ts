@@ -35,10 +35,10 @@ describe('Argument', () => {
         expect(argWitness[0].length).toBe(7 * WOTS_NIBBLES[WotsType._24]);
         expect(argument.checkIndex()).toBeTruthy();
         expect(argWitness[1].length).toBe(4 * WOTS_NIBBLES[WotsType._256_4]);
-        expect(argWitness[2].length).toBe(14 * WOTS_NIBBLES[WotsType._256_4]);
-        expect(argWitness[3].length).toBe(14 * WOTS_NIBBLES[WotsType._256_4]);
-        expect(argWitness[4].length).toBe(14 * WOTS_NIBBLES[WotsType._256_4]);
-        expect(argWitness[5].length).toBe(3 * WOTS_NIBBLES[WotsType._256_4]);
+        expect(argWitness[2].length).toBe(12 * WOTS_NIBBLES[WotsType._256_4]);
+        expect(argWitness[3].length).toBe(12 * WOTS_NIBBLES[WotsType._256_4]);
+        expect(argWitness[4].length).toBe(12 * WOTS_NIBBLES[WotsType._256_4]);
+        expect(argWitness[5].length).toBe(9 * WOTS_NIBBLES[WotsType._256_4]);
     }, 10000);
 
     it('break it', async () => {
@@ -50,5 +50,11 @@ describe('Argument', () => {
             decoded.push(parseInput(templates, template.inputs[i], argWitness[i]));
         }
         expect(decoded.length).toBe(6);
+        expect(decoded[0].length).toBe(7);
+        expect(decoded[1].length).toBe(4);
+        expect(decoded[2].length).toBe(12);
+        expect(decoded[3].length).toBe(12);
+        expect(decoded[4].length).toBe(12);
+        expect(decoded[5].length).toBe(9);
     });
 });
