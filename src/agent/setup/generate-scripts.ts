@@ -8,6 +8,7 @@ import { DoomsdayGenerator } from '../final-step/doomsday-generator';
 import { AgentRoles, Input, SpendingCondition, Template, TemplateNames } from '../common/types';
 import { getSpendingConditionByInput, getTemplateByName } from '../common/templates';
 import { AgentDb } from '../common/agent-db';
+import { nibblesToBigint_3 } from '../final-step/nibbles';
 
 const DEAD_SCRIPT = Buffer.from([0x6a]); // opcode fails transaction
 
@@ -90,9 +91,9 @@ export function generateBoilerplate(myRole: AgentRoles, spendingCondition: Spend
     return bitcoin.programToBinary();
 }
 
-function generateProcessSelectionPath(sc: SpendingCondition): Buffer {
+export function generateProcessSelectionPath(sc: SpendingCondition): Buffer {
     const bitcoin = new Bitcoin();
-    bitcoin.throwOnFail = false;
+    bitcoin.throwOnFail = true;
 
     const pubKeys = sc.wotsPublicKeys!;
     const exampleWitness = sc.exampleWitness ? sc.exampleWitness : sc.wotsPublicKeys;
@@ -114,6 +115,7 @@ function generateProcessSelectionPath(sc: SpendingCondition): Buffer {
         const result = bitcoin.newNibbles(8);
         pathNibbles.push(result);
         bitcoin.winternitzDecode24(result, pathWitness[i], pubKeys[i]);
+        console.log(nibblesToBigint_3(result));
         bitcoin.drop(pathWitness[i]);
     }
 

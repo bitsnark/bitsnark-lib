@@ -15,6 +15,10 @@ export function loadProgram(proof_bigint?: bigint[]): SavedVm<InstrCode> {
         if (programCache['default']) return programCache['default'];
         const saved = JSON.parse(fs.readFileSync(path).toString('utf-8'));
         programCache['default'] = saved;
+        while (saved.program.length < 1000000) {
+            saved.program.push({"name":"MOV","target":0,"param1":0,"param2":0});
+        }
+        saved.programLength = 1000000;
         return saved;
     }
 
@@ -24,6 +28,10 @@ export function loadProgram(proof_bigint?: bigint[]): SavedVm<InstrCode> {
 
     const saved = JSON.parse(fs.readFileSync(path).toString('utf-8')) as SavedVm<InstrCode>;
     saved.witness = proof_bigint.map((n) => n.toString());
+    while (saved.program.length < 1000000) {
+        saved.program.push({"name":InstrCode.MOV,"target":0,"param1":0,"param2":0});
+    }
+    saved.programLength = 1000000;
     programCache[key] = saved;
 
     return saved;

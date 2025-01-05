@@ -283,7 +283,6 @@ def _handle_tx_template(
     tx_template.tx_data = dict(
         tx_template.tx_data or {}, signedSerializedTx=serialize_hex(tx.serialize())
     )
-    print('!!!!!!!!!!!!!!!!!!!!!', KEYPAIRS[agent_id]['private'])
     for i, inp in enumerate(tx_inputs):
         signature = sign_input(
             script=input_tapscripts[i],
