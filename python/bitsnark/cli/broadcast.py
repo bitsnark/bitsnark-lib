@@ -1,4 +1,4 @@
-'Quick and dirty transaction broadcaster.'
+"""Quick and dirty transaction broadcaster."""
 import argparse
 import logging
 from sqlalchemy import select
@@ -7,9 +7,10 @@ from sqlalchemy.orm.session import Session
 from bitcointx.core import CMutableTransaction, CTxInWitness, CTxWitness
 from bitcointx.core.script import CScript, CScriptWitness
 
-from bitsnark.core.parsing import parse_hex_bytes, parse_hex_str
+from bitsnark.core.parsing import parse_hex_bytes
 from ._base import Command, add_tx_template_args, find_tx_template, Context
 from ..core.models import TransactionTemplate
+from ..core.transactions import construct_signable_transaction
 from ..scripteval import eval_tapscript
 
 logger = logging.getLogger(__name__)
@@ -71,14 +72,11 @@ def create_tx_with_witness(
     tx_template: TransactionTemplate,
     dbsession: Session,
 ) -> CMutableTransaction:
-    signed_serialized_tx = tx_template.tx_data.get('signedSerializedTx')
-    if not signed_serialized_tx:
-        raise ValueError(f"Transaction {tx_template.name} has no signedSerializedTx")
-
-    signed_serialized_tx = parse_hex_str(signed_serialized_tx)
-
-    # TODO: signedSerializedTx is a total misnomer here as it doesn't contain any signature data
-    tx = CMutableTransaction.deserialize(bytes.fromhex(signed_serialized_tx))
+    signable_tx = construct_signable_transaction(
+        tx_template=tx_template,
+        dbsession=dbsession,
+    )
+    tx = signable_tx.tx.to_mutable()
     if tx.wit is not None and tx.wit.serialize().strip(b'\x00'):
         raise ValueError(f"Transaction {tx_template.name} already has witness data")
     input_witnesses = []
