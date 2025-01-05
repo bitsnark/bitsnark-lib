@@ -115,7 +115,6 @@ export function generateProcessSelectionPath(sc: SpendingCondition): Buffer {
         const result = bitcoin.newNibbles(8);
         pathNibbles.push(result);
         bitcoin.winternitzDecode24(result, pathWitness[i], pubKeys[i]);
-        console.log(nibblesToBigint_3(result));
         bitcoin.drop(pathWitness[i]);
     }
 
