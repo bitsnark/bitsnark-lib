@@ -16,6 +16,10 @@ from .sign_transactions import sign_setup, TransactionProcessingError
 from ..cli.broadcast import broadcast_transaction
 
 logger = logging.getLogger(__name__)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(message)s",
+)
 
 
 BITCON_NODE_ADDR = f"http://rpcuser:rpcpassword@localhost:{os.getenv('BITCOIN_NODE_PORT', '18443')}/wallet/testwallet"
