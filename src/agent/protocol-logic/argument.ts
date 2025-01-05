@@ -8,6 +8,7 @@ import { TemplateNames } from '../common/types';
 import { createUniqueDataId } from '../setup/wots-keys';
 import { Decasector, StateCommitment } from '../setup/decasector';
 import { chunk } from '../common/array-utils';
+import { RefutationType } from '../final-step/refutation';
 
 function calculateD(a: bigint, b: bigint): bigint {
     return (a * b) / prime_bigint;
@@ -114,6 +115,8 @@ export class Argument {
         this.selectionPath = argData[0].slice(0, 6).map((n) => Number(n));
         this.index = Number(argData[0][6]);
 
+        const decasector = new Decasector(this.proof);
+
         if (!this.checkIndex()) throw new Error('Invalid selection path or index');
 
         // second input is the params a, b, c, and d
@@ -124,21 +127,21 @@ export class Argument {
         if (!doomsdayGenerator.checkLine(this.index, a, b, c, d)) {
             // the line is false, attack it!
             const data = [a, b, c, d];
-            // TODO: Complete the functionality of DDG
-            // const { script, controlBlock } = await doomsdayGenerator.generateFinalStepTaproot(templates, {
-            //     refutationType: RefutationType.INSTR,
-            //     line: this.index
-            // });
+            const { requestedScript, requestedControlBlock } = await doomsdayGenerator.generateFinalStepTaprootParallel(
+                {
+                    refutationType: RefutationType.INSTR,
+                    line: this.index,
+                    totalLines: decasector.total
+                }
+            );
 
-            // return { data, script: script!, controlBlock: controlBlock! };
-            return { data, script: Buffer.from([]), controlBlock: Buffer.from([]) };
+            return { data, script: requestedScript!, controlBlock: requestedControlBlock! };
         }
 
         // if not the instruction, then it must be one of the hashes in the
         // merkle proofs
 
         // 3 merkle proofs are in input 2, 3, and 4
-        const decasector = new Decasector(this.proof);
         const instr = decasector.savedVm.program[this.index];
 
         // reorder arg data for proofs
@@ -166,14 +169,14 @@ export class Argument {
         const data = [...proofs[whichProof].hashes.slice(whichHash * 2, whichHash * 2 + 3)].map((b) =>
             bufferToBigintBE(b)
         );
-        // TODO: Complete the functionality of DDG
-        //     const { script, controlBlock } = await doomsdayGenerator.generateFinalStepTaproot(templates, {
-        //     refutationType: RefutationType.HASH,
-        //     line: this.index,
-        //     whichProof,
-        //     whichHash
-        // });
+        const { requestedScript, requestedControlBlock } = await doomsdayGenerator.generateFinalStepTaprootParallel({
+            refutationType: RefutationType.HASH,
+            line: this.index,
+            whichProof,
+            whichHash,
+            totalLines: decasector.total
+        });
         // return { data, script: script!, controlBlock: controlBlock! };
-        return { data, script: Buffer.from([]), controlBlock: Buffer.from([]) };
+        return { data, script: requestedScript!, controlBlock: requestedControlBlock! };
     }
 }

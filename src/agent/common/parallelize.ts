@@ -7,8 +7,12 @@ export async function parallelize<Tin, Tout>(inputs: Tin[], fn: (input: Tin) => 
     const results: Tout[] = [];
     const todo = range(0, inputs.length);
     let concurrent = 0;
-    let quitter = false;
-    while (!quitter && todo.length > 0) {
+    let done = 0;
+    while (done < inputs.length) {
+        if (todo.length == 0 || concurrent >= parallelFactor) {
+            await sleep(100);
+            continue;
+        }
         const t = todo.pop()!;
         const input = inputs[t];
         concurrent++;
@@ -18,15 +22,12 @@ export async function parallelize<Tin, Tout>(inputs: Tin[], fn: (input: Tin) => 
                 console.log(`Finished work chunk ${t} of ${inputs.length}`);
                 results[t] = result;
                 concurrent--;
+                done++;
             })
             .catch((e) => {
                 console.error(e);
-                quitter = true;
                 throw e;
             });
-        while (!quitter && concurrent >= parallelFactor) {
-            await sleep(100);
-        }
     }
     return results;
 }
