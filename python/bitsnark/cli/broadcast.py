@@ -45,7 +45,7 @@ def broadcast_transaction(
     signed_serialized_tx = tx.serialize().hex()
 
     if dump:
-        dump_filename = f"{tx_template.name}-signed-serialized-.dump"
+        dump_filename = f"{tx_template.name}-signed-serialized-tx.dump"
         with open(dump_filename, "w", encoding="utf-8") as f:
             f.write(signed_serialized_tx)
         print("Dump written to", dump_filename)
@@ -109,9 +109,12 @@ def create_tx_with_witness(
 
         tapscript = CScript(parse_hex_bytes(spending_condition['script']))
 
-        try:
-            witness = [parse_hex_bytes(datum) for datum in tx_template.protocol_data[input_index]]
-        except (TypeError, IndexError):
+        if tx_template.protocol_data:
+            witness = [
+                parse_hex_bytes(s) for s in
+                tx_template.protocol_data[prevout_index]
+            ]
+        else:
             witness = []
 
         control_block = parse_hex_bytes(spending_condition['controlBlock'])
