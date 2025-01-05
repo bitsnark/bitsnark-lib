@@ -16,7 +16,7 @@ fi
 echo ...
 
 $docker_cmd run -d --name "$bitcoin_container_name" $volume_mount -p 18443:18443 -p 18444:18444 \
-    ruimarinho/bitcoin-core:latest -regtest \
+    ruimarinho/bitcoin-core:latest -regtest -acceptnonstdtxn=1 \
     -rpcuser=rpcuser -rpcpassword=rpcpassword \
     -rpcallowip=0.0.0.0/0 -rpcbind=0.0.0.0
 printf "Waiting for the Bitcoin node to start..."

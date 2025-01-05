@@ -172,8 +172,8 @@ export async function emulateSetup(
 
 async function main(
     setupId: string = 'test_setup',
-    proverId: string = 'bitsnark_prover_1',
-    verifierId: string = 'bitsnark_verifier_1',
+    proverAgentId: string = 'bitsnark_prover_1',
+    verifierAgentId: string = 'bitsnark_verifier_1',
     generateFinal: boolean = false,
     lockedFundsString: string | undefined,
     proverStakeString: string | undefined
@@ -183,7 +183,7 @@ async function main(
         lockedFundsTxid = lockedFundsString.split(':')[0];
         lockedFundsOutputIndex = parseInt(lockedFundsString.split(':')[1]);
     } else {
-        const lockedFundsAddress = createLockedFundsExternalAddresses(proverId, verifierId, setupId);
+        const lockedFundsAddress = createLockedFundsExternalAddresses(proverAgentId, verifierAgentId, setupId);
         lockedFundsTx = await createRawTx(lockedFundsAddress, satsToBtc(agentConf.payloadAmount));
         lockedFundsTxid = await rawTransactionToTxid(lockedFundsTx);
         lockedFundsOutputIndex = 0;
@@ -200,7 +200,7 @@ async function main(
         proverStakeTxid = proverStakeString.split(':')[0];
         proverStakeOutputIndex = parseInt(proverStakeString.split(':')[1]);
     } else {
-        const proverStakeAddress = createProverStakeExternalAddresses(proverId, verifierId, setupId);
+        const proverStakeAddress = createProverStakeExternalAddresses(proverAgentId, verifierAgentId, setupId);
         proverStakeTx = await createRawTx(proverStakeAddress, satsToBtc(agentConf.proverStakeAmount));
         proverStakeTxid = await rawTransactionToTxid(proverStakeTx);
         proverStakeOutputIndex = 0;
@@ -215,7 +215,7 @@ async function main(
     console.log('locked funds txid:', lockedFundsTxid);
     console.log('prover stake txid:', proverStakeTxid);
 
-    await emulateSetup(proverId, verifierId, setupId, lockedFunds, proverStake, generateFinal);
+    await emulateSetup(proverAgentId, verifierAgentId, setupId, lockedFunds, proverStake, generateFinal);
 
     if (lockedFundsTx) {
         const txid = await transmitRawTransaction(lockedFundsTx);
@@ -228,14 +228,15 @@ async function main(
 }
 
 if (require.main === module) {
-    const args = minimist(process.argv.slice(2));
-    const setupId = args['setup-id'];
-    const proverId = args['prover-id'];
-    const verifierId = args['verifier-id'];
-    const lockedFunds = args.locked;
-    const proverStake = args.stake;
-    const generateFinal = args.final;
-    main(setupId, proverId, verifierId, generateFinal, lockedFunds, proverStake).catch((error) => {
+    const {
+        'prover-agent-id': proverAgentId,
+        'verifier-agent-id': verifierAgentId,
+        'setup-id': setupId,
+        'locked': lockedFunds,
+        'stake': proverStake,
+        'final': generateFinal
+    } = minimist(process.argv.slice(2));
+    main(setupId, proverAgentId, verifierAgentId, generateFinal, lockedFunds, proverStake).catch((error) => {
         throw error;
     });
 }
