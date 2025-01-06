@@ -11,6 +11,8 @@ class SetupStatus(enum.Enum):
     PENDING = 'PENDING'
     UNSIGNED = 'UNSIGNED'
     SIGNED = 'SIGNED'
+    MERGED = 'MERGED'
+    VERIDIFED = 'VERIFIED'
     FAILED = 'FAILED'
 
 

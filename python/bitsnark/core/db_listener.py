@@ -7,7 +7,7 @@ import time
 
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm.session import Session
-from sqlalchemy.orm.attributes import flag_modified
+from bitcointx.core.key import XOnlyPubKey
 
 from bitsnark.conf import POSTGRES_BASE_URL
 from bitsnark.btc.rpc import BitcoinRPC
@@ -15,6 +15,7 @@ from bitsnark.core.environ import load_bitsnark_dotenv
 from .models import TransactionTemplate, Setups, SetupStatus, OutgoingStatus
 from .sign_transactions import sign_setup, TransactionProcessingError
 from ..cli.broadcast import broadcast_transaction
+from ..cli.verify_signatures import verify_setup_signatures
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(
@@ -32,12 +33,29 @@ def sign_setups(dbsession, agent_id, role):
         select(Setups).where(Setups.status == SetupStatus.UNSIGNED)
     ).scalars().all()
     for setup in unsigned_setups:
-        logger.info("Processing setup %s", setup.id)
+        logger.info("Signing setup %s", setup.id)
         try:
             sign_setup(setup.id, agent_id, role, dbsession, False)
             setup.status = SetupStatus.SIGNED
         except TransactionProcessingError:
-            logger.exception("Error processing setup %s", setup.id)
+            logger.exception("Error signing setup %s", setup.id)
+            setup.status = SetupStatus.FAILED
+        dbsession.commit()
+
+
+def verify_setups(dbsession, prover_pubkey, verifier_pubkey, ignore_missing_script):
+    'Loop over merged setups and verify the signatures of the specified signer.'
+    merged_setups = dbsession.execute(
+        select(Setups).where(Setups.status == SetupStatus.MERGED)
+    ).scalars().all()
+    for setup in merged_setups:
+        logger.info("Verifying setup %s", setup.id)
+        try:
+            for signer_role, signer_pubkey in [('PROVER', prover_pubkey), ('VERIFIER', verifier_pubkey)]:
+                verify_setup_signatures(dbsession, setup.id, signer_role, signer_pubkey, ignore_missing_script)
+            setup.status = SetupStatus.VERIDIFED
+        except TransactionProcessingError:
+            logger.exception("Error verifying setup %s", setup.id)
             setup.status = SetupStatus.FAILED
         dbsession.commit()
 
@@ -48,18 +66,18 @@ def broadcast_transactions(dbsession, bitcoin_rpc):
         select(TransactionTemplate).where(TransactionTemplate.status == OutgoingStatus.READY)
     ).scalars().all()
     for tx in ready_transactions:
-        logger.info("Processing transaction %s...", tx.name)
+        logger.info("Broadcasting transaction %s...", tx.name)
         try:
-            txid = broadcast_transaction(tx, dbsession, bitcoin_rpc)
+            broadcast_transaction(tx, dbsession, bitcoin_rpc)
             tx.status = OutgoingStatus.PUBLISHED
         except ValueError:
-            logger.exception("Error processing transaction %s", tx.name)
+            logger.exception("Error broadcasting transaction %s", tx.name)
             tx.status = OutgoingStatus.REJECTED
         dbsession.commit()
 
 
 def main(argv: typing.Sequence[str] = None):
-    """Entry point"""
+    'Entry point.'
 
     load_bitsnark_dotenv()
 
@@ -80,6 +98,9 @@ def main(argv: typing.Sequence[str] = None):
     if not args.sign and not args.broadcast:
         parser.error("Must specify --sign or --broadcast")
 
+    prover_pubkey = XOnlyPubKey.fromhex(os.environ['PROVER_SCHNORR_PUBLIC'])
+    verifier_pubkey = XOnlyPubKey.fromhex(os.environ['VERIFIER_SCHNORR_PUBLIC'])
+
     engine = create_engine(f"{POSTGRES_BASE_URL}/{args.agent_id}")
     dbsession = Session(engine)
     if args.broadcast:
@@ -88,6 +109,7 @@ def main(argv: typing.Sequence[str] = None):
     def listen():
         if args.sign:
             sign_setups(dbsession, args.agent_id, args.role)
+            verify_setups(dbsession, prover_pubkey, verifier_pubkey, ignore_missing_script=True)
         if args.broadcast:
             broadcast_transactions(dbsession, bitcoin_rpc)
 
