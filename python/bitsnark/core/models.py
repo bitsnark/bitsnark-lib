@@ -51,7 +51,6 @@ class TransactionTemplate(Base):
     inputs: Mapped[dict] = mapped_column(JSON, nullable=False)
     outputs: Mapped[dict] = mapped_column(JSON, nullable=False)
     status: Mapped[str] = mapped_column(Enum(OutgoingStatus), nullable=False)
-    tx_data: Mapped[Optional[dict]] = mapped_column(JSON)
     protocol_data: Mapped[Optional[dict]] = mapped_column(JSON)
     updated_at: Mapped[datetime.datetime] = mapped_column(TIMESTAMP, server_default=FetchedValue(), nullable=False)
 

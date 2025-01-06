@@ -229,14 +229,15 @@ async function main(
 }
 
 if (require.main === module) {
-    const args = minimist(process.argv.slice(2));
-    const setupId = args['setup-id'];
-    const proverId = args['prover-id'];
-    const verifierId = args['verifier-id'];
-    const lockedFunds = args.locked;
-    const proverStake = args.stake;
-    const generateFinal = args.final;
-    main(setupId, proverId, verifierId, generateFinal, lockedFunds, proverStake).catch((error) => {
+    const {
+        'prover-agent-id': proverAgentId,
+        'verifier-agent-id': verifierAgentId,
+        'setup-id': setupId,
+        'locked': lockedFunds,
+        'stake': proverStake,
+        'final': generateFinal
+    } = minimist(process.argv.slice(2));
+    main(setupId, proverAgentId, verifierAgentId, generateFinal, lockedFunds, proverStake).catch((error) => {
         throw error;
     });
 }

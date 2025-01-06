@@ -51,10 +51,6 @@ def broadcast_transactions(dbsession, bitcoin_rpc):
         logger.info("Processing transaction %s...", tx.name)
         try:
             txid = broadcast_transaction(tx, dbsession, bitcoin_rpc)
-            if tx.tx_data is None:
-                tx.tx_data = {}
-            tx.tx_data['txid'] = txid
-            flag_modified(tx, 'tx_data')
             tx.status = OutgoingStatus.PUBLISHED
         except ValueError:
             logger.exception("Error processing transaction %s", tx.name)
