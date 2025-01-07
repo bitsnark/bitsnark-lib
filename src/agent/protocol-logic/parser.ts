@@ -50,8 +50,17 @@ export function parseInput(templates: Template[], input: Input, data: Buffer[]):
         const keys = sc.wotsPublicKeys[i];
         const nibbleCount = WOTS_NIBBLES[spec];
         if (keys.length != nibbleCount) throw new Error('Wrong number of keys');
-        result[resultIndex++] = decodeWinternitz(spec, hashes.slice(hashesIndex, hashesIndex + nibbleCount), keys);
+        try {
+            result[resultIndex++] = decodeWinternitz(spec, hashes.slice(hashesIndex, hashesIndex + nibbleCount), keys);
+        } catch (e) {
+            console.error('Error decoding input:', input);
+            throw e;
+        }
         hashesIndex += nibbleCount;
     }
     return result;
+}
+
+export function parseInputs(templates: Template[], inputs: Input[], witnesses: Buffer[][]): bigint[][] {
+    return inputs.map((input, i) => parseInput(templates, input, witnesses[i]));
 }

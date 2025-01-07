@@ -30,10 +30,13 @@
     "start-bitcoin-listener": "./scripts/start-bitcoin-listener.sh",
     "start-bitcoin-signer": "./scripts/start-bitcoin-writer.sh sign",
     "start-bitcoin-sender": "./scripts/start-bitcoin-writer.sh broadcast",
+    "start-bitcoin-services": "./scripts/start-bitcoin-services.sh",
     "start-setup-prover": "./scripts/start-setup.sh bitsnark_prover_1",
     "start-setup-verifier": "./scripts/start-setup.sh bitsnark_verifier_1",
     "start-protocol-prover": "./scripts/start-protocol.sh bitsnark_prover_1",
     "start-protocol-verifier": "./scripts/start-protocol.sh bitsnark_verifier_1",
+    "mock-setup": "./scripts/mock-setup.sh",
+    "mock-setup-clear": "npm run start-db && ./scripts/mock-setup.sh",
     "create-external-addresses": "ts-node ./src/agent/setup/create-external-addresses.ts",
     "emulate-setup": "./scripts/emulate-setup.sh",
     "emulate-setup-final": "npm run emulate-setup -- --final",
@@ -41,6 +44,8 @@
     "emulate-setup-final-clear": "npm run start-db && npm run emulate-setup-final",
     "verify-setup": "ts-node ./src/agent/setup/verify-setup.ts",
     "generate-diagrams": "./scripts/generate-dot.sh",
+    "snapshot-create": "./scripts/snapshot.sh create",
+    "snapshot-load": "./scripts/snapshot.sh",
     "e2e": "./scripts/e2e.sh"
   },
   "config": {

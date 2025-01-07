@@ -1,46 +1,59 @@
 import minimist from 'minimist';
 import { AgentRoles } from '../common/types';
 import { Agent } from '../setup/agent';
+import { agentConf } from '../agent.conf';
+import { createLockedFundsExternalAddresses, createProverStakeExternalAddresses } from './create-external-addresses';
+import { createRawTx, rawTransactionToTxid } from '../bitcoin/external-transactions';
+import { satsToBtc } from '../bitcoin/common';
 
-async function startSetup(
-    agentId: string,
-    setupId: string,
-    lockedFundsTxid: string,
-    lockedFundsAmount: bigint,
-    proverStakeTxid: string,
-    proverStakeAmount: bigint
-) {
+export async function startSetup(proverAgentId: string, verifierAgentId: string, setupId: string) {
     console.log('Starting setup...');
 
-    const agent = new Agent(agentId, AgentRoles.PROVER);
-    await agent.start(setupId, lockedFundsTxid, BigInt(lockedFundsAmount), proverStakeTxid, BigInt(proverStakeAmount));
+    const lockedFundsAddress = createLockedFundsExternalAddresses(proverAgentId, verifierAgentId, setupId);
+    const lockedFundsTx = await createRawTx(lockedFundsAddress, satsToBtc(agentConf.payloadAmount));
+    const lockedFundsTxid = await rawTransactionToTxid(lockedFundsTx);
+
+    const proverStakeAddress = createProverStakeExternalAddresses(proverAgentId, verifierAgentId, setupId);
+    const proverStakeTx = await createRawTx(proverStakeAddress, satsToBtc(agentConf.proverStakeAmount));
+    const proverStakeTxid = await rawTransactionToTxid(proverStakeTx);
+
+    const agent = new Agent(proverAgentId, AgentRoles.PROVER);
+    await agent.start(
+        setupId,
+        lockedFundsTxid,
+        lockedFundsTx,
+        agentConf.payloadAmount,
+        proverStakeTxid,
+        proverStakeTx,
+        agentConf.proverStakeAmount
+    );
 
     console.log('Message sent.');
 }
 
-if (__filename == process.argv[1]) {
+if (require.main === module) {
     console.log('Starting setup...');
 
-    const args = minimist(process.argv.slice(2), {
-        string: ['locked-funds-txid', 'locked-funds-amount', 'prover-stake-txid', 'prover-stake-amount']
-    });
-    const {
-        'agent-id': agentId,
-        'setup-id': setupId,
-        'locked-funds-txid': lockedFundsTxid,
-        'locked-funds-amount': lockedFundsAmount,
-        'prover-stake-txid': proverStakeTxid,
-        'prover-stake-amount': proverStakeAmount
-    } = args;
+    const args = minimist(process.argv.slice(2));
+    const setupId = args['setup-id'] ?? args._[0];
+    const proverAgentId = args['prover-agent-id'] ?? args._[1];
+    const verifierAgentId = args['verifier-agent-id'] ?? args._[2];
 
-    if (![agentId, setupId, lockedFundsTxid, lockedFundsAmount, proverStakeTxid, proverStakeAmount].every((t) => t)) {
-        console.log('Missing parameters');
-        process.exit(-1);
+    if (!proverAgentId || !agentConf.keyPairs[proverAgentId]) {
+        console.error('Prover agent not found in config:', proverAgentId);
+        process.exit(1);
     }
 
-    startSetup(agentId, setupId, lockedFundsTxid, BigInt(lockedFundsAmount), proverStakeTxid, BigInt(proverStakeAmount))
+    if (!verifierAgentId || !agentConf.keyPairs[verifierAgentId]) {
+        console.error('Verifier agent not found in config:', verifierAgentId);
+        process.exit(1);
+    }
+
+    startSetup(proverAgentId, verifierAgentId, setupId)
         .then(() => {
             console.log('Message sent.');
         })
-        .catch((e) => console.error(e));
+        .catch((error) => {
+            throw error;
+        });
 }

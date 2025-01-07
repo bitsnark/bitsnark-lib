@@ -14,9 +14,9 @@ from sqlalchemy.orm.attributes import flag_modified
 from bitsnark.conf import POSTGRES_BASE_URL
 from bitsnark.core.parsing import parse_bignum, parse_hex_bytes, serialize_hex
 from .models import TransactionTemplate, Setups, SetupStatus, OutgoingStatus
+from .types import Role
 from .signing import sign_input
 
-Role = Literal['prover', 'verifier']
 
 
 @dataclass
@@ -35,7 +35,7 @@ class TransactionProcessingError(Exception):
 # Mocked inputs for the very first transactions
 # These should eventually come from somewhere else
 HARDCODED_MOCK_INPUTS: dict[str, list[MockInput]] = {
-    'locked_funds': [
+    'LOCKED_FUNDS': [
         MockInput(
             txid='0000000000000000000000000000000000000000000000000000000000000001',
             vout=0,
@@ -44,7 +44,7 @@ HARDCODED_MOCK_INPUTS: dict[str, list[MockInput]] = {
             tapscript='51ad52ad51'
         )
     ],
-    'prover_stake': [
+    'PROVER_STAKE': [
         MockInput(
             txid='0000000000000000000000000000000000000000000000000000000000000002',
             vout=0,

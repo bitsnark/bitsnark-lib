@@ -1,5 +1,6 @@
 .DS_Store
 .vscode/
+nohup.out
 
 .env
 .env.local
@@ -12,6 +13,7 @@ node_modules/
 venv/
 
 /analysis/BitSnark.toolbox/
+/bitcoin/
 /dist/
-/expose/git-filter-repo
-/coverage
+/expose/git-filter-repo/
+/snapshot/

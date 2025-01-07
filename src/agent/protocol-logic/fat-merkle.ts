@@ -6,7 +6,7 @@ const foo = Buffer.from('fu manchu');
 
 function toPairs(a: Buffer[]): Buffer[][] {
     const r: Buffer[][] = [];
-    for (let i = 0; i < a.length; i += 2) r.push([a[i], a[i + 1] ?? foo]);
+    for (let i = 0; i < a.length; i += 2) r.push([a[i] ?? foo, a[i + 1] ?? foo]);
     return r;
 }
 
@@ -16,7 +16,10 @@ async function hashPair(input: Buffer[]): Promise<Buffer> {
 
 async function hashLayer(ba: Buffer[]): Promise<Buffer[]> {
     const newLayer: Buffer[] = [];
-    for (const t of toPairs(ba)) newLayer.push(await hashPair(t));
+    for (const t of toPairs(ba)) {
+        const tt = await hashPair(t);
+        newLayer.push(tt);
+    }
     return newLayer;
 }
 

@@ -23,6 +23,8 @@ import { mergeWots, setWotsPublicKeysForArgument } from './wots-keys';
 import { BitcoinNode } from '../common/bitcoin-node';
 import { AgentDb, updateSetupPartial } from '../common/agent-db';
 import { getSpendingConditionByInput, getTemplateByName } from '../common/templates';
+import { transmitRawTransaction } from '../bitcoin/external-transactions';
+import minimist from 'minimist';
 
 interface AgentInfo {
     agentId: string;
@@ -122,7 +124,7 @@ export class Agent {
         const verified = verifyMessage(
             toJson({ ...message, telegramMessageSig: '' }),
             message.telegramMessageSig,
-            bigintToString(otherPubKey)
+            bigintToString(otherPubKey, 256)
         );
         if (!verified) throw new Error('Invalid signature');
         console.log('Message signature verified');
@@ -141,8 +143,10 @@ export class Agent {
     public async start(
         setupId: string,
         payloadTxid: string,
+        payloadTx: string,
         payloadAmount: bigint,
         stakeTxid: string,
+        stakeTx: string,
         stakeAmount: bigint
     ) {
         if (this.role != AgentRoles.PROVER) throw new Error("I'm not a prover");
@@ -153,8 +157,10 @@ export class Agent {
 
         setup = await this.db.updateSetup(setupId, {
             payloadTxid,
+            payloadTx,
             payloadAmount,
             stakeTxid,
+            stakeTx,
             stakeAmount,
             payloadOutputIndex: 1,
             stakeOutputIndex: 1
@@ -300,7 +306,7 @@ export class Agent {
 
         await this.db.upsertTemplates(i.setupId, i.templates!);
 
-        i.templates = await generateAllScripts(this.agentId, i.setupId, this.role, i.templates!, true);
+        i.templates = await generateAllScripts(this.agentId, i.setupId, this.role, i.templates!, false);
         i.templates = await addAmounts(this.agentId, this.role, i.setupId, i.templates!);
 
         await this.db.upsertTemplates(i.setupId, i.templates!);
@@ -344,7 +350,7 @@ export class Agent {
         this.verifyMessage(message, i);
 
         await this.db.upsertTemplates(i.setupId, i.templates!);
-        i.templates = await fakeSignTemplates(this.role, this.agentId, i.setupId, i.templates!);
+        i.templates = await signTemplates(this.role, this.agentId, i.setupId, i.templates!);
 
         for (const s of message.signatures) {
             const template = getTemplateByName(i.templates!, s.templateName);
@@ -385,13 +391,24 @@ export class Agent {
 
         if (this.role == AgentRoles.PROVER) {
             await verifySetup(this.agentId, i.setupId, this.role);
+
             await this.db.markSetupPegoutActive(i.setupId);
             await this.signMessageAndSend(context, new DoneMessage({ setupId: i.setupId, agentId: this.agentId }));
             i.state = SetupState.DONE;
+
+            await this.sendExternalTransactions(i.setup!);
         } else {
             await this.sendSignatures(context, i.setupId);
             i.state = SetupState.DONE;
         }
+    }
+
+    async sendExternalTransactions(setup: Setup) {
+        if (!setup.stakeTx) throw new Error('Missing prover stake tx');
+        await transmitRawTransaction(setup.stakeTx);
+
+        if (!setup.payloadTx) throw new Error('Missing locked funds tx');
+        await transmitRawTransaction(setup.payloadTx);
     }
 
     async on_done(context: SimpleContext, message: SignaturesMessage) {
@@ -410,13 +427,12 @@ export class Agent {
 }
 
 if (require.main === module) {
-    console.log('Starting');
-
-    const agentId = process.argv[2] ?? 'bitsnark_prover_1';
-
+    const args = minimist(process.argv.slice(2));
+    const agentId = args['agent-id'] ?? 'bitsnark_prover_1';
     const role = agentId.indexOf('prover') >= 0 ? AgentRoles.PROVER : AgentRoles.VERIFIER;
 
     const agent = new Agent(agentId, role);
+    console.log('Launching agent', agentId);
     agent.launch().then(() => {
         console.log('Quitting');
     });

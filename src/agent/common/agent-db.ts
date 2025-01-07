@@ -4,6 +4,7 @@ import { array } from './array-utils';
 import { Db, DbValue, QueryArgs } from './db';
 import { jsonParseCustom, jsonStringifyCustom } from './json';
 import { Input, Output, ReceivedTransaction, Setup, SetupStatus, Template, TemplateStatus } from './types';
+import { json } from 'node:stream/consumers';
 
 export interface UpdateTemplatePartial {
     setupId?: string;
@@ -17,9 +18,11 @@ export interface UpdateTemplatePartial {
 
 export interface updateSetupPartial {
     payloadTxid: string;
+    payloadTx: string;
     payloadOutputIndex: number;
     payloadAmount: bigint;
     stakeTxid: string;
+    stakeTx: string;
     stakeOutputIndex: number;
     stakeAmount: bigint;
 }
@@ -30,9 +33,22 @@ const setupFields = [
     'status',
     'last_checked_block_height',
     'payload_txid',
+    'payload_tx',
     'payload_output_index',
     'payload_amount',
     'stake_txid',
+    'stake_tx',
+    'stake_output_index',
+    'stake_amount'
+];
+
+export const updateSetupFields = [
+    'payload_txid',
+    'payload_tx',
+    'payload_output_index',
+    'payload_amount',
+    'stake_txid',
+    'stake_tx',
     'stake_output_index',
     'stake_amount'
 ];
@@ -109,18 +125,10 @@ export class AgentDb extends Db {
     }
 
     public async updateSetup(setupId: string, setup: updateSetupPartial): Promise<Setup> {
-        const fields = [
-            'payload_txid',
-            'payload_output_index',
-            'payload_amount',
-            'stake_txid',
-            'stake_output_index',
-            'stake_amount'
-        ];
         await this.query(
-            `UPDATE setups SET ${dollarsForUpdate(fields, 2)}
+            `UPDATE setups SET ${dollarsForUpdate(updateSetupFields, 2)}
                 WHERE id = $1`,
-            [setupId, ...objToRow(fields, setup)]
+            [setupId, ...objToRow(updateSetupFields, setup)]
         );
         return await this.getSetup(setupId);
     }
@@ -131,12 +139,19 @@ export class AgentDb extends Db {
         return rows.length > 0;
     }
 
-    public async getSetup(setupId: string): Promise<Setup> {
+    public async getSetupOrNull(setupId: string): Promise<Setup | null> {
         const rows = (await this.query<Setup>(`SELECT ${setupFields.join(', ')} FROM setups WHERE id = $1`, [setupId]))
             .rows;
-        if (rows.length != 1) throw new Error(`Setup not found: ${setupId}`);
+        if (rows.length != 1) return null;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         return rowToObj<Setup>(setupFields, rows[0] as any, ['payload_amount', 'stake_amount']);
+    }
+
+    public async getSetup(setupId: string): Promise<Setup> {
+        const setup = await this.getSetupOrNull(setupId);
+        if (!setup) throw new Error(`Setup not found: ${setupId}`);
+
+        return setup;
     }
 
     private async markSetupStatus(setupId: string, status: SetupStatus) {
@@ -161,6 +176,12 @@ export class AgentDb extends Db {
 
     public async updateSetupLastCheckedBlockHeight(setupId: string, blockHeight: number) {
         await this.query('UPDATE setups SET last_checked_block_height = $1 WHERE id = $2', [blockHeight, setupId]);
+    }
+
+    public async getSetups(): Promise<Setup[]> {
+        const rows = (await this.query<Setup>(`SELECT ${setupFields.join(', ')} FROM setups`, [])).rows;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        return rows.map((row) => rowToObj<Setup>(setupFields, row as any, ['payload_amount', 'stake_amount']));
     }
 
     public async getActiveSetups(): Promise<Setup[]> {
@@ -287,6 +308,8 @@ export class AgentDb extends Db {
         rawTransaction: RawTransaction,
         indexInBlock: number = 0
     ) {
+        if (!rawTransaction.txid || rawTransaction.txid == 'undefined') throw new Error('Raw transaction has no txid');
+
         await this.query(
             `
                 INSERT INTO received (template_id, txid, block_hash, block_height, raw_transaction, index_in_block)
@@ -298,7 +321,7 @@ export class AgentDb extends Db {
                 rawTransaction.txid,
                 blockHash,
                 blockHeight,
-                jsonParseCustom(JSON.stringify(rawTransaction)),
+                jsonParseCustom(jsonStringifyCustom(rawTransaction)),
                 indexInBlock
             ]
         );

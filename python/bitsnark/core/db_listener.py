@@ -1,6 +1,7 @@
 'Monitor DB to sign and broadcast transactions.'
 import argparse
 import logging
+import os
 import typing
 import time
 
@@ -9,13 +10,15 @@ from sqlalchemy.orm.session import Session
 from sqlalchemy.orm.attributes import flag_modified
 
 from bitsnark.conf import POSTGRES_BASE_URL
-from bitsnark.btc.rpc import BitcoinRPC, JSONRPCError
+from bitsnark.btc.rpc import BitcoinRPC
 from .models import TransactionTemplate, Setups, SetupStatus, OutgoingStatus
 from .sign_transactions import sign_setup, TransactionProcessingError
-from .fund_transactions import fund_transactions
 from ..cli.broadcast import broadcast_transaction
 
 logger = logging.getLogger(__name__)
+
+
+BITCON_NODE_ADDR = f"http://rpcuser:rpcpassword@localhost:{os.getenv('BITCOIN_NODE_PORT', '18443')}/wallet/testwallet"
 
 
 def sign_setups(dbsession, agent_id, role):
@@ -41,15 +44,6 @@ def broadcast_transactions(dbsession, bitcoin_rpc):
     ).scalars().all()
     for tx in ready_transactions:
         logger.info("Processing transaction %s...", tx.name)
-        if tx.name == 'CHALLENGE':
-            try:
-                logger.info("Funding transaction %s...", tx.name)
-                fund_transactions(dbsession, bitcoin_rpc, tx.setup_id, [tx.name], 20)
-            except JSONRPCError:
-                logger.exception("Error funding transaction %s", tx.name)
-                tx.status = OutgoingStatus.REJECTED
-                dbsession.commit()
-                continue
         try:
             txid = broadcast_transaction(tx, dbsession, bitcoin_rpc)
             tx.tx_data['txid'] = txid
@@ -59,14 +53,6 @@ def broadcast_transactions(dbsession, bitcoin_rpc):
             logger.exception("Error processing transaction %s", tx.name)
             tx.status = OutgoingStatus.REJECTED
         dbsession.commit()
-
-
-def listen(dbsession, bitcoin_rpc, args):
-    'Main loop step.'
-    if args.sign:
-        sign_setups(dbsession, args.agent_id, args.role)
-    if args.broadcast:
-        broadcast_transactions(dbsession, bitcoin_rpc)
 
 
 def main(argv: typing.Sequence[str] = None):
@@ -90,13 +76,20 @@ def main(argv: typing.Sequence[str] = None):
 
     engine = create_engine(f"{POSTGRES_BASE_URL}/{args.agent_id}")
     dbsession = Session(engine)
-    bitcoin_rpc = BitcoinRPC('http://rpcuser:rpcpassword@localhost:18443/wallet/testwallet')
-    listen(dbsession, bitcoin_rpc, args)
+    if args.broadcast:
+        bitcoin_rpc = BitcoinRPC(BITCON_NODE_ADDR)
 
+    def listen():
+        if args.sign:
+            sign_setups(dbsession, args.agent_id, args.role)
+        if args.broadcast:
+            broadcast_transactions(dbsession, bitcoin_rpc)
+
+    listen()
     if args.loop:
         while True:
             time.sleep(10)
-            listen(dbsession, bitcoin_rpc, args)
+            listen()
 
 
 if __name__ == "__main__":

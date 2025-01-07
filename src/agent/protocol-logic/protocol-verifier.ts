@@ -1,6 +1,6 @@
 import minimist from 'minimist';
 import { agentConf } from '../agent.conf';
-import { parseInput } from './parser';
+import { parseInputs } from './parser';
 import { step1_vm } from '../../generator/ec_vm/vm/vm';
 import groth16Verify, { Key, Proof as Step1_Proof } from '../../generator/ec_vm/verifier';
 import { findErrorState } from './states';
@@ -16,8 +16,6 @@ import { defaultVerificationKey } from '../../generator/ec_vm/constants';
 import { sleep } from '../common/sleep';
 
 export class ProtocolVerifier extends ProtocolBase {
-    states: Buffer[][] = [];
-
     constructor(agentId: string, setupId: string) {
         super(agentId, setupId, AgentRoles.VERIFIER);
     }
@@ -71,7 +69,7 @@ export class ProtocolVerifier extends ProtocolBase {
                     break;
                 case TemplateNames.ARGUMENT:
                     if (lastFlag) {
-                        this.refuteArgument(proof, incoming);
+                        this.refuteArgument(proof, states, incoming);
                     }
                     break;
                 case TemplateNames.ARGUMENT_UNCONTESTED:
@@ -82,8 +80,10 @@ export class ProtocolVerifier extends ProtocolBase {
 
             if (incoming.template.name.startsWith(TemplateNames.STATE)) {
                 const state = this.parseState(incoming);
-                this.states.push(state);
-                await this.sendSelect(proof, states, selectionPath);
+                states.push(state);
+                if (lastFlag) {
+                    await this.sendSelect(proof, selectionPath, states);
+                }
             } else if (incoming.template.name.startsWith(TemplateNames.STATE_UNCONTESTED)) {
                 // we lost, mark it
                 await this.db.markSetupPegoutSuccessful(this.setupId);
@@ -111,17 +111,12 @@ export class ProtocolVerifier extends ProtocolBase {
         return step1_vm.success?.value === 1n;
     }
 
-    private async refuteArgument(proof: bigint[], incoming: Incoming) {
+    private async refuteArgument(proof: bigint[], states: Buffer[][], incoming: Incoming) {
         const rawTx = incoming.received.raw;
-        const argData = rawTx.vin.map((vin, i) =>
-            parseInput(
-                this.templates!,
-                incoming.template.inputs[i],
-                vin.txinwitness!.map((s) => Buffer.from(s, 'hex'))
-            )
-        );
+        const witnesses = rawTx.vin.map((vin) => vin.txinwitness!.map((s) => Buffer.from(s, 'hex')));
+        const argData = parseInputs(this.templates!, incoming.template.inputs, witnesses);
         const argument = new Argument(this.agentId, this.setup!.id, proof);
-        const refutation = await argument.refute(this.templates!, argData, this.states);
+        const refutation = await argument.refute(argData, states);
 
         incoming.template.inputs[0].script = refutation.script;
         incoming.template.inputs[0].controlBlock = refutation.controlBlock;
@@ -139,10 +134,11 @@ export class ProtocolVerifier extends ProtocolBase {
         this.sendTransaction(TemplateNames.PROOF_REFUTED, [data]);
     }
 
-    private async sendSelect(proof: bigint[], states: Buffer[][], selectionPath: number[]) {
+    private async sendSelect(proof: bigint[], selectionPath: number[], states: Buffer[][]) {
         const iteration = selectionPath.length;
         const txName = TemplateNames.SELECT + '_' + twoDigits(iteration);
         const selection = await findErrorState(proof, last(states), selectionPath);
+        if (selection < 0) throw new Error('Could not find error state');
         const selectionWi = encodeWinternitz24(BigInt(selection), createUniqueDataId(this.setup!.id, txName, 0, 0, 0));
         this.sendTransaction(txName, [selectionWi]);
     }
@@ -175,7 +171,7 @@ export async function main(agentId: string) {
     };
 
     do {
-        doit();
+        await doit();
         await sleep(agentConf.protocolIntervalMs);
         /*eslint no-constant-condition: "off"*/
     } while (true);

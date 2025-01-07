@@ -3,7 +3,7 @@ import { AgentDb } from '../common/agent-db';
 import { findOutputByInput, getTemplateByName } from '../common/templates';
 import { TemplateNames, AgentRoles, Template } from '../common/types';
 
-const externallyFundedTxs: string[] = [TemplateNames.LOCKED_FUNDS, TemplateNames.PROVER_STAKE, TemplateNames.CHALLENGE];
+const externallyFundedTxs: string[] = [TemplateNames.LOCKED_FUNDS, TemplateNames.PROVER_STAKE];
 
 // Currently only counting script sizes, not the actual transaction sizes.
 // (Length input scripts + length of output scripts) / 8 bits per byte * fee per byte * fee factor percent / 100
@@ -32,7 +32,7 @@ export async function addAmounts(
     templates: Template[]
 ): Promise<Template[]> {
     function addAmounts(transaction: Template): Template {
-        if (externallyFundedTxs.includes(transaction.name)) return transaction;
+        if (transaction.isExternal) return transaction;
         const amountlessOutputs = transaction.outputs.filter((output) => !output.amount);
         if (amountlessOutputs.length == 0) return transaction;
         // If there are multiple undefined amounts, only the first carries the real value and the rest are symbolic.
@@ -67,7 +67,7 @@ export function validateTransactionFees(templates: Template[]) {
                 throw new Error(`Template ${t.name} has undefined output amounts`);
 
             // Skip externally funded templates for summing up fees.
-            if (externallyFundedTxs.includes(t.name)) return totals;
+            if (t.isExternal) return totals;
 
             const inputsValue = t.inputs.reduce(
                 (totalValue, input) => totalValue + (findOutputByInput(templates, input).amount || 0n),
