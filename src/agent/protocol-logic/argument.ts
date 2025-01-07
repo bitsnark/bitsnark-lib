@@ -4,7 +4,7 @@ import { InstrCode, Instruction } from '../../generator/ec_vm/vm/types';
 import { DoomsdayGenerator } from '../final-step/doomsday-generator';
 import { prime_bigint } from '../common/constants';
 import { bigintToBufferBE, bufferToBigintBE } from '../common/encoding';
-import { Template, TemplateNames } from '../common/types';
+import { TemplateNames } from '../common/types';
 import { createUniqueDataId } from '../setup/wots-keys';
 import { Decasector, StateCommitment } from '../setup/decasector';
 import { RefutationType } from '../final-step/refutation';
@@ -115,7 +115,7 @@ export class Argument {
 
         // let's check the instruction first
         const doomsdayGenerator = new DoomsdayGenerator(this.agentId, this.setupId);
-        if (!doomsdayGenerator.checkLine(this.index, a, b, c, d)) {
+        if (!doomsdayGenerator.checkLine(this.index, a, b, c)) {
             // the line is false, attack it!
             const data = [a, b, c, d];
             const { requestedScript, requestedControlBlock } = await doomsdayGenerator.generateFinalStepTaprootParallel(

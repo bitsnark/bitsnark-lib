@@ -1,5 +1,4 @@
 import minimist from 'minimist';
-import { SetupStatus } from '../common/types';
 import { sleep } from '../common/sleep';
 import { AgentDb } from '../common/agent-db';
 

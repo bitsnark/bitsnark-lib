@@ -72,7 +72,7 @@ export class VM {
     }
 
     private fail(msg: string) {
-        if (!this.success) throw new Error('Program not in running state');
+        if (!this.success) throw new Error('Program not in running state: ' + msg);
         this.success.value = 0n;
     }
 

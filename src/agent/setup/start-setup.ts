@@ -1,5 +1,5 @@
 import minimist from 'minimist';
-import { AgentRoles, SetupStatus } from '../common/types';
+import { AgentRoles } from '../common/types';
 import { Agent } from '../setup/agent';
 import { agentConf } from '../agent.conf';
 import { createLockedFundsExternalAddresses, createProverStakeExternalAddresses } from './create-external-addresses';

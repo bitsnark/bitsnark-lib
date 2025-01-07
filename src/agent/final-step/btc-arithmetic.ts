@@ -1,7 +1,6 @@
 import { Bitcoin } from '../../generator/btc_vm/bitcoin';
 import { StackItem } from '../../generator/btc_vm/stack';
 import { last } from '../common/array-utils';
-import { nibblesToBigint_3 } from './nibbles';
 
 export function teaPot() {
     throw new Error("I'm a teapot");
@@ -73,8 +72,6 @@ export class BtcArithmetic {
 
     public add(a: StackItem[], b: StackItem[]): StackItem[] {
         const result = this.bitcoin.newNibblesFast(Math.max(a.length, b.length) + 1);
-
-        const stack = this.bitcoin.stack.items;
 
         const l = Math.max(a.length, b.length);
         for (let i = 0; i < l; i++) {

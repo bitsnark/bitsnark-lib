@@ -144,3 +144,29 @@ export async function generateBlocks(bitcoinClient: Client, blocksToGenerate: nu
         console.error('Error generating blocks:', error);
     }
 }
+
+export const mockVin = {
+    txid: 'abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdef',
+    vout: 1,
+    scriptSig: {
+        asm: '3045022100abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdef022100abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdef012103abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdef',
+        hex: '483045022100abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdef022100abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdef012103abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdef'
+    },
+    sequence: 4294967295,
+    txinwitness: [
+        'abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdef',
+        'abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdef'
+    ]
+};
+
+export const mockVout = {
+    value: 0.015,
+    n: 0,
+    scriptPubKey: {
+        asm: 'OP_DUP OP_HASH160 76a91489abcdefabbaabbaabbaabbaabbaabbaabbaabba88ac OP_EQUALVERIFY OP_CHECKSIG',
+        hex: '76a91489abcdefabbaabbaabbaabbaabbaabbaabbaabba88ac',
+        reqSigs: 1,
+        type: 'pubkeyhash',
+        addresses: ['1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa']
+    }
+};

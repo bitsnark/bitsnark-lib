@@ -43,15 +43,17 @@ function setTaprootKey(transactions: Template[]) {
             for (const [scIndex, sc] of output.spendingConditions.entries()) {
                 try {
                     sc.controlBlock = stt.getControlBlock(scIndex);
-                } catch (e) {
-                    throw new Error(`No control block for: ${t.name}, output: ${outputIndex}, sc: ${scIndex}`);
+                } catch (error) {
+                    throw new Error(
+                        `No control block for: ${t.name}, output: ${outputIndex}, sc: ${scIndex}. ${error}`
+                    );
                 }
             }
         }
     }
 }
 
-export function generateBoilerplate(myRole: AgentRoles, spendingCondition: SpendingCondition, input: Input): Buffer {
+export function generateBoilerplate(myRole: AgentRoles, spendingCondition: SpendingCondition): Buffer {
     const bitcoin = new Bitcoin();
 
     bitcoin.throwOnFail = spendingCondition.nextRole == myRole;
@@ -170,7 +172,7 @@ export async function generateAllScripts(
                     script = generateProcessSelectionPath(sc);
                 } else {
                     const sc = getSpendingConditionByInput(templates, input);
-                    script = generateBoilerplate(myRole, sc, input);
+                    script = generateBoilerplate(myRole, sc);
                 }
 
                 sc.script = script;

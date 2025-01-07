@@ -1,9 +1,7 @@
-import Client from 'bitcoin-core';
 import { AgentRoles, TemplateNames } from '../../src/agent/common/types';
 import { getmockExpected, MockBlockchain, txIdBySetupAndName, mockExpected } from './bitcoin-listener-test-utils';
 import { BitcoinListener } from '../../src/agent/listener/bitcoin-listener';
 import * as utils from '../../src/agent/listener/listener-utils';
-import exp from 'constants';
 
 // const mockBlockchain = new MockBlockchain();
 

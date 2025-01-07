@@ -1,10 +1,9 @@
 import { RawTransaction } from 'bitcoin-core';
 import { agentConf } from '../agent.conf';
 import { array } from './array-utils';
-import { Db, DbValue, QueryArgs, Query } from './db';
+import { Db, DbValue, QueryArgs } from './db';
 import { jsonParseCustom, jsonStringifyCustom } from './json';
 import { Input, Output, ReceivedTransaction, Setup, SetupStatus, Template, TemplateStatus } from './types';
-import { json } from 'node:stream/consumers';
 
 export interface UpdateTemplatePartial {
     setupId?: string;
@@ -68,19 +67,8 @@ export const templateFields = [
     'protocol_data'
 ];
 
-function isCap(c: string): boolean {
-    return c >= 'A' && c <= 'Z';
-}
-
 function toCap(s: string): string {
     return s.length > 0 ? s.split('')[0].toUpperCase() + s.split('').slice(1).join('') : '';
-}
-
-function camelToSnake(name: string): string {
-    return name
-        .split('')
-        .map((c) => (isCap(c) ? '_' + c.toLowerCase : c))
-        .join('');
 }
 
 function snakeToCamel(name: string): string {

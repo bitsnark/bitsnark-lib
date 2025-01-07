@@ -26,6 +26,7 @@ export async function emulateSetup(
     const verifierDb = new AgentDb(verifierAgentId);
     const blockchainClient = new BitcoinNode().client;
 
+    // TODO: Fix this to not require try/catch
     try {
         console.log('creating setup...');
         await proverDb.createSetup(setupId);

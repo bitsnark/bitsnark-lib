@@ -30,12 +30,11 @@ function start_taptree() {
     ];
 
     const internalPubkey = toXOnly(keypair.publicKey);
-    const script_p2tr = payments.p2tr({
+    payments.p2tr({
         internalPubkey,
         scriptTree,
         network
     });
-    const script_addr = script_p2tr.address ?? '';
 }
 
 function toXOnly(pubkey: Buffer): Buffer {

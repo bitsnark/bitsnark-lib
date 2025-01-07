@@ -4,7 +4,6 @@ import { SavedVm } from '../../generator/common/saved-vm';
 import { InstrCode } from '../../generator/ec_vm/vm/types';
 import { defaultValidProof, defaultVerificationKey } from '../../generator/ec_vm/constants';
 import fs from 'node:fs';
-import { Runner } from '../../../src/generator/ec_vm/vm/runner';
 
 const path = './generated/verifier.json';
 

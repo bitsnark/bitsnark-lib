@@ -16,7 +16,7 @@ import { SimpleContext, TelegramBot } from './telegram';
 import { verifySetup } from './verify-setup';
 import { signMessage, verifyMessage } from '../common/schnorr';
 import { addAmounts } from './amounts';
-import { fakeSignTemplates, signTemplates } from './sign-templates';
+import { signTemplates } from './sign-templates';
 import { AgentRoles, Setup, SetupStatus, SignatureType, Template, TemplateNames } from '../common/types';
 import { initializeTemplates } from './init-templates';
 import { mergeWots, setWotsPublicKeysForArgument } from './wots-keys';
@@ -426,7 +426,7 @@ export class Agent {
     }
 }
 
-if (__filename == process.argv[1]) {
+if (require.main === module) {
     const args = minimist(process.argv.slice(2));
     const agentId = args['agent-id'] ?? 'bitsnark_prover_1';
     const role = agentId.indexOf('prover') >= 0 ? AgentRoles.PROVER : AgentRoles.VERIFIER;

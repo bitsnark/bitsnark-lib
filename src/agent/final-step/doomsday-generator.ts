@@ -5,7 +5,7 @@ import { AgentDb } from '../common/agent-db';
 import { ForkCommand, ForkYourself } from '../fork/fork-yourself';
 import { GenerateFinalTaprootCommand } from '../fork/fork-entrypoint';
 import { parallelize } from '../common/parallelize';
-import { array, range } from '../common/array-utils';
+import { array } from '../common/array-utils';
 import { loadProgram } from '../setup/groth16-verify';
 import { Decasector } from '../setup/decasector';
 import minimist from 'minimist';
@@ -70,7 +70,7 @@ export class DoomsdayGenerator {
     }
 
     // return true if the line succeeds!!!
-    public checkLine(index: number, a: bigint, b: bigint, c: bigint, d?: bigint): boolean {
+    public checkLine(index: number, a: bigint, b: bigint, c: bigint): boolean {
         const line = this.program[index];
         switch (line.name) {
             case InstrCode.ADDMOD:
@@ -96,7 +96,7 @@ export class DoomsdayGenerator {
             case InstrCode.DIVMOD:
                 try {
                     return c == a * modInverse(b, prime_bigint);
-                } catch (e) {
+                } catch {
                     return false;
                 }
             case InstrCode.ASSERTONE:
@@ -213,7 +213,6 @@ async function main() {
     console.log(r);
 }
 
-const scriptName = __filename;
-if (process.argv[1] == scriptName) {
+if (require.main === module) {
     main();
 }

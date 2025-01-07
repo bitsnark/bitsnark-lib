@@ -23,11 +23,7 @@ function getTemplateTaprootAddress(
         [SignatureType.VERIFIER]: [verifierPublicKey]
     }[sc.signatureType];
     generateWotsPublicKeysForSpendingCondition(setupId, TemplateNames.PROOF, sc, 0, 0);
-    const script = generateBoilerplate(AgentRoles.PROVER, sc, {
-        templateName: TemplateNames.LOCKED_FUNDS,
-        outputIndex: 0,
-        spendingConditionIndex: 0
-    });
+    const script = generateBoilerplate(AgentRoles.PROVER, sc);
     const stt = new SimpleTapTree(agentConf.internalPubkey, [script]);
     return stt.getTaprootAddress();
 }
