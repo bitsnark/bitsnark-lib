@@ -20,7 +20,10 @@ def sign_input(
         spent_outputs=spent_outputs,
         hashtype=hashtype,
     )
-    return private_key.sign_schnorr_no_tweak(sighash)
+    ret = private_key.sign_schnorr_no_tweak(sighash)
+    if hashtype is not None:
+        ret += bytes([hashtype])
+    return ret
 
 
 class InvalidSignatureError(ValueError):
@@ -37,6 +40,15 @@ def verify_input_signature(
     public_key: bytes | XOnlyPubKey,
     hashtype: SIGHASH_Type | None = DEFAULT_HASHTYPE,
 ):
+    if len(signature) not in (64, 65):
+        raise ValueError(f"Expected a signature of 64 or 65 bytes, got {len(signature)}")
+    if len(signature) == 65:
+        hashtype_from_signature = signature[-1]
+        if hashtype_from_signature != hashtype:
+            raise ValueError(
+                f"Expected a signature with hashtype {hashtype}, got {hashtype_from_signature}"
+            )
+        signature = signature[:-1]
     sighash = script.sighash_schnorr(
         tx,
         input_index,

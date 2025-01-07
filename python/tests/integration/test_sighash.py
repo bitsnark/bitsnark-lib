@@ -8,26 +8,110 @@ from bitcointx.core.script import CScript, TaprootScriptTree, CScriptWitness
 from bitcointx.wallet import P2TRCoinAddress
 
 from bitsnark.btc.rpc import BitcoinRPC
-from bitsnark.core.signing import sign_input
+from bitsnark.core.signing import sign_input, verify_input_signature
 from tests.utils.bitcoin_wallet import BitcoinWallet
 
-pytestmark = pytest.mark.usefixtures('docker_compose')
+pytestmark = pytest.mark.usefixtures('docker_compose_module_level')
 logger = logging.getLogger(__name__)
 
 
 INTERNAL_PUBKEY = XOnlyPubKey.fromhex('0000000000000000000000000000000000000000000000000000000000000001')
 PRIVKEY_A = CKey.fromhex('415c69b837f4146019574f59c223054c8c144ac61b6ae87bc26824c0f8d034e2')
-# PUBKEY_A = PRIVKEY_A.xonly_pub
 PRIVKEY_B = CKey.fromhex('d4067af1132afcb352b0edef53d8aa2a5fc713df61dee31b1d937e69ece0ebf0')
-# PUBKEY_B = PRIVKEY_B.xonly_pub
+SIGHASH_TYPES = (
+    None,
+    script.SIGHASH_ALL,
+    script.SIGHASH_NONE,
+    script.SIGHASH_SINGLE,
+    script.SIGHASH_ALL | script.SIGHASH_ANYONECANPAY,
+    script.SIGHASH_NONE | script.SIGHASH_ANYONECANPAY,
+    script.SIGHASH_SINGLE | script.SIGHASH_ANYONECANPAY,
+)
 
 
-def test_sighash(
-    # dbsession_prover: sa.orm.Session,
-    # dbsession_verifier: sa.orm.Session,
+@pytest.mark.parametrize(
+    'hashtype',
+    SIGHASH_TYPES,
+)
+def test_sign_input_and_mempoolaccept_with_sighashes(
+    hashtype,
     btc_rpc: BitcoinRPC,
     btc_wallet: BitcoinWallet,
 ):
+    tx, spent_outputs, tapscript, cblock = _construct_funded_tx(
+        btc_wallet=btc_wallet,
+    )
+
+    sig_a = sign_input(
+        script=tapscript,
+        tx=tx,
+        input_index=0,
+        spent_outputs=spent_outputs,
+        private_key=PRIVKEY_A,
+        hashtype=hashtype,
+    )
+    sig_b = sign_input(
+        script=tapscript,
+        tx=tx,
+        input_index=0,
+        spent_outputs=spent_outputs,
+        private_key=PRIVKEY_B,
+        hashtype=hashtype,
+    )
+    tx.wit = CTxWitness(
+        vtxinwit=[
+            CTxInWitness(
+                CScriptWitness(
+                    stack=[
+                        sig_a,
+                        sig_b,
+                        tapscript,
+                        cblock,
+                    ]
+                )
+            ),
+        ],
+    )
+
+    btc_rpc.test_mempoolaccept(tx)
+
+
+@pytest.mark.parametrize(
+    'hashtype',
+    SIGHASH_TYPES,
+)
+def test_verify_input_signature_with_sighashes(
+    hashtype,
+    btc_rpc: BitcoinRPC,
+    btc_wallet: BitcoinWallet,
+):
+    tx, spent_outputs, tapscript, _ = _construct_funded_tx(
+        btc_wallet=btc_wallet,
+    )
+
+    sig = sign_input(
+        script=tapscript,
+        tx=tx,
+        input_index=0,
+        spent_outputs=spent_outputs,
+        private_key=PRIVKEY_A,
+        hashtype=hashtype,
+    )
+    verify_input_signature(
+        script=tapscript,
+        tx=tx,
+        input_index=0,
+        spent_outputs=spent_outputs,
+        signature=sig,
+        public_key=PRIVKEY_A.xonly_pub,
+        hashtype=hashtype,
+    )
+
+
+def _construct_funded_tx(
+    *,
+    btc_wallet: BitcoinWallet,
+) -> tuple[CMutableTransaction, list[CTxOut], CScript, bytes]:
     multisig_taptree = TaprootScriptTree(
         leaves=[
             CScript(
@@ -62,7 +146,7 @@ def test_sighash(
         ],
         vout=[
             CTxOut(
-                nValue=int(funded_amount_btc * 10**8 * Decimal('0.9')),
+                nValue=int(funded_amount_btc * 10 ** 8 * Decimal('0.9')),
                 scriptPubKey=multisig_tap_address.to_scriptPubKey(),
             ),
         ],
@@ -70,39 +154,4 @@ def test_sighash(
 
     tapscript, cblock = multisig_taptree.get_script_with_control_block('multisig')
 
-    # TODO: changing hashtype makes it fail
-    # hashtype = script.SIGHASH_SINGLE
-    hashtype = None
-
-    sig_a = sign_input(
-        script=tapscript,
-        tx=tx,
-        input_index=0,
-        spent_outputs=spent_outputs,
-        private_key=PRIVKEY_A,
-        hashtype=hashtype,
-    )
-    sig_b = sign_input(
-        script=tapscript,
-        tx=tx,
-        input_index=0,
-        spent_outputs=spent_outputs,
-        private_key=PRIVKEY_B,
-        hashtype=hashtype,
-    )
-    tx.wit = CTxWitness(
-        vtxinwit=[
-            CTxInWitness(
-                CScriptWitness(
-                    stack=[
-                        sig_a,
-                        sig_b,
-                        tapscript,
-                        cblock,
-                    ]
-                )
-            ),
-        ],
-    )
-
-    btc_rpc.test_mempoolaccept(tx)
+    return tx, spent_outputs, tapscript, cblock
