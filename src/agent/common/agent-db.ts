@@ -161,6 +161,10 @@ export class AgentDb extends Db {
         await this.markSetupStatus(setupId, SetupStatus.UNSIGNED);
     }
 
+    public async markSetupMerged(setupId: string) {
+        await this.markSetupStatus(setupId, SetupStatus.MERGED);
+    }
+
     public async markSetupPegoutActive(setupId: string) {
         await this.markSetupStatus(setupId, SetupStatus.ACTIVE);
     }
