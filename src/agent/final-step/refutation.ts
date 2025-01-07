@@ -54,7 +54,7 @@ export function getRefutationIndex(refutation: RefutationDescriptor): number {
 }
 
 export function getRefutationDescriptor(index: number): RefutationDescriptor {
-    if (index >=  getMaxRefutationIndex()) throw new Error('Refutarion index too large');;
+    if (index >= getMaxRefutationIndex()) throw new Error('Refutarion index too large');
     if (index < scriptTotalLines) {
         return { refutationType: RefutationType.INSTR, line: index, totalLines: scriptTotalLines };
     }
@@ -66,7 +66,6 @@ export function getRefutationDescriptor(index: number): RefutationDescriptor {
     const whichHash = index;
     return { refutationType: RefutationType.HASH, line, totalLines: scriptTotalLines, whichProof, whichHash };
 }
-
 
 const scriptTampleCache: { [key: string]: ScriptTemplate } = {};
 

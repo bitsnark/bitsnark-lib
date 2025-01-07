@@ -19,7 +19,7 @@ export async function getTemplatesRows(db: AgentDb): Promise<JoinedTemplate[]> {
             try {
                 received = await db.getReceivedTransactions(setup.id);
             } catch (error) {
-                //
+                console.error('Failed to get received transactions:', error);
             }
 
             for (const template of templates) {
@@ -33,6 +33,7 @@ export async function getTemplatesRows(db: AgentDb): Promise<JoinedTemplate[]> {
             }
         } catch (error) {
             if (templates) continue;
+            console.error('Failed to get templates:', error);
         }
     }
     return listenerTemplates;

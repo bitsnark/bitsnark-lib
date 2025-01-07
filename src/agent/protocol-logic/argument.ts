@@ -9,7 +9,6 @@ import { createUniqueDataId } from '../setup/wots-keys';
 import { Decasector, StateCommitment } from '../setup/decasector';
 import { chunk } from '../common/array-utils';
 import { RefutationType } from '../final-step/refutation';
-import { Runner } from '../../../src/generator/ec_vm/vm/runner';
 
 function calculateD(a: bigint, b: bigint): bigint {
     return (a * b) / prime_bigint;
@@ -119,31 +118,30 @@ export class Argument {
 
         const decasector = new Decasector(this.proof);
 
-        // check states
+        // check states, useful for debugging
         // my state before instruction
-        const runner = Runner.load(decasector.savedVm);
-        runner.execute(this.index);
-        const myStateBefore = await FatMerkleProof.calculateRoot(runner.getRegisterValues());
-        runner.execute(this.index + 1);
-        const myStateAfter = await FatMerkleProof.calculateRoot(runner.getRegisterValues());
-
-        async function getOtherStateBtIndex(index: number): Promise<Buffer> {
-            if (index >= 400000) {
-                return await FatMerkleProof.calculateRoot(decasector.getRegsForSuccess());
-            }
-            const iter = decasector.stateCommitmentByLine[index].iteration;
-            const which = decasector.stateCommitmentByLine[index].selection;
-            return states[iter - 1][which];
-        }
-        const hisStateBefore = await getOtherStateBtIndex(this.index);
-        const hisStateAfter = await getOtherStateBtIndex(this.index + 1);
+        // const runner = Runner.load(decasector.savedVm);
+        // runner.execute(this.index);
+        // const myStateBefore = await FatMerkleProof.calculateRoot(runner.getRegisterValues());
+        // runner.execute(this.index + 1);
+        // const myStateAfter = await FatMerkleProof.calculateRoot(runner.getRegisterValues());
+        // async function getOtherStateBtIndex(index: number): Promise<Buffer> {
+        //     if (index >= 400000) {
+        //         return await FatMerkleProof.calculateRoot(decasector.getRegsForSuccess());
+        //     }
+        //     const iter = decasector.stateCommitmentByLine[index].iteration;
+        //     const which = decasector.stateCommitmentByLine[index].selection;
+        //     return states[iter - 1][which];
+        // }
+        // const hisStateBefore = await getOtherStateBtIndex(this.index);
+        // const hisStateAfter = await getOtherStateBtIndex(this.index + 1);
 
         // second input is the params a, b, c, and d
         const [a, b, c, d] = argData[1];
 
         // let's check the instruction first
         const doomsdayGenerator = new DoomsdayGenerator(this.agentId, this.setupId);
-        if (!doomsdayGenerator.checkLine(this.index, a, b, c, d)) {
+        if (!doomsdayGenerator.checkLine(this.index, a, b, c)) {
             // the line is false, attack it!
             const data = [a, b, c, d];
             const { requestedScript, requestedControlBlock } = await doomsdayGenerator.generateFinalStepTaprootParallel(

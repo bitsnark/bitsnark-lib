@@ -4,7 +4,6 @@ import { jsonParseCustom, jsonStringifyCustom } from '../common/json';
 const tsNodePath = './node_modules/.bin/ts-node';
 
 async function run(command: string, input: string): Promise<string> {
-
     let buffer = Buffer.alloc(0);
     let flag = true;
 
@@ -18,7 +17,7 @@ async function run(command: string, input: string): Promise<string> {
             if (data.includes('\n', 0, 'utf-8')) {
                 const result = buffer.toString('utf-8');
                 flag = false;
-                resolve(result.split('\n')[0]);    
+                resolve(result.split('\n')[0]);
             }
         });
         child.on('error', (error) => {

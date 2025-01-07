@@ -48,16 +48,26 @@ export async function signTemplates(
     const db = new AgentDb(agentId);
     await db.markSetupUnsigned(setupId);
     console.log('Waiting for setup to be signed (make sure signer is running: npm run start-bitcoin-signer)');
-    let setup;
     do {
-        setup = await db.getSetup(setupId);
+        const setup = await db.getSetup(setupId);
         if (setup.status == SetupStatus.SIGNED) break;
-        if (setup.status == SetupStatus.FAILED) throw new Error('Setup rejected');
+        if (setup.status == SetupStatus.FAILED) throw new Error('Setup signature failed');
     } while (!(await sleep(1000)));
 
     templates = await db.getTemplates(setupId);
     verifyTemplates(templates, role);
     return templates;
+}
+
+export async function verifySignatures(agentId: string, setupId: string): Promise<void> {
+    const db = new AgentDb(agentId);
+    await db.markSetupMerged(setupId);
+    console.log('Waiting for setup to be verified (make sure signer is running: npm run start-bitcoin-signer)');
+    do {
+        const setup = await db.getSetup(setupId);
+        if (setup.status == SetupStatus.VERIFIED) return;
+        if (setup.status == SetupStatus.FAILED) throw new Error('Setup verification failed');
+    } while (!(await sleep(1000)));
 }
 
 async function main() {

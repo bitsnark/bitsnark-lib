@@ -38,7 +38,7 @@ describe('Argument', () => {
         expect(argWitness[2].length).toBe(12 * WOTS_NIBBLES[WotsType._256_4]);
         expect(argWitness[3].length).toBe(12 * WOTS_NIBBLES[WotsType._256_4]);
         expect(argWitness[4].length).toBe(12 * WOTS_NIBBLES[WotsType._256_4]);
-        expect(argWitness[5].length).toBe(9 * WOTS_NIBBLES[WotsType._256_4]);
+        expect(argWitness[5].length).toBe(3 * WOTS_NIBBLES[WotsType._256_4]);
     }, 10000);
 
     it('break it', async () => {
@@ -55,6 +55,6 @@ describe('Argument', () => {
         expect(decoded[2].length).toBe(12);
         expect(decoded[3].length).toBe(12);
         expect(decoded[4].length).toBe(12);
-        expect(decoded[5].length).toBe(9);
+        expect(decoded[5].length).toBe(3);
     });
 });

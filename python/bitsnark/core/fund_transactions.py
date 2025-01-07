@@ -114,9 +114,6 @@ def fund_transactions(
                 txid = tx.GetTxid()[::-1].hex()
                 tx_template.txid = txid
                 tx_template.is_external = True
-                tx_template.tx_data = dict(
-                    tx_template.tx_data or {}, signedSerializedTx=serialize_hex(tx.serialize())
-                )
                 flag_modified(tx_template, 'txid')
                 flag_modified(tx_template, 'is_external')
         finally:

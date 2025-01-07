@@ -20,7 +20,11 @@ export async function calculateStates(role: AgentRoles, proof: bigint[], selecti
     return states;
 }
 
-export async function calculateAggregateStates(role: AgentRoles, proof: bigint[], selectionPath: number[]): Promise<Buffer[][]> {
+export async function calculateAggregateStates(
+    role: AgentRoles,
+    proof: bigint[],
+    selectionPath: number[]
+): Promise<Buffer[][]> {
     const aggStates: Buffer[][] = [];
     for (let i = 0; i < selectionPath.length + 1; i++) {
         aggStates.push(await calculateStates(role, proof, selectionPath.slice(0, i)));
@@ -28,7 +32,11 @@ export async function calculateAggregateStates(role: AgentRoles, proof: bigint[]
     return aggStates;
 }
 
-export async function findErrorState(proof: bigint[], hisAggStates: Buffer[][], selectionPath: number[]): Promise<number> {
+export async function findErrorState(
+    proof: bigint[],
+    hisAggStates: Buffer[][],
+    selectionPath: number[]
+): Promise<number> {
     const myAggStates = await calculateAggregateStates(AgentRoles.VERIFIER, proof, selectionPath);
     const myStates = last(myAggStates);
     const hisStates = last(hisAggStates);

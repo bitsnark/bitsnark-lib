@@ -72,11 +72,10 @@ describe('SimpleTapTree', () => {
     ];
 
     it.skip.each(testCases)('scriptPubKey test case %#', (testcase: Testcase) => {
-
         const scripts = testcase.given.scripts.map((s) => Buffer.from(s, 'hex'));
         const compressor = new Compressor(scripts.length, 0);
         compressor.setInteralPubKey(stringToBigint(internalPubkey));
-        scripts.forEach(s => compressor.addHash(getHash(s)));
+        scripts.forEach((s) => compressor.addHash(getHash(s)));
 
         const tapTree = new SimpleTapTree(
             stringToBigint(internalPubkey),

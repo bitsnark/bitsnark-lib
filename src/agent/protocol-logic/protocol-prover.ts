@@ -92,7 +92,6 @@ export class ProtocolProver extends ProtocolBase {
                 break;
             }
             if (incoming.template.name.startsWith(TemplateNames.SELECT)) {
-                const rawTx = incoming.received.raw;
                 const selection = this.parseSelection(incoming, selectionPathUnparsed);
                 selectionPath.push(selection);
                 if (lastFlag) {

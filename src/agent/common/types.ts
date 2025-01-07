@@ -37,6 +37,8 @@ export enum SetupStatus {
     PENDING = 'PENDING',
     UNSIGNED = 'UNSIGNED',
     SIGNED = 'SIGNED',
+    MERGED = 'MERGED',
+    VERIFIED = 'VERIFIED',
     FAILED = 'FAILED',
     ACTIVE = 'ACTIVE',
     PEGOUT_SUCCESSFUL = 'PEGOUT_SUCCESSFUL',

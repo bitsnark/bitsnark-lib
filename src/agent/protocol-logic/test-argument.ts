@@ -38,7 +38,7 @@ async function main() {
 
     console.log('scripts equal: ', script0a.compare(script0b) == 0);
 
-    const { argument, argWitness } = await init();
+    const { argWitness } = await init();
     const bitcoin = new Bitcoin();
     argWitness[0].forEach((b) => bitcoin.addWitness(b));
     [Buffer.alloc(64), Buffer.alloc(64)].forEach((b) => bitcoin.addWitness(b));

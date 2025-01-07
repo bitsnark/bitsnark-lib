@@ -12,10 +12,6 @@ interface RichReg {
     interval?: number;
 }
 
-function isOverlap(r1: RichReg, r2: RichReg): boolean {
-    return !(r1.last! < r2.first! || r2.last! < r1.first!);
-}
-
 function isNotInSieve(ref: RichReg, sieve: boolean[]): boolean {
     for (let i = ref.first!; i <= ref.last!; i++) if (sieve[i]) return false;
     return true;
@@ -81,12 +77,9 @@ export function regOptimizer(vm: VM) {
 
     console.log('Sort by interval');
 
-    // // sort by size
-    // let sorted = Object.values(dynamic)
-    //     .sort((a, b) => b.interval! - a.interval!);
-
     const witnes = dynamic.filter((r) => r.witness);
-    const others = dynamic.filter((r) => !r.witness).sort((a, b) => Math.random() - 0.5);
+    // TODO: Remove random sorting
+    const others = dynamic.filter((r) => !r.witness).sort((_) => Math.random() - 0.5);
     let sorted = [...witnes, ...others];
     const roots = [];
 
@@ -96,7 +89,6 @@ export function regOptimizer(vm: VM) {
         const r = regArray[i];
         if (r.hardcoded) continue;
         for (let j = r.first!; j <= r.last!; j++) counter[j] = (counter[j] || 0) + 1;
-        //console.log(i);
     }
     let deepestCount = 0;
     let deepestPoint = 0;

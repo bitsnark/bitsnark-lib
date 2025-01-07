@@ -46,7 +46,6 @@ describe('Refutation', () => {
     }, 10000);
 
     it('index is interpreted correctly', async () => {
-        const decasector = new Decasector();
         let rd: RefutationDescriptor;
 
         for (let index = 301000; index < 302000; index++) {

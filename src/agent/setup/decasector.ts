@@ -1,11 +1,9 @@
-import { step1_vm } from '../../generator/ec_vm/vm/vm';
 import { SavedVm } from '../../generator/common/saved-vm';
 import { InstrCode } from '../../generator/ec_vm/vm/types';
 import { Runner } from '../../generator/ec_vm/vm/runner';
 import { loadProgram } from '../setup/groth16-verify';
 
-export function getRegsAt(savedVm: SavedVm<InstrCode>, left: number, line: number, right: number): bigint[] {
-    right = Math.min(right, savedVm.program.length);
+export function getRegsAt(savedVm: SavedVm<InstrCode>, left: number, line: number): bigint[] {
     const runner = Runner.load(savedVm);
     runner.execute(line);
     const regs = runner.getRegisterValues();
@@ -35,7 +33,7 @@ export class StateCommitment {
 
     public getValues(): bigint[] {
         if (this.values) return this.values;
-        this.values = getRegsAt(this.savedVm, this.left, this.line, this.right);
+        this.values = getRegsAt(this.savedVm, this.left, this.line);
         if (this.values.length > 128) throw new Error('Too many vars?');
         // pad with zeros so we always have the same size merkle proof
         while (this.values.length < 128) this.values.push(0n);

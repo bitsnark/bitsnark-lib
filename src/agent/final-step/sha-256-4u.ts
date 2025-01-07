@@ -131,8 +131,6 @@ export class SHA256 {
     }
 
     toBitsOnAltstack(x: Register, drop: number) {
-        const stack = this.bitcoin.stack.items;
-
         for (let i = 7; i >= 0; i--) {
             this.bitcoin.pick(x[i]);
 
@@ -172,8 +170,6 @@ export class SHA256 {
     }
 
     fromBitsOnAltstack_ROTR(target: Register, bits: number) {
-        const stack = this.bitcoin.stack.items;
-
         this.mov_hc(target, 0);
         const targetFlags: boolean[] = [];
         let sourceBit = 0;
@@ -210,9 +206,7 @@ export class SHA256 {
         }
     }
 
-    fromBitsOnAltstack_SHR(target: Register, bits: number) {
-        const stack = this.bitcoin.stack.items;
-
+    fromBitsOnAltstack_SHR(target: Register) {
         this.mov_hc(target, 0);
         const targetFlag: boolean[] = [];
         for (let i = 0; i < target.length; i++) {
@@ -259,7 +253,7 @@ export class SHA256 {
         const tn = Number(`0b${t}`);
 
         this.toBitsOnAltstack(x, n);
-        this.fromBitsOnAltstack_SHR(target, n);
+        this.fromBitsOnAltstack_SHR(target);
 
         const tt = this.registerToNumber(target);
         assert(tn == tt);
@@ -480,7 +474,7 @@ export class SHA256 {
     const bitcoin = new Bitcoin();
     const sha256 = new SHA256(bitcoin);
     const regs: Register[] = _256To32BE(test1).map((n) => sha256.hardcodeRegister(Number(n)));
-    const h2regs = _256To32BE(0n).map((n) => sha256.newRegister(0));
+    const h2regs = _256To32BE(0n).map((_) => sha256.newRegister(0));
     sha256.sha256(h2regs, regs);
     const h2 = _32To256BE(h2regs.map((r) => BigInt(sha256.registerToNumber(r))));
     console.log('h1', h1);
@@ -502,7 +496,7 @@ export class SHA256 {
     const aRegs: Register[] = _256To32BE(test1).map((n) => sha256.newRegister(Number(n)));
     const bRegs: Register[] = _256To32BE(test2).map((n) => sha256.newRegister(Number(n)));
 
-    const h2regs = _256To32BE(0n).map((n) => sha256.newRegister(0));
+    const h2regs = _256To32BE(0n).map((_) => sha256.newRegister(0));
 
     sha256.sha256pair(h2regs, aRegs, bRegs);
     const h2 = _32To256BE(h2regs.map((r) => BigInt(sha256.registerToNumber(r))));

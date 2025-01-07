@@ -1,4 +1,4 @@
-import { TestAgentDb } from '../../../tests/test-utils/test-utils';
+import { mockVin, TestAgentDb } from '../../../tests/test-utils/test-utils';
 import { BitcoinNode } from '../common/bitcoin-node';
 import Client, { RawTransaction, Input } from 'bitcoin-core';
 import { agentConf } from '../agent.conf';
@@ -32,32 +32,6 @@ export const mockRawTransaction: RawTransaction = {
     blocktime: 1690000000,
     time: 1690000200,
     setupId: 'mock-setup-id'
-};
-
-export const mockVin = {
-    txid: 'abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdef',
-    vout: 1,
-    scriptSig: {
-        asm: '3045022100abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdef022100abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdef012103abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdef',
-        hex: '483045022100abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdef022100abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdef012103abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdef'
-    },
-    sequence: 4294967295,
-    txinwitness: [
-        'abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdef',
-        'abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdef'
-    ]
-};
-
-const mockVout = {
-    value: 0.015,
-    n: 0,
-    scriptPubKey: {
-        asm: 'OP_DUP OP_HASH160 76a91489abcdefabbaabbaabbaabbaabbaabbaabbaabba88ac OP_EQUALVERIFY OP_CHECKSIG',
-        hex: '76a91489abcdefabbaabbaabbaabbaabbaabbaabbaabba88ac',
-        reqSigs: 1,
-        type: 'pubkeyhash',
-        addresses: ['1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa']
-    }
 };
 
 export class MockPublisher {

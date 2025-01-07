@@ -10,7 +10,6 @@ import { bigintFromBytes, bigintToBufferBE, bytesFromBigint, cat, padHex, tagged
 
 import * as bitcoin from 'bitcoinjs-lib';
 import * as ecc from 'tiny-secp256k1';
-import assert from 'node:assert';
 import { array, last, range } from './array-utils';
 import { agentConf } from '../agent.conf';
 import { DEAD_ROOT } from './constants';
@@ -122,10 +121,7 @@ export class Compressor {
     public total: number;
     public count: number = 0;
 
-    constructor(
-        total: number,
-        indexToSave: number = -1
-    ) {
+    constructor(total: number, indexToSave: number = -1) {
         const log2 = Math.ceil(Math.log2(total));
         this.depth = log2 + 1;
         this.total = 2 ** log2;
@@ -206,11 +202,12 @@ export class Compressor {
 }
 
 function test1() {
-    const hashes = range(0, 7).map(n => bigintToBufferBE(BigInt(n), 256));
+    const hashes = range(0, 7).map((n) => bigintToBufferBE(BigInt(n), 256));
     const compressor = new Compressor(hashes.length, 5);
-    hashes.forEach(b => compressor.addHash(b));
+    hashes.forEach((b) => compressor.addHash(b));
     const root = compressor.getRoot();
     const cb = compressor.getControlBlock();
+    console.log(root, cb);
 }
 
 function main() {

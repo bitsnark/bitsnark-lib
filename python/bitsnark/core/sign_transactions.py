@@ -290,9 +290,6 @@ def _handle_tx_template(
 
     # Alter the template
     tx_template.txid = txid
-    tx_template.tx_data = dict(
-        tx_template.tx_data or {}, signedSerializedTx=serialize_hex(tx.serialize())
-    )
     for i, inp in enumerate(tx_inputs):
         signature = sign_input(
             script=input_tapscripts[i],

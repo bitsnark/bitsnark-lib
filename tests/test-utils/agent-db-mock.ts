@@ -1,4 +1,4 @@
-import { Setup, Template, TemplateStatus, ReceivedTransaction } from '../../src/agent/common/types';
+import { Setup, Template } from '../../src/agent/common/types';
 import { AgentDb, updateSetupPartial, UpdateTemplatePartial } from '../../src/agent/common/agent-db';
 import { sleep } from '../../src/agent/common/sleep';
 

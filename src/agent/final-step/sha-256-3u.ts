@@ -19,10 +19,6 @@ const kHex = [
     0xc67178f2
 ];
 
-function posMod(x: number, m: number): number {
-    return (x + m) % m;
-}
-
 export class SHA256 {
     bitcoin: Bitcoin;
 
@@ -136,8 +132,6 @@ export class SHA256 {
     }
 
     toBitsOnAltstack(x: Register) {
-        const stack = this.bitcoin.stack.items;
-
         for (let i = 10; i >= 0; i--) {
             this.bitcoin.pick(x[i]);
 
@@ -172,8 +166,6 @@ export class SHA256 {
     }
 
     fromBitsOnAltstack_ROTR(target: Register, bits: number) {
-        const stack = this.bitcoin.stack.items;
-
         this.mov_hc(target, 0);
         let sourceBit = 0;
         for (let i = 0; i < target.length; i++) {
@@ -205,8 +197,6 @@ export class SHA256 {
     }
 
     fromBitsOnAltstack_SHR(target: Register, bits: number) {
-        const stack = this.bitcoin.stack.items;
-
         for (let i = 0; i < bits; i++) {
             this.bitcoin.OP_FROMALTSTACK();
             this.bitcoin.OP_DROP();
@@ -479,7 +469,7 @@ export class SHA256 {
     const bitcoin = new Bitcoin();
     const sha256 = new SHA256(bitcoin);
     const regs: Register[] = _256To32BE(test1).map((n) => sha256.hardcodeRegister(Number(n)));
-    const h2regs = _256To32BE(0n).map((n) => sha256.newRegister(0));
+    const h2regs = _256To32BE(0n).map((_) => sha256.newRegister(0));
     sha256.sha256(h2regs, regs);
     const h2 = _32To256BE(h2regs.map((r) => BigInt(sha256.registerToNumber(r))));
     console.log('h1', h1);
@@ -501,7 +491,7 @@ export class SHA256 {
     const aRegs: Register[] = _256To32BE(test1).map((n) => sha256.newRegister(Number(n)));
     const bRegs: Register[] = _256To32BE(test2).map((n) => sha256.newRegister(Number(n)));
 
-    const h2regs = _256To32BE(0n).map((n) => sha256.newRegister(0));
+    const h2regs = _256To32BE(0n).map((_) => sha256.newRegister(0));
 
     sha256.sha256pair(h2regs, aRegs, bRegs);
     const h2 = _32To256BE(h2regs.map((r) => BigInt(sha256.registerToNumber(r))));

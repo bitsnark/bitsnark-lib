@@ -2,7 +2,7 @@ import minimist from 'minimist';
 import { agentConf } from '../agent.conf';
 import { addAmounts } from './amounts';
 import { generateAllScripts } from './generate-scripts';
-import { signTemplates } from './sign-templates';
+import { signTemplates, verifySignatures } from './sign-templates';
 import { getSpendingConditionByInput } from '../common/templates';
 import { verifySetup } from './verify-setup';
 import { generateWotsPublicKeys, mergeWots, setWotsPublicKeysForArgument } from './wots-keys';
@@ -26,6 +26,7 @@ export async function emulateSetup(
     const verifierDb = new AgentDb(verifierAgentId);
     const blockchainClient = new BitcoinNode().client;
 
+    // TODO: Fix this to not require try/catch
     try {
         console.log('creating setup...');
         await proverDb.createSetup(setupId);
@@ -93,9 +94,6 @@ export async function emulateSetup(
     proverTemplates = setWotsPublicKeysForArgument(setupId, proverTemplates);
     verifierTemplates = setWotsPublicKeysForArgument(setupId, verifierTemplates);
 
-    await proverDb.upsertTemplates(setupId, proverTemplates);
-    await verifierDb.upsertTemplates(setupId, verifierTemplates);
-
     console.log('writing templates to DB before external script generation process...');
 
     await proverDb.upsertTemplates(setupId, proverTemplates);
@@ -148,8 +146,13 @@ export async function emulateSetup(
         }
     }
 
+    console.log('writing templates to DB before signature verification...');
+
     await proverDb.upsertTemplates(setupId, proverTemplates);
     await verifierDb.upsertTemplates(setupId, verifierTemplates);
+
+    await verifySignatures(proverAgentId, setupId);
+    await verifySignatures(verifierAgentId, setupId);
 
     console.log('update listener data...');
 

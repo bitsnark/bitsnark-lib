@@ -250,6 +250,7 @@ export class MockBlockchain {
         return waitAndReturn('hash');
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     getBlock(blockHash: string, verbosity?: number): Promise<Block> {
         const blockHeight = parseInt(blockHash.replace('hash', ''));
         if (this.mockBlocks.get(blockHeight)) {
@@ -293,6 +294,7 @@ export class MockBlockchain {
         return waitAndReturn(this.blockchainTip);
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     getTxOut(txid: string, vout: number, include_mempool: boolean): Promise<TxOut | null> {
         //only in block 107 checks assume PROOF was spent to enable PROOF_UNCONTESTED
         if (this.blockchainTip === 107) return waitAndReturn(null);
@@ -306,6 +308,7 @@ export class MockBlockchain {
             });
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     command(command: string, ...params: unknown[]): Promise<unknown> {
         return waitAndReturn('');
     }

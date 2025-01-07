@@ -142,7 +142,7 @@ export class Runner {
     }
 
     public getRegisterValues(): bigint[] {
-        return this.registers.filter(r => !r.hardcoded).map((r) => r.value);
+        return this.registers.filter((r) => !r.hardcoded).map((r) => r.value);
     }
 
     public getInstruction(line: number): Instruction {

@@ -1,5 +1,5 @@
 import { AgentRoles, TemplateNames, SetupStatus } from '../../src/agent/common/types';
-import { TestAgent, generateBlocks, setTestAgent } from '../test-utils/test-utils';
+import { TestAgent, setTestAgent } from '../test-utils/test-utils';
 import { getTemplatesRows } from '../../src/agent/listener/listener-utils';
 
 const testnetTxs = [

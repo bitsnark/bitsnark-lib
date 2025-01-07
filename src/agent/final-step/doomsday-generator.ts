@@ -5,7 +5,7 @@ import { AgentDb } from '../common/agent-db';
 import { ForkCommand, ForkYourself } from '../fork/fork-yourself';
 import { GenerateFinalTaprootCommand } from '../fork/fork-entrypoint';
 import { parallelize } from '../common/parallelize';
-import { array, range } from '../common/array-utils';
+import { array } from '../common/array-utils';
 import { loadProgram } from '../setup/groth16-verify';
 import { Decasector } from '../setup/decasector';
 import minimist from 'minimist';
@@ -14,11 +14,10 @@ import {
     getMaxRefutationIndex,
     getRefutationDescriptor,
     getRefutationIndex,
-    RefutationDescriptor,
-    RefutationType
+    RefutationDescriptor
 } from './refutation';
 import { getHash } from '../../../src/common/taproot-common';
-import { DEAD_ROOT, prime_bigint } from '../common/constants';
+import { prime_bigint } from '../common/constants';
 import { modInverse } from '../../generator/common/math-utils';
 
 function timeStr(ms: number): string {
@@ -71,7 +70,7 @@ export class DoomsdayGenerator {
     }
 
     // return true if the line succeeds!!!
-    public checkLine(index: number, a: bigint, b: bigint, c: bigint, d?: bigint): boolean {
+    public checkLine(index: number, a: bigint, b: bigint, c: bigint): boolean {
         const line = this.program[index];
         switch (line.name) {
             case InstrCode.ADDMOD:
@@ -97,7 +96,7 @@ export class DoomsdayGenerator {
             case InstrCode.DIVMOD:
                 try {
                     return c == a * modInverse(b, prime_bigint);
-                } catch (e) {
+                } catch {
                     return false;
                 }
             case InstrCode.ASSERTONE:
@@ -137,7 +136,7 @@ export class DoomsdayGenerator {
         const start = Date.now();
         console.log('Starting doomsday parallel...');
         const requestedScriptIndex = refutationDescriptor ? getRefutationIndex(refutationDescriptor) : undefined;
-        const inputs = this.chunkTheWork(64, requestedScriptIndex );
+        const inputs = this.chunkTheWork(64, requestedScriptIndex);
 
         const results = await parallelize<GenerateFinalTaprootCommand, ChunkResult>(inputs, async (input) => {
             return this.forker.fork(input);
@@ -209,11 +208,9 @@ async function main() {
     const setupId = args['setup-id'] ?? 'test_setup';
     const parallel = !!args['parallel'];
     const ddg = new DoomsdayGenerator(agentId, setupId);
-    const r = parallel ? 
-        await ddg.generateFinalStepTaprootParallel(
-            getRefutationDescriptor(123)
-        ) : 
-        await ddg.generateFinalStepTaproot();
+    const r = parallel
+        ? await ddg.generateFinalStepTaprootParallel(getRefutationDescriptor(123))
+        : await ddg.generateFinalStepTaproot();
     console.log(r);
 }
 
