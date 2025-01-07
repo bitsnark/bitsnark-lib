@@ -1,6 +1,5 @@
-'Quick and dirty transaction broadcaster.'
+"""Quick and dirty transaction broadcaster."""
 import argparse
-import itertools
 import logging
 from sqlalchemy import select
 from sqlalchemy.orm.session import Session
@@ -8,9 +7,10 @@ from sqlalchemy.orm.session import Session
 from bitcointx.core import CMutableTransaction, CTxInWitness, CTxWitness
 from bitcointx.core.script import CScript, CScriptWitness
 
-from bitsnark.core.parsing import parse_hex_bytes, parse_hex_str
+from bitsnark.core.parsing import parse_hex_bytes
 from ._base import Command, add_tx_template_args, find_tx_template, Context
 from ..core.models import TransactionTemplate
+from ..core.transactions import construct_signable_transaction
 from ..scripteval import eval_tapscript
 
 logger = logging.getLogger(__name__)
@@ -46,8 +46,8 @@ def broadcast_transaction(
     signed_serialized_tx = tx.serialize().hex()
 
     if dump:
-        dump_filename = f"{tx_template.name}-signed-serialized-.dump"
-        with open(dump_filename, "w") as f:
+        dump_filename = f"{tx_template.name}-signed-serialized-tx.dump"
+        with open(dump_filename, "w", encoding="utf-8") as f:
             f.write(signed_serialized_tx)
         print("Dump written to", dump_filename)
 
@@ -72,14 +72,11 @@ def create_tx_with_witness(
     tx_template: TransactionTemplate,
     dbsession: Session,
 ) -> CMutableTransaction:
-    signed_serialized_tx = tx_template.tx_data.get('signedSerializedTx')
-    if not signed_serialized_tx:
-        raise ValueError(f"Transaction {tx_template.name} has no signedSerializedTx")
-
-    signed_serialized_tx = parse_hex_str(signed_serialized_tx)
-
-    # TODO: signedSerializedTx is a total misnomer here as it doesn't contain any signature data
-    tx = CMutableTransaction.deserialize(bytes.fromhex(signed_serialized_tx))
+    signable_tx = construct_signable_transaction(
+        tx_template=tx_template,
+        dbsession=dbsession,
+    )
+    tx = signable_tx.tx.to_mutable()
     if tx.wit is not None and tx.wit.serialize().strip(b'\x00'):
         raise ValueError(f"Transaction {tx_template.name} already has witness data")
     input_witnesses = []
@@ -110,12 +107,13 @@ def create_tx_with_witness(
 
         tapscript = CScript(parse_hex_bytes(spending_condition['script']))
 
-        witness_raw = tx_template.protocol_data or []
-        witness = [
-            parse_hex_bytes(s) for s in
-            # This flattens the list of lists
-            itertools.chain.from_iterable(witness_raw)
-        ]
+        if tx_template.protocol_data:
+            witness = [
+                parse_hex_bytes(s) for s in
+                tx_template.protocol_data[prevout_index]
+            ]
+        else:
+            witness = []
 
         control_block = parse_hex_bytes(spending_condition['controlBlock'])
 

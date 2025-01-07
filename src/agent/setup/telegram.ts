@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { Context, NarrowedContext, Telegraf } from 'telegraf';
-import { channelPost, message } from 'telegraf/filters';
+import { channelPost } from 'telegraf/filters';
 import { agentConf } from '../agent.conf';
 import { Update } from 'telegraf/types';
 import { Message, toJson } from './messages';
@@ -48,12 +48,7 @@ export class TelegramBot {
         this.bot = new Telegraf(this.token);
         this.client = client;
 
-        this.bot.on(message('text'), async (context) => {
-            console.log(context.message.from.username, context.message.text);
-        });
-
         this.bot.on(channelPost(), async (context) => {
-            console.log(context.update.channel_post);
             const channelPost = context.update.channel_post;
 
             if (!this.client) return;
@@ -63,12 +58,10 @@ export class TelegramBot {
 
             try {
                 if (text) {
-                    console.log('!!! text !!!', text);
                     this.client!.messageReceived(text, new SimpleContext(context));
                 } else if (file) {
                     context.telegram.getFileLink(file.file_id).then((url) => {
                         axios({ url: url.toString(), responseType: 'text' }).then((response) => {
-                            console.log('!!! file !!!', response.data.length);
                             this.client!.messageReceived(response.data, new SimpleContext(context));
                         });
                     });

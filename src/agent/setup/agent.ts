@@ -16,7 +16,7 @@ import { SimpleContext, TelegramBot } from './telegram';
 import { verifySetup } from './verify-setup';
 import { signMessage, verifyMessage } from '../common/schnorr';
 import { addAmounts } from './amounts';
-import { signTemplates } from './sign-templates';
+import { signTemplates, verifySignatures } from './sign-templates';
 import { AgentRoles, Setup, SetupStatus, SignatureType, Template, TemplateNames } from '../common/types';
 import { initializeTemplates } from './init-templates';
 import { mergeWots, setWotsPublicKeysForArgument } from './wots-keys';
@@ -388,6 +388,9 @@ export class Agent {
         }
 
         await this.db.updateTemplates(i.setupId, i.templates!);
+
+        console.log('Verifying signatures...');
+        await verifySignatures(this.agentId, i.setupId);
 
         if (this.role == AgentRoles.PROVER) {
             await verifySetup(this.agentId, i.setupId, this.role);

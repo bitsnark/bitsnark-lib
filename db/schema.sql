@@ -28,7 +28,6 @@ CREATE TABLE templates (
     inputs JSONB NOT NULL,
     outputs JSONB NOT NULL,
     status CHARACTER VARYING NOT NULL DEFAULT 'PENDING',
-    tx_data JSONB NULL,
     protocol_data JSONB NULL,
     updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
     UNIQUE (setup_id, name)

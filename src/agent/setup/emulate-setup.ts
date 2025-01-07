@@ -2,7 +2,7 @@ import minimist from 'minimist';
 import { agentConf } from '../agent.conf';
 import { addAmounts } from './amounts';
 import { generateAllScripts } from './generate-scripts';
-import { signTemplates } from './sign-templates';
+import { signTemplates, verifySignatures } from './sign-templates';
 import { getSpendingConditionByInput } from '../common/templates';
 import { verifySetup } from './verify-setup';
 import { generateWotsPublicKeys, mergeWots, setWotsPublicKeysForArgument } from './wots-keys';
@@ -94,9 +94,6 @@ export async function emulateSetup(
     proverTemplates = setWotsPublicKeysForArgument(setupId, proverTemplates);
     verifierTemplates = setWotsPublicKeysForArgument(setupId, verifierTemplates);
 
-    await proverDb.upsertTemplates(setupId, proverTemplates);
-    await verifierDb.upsertTemplates(setupId, verifierTemplates);
-
     console.log('writing templates to DB before external script generation process...');
 
     await proverDb.upsertTemplates(setupId, proverTemplates);
@@ -149,8 +146,13 @@ export async function emulateSetup(
         }
     }
 
+    console.log('writing templates to DB before signature verification...');
+
     await proverDb.upsertTemplates(setupId, proverTemplates);
     await verifierDb.upsertTemplates(setupId, verifierTemplates);
+
+    await verifySignatures(proverAgentId, setupId);
+    await verifySignatures(verifierAgentId, setupId);
 
     console.log('update listener data...');
 
@@ -229,14 +231,15 @@ async function main(
 }
 
 if (require.main === module) {
-    const args = minimist(process.argv.slice(2));
-    const setupId = args['setup-id'];
-    const proverId = args['prover-id'];
-    const verifierId = args['verifier-id'];
-    const lockedFunds = args.locked;
-    const proverStake = args.stake;
-    const generateFinal = args.final;
-    main(setupId, proverId, verifierId, generateFinal, lockedFunds, proverStake).catch((error) => {
+    const {
+        'prover-agent-id': proverAgentId,
+        'verifier-agent-id': verifierAgentId,
+        'setup-id': setupId,
+        locked: lockedFunds,
+        stake: proverStake,
+        final: generateFinal
+    } = minimist(process.argv.slice(2));
+    main(setupId, proverAgentId, verifierAgentId, generateFinal, lockedFunds, proverStake).catch((error) => {
         throw error;
     });
 }

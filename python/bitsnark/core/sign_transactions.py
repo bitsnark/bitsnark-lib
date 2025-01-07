@@ -1,8 +1,9 @@
+import dotenv
 import argparse
 import os
 import sys
 from dataclasses import dataclass
-from typing import Literal, Sequence
+from typing import Sequence
 
 from bitcointx.core import CTransaction, COutPoint, CTxIn, CTxOut
 from bitcointx.core.script import CScript
@@ -12,8 +13,9 @@ from sqlalchemy.orm.session import Session
 from sqlalchemy.orm.attributes import flag_modified
 
 from bitsnark.conf import POSTGRES_BASE_URL
+from bitsnark.core.environ import load_bitsnark_dotenv
 from bitsnark.core.parsing import parse_bignum, parse_hex_bytes, serialize_hex
-from .models import TransactionTemplate, Setups, SetupStatus, OutgoingStatus
+from .models import TransactionTemplate, Setups, SetupStatus
 from .types import Role
 from .signing import sign_input
 
@@ -55,26 +57,33 @@ HARDCODED_MOCK_INPUTS: dict[str, list[MockInput]] = {
     ],
 }
 
-# Copied from agent.conf.ts
-KEYPAIRS = {
-    'bitsnark_prover_1': {
-        'public': XOnlyPubKey.fromhex(
-            os.getenv('PROVER_SCHNORR_PUBLIC', 'ae2ea39bca4b6b14567e3c38b9680f6483ceeef4ae17f8dceb5a5a0866999b75')),
-        'private': CKey.fromhex(
-            os.getenv('PROVER_SCHNORR_PRIVATE', '415c69b837f4146019574f59c223054c8c144ac61b6ae87bc26824c0f8d034e2')),
-    },
-    'bitsnark_verifier_1': {
-        'public': XOnlyPubKey.fromhex(
-            os.getenv('VERIFIER_SCHNORR_PUBLIC', '86ad52a51b65ab3aed9a64e7202a7aa1f2bd3da7a6a2dae0f5c8e28bda29de79')),
-        'private': CKey.fromhex(
-            os.getenv('VERIFIER_SCHNORR_PRIVATE', 'd4067af1132afcb352b0edef53d8aa2a5fc713df61dee31b1d937e69ece0ebf0')),
-    },
-}
-for keypairs in KEYPAIRS.values():
-    assert keypairs['public'] == XOnlyPubKey(keypairs['private'].pub)
+def load_keypairs():
+    keypairs = {
+        'bitsnark_prover_1': {
+            'public': XOnlyPubKey.fromhex(os.environ['PROVER_SCHNORR_PUBLIC']),
+            'private': CKey.fromhex(os.environ['PROVER_SCHNORR_PRIVATE']),
+        },
+        'bitsnark_verifier_1': {
+            'public': XOnlyPubKey.fromhex(os.environ['VERIFIER_SCHNORR_PUBLIC']),
+            'private': CKey.fromhex(os.environ['VERIFIER_SCHNORR_PRIVATE']),
+        },
+    }
+    for role, role_keypairs in keypairs.items():
+        pub = role_keypairs['public']
+        pub_from_priv = XOnlyPubKey(role_keypairs['private'].pub)
+        if pub != pub_from_priv:
+            raise ValueError(
+                f"Public key {pub_from_priv} derived from private key for {role} does not match the public key {pub} provided"
+            )
+
+    return keypairs
 
 
 def sign_setup(setup_id: str, agent_id: str, role: Role, dbsession: Session, mocks: bool = False):
+    # This is a bit silly
+    keypairs = load_keypairs()
+    private_key = keypairs[agent_id]['private']
+
     successes = []
 
     tx_template_query = (select(TransactionTemplate).order_by(TransactionTemplate.ordinal))
@@ -94,9 +103,9 @@ def sign_setup(setup_id: str, agent_id: str, role: Role, dbsession: Session, moc
         success = _handle_tx_template(
             tx_template=tx,
             role=role,
-            agent_id=agent_id,
             tx_template_map=tx_template_map,
             use_mocked_inputs=mocks,
+            private_key=private_key,
         )
         if success:
             successes.append(tx.name)
@@ -126,6 +135,7 @@ def sign_setup(setup_id: str, agent_id: str, role: Role, dbsession: Session, moc
 
 
 def main(argv: Sequence[str] = None):
+    load_bitsnark_dotenv()
     parser = argparse.ArgumentParser()
     parser.add_argument('--db', default=POSTGRES_BASE_URL)
     parser.add_argument('--setup-id', required=True,
@@ -154,7 +164,7 @@ def _handle_tx_template(
     *,
     tx_template: TransactionTemplate,
     role: Role,
-    agent_id: str,
+    private_key: CKey,
     tx_template_map: dict[int, TransactionTemplate],
     use_mocked_inputs: bool = True,
 ):
@@ -280,16 +290,13 @@ def _handle_tx_template(
 
     # Alter the template
     tx_template.txid = txid
-    tx_template.tx_data = dict(
-        tx_template.tx_data or {}, signedSerializedTx=serialize_hex(tx.serialize())
-    )
     for i, inp in enumerate(tx_inputs):
         signature = sign_input(
             script=input_tapscripts[i],
             tx=tx,
             input_index=i,
             spent_outputs=spent_outputs,
-            private_key=KEYPAIRS[agent_id]['private'],
+            private_key=private_key,
         )
         if len(tx_template.inputs) <= i:
             # HACK: the hardcoded initial transactions have an empty list of inputs
