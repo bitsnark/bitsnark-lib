@@ -1,4 +1,4 @@
-import { TestAgentDb } from '../../../tests/test-utils/test-utils';
+import { mockVin, TestAgentDb } from '../../../tests/test-utils/test-utils';
 import { BitcoinNode } from '../common/bitcoin-node';
 import Client, { RawTransaction, Input } from 'bitcoin-core';
 import { agentConf } from '../agent.conf';

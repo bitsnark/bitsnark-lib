@@ -7,7 +7,6 @@ import { ProtocolProver } from './protocol-logic/protocol-prover';
 import { ProtocolVerifier } from './protocol-logic/protocol-verifier';
 import { sleep } from './common/sleep';
 import { proofBigint } from './common/constants';
-import { randomBytes } from 'node:crypto';
 import { startSetup } from './setup/start-setup';
 import { BitcoinListener } from './listener/bitcoin-listener';
 import { MockPublisher } from './protocol-logic/mock-publisher';

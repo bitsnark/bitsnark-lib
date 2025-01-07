@@ -5,7 +5,7 @@ import { AgentDb } from '../common/agent-db';
 import { ForkCommand, ForkYourself } from '../fork/fork-yourself';
 import { GenerateFinalTaprootCommand } from '../fork/fork-entrypoint';
 import { parallelize } from '../common/parallelize';
-import { array, range } from '../common/array-utils';
+import { array } from '../common/array-utils';
 import { loadProgram } from '../setup/groth16-verify';
 import { Decasector } from '../setup/decasector';
 import minimist from 'minimist';

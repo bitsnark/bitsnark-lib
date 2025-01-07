@@ -1,6 +1,5 @@
 import { Decasector } from '../../src/agent/setup/decasector';
 import {
-    getMaxRefutationIndex,
     getRefutationDescriptor,
     getRefutationIndex,
     RefutationDescriptor,

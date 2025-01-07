@@ -16,7 +16,7 @@ import { SimpleContext, TelegramBot } from './telegram';
 import { verifySetup } from './verify-setup';
 import { signMessage, verifyMessage } from '../common/schnorr';
 import { addAmounts } from './amounts';
-import { fakeSignTemplates, signTemplates } from './sign-templates';
+import { signTemplates } from './sign-templates';
 import { AgentRoles, Setup, SetupStatus, SignatureType, Template, TemplateNames } from '../common/types';
 import { initializeTemplates } from './init-templates';
 import { mergeWots, setWotsPublicKeysForArgument } from './wots-keys';

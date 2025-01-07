@@ -1,9 +1,7 @@
 import { agentConf } from '../agent.conf';
 import { AgentDb } from '../common/agent-db';
 import { findOutputByInput, getTemplateByName } from '../common/templates';
-import { TemplateNames, AgentRoles, Template } from '../common/types';
-
-const externallyFundedTxs: string[] = [TemplateNames.LOCKED_FUNDS, TemplateNames.PROVER_STAKE];
+import { AgentRoles, Template } from '../common/types';
 
 // Currently only counting script sizes, not the actual transaction sizes.
 // (Length input scripts + length of output scripts) / 8 bits per byte * fee per byte * fee factor percent / 100

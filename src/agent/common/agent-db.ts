@@ -4,7 +4,6 @@ import { array } from './array-utils';
 import { Db, DbValue, QueryArgs } from './db';
 import { jsonParseCustom, jsonStringifyCustom } from './json';
 import { Input, Output, ReceivedTransaction, Setup, SetupStatus, Template, TemplateStatus } from './types';
-import { json } from 'node:stream/consumers';
 
 export interface UpdateTemplatePartial {
     setupId?: string;
