@@ -40,7 +40,6 @@ def sign_setups(dbsession, agent_id, role):
         except TransactionProcessingError:
             logger.exception("Error signing setup %s", setup.id)
             setup.status = SetupStatus.FAILED
-        dbsession.commit()
 
 
 def verify_setups(dbsession, prover_pubkey, verifier_pubkey, ignore_missing_script):
@@ -52,12 +51,16 @@ def verify_setups(dbsession, prover_pubkey, verifier_pubkey, ignore_missing_scri
         logger.info("Verifying setup %s", setup.id)
         try:
             for signer_role, signer_pubkey in [('PROVER', prover_pubkey), ('VERIFIER', verifier_pubkey)]:
-                verify_setup_signatures(dbsession, setup.id, signer_role, signer_pubkey, ignore_missing_script)
-            setup.status = SetupStatus.VERIDIFED
+                verify_setup_signatures(
+                    dbsession=dbsession,
+                    setup_id=setup.id,
+                    signer_role=signer_role,
+                    signer_pubkey=signer_pubkey,
+                    ignore_missing_script=ignore_missing_script)
+            setup.status = SetupStatus.VERIFIED
         except TransactionProcessingError:
             logger.exception("Error verifying setup %s", setup.id)
             setup.status = SetupStatus.FAILED
-        dbsession.commit()
 
 
 def broadcast_transactions(dbsession, bitcoin_rpc):
@@ -73,7 +76,6 @@ def broadcast_transactions(dbsession, bitcoin_rpc):
         except ValueError:
             logger.exception("Error broadcasting transaction %s", tx.name)
             tx.status = OutgoingStatus.REJECTED
-        dbsession.commit()
 
 
 def main(argv: typing.Sequence[str] = None):
@@ -102,16 +104,19 @@ def main(argv: typing.Sequence[str] = None):
     verifier_pubkey = XOnlyPubKey.fromhex(os.environ['VERIFIER_SCHNORR_PUBLIC'])
 
     engine = create_engine(f"{POSTGRES_BASE_URL}/{args.agent_id}")
-    dbsession = Session(engine)
+    dbsession = Session(engine, autobegin=False)
     if args.broadcast:
         bitcoin_rpc = BitcoinRPC(BITCON_NODE_ADDR)
 
     def listen():
         if args.sign:
-            sign_setups(dbsession, args.agent_id, args.role)
-            verify_setups(dbsession, prover_pubkey, verifier_pubkey, ignore_missing_script=True)
+            with dbsession.begin():
+                sign_setups(dbsession, args.agent_id, args.role)
+            with dbsession.begin():
+                verify_setups(dbsession, prover_pubkey, verifier_pubkey, ignore_missing_script=True)
         if args.broadcast:
-            broadcast_transactions(dbsession, bitcoin_rpc)
+            with dbsession.begin():
+                broadcast_transactions(dbsession, bitcoin_rpc)
 
     listen()
     if args.loop:

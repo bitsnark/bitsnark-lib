@@ -15,7 +15,7 @@ from ..core.transactions import construct_signable_transaction, MissingScript
 logger = logging.getLogger(__name__)
 
 
-def verify_setup_signatures(dbsession, setup_id, signer_role, signer_pubkey, ignore_missing_script, name=None):
+def verify_setup_signatures(*, dbsession, setup_id, signer_role, signer_pubkey, ignore_missing_script, name=None):
     'Verify all the signatures of a setup.'
     signature_key = f"{signer_role.lower()}Signature"
 

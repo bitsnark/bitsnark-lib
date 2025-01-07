@@ -12,7 +12,7 @@ class SetupStatus(enum.Enum):
     UNSIGNED = 'UNSIGNED'
     SIGNED = 'SIGNED'
     MERGED = 'MERGED'
-    VERIDIFED = 'VERIFIED'
+    VERIFIED = 'VERIFIED'
     FAILED = 'FAILED'
 
 
