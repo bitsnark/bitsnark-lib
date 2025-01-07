@@ -136,13 +136,3 @@ export class Decasector {
         return left;
     }
 }
-
-const scriptName = __filename;
-if (process.argv[1] == scriptName) {
-    try {
-        const d = new Decasector();
-        d.getLineBySelectionPath([1, 2, 3, 4, 5, 6]);
-    } catch (e) {
-        console.error(e);
-    }
-}
