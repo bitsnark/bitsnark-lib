@@ -1,8 +1,7 @@
 from bitcointx.core import CMutableTransaction, CTxOut, CTransaction
 from bitcointx.core.key import CKey, XOnlyPubKey
-from bitcointx.core.script import CScript, SIGHASH_Type, SIGHASH_ALL, SIGHASH_ANYONECANPAY
+from bitcointx.core.script import CScript, SIGHASH_Type
 
-# DEFAULT_HASHTYPE = SIGHASH_ALL | SIGHASH_ANYONECANPAY
 DEFAULT_HASHTYPE = None
 
 def sign_input(
