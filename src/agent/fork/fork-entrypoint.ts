@@ -38,22 +38,13 @@ async function main() {
         input: process.stdin,
         output: process.stdout
     });
-    return new Promise<void>((resolve, reject) => {
-        rl.on('line', async (line: string) => {
-            try {
-                const result = await fun(JSON.parse(line));
-                console.log(jsonStringifyCustom(result) + '\n');
-                resolve();
-            } catch (error) {
-                reject(error);
-            }
-        });
+    rl.on('line', async (line: string) => {
+        const result = await fun(JSON.parse(line));
+        console.log(jsonStringifyCustom(result) + '\n');
+        rl.close();
     });
 }
 
 if (require.main === module) {
-    main().catch((error) => {
-        console.error('Error: ', error);
-        process.exit(-1);
-    });
+    main();
 }

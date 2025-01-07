@@ -69,7 +69,7 @@ export class ProtocolVerifier extends ProtocolBase {
                     break;
                 case TemplateNames.ARGUMENT:
                     if (lastFlag) {
-                        this.refuteArgument(proof, states, incoming);
+                        await this.refuteArgument(proof, states, incoming);
                     }
                     break;
                 case TemplateNames.ARGUMENT_UNCONTESTED:
@@ -108,7 +108,9 @@ export class ProtocolVerifier extends ProtocolBase {
     private checkProof(proof: bigint[]): boolean {
         step1_vm.reset();
         groth16Verify(Key.fromSnarkjs(defaultVerificationKey), Step1_Proof.fromWitness(proof));
-        return step1_vm.success?.value === 1n;
+        const success = step1_vm.success?.value === 1n;
+        console.log('PROOF CHECKS: ', success);
+        return success;
     }
 
     private async refuteArgument(proof: bigint[], states: Buffer[][], incoming: Incoming) {
@@ -137,7 +139,7 @@ export class ProtocolVerifier extends ProtocolBase {
     private async sendSelect(proof: bigint[], selectionPath: number[], states: Buffer[][]) {
         const iteration = selectionPath.length;
         const txName = TemplateNames.SELECT + '_' + twoDigits(iteration);
-        const selection = await findErrorState(proof, last(states), selectionPath);
+        const selection = await findErrorState(proof, states, selectionPath);
         if (selection < 0) throw new Error('Could not find error state');
         const selectionWi = encodeWinternitz24(BigInt(selection), createUniqueDataId(this.setup!.id, txName, 0, 0, 0));
         this.sendTransaction(txName, [selectionWi]);

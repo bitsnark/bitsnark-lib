@@ -9,6 +9,7 @@ import { createUniqueDataId } from '../setup/wots-keys';
 import { Decasector, StateCommitment } from '../setup/decasector';
 import { chunk } from '../common/array-utils';
 import { RefutationType } from '../final-step/refutation';
+import { Runner } from '../../../src/generator/ec_vm/vm/runner';
 
 function calculateD(a: bigint, b: bigint): bigint {
     return (a * b) / prime_bigint;
@@ -56,14 +57,14 @@ export class Argument {
         const valuesBefore = scBefore.getValues();
         const valuesAfter = scAfter.getValues();
 
-        if (valuesBefore.length != 256 || valuesAfter.length != 256)
+        if (valuesBefore.length != 128 || valuesAfter.length != 128)
             throw new Error('Invalid number of values in state commitment');
 
         const merkleProofA = await FatMerkleProof.fromRegs(valuesBefore, instr.param1);
         const merkleProofB = instr.param2 ? await FatMerkleProof.fromRegs(valuesBefore, instr.param2!) : merkleProofA;
         const merkleProofC = await FatMerkleProof.fromRegs(valuesAfter, instr.target);
 
-        if (merkleProofA.hashes.length != 17 || merkleProofB.hashes.length != 17 || merkleProofC.hashes.length != 17)
+        if (merkleProofA.hashes.length != 15 || merkleProofB.hashes.length != 15 || merkleProofC.hashes.length != 15)
             throw new Error('Invalid number of hashes in merkle proof');
 
         const hashes = [merkleProofA.toArgument(), merkleProofB.toArgument(), merkleProofC.toArgument()];
@@ -114,10 +115,28 @@ export class Argument {
         // the selection path can't be wrong, because of the winternitz signature on it
         this.selectionPath = argData[0].slice(0, 6).map((n) => Number(n));
         this.index = Number(argData[0][6]);
+        if (!this.checkIndex()) throw new Error('Invalid selection path or index');
 
         const decasector = new Decasector(this.proof);
 
-        if (!this.checkIndex()) throw new Error('Invalid selection path or index');
+        // check states
+        // my state before instruction
+        const runner = Runner.load(decasector.savedVm);
+        runner.execute(this.index);
+        const myStateBefore = await FatMerkleProof.calculateRoot(runner.getRegisterValues());
+        runner.execute(this.index + 1);
+        const myStateAfter = await FatMerkleProof.calculateRoot(runner.getRegisterValues());
+
+        async function getOtherStateBtIndex(index: number): Promise<Buffer> {
+            if (index >= 400000) {
+                return await FatMerkleProof.calculateRoot(decasector.getRegsForSuccess());
+            }
+            const iter = decasector.stateCommitmentByLine[index].iteration;
+            const which = decasector.stateCommitmentByLine[index].selection;
+            return states[iter - 1][which];
+        }
+        const hisStateBefore = await getOtherStateBtIndex(this.index);
+        const hisStateAfter = await getOtherStateBtIndex(this.index + 1);
 
         // second input is the params a, b, c, and d
         const [a, b, c, d] = argData[1];
@@ -141,28 +160,34 @@ export class Argument {
         // if not the instruction, then it must be one of the hashes in the
         // merkle proofs
 
-        // 3 merkle proofs are in input 2, 3, and 4
         const instr = decasector.savedVm.program[this.index];
 
         // reorder arg data for proofs
         const argProofs = chunk(argData.slice(2).flat(), 15);
 
         const makeProof = async (i: number) => {
+            const index = i < 2 ? this.index : this.index + 1;
             const hashes = argProofs[i].map((n) => bigintToBufferBE(n, 256));
-            const iter = decasector.stateCommitmentByLine[this.index].iteration;
-            const which = decasector.stateCommitmentByLine[this.index].selection;
-            const root = states[iter][which];
+            const iter = decasector.stateCommitmentByLine[index].iteration;
+            const which = decasector.stateCommitmentByLine[index].selection;
+            const root = states[iter - 1][which];
             const leaf = bigintToBufferBE([a, b, c, d][i], 256);
-            return await FatMerkleProof.fromArgument(hashes, leaf, root, this.index);
+            return await FatMerkleProof.fromArgument(hashes, leaf, root, index);
         };
 
         const merkleProofA = await makeProof(0);
         const merkleProofB = instr.param2 ? await makeProof(1) : merkleProofA;
         const merkleProofC = await makeProof(2);
         const proofs = [merkleProofA, merkleProofB, merkleProofC];
-        const whichProof = proofs.findIndex((p) => !p.verify());
+        let whichProof = -1;
+        for (let i = 0; i < proofs.length; i++) {
+            if (!(await proofs[i].verify())) {
+                whichProof = i;
+                break;
+            }
+        }
+        // this should never happen
         if (whichProof < 0) {
-            // this should never happen
             throw new Error('All merkle proofs check out!');
         }
         const whichHash = await proofs[whichProof].indexToRefute();
@@ -173,7 +198,7 @@ export class Argument {
             refutationType: RefutationType.HASH,
             line: this.index,
             whichProof,
-            whichHash,
+            whichHash: Math.floor(whichHash / 2),
             totalLines: decasector.total
         });
         // return { data, script: script!, controlBlock: controlBlock! };

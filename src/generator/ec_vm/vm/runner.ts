@@ -123,15 +123,11 @@ export class Runner {
             case InstrCode.ASSERTONE:
                 if (param1.value != 1n) {
                     target.value = 0n;
-                    // in case of failure all vars should be 0
-                    this.registers.forEach((r) => (r.value = 0n));
                 }
                 break;
             case InstrCode.ASSERTZERO:
                 if (param1.value != 0n) {
                     target.value = 0n;
-                    // in case of failure all vars should be 0
-                    this.registers.forEach((r) => (r.value = 0n));
                 }
                 break;
         }
@@ -142,11 +138,13 @@ export class Runner {
         stop = stop ?? this.instructions.length - 1;
         while (this.current <= stop) {
             this.executeOne();
+            if (this.registers[2].value == 0n)
+                console.log('blyat!!!');
         }
     }
 
     public getRegisterValues(): bigint[] {
-        return this.registers.map((r) => r.value);
+        return this.registers.filter(r => !r.hardcoded).map((r) => r.value);
     }
 
     public getInstruction(line: number): Instruction {

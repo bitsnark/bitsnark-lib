@@ -18,7 +18,7 @@ import {
     RefutationType
 } from './refutation';
 import { getHash } from '../../../src/common/taproot-common';
-import { prime_bigint } from '../common/constants';
+import { DEAD_ROOT, prime_bigint } from '../common/constants';
 import { modInverse } from '../../generator/common/math-utils';
 
 function timeStr(ms: number): string {
@@ -58,7 +58,7 @@ export class DoomsdayGenerator {
     }
 
     chunkTheWork(chunks: number, requestedScriptIndex?: number): GenerateFinalTaprootCommand[] {
-        const total = getMaxRefutationIndex(this.decasector);
+        const total = getMaxRefutationIndex();
         const chunk = Math.floor(total / chunks);
         const inputs: GenerateFinalTaprootCommand[] = array(chunks, (i) => ({
             agentId: this.agentId,
@@ -117,11 +117,8 @@ export class DoomsdayGenerator {
         let requestedScript: Buffer | undefined = undefined;
         for (let i = from; i < to; i++) {
             try {
-                const script = await createRefutationScript(
-                    this.decasector,
-                    templates,
-                    getRefutationDescriptor(this.decasector, i)
-                );
+                const rd = getRefutationDescriptor(i);
+                const script = await createRefutationScript(this.decasector, templates, rd);
                 if (i == requestedScriptIndex) {
                     requestedScript = script;
                 }
@@ -139,14 +136,10 @@ export class DoomsdayGenerator {
     ): Promise<GenerateTaprootResult> {
         const start = Date.now();
         console.log('Starting doomsday parallel...');
-        const inputs = this.chunkTheWork(400);
         const requestedScriptIndex = refutationDescriptor ? getRefutationIndex(refutationDescriptor) : undefined;
+        const inputs = this.chunkTheWork(64, requestedScriptIndex );
 
         const results = await parallelize<GenerateFinalTaprootCommand, ChunkResult>(inputs, async (input) => {
-            // TODO: this is temporary in order to check each scenario separately
-            if (getRefutationDescriptor(this.decasector, input.from).refutationType != RefutationType.INSTR) {
-                return { hashes: array(input.to - input.from, Buffer.alloc(32)) };
-            }
             return this.forker.fork(input);
         });
         const allHashes = results.flatMap((r) => r.hashes);
@@ -170,7 +163,7 @@ export class DoomsdayGenerator {
     async generateFinalStepTaproot(refutationDescriptor?: RefutationDescriptor): Promise<GenerateTaprootResult> {
         const db = new AgentDb(this.agentId);
         const templates = await db.getTemplates(this.setupId);
-        const inputs = this.chunkTheWork(10000);
+        const inputs = this.chunkTheWork(64);
         const requestedScriptIndex = refutationDescriptor ? getRefutationIndex(refutationDescriptor) : undefined;
 
         const start = Date.now();
@@ -216,7 +209,11 @@ async function main() {
     const setupId = args['setup-id'] ?? 'test_setup';
     const parallel = !!args['parallel'];
     const ddg = new DoomsdayGenerator(agentId, setupId);
-    const r = parallel ? await ddg.generateFinalStepTaprootParallel() : await ddg.generateFinalStepTaproot();
+    const r = parallel ? 
+        await ddg.generateFinalStepTaprootParallel(
+            getRefutationDescriptor(123)
+        ) : 
+        await ddg.generateFinalStepTaproot();
     console.log(r);
 }
 

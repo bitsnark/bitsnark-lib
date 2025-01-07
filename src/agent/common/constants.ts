@@ -1,3 +1,5 @@
+export const DEAD_ROOT = Buffer.from([0x6a, 0x6a, 0x6a, 0x6a, 0x6a, 0x6a, 0x6a, 0x6a]);
+
 export const prime_bigint = 21888242871839275222246405745257275088696311157297823662689037894645226208583n;
 
 export const proof = {

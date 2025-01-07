@@ -306,7 +306,7 @@ export class Agent {
 
         await this.db.upsertTemplates(i.setupId, i.templates!);
 
-        i.templates = await generateAllScripts(this.agentId, i.setupId, this.role, i.templates!, false);
+        i.templates = await generateAllScripts(this.agentId, i.setupId, this.role, i.templates!, true);
         i.templates = await addAmounts(this.agentId, this.role, i.setupId, i.templates!);
 
         await this.db.upsertTemplates(i.setupId, i.templates!);

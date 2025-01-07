@@ -44,8 +44,8 @@ interface AgentConf {
 export const agentConf: AgentConf = {
     internalPubkey: parse.bigint('INTERNAL_PUBKEY', 1n),
     timeoutBlocks: parse.integer('TIMEOUT_BLOCKS', 5),
-    smallTimeoutBlocks: parse.integer('SMALL_TIMEOUT_BLOCKS', 18),
-    largeTimeoutBlocks: parse.integer('LARGE_TIMEOUT_BLOCKS', 36),
+    smallTimeoutBlocks: parse.integer('SMALL_TIMEOUT_BLOCKS', 180),
+    largeTimeoutBlocks: parse.integer('LARGE_TIMEOUT_BLOCKS', 360),
 
     payloadAmount: parse.bigint('PAYLOAD_AMOUNT', ONE_BITCOIN * 10n),
     proverStakeAmount: parse.bigint('PROVER_STAKE_AMOUNT', ONE_BITCOIN * 2n),
