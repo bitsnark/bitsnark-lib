@@ -138,8 +138,6 @@ export class Runner {
         stop = stop ?? this.instructions.length - 1;
         while (this.current <= stop) {
             this.executeOne();
-            if (this.registers[2].value == 0n)
-                console.log('blyat!!!');
         }
     }
 
