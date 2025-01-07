@@ -6,6 +6,7 @@ import typing
 import urllib.parse
 from decimal import Decimal
 
+from bitcointx.core import CTransaction, CMutableTransaction
 from bitcointx.wallet import CCoinAddress
 import requests
 
@@ -44,6 +45,18 @@ class JSONRPCError(requests.HTTPError):
             request=request,
             response=response,
         )
+
+
+class TestMempoolAcceptFailure(Exception):
+    def __init__(self, resp: dict | list[dict]):
+        self.resp = resp
+        if not isinstance(resp, dict):
+            resp = resp[0]
+        self.allowed = resp['allowed']
+        self.reason = resp['reject-reason']
+        self.txid = resp['txid']
+        self.wtxid = resp.get('wtxid')
+        super().__init__(self.reason)
 
 
 class BitcoinRPC:
@@ -184,6 +197,18 @@ class BitcoinRPC:
         if len(candidates) > 1:
             raise LookupError(f"Multiple outputs to {address} in tx {txid}: {candidates}")
         return candidates[0]
+
+    def test_mempoolaccept(self, tx: str | bytes | CTransaction | CMutableTransaction) -> None:
+        if isinstance(tx, (CTransaction, CMutableTransaction)):
+            tx = tx.serialize().hex()
+        elif isinstance(tx, bytes):
+            tx = tx.hex()
+        else:
+            if not isinstance(tx, str):
+                raise ValueError("tx must be either a CTransaction, CMutableTransaction, bytes, or str")
+        response = self.call("testmempoolaccept", [tx])
+        if not response[0]["allowed"]:
+            raise TestMempoolAcceptFailure(response[0])
 
 
 class DecimalJSONEncoder(json.JSONEncoder):

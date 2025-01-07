@@ -11,9 +11,7 @@ from .utils.bitcoin_wallet import BitcoinWallet
 from .utils.npm import NPMCommandRunner
 from .constants import (
     POSTGRES_URL_ROOT,
-    POSTGRES_DATABASE_PROVER,
     POSTGRES_URL_PROVER,
-    POSTGRES_DATABASE_VERIFIER,
     POSTGRES_URL_VERIFIER,
     BITCOIN_RPC_URL, DB_SCHEMA_FILE,
 )
