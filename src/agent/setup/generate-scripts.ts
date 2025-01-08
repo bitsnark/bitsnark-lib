@@ -53,6 +53,25 @@ function setTaprootKey(transactions: Template[]) {
     }
 }
 
+export function generateSpendLockedFundsScript(setupId: string, schnorrKeys: Buffer[]): Buffer {
+    const bitcoin = new Bitcoin();
+    bitcoin.throwOnFail = true;
+
+    // Add check for both signatures
+
+    for (const key of schnorrKeys) {
+        bitcoin.addWitness(Buffer.from(new Array(64)));
+        bitcoin.verifySignature(key);
+    }
+
+    // Add the setupId in so that the result is globally unique
+    bitcoin.DATA(Buffer.from(setupId, 'ascii'));
+    bitcoin.OP_DROP();
+
+    const script = bitcoin.programToBinary();
+    return script;
+}
+
 export function generateBoilerplate(myRole: AgentRoles, spendingCondition: SpendingCondition): Buffer {
     const bitcoin = new Bitcoin();
 
@@ -170,7 +189,14 @@ export async function generateAllScripts(
                 // the first input of the argument is different
                 if (t.name == TemplateNames.ARGUMENT && input.index == 0) {
                     script = generateProcessSelectionPath(sc);
-                } else {
+                }
+                // The locked funds is different
+                else if (input.templateName == TemplateNames.LOCKED_FUNDS) {
+                    const sc = getSpendingConditionByInput(templates, input);
+                    script = generateSpendLockedFundsScript(setupId, sc.signaturesPublicKeys!);
+                }
+                // The rest...
+                else {
                     const sc = getSpendingConditionByInput(templates, input);
                     script = generateBoilerplate(myRole, sc);
                 }

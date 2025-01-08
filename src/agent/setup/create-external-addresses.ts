@@ -3,7 +3,7 @@ import { agentConf } from '../agent.conf';
 import { AgentRoles, SignatureType, Template, TemplateNames } from '../common/types';
 import { SimpleTapTree } from '../common/taptree';
 import { generateWotsPublicKeysForSpendingCondition } from './wots-keys';
-import { generateBoilerplate } from './generate-scripts';
+import { generateBoilerplate, generateSpendLockedFundsScript } from './generate-scripts';
 import { protocolStart } from '../common/templates';
 import { Bitcoin } from '../../../src/generator/btc_vm/bitcoin';
 
@@ -37,21 +37,8 @@ export function createLockedFundsExternalAddresses(
     const proverPublicKey = Buffer.from(agentConf.keyPairs[proverAgentId].schnorrPublic, 'hex');
     const verifierPublicKey = Buffer.from(agentConf.keyPairs[verifierAgentId].schnorrPublic, 'hex');
 
-    const bitcoin = new Bitcoin();
-    bitcoin.throwOnFail = true;
+    const script = generateSpendLockedFundsScript(setupId, [proverPublicKey, verifierPublicKey]);
 
-    // Add check for both signatures
-
-    for (const key of [proverPublicKey, verifierPublicKey]) {
-        bitcoin.addWitness(Buffer.from(new Array(64)));
-        bitcoin.verifySignature(key);
-    }
-
-    // Add the setupId in so that the result is globally unique
-    bitcoin.DATA(Buffer.from(setupId, 'ascii'));
-    bitcoin.OP_DROP();
-
-    const script = bitcoin.programToBinary();
     const stt = new SimpleTapTree(agentConf.internalPubkey, [script]);
     const lockedFundsAddress = stt.getTaprootAddress();
     console.log('lockedFundsAddress: ', lockedFundsAddress);
