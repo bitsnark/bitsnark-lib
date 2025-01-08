@@ -29,13 +29,10 @@ function getTemplateTaprootAddress(
 }
 
 export function createLockedFundsExternalAddresses(
-    proverAgentId: string,
-    verifierAgentId: string,
+    proverPublicKey: Buffer,
+    verifierPublicKey: Buffer,
     setupId: string
 ): string {
-    const proverPublicKey = Buffer.from(agentConf.keyPairs[proverAgentId].schnorrPublic, 'hex');
-    const verifierPublicKey = Buffer.from(agentConf.keyPairs[verifierAgentId].schnorrPublic, 'hex');
-
     const script = generateSpendLockedFundsScript(setupId, [proverPublicKey, verifierPublicKey]);
 
     const stt = new SimpleTapTree(agentConf.internalPubkey, [script]);
@@ -65,7 +62,10 @@ async function main() {
     const setupId = args._[0] ?? args['setup-id'] ?? 'test_setup';
     console.log('setupId: ', setupId);
 
-    createLockedFundsExternalAddresses(proverAgentId, verifierAgentId, setupId);
+    const proverPublicKey = Buffer.from(agentConf.keyPairs[proverAgentId].schnorrPublic, 'hex');
+    const verifierPublicKey = Buffer.from(agentConf.keyPairs[verifierAgentId].schnorrPublic, 'hex');
+
+    createLockedFundsExternalAddresses(proverPublicKey, verifierPublicKey, setupId);
     createProverStakeExternalAddresses(proverAgentId, verifierAgentId, setupId);
 }
 
