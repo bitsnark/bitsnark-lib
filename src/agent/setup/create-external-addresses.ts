@@ -5,6 +5,7 @@ import { SimpleTapTree } from '../common/taptree';
 import { generateWotsPublicKeysForSpendingCondition } from './wots-keys';
 import { generateBoilerplate } from './generate-scripts';
 import { protocolStart } from '../common/templates';
+import { Bitcoin } from '../../../src/generator/btc_vm/bitcoin';
 
 function getTemplateTaprootAddress(
     proverPublicKey: Buffer,
@@ -35,9 +36,24 @@ export function createLockedFundsExternalAddresses(
 ): string {
     const proverPublicKey = Buffer.from(agentConf.keyPairs[proverAgentId].schnorrPublic, 'hex');
     const verifierPublicKey = Buffer.from(agentConf.keyPairs[verifierAgentId].schnorrPublic, 'hex');
-    const lockedFunds = protocolStart.find((t) => t.name == TemplateNames.LOCKED_FUNDS);
-    if (!lockedFunds) throw new Error('Locked funds template not found');
-    const lockedFundsAddress = getTemplateTaprootAddress(proverPublicKey, verifierPublicKey, setupId, lockedFunds);
+
+    const bitcoin = new Bitcoin();
+    bitcoin.throwOnFail = true;
+
+    // Add check for both signatures
+
+    for (const key of [proverPublicKey, verifierPublicKey]) {
+        bitcoin.addWitness(Buffer.from(new Array(64)));
+        bitcoin.verifySignature(key);
+    }
+
+    // Add the setupId in so that the result is globally unique
+    bitcoin.DATA(Buffer.from(setupId, 'ascii'));
+    bitcoin.OP_DROP();
+
+    const script = bitcoin.programToBinary();
+    const stt = new SimpleTapTree(agentConf.internalPubkey, [script]);
+    const lockedFundsAddress = stt.getTaprootAddress();
     console.log('lockedFundsAddress: ', lockedFundsAddress);
     return lockedFundsAddress;
 }
