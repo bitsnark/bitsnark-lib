@@ -5,7 +5,6 @@ import { SimpleTapTree } from '../common/taptree';
 import { generateWotsPublicKeysForSpendingCondition } from './wots-keys';
 import { generateBoilerplate, generateSpendLockedFundsScript } from './generate-scripts';
 import { protocolStart } from '../common/templates';
-import { Bitcoin } from '../../../src/generator/btc_vm/bitcoin';
 
 function getTemplateTaprootAddress(
     proverPublicKey: Buffer,
