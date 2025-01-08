@@ -66,7 +66,6 @@ export function generateSpendLockedFundsScript(setupId: string, schnorrKeys: Buf
 
     // Add the setupId in so that the result is globally unique
     bitcoin.DATA(Buffer.from(setupId, 'ascii'));
-    bitcoin.OP_DROP();
 
     const script = bitcoin.programToBinary();
     return script;
