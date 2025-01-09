@@ -45,7 +45,7 @@ class SignableTransaction:
 
     def sign_all_inputs(self, private_key: CKey) -> list[bytes]:
         return [
-            self.sign_input_at(index, private_key)
+            self.sign_input_at(index=index, private_key=private_key)
             for index in range(len(self.tx.vin))
         ]
 
@@ -121,7 +121,7 @@ def construct_signable_transaction(
             scriptPubKey=CScript(parse_hex_bytes(prevout['taprootKey']))
         ))
 
-        script_raw = spending_condition.get('script')
+        script_raw = inp.get('script', spending_condition.get('script'))
         if script_raw is None:
             raise MissingScript(
                 f"Spending condition {inp['spendingConditionIndex']} for transaction {prev_tx.name} "
