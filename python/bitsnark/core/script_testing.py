@@ -1,19 +1,17 @@
 """Re-usable code for testing scripts of tx templates"""
-import argparse
 import itertools
 import logging
 from dataclasses import dataclass
 from decimal import Decimal
 from typing import Iterable, Literal
 
-import sqlalchemy as sa
 from bitcointx.core import CTxIn, CTxOut, CMutableTransaction, COutPoint, CTxWitness, CTxInWitness
 from bitcointx.core.key import XOnlyPubKey, CKey
 from bitcointx.core.psbt import PartiallySignedTransaction
 from bitcointx.core.script import CScript, TaprootScriptTree, OP_RETURN, CScriptWitness
 from bitcointx.wallet import P2TRCoinAddress
 
-from demo.bitcoin_rpc import BitcoinRPC
+from ..btc.rpc import BitcoinRPC
 from ..core.models import TransactionTemplate
 from ..core.parsing import parse_hex_bytes
 from ..core.signing import sign_input
