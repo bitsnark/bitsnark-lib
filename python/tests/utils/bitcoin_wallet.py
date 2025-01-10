@@ -117,20 +117,7 @@ class BitcoinWallet:
 
     def get_output(self, outpoint: COutPoint) -> CTxOut:
         """Get output, for example for spent_outputs"""
-        txid = outpoint.hash[::-1].hex()
-        tx = self.rpc.call("gettransaction", txid)
-        from pprint import pprint
-        details_item = next(
-            (detail for detail in tx["details"] if detail["vout"] == outpoint.n),
-            None,
-        )
-        if not details_item:
-            raise LookupError(f"Output {outpoint} not found in tx {txid}")
-        assert details_item['category'] == 'send'
-        return CTxOut(
-            nValue=-int(details_item["amount"] * 10**8),
-            scriptPubKey=CCoinAddress(details_item["address"]).to_scriptPubKey(),
-        )
+        return self.rpc.get_output(outpoint)
 
     def import_address(self, address: str | CCoinAddress):
         if not isinstance(address, str):

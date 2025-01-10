@@ -6,7 +6,7 @@ import typing
 import urllib.parse
 from decimal import Decimal
 
-from bitcointx.core import CTransaction, CMutableTransaction
+from bitcointx.core import CTransaction, CMutableTransaction, COutPoint, CTxOut
 from bitcointx.wallet import CCoinAddress
 import requests
 
@@ -209,6 +209,18 @@ class BitcoinRPC:
         response = self.call("testmempoolaccept", [tx])
         if not response[0]["allowed"]:
             raise TestMempoolAcceptFailure(response[0])
+
+    def get_wallet_transaction(self, txid: str) -> CTransaction:
+        """Get a transaction from the wallet"""
+        tx_response = self.call("gettransaction", txid)
+        tx_hex = tx_response["hex"]
+        return CTransaction.deserialize(bytes.fromhex(tx_hex))
+
+    def get_output(self, outpoint: COutPoint) -> CTxOut:
+        """Get output, for example for spent_outputs. Only works if the RPC points to a wallet url"""
+        txid = outpoint.hash[::-1].hex()
+        tx = self.get_wallet_transaction(txid)
+        return tx.vout[outpoint.n]
 
 
 class DecimalJSONEncoder(json.JSONEncoder):
