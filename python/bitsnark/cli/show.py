@@ -57,9 +57,12 @@ class ShowCommand(Command):
             prevout_index = inp['outputIndex']
             sc_index = inp['spendingConditionIndex']
             index = inp['index']
+            prevout = prev_tx.outputs[prevout_index]
+            prevout_amount = parse_bignum(prevout['amount'])
             print(
                 f"- input {index}: {prev_txid}:{prevout_index} "
-                f"(tx: {prev_tx_name}, output: {prevout_index}, spendingCondition: {sc_index})"
+                f"({prevout_amount} sat, "
+                f"tx: {prev_tx_name}, output: {prevout_index}, spendingCondition: {sc_index})"
             )
         print("Outputs:")
         for outp in tx_template.outputs:
