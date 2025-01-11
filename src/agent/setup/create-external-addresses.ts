@@ -70,7 +70,7 @@ async function main() {
 }
 
 export async function main2() {
-    const r: { setupId: string; pubkey: Buffer }[] = [];
+    const r: { setupId: string; pubkey: string }[] = [];
     const proverAgentId = 'bitsnark_prover_1';
     const verifierAgentId = 'bitsnark_verifier_1';
     const proverPublicKey = Buffer.from(agentConf.keyPairs[proverAgentId].schnorrPublic, 'hex');
