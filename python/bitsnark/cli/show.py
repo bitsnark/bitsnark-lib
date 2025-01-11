@@ -57,20 +57,27 @@ class ShowCommand(Command):
             prevout_index = inp['outputIndex']
             sc_index = inp['spendingConditionIndex']
             index = inp['index']
+            prevout = prev_tx.outputs[prevout_index]
+            prevout_amount = parse_bignum(prevout['amount'])
             print(
                 f"- input {index}: {prev_txid}:{prevout_index} "
-                f"(tx: {prev_tx_name}, output: {prevout_index}, spendingCondition: {sc_index})"
+                f"({prevout_amount} sat, "
+                f"tx: {prev_tx_name}, output: {prevout_index}, spendingCondition: {sc_index})"
             )
         print("Outputs:")
         for outp in tx_template.outputs:
             index = outp['index']
             amount = parse_bignum(outp['amount'])
             script_pubkey = CScript(parse_hex_bytes(outp['taprootKey']))
-            address = CCoinAddress.from_scriptPubKey(script_pubkey)
+            try:
+                address = CCoinAddress.from_scriptPubKey(script_pubkey)
+            except Exception as e:
+                address = f"ERROR: {e}"
             print(f'- output {index}:')
             print(f'  - amount:       {amount} sat')
             print(f'  - address:      {address}')
-            print(f'  - scriptPubKey: {script_pubkey!r} ({script_pubkey.hex()})')
+            print(f'  - scriptPubKey: {script_pubkey!r}')
+            print(f'  - scriptPubKey (hex): {script_pubkey.hex()}')
             print(f'  - spendingConditions:')
             for sc in outp['spendingConditions']:
                 print(f'    - #{sc["index"]}:')

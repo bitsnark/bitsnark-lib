@@ -1,61 +1,24 @@
-import dotenv
 import argparse
 import os
 import sys
-from dataclasses import dataclass
 from typing import Sequence
 
-from bitcointx.core import CTransaction, COutPoint, CTxIn, CTxOut
-from bitcointx.core.script import CScript
 from bitcointx.core.key import CKey, XOnlyPubKey
 from sqlalchemy import create_engine, select, update
-from sqlalchemy.orm.session import Session
 from sqlalchemy.orm.attributes import flag_modified
+from sqlalchemy.orm.session import Session
 
 from bitsnark.conf import POSTGRES_BASE_URL
 from bitsnark.core.environ import load_bitsnark_dotenv
-from bitsnark.core.parsing import parse_bignum, parse_hex_bytes, serialize_hex
+from bitsnark.core.parsing import serialize_hex
+from bitsnark.core.transactions import construct_signable_transaction, MissingScript
 from .models import TransactionTemplate, Setups, SetupStatus
 from .types import Role
-from .signing import sign_input
-
-
-
-@dataclass
-class MockInput:
-    txid: str
-    vout: int
-    amount: int
-    script_pubkey: str
-    tapscript: str
 
 
 class TransactionProcessingError(Exception):
     pass
 
-
-# Mocked inputs for the very first transactions
-# These should eventually come from somewhere else
-HARDCODED_MOCK_INPUTS: dict[str, list[MockInput]] = {
-    'LOCKED_FUNDS': [
-        MockInput(
-            txid='0000000000000000000000000000000000000000000000000000000000000001',
-            vout=0,
-            amount=10 * 10**8,
-            script_pubkey='51208506de70905b34248b9c81d1eb02be64af16c90c26046a3d3ada074bde10d792',
-            tapscript='51ad52ad51'
-        )
-    ],
-    'PROVER_STAKE': [
-        MockInput(
-            txid='0000000000000000000000000000000000000000000000000000000000000002',
-            vout=0,
-            amount=2 * 10**8,
-            script_pubkey='51208506de70905b34248b9c81d1eb02be64af16c90c26046a3d3ada074bde10d792',
-            tapscript='51ad52ad51'
-        )
-    ],
-}
 
 def load_keypairs():
     keypairs = {
@@ -79,7 +42,7 @@ def load_keypairs():
     return keypairs
 
 
-def sign_setup(setup_id: str, agent_id: str, role: Role, dbsession: Session, mocks: bool = False):
+def sign_setup(setup_id: str, agent_id: str, role: Role, dbsession: Session):
     # This is a bit silly
     keypairs = load_keypairs()
     private_key = keypairs[agent_id]['private']
@@ -93,20 +56,22 @@ def sign_setup(setup_id: str, agent_id: str, role: Role, dbsession: Session, moc
     )
 
     tx_templates = dbsession.execute(tx_template_query).scalars().all()
-    tx_template_map: dict[str, TransactionTemplate] = {}
 
-    print(f"tx_template_map: {tx_template_map}")
     print(f"Processing {len(tx_templates)} transaction templates...")
 
     for tx in tx_templates:
         print(f"Processing transaction #{tx.ordinal}: {tx.name}...")
-        success = _handle_tx_template(
-            tx_template=tx,
-            role=role,
-            tx_template_map=tx_template_map,
-            use_mocked_inputs=mocks,
-            private_key=private_key,
-        )
+        try:
+            success = _handle_tx_template(
+                tx_template=tx,
+                role=role,
+                private_key=private_key,
+                dbsession=dbsession,
+            )
+        except MissingScript as e:
+            sys.stderr.write(f"Warning: {e}")
+            success = False
+
         if success:
             successes.append(tx.name)
             print(f"OK! {tx.txid}")
@@ -144,7 +109,6 @@ def main(argv: Sequence[str] = None):
                         help='Process only transactions with this agent ID')
     parser.add_argument('--role', required=True, choices=['prover', 'verifier'],
                         help='Role of the agent (prover or verifier)')
-    parser.add_argument('--no-mocks', default=False, action='store_true', help="Don't use mock inputs")
 
     args = parser.parse_args(argv)
 
@@ -157,7 +121,7 @@ def main(argv: Sequence[str] = None):
 
     engine = create_engine(f"{args.db}/{args.agent_id}")
     dbsession = Session(engine)
-    sign_setup(args.setup_id, args.agent_id, args.role, dbsession, args.no_mocks)
+    sign_setup(args.setup_id, args.agent_id, args.role, dbsession)
 
 
 def _handle_tx_template(
@@ -165,142 +129,25 @@ def _handle_tx_template(
     tx_template: TransactionTemplate,
     role: Role,
     private_key: CKey,
-    tx_template_map: dict[int, TransactionTemplate],
-    use_mocked_inputs: bool = True,
+    dbsession: Session,
 ):
     if tx_template.is_external:
-        # Requierd for signing next transactions
-        tx_template_map[tx_template.name] = tx_template
-        if not use_mocked_inputs:
-            # We don't want to sign external transactions
-            return True
+        # We don't want to sign external transactions
+        return True
 
-    if use_mocked_inputs and tx_template.name in HARDCODED_MOCK_INPUTS:
-        # assert len(tx_template.inputs) == 0  # cannot do it, this script might have been already run
-        tx_inputs: list[CTxIn] = [
-            CTxIn(
-                COutPoint(
-                    hash=bytes.fromhex(inp.txid)[::-1],
-                    n=inp.vout,
-                )
-            )
-            for inp in HARDCODED_MOCK_INPUTS[tx_template.name]
-        ]
-        spent_outputs: list[CTxOut] = [
-            CTxOut(
-                nValue=inp.amount,
-                scriptPubKey=CScript.fromhex(inp.script_pubkey)
-            )
-            for inp in HARDCODED_MOCK_INPUTS[tx_template.name]
-        ]
-        input_tapscripts: list[CScript] = [
-            CScript.fromhex(inp.tapscript)
-            for inp in HARDCODED_MOCK_INPUTS[tx_template.name]
-        ]
-    else:
-        tx_inputs: list[CTxIn] = []
-        spent_outputs: list[CTxOut] = []
-        input_tapscripts: list[CScript] = []
-        for input_index, inp in enumerate(tx_template.inputs):
-            prev_tx = tx_template_map.get(inp['templateName'])
-            if not prev_tx:
-                raise KeyError(f"Transaction {inp['templateName']} not found")
-
-            print(f"Processing input #{input_index} of transaction {inp['templateName']} ...")
-
-            prev_txid = prev_tx.txid
-            if not prev_txid:
-                raise ValueError(f"Transaction {inp['templateName']} has no txId")
-
-            prevout_index = inp['outputIndex']
-            prevout = prev_tx.outputs[prevout_index]
-
-            try:
-                prev_tx_hash = bytes.fromhex(prev_txid)[::-1]
-            except ValueError:
-                print(
-                    f"Invalid txid {prev_txid} for transaction {prev_tx.name} "
-                    f"(required by {tx_template.name} input #{input_index})")
-                raise
-
-            spending_condition = prevout['spendingConditions'][inp['spendingConditionIndex']]
-            timeout_blocks = spending_condition.get('timeoutBlocks')
-            sequence = 0xffffffff
-            if timeout_blocks is not None:
-                sequence = timeout_blocks
-
-            tx_inputs.append(
-                CTxIn(
-                    prevout=COutPoint(
-                        hash=prev_tx_hash,
-                        n=inp['outputIndex'],
-                    ),
-                    nSequence=sequence,
-                )
-            )
-
-            spent_outputs.append(CTxOut(
-                nValue=parse_bignum(prevout['amount']),
-                scriptPubKey=CScript(parse_hex_bytes(prevout['taprootKey']))
-            ))
-
-            script_raw = spending_condition.get('script')
-            if script_raw is None:
-                print(
-                    f"Spending condition {inp['spendingConditionIndex']} for transaction {prev_tx.name} "
-                    f"(required by {tx_template.name} input #{input_index}) has no script"
-                )
-                return False
-
-            input_tapscripts.append(
-                CScript(parse_hex_bytes(script_raw))
-            )
-
-    tx_outputs = []
-    for output_index, out in enumerate(tx_template.outputs):
-        amount_raw = out.get('amount')
-        script_pubkey_raw = out.get('taprootKey')
-        keys = ", ".join(out.keys())
-
-        if amount_raw is None:
-            print(f"Transaction {tx_template.name} output {output_index} has no amount. Keys: {keys}")
-            return False
-        if script_pubkey_raw is None:
-            print(f"Transaction {tx_template.name} output {output_index} has no taprootKey. Keys: {keys}")
-            return False
-
-        amount = parse_bignum(amount_raw)
-        script_pubkey = CScript(parse_hex_bytes(script_pubkey_raw))
-        tx_outputs.append(
-            CTxOut(
-                nValue=amount,
-                scriptPubKey=script_pubkey,
-            )
-        )
-
-    tx = CTransaction(
-        vin=tx_inputs,
-        vout=tx_outputs,
-        nVersion=2,
+    signable_tx = construct_signable_transaction(
+        tx_template=tx_template,
+        dbsession=dbsession,
     )
 
-    txid = tx.GetTxid()[::-1].hex()
-
-    serialized = tx.serialize()
-
     # Alter the template
-    tx_template.txid = txid
-    for i, inp in enumerate(tx_inputs):
-        signature = sign_input(
-            script=input_tapscripts[i],
-            tx=tx,
-            input_index=i,
-            spent_outputs=spent_outputs,
+    tx_template.txid = signable_tx.txid
+
+    for signable_input in signable_tx.inputs:
+        index = signable_input.index
+        signature = signable_input.sign(
             private_key=private_key,
         )
-        if len(tx_template.inputs) <= i:
-            # HACK: the hardcoded initial transactions have an empty list of inputs
-            tx_template.inputs.append({})
 
         if role == 'prover':
             role_signature_key = 'proverSignature'
@@ -308,12 +155,12 @@ def _handle_tx_template(
             role_signature_key = 'verifierSignature'
         else:
             raise ValueError(f"Unknown role {role}")
-        tx_template.inputs[i][role_signature_key] = serialize_hex(signature)
+
+        tx_template.inputs[index][role_signature_key] = serialize_hex(signature)
 
     # Make sure SQLAlchemy knows that the JSON object has changed
     flag_modified(tx_template, 'inputs')
 
-    tx_template_map[tx_template.name] = tx_template
     return True
 
 

@@ -11,9 +11,7 @@ from .utils.bitcoin_wallet import BitcoinWallet
 from .utils.npm import NPMCommandRunner
 from .constants import (
     POSTGRES_URL_ROOT,
-    POSTGRES_DATABASE_PROVER,
     POSTGRES_URL_PROVER,
-    POSTGRES_DATABASE_VERIFIER,
     POSTGRES_URL_VERIFIER,
     BITCOIN_RPC_URL, DB_SCHEMA_FILE,
 )
@@ -32,10 +30,26 @@ def npm() -> NPMCommandRunner:
     return NPMCommandRunner()
 
 
+_docker_compose_running_on_module_level = False
+
 @pytest.fixture()
 def docker_compose():
+    """Start and stop docker-compose after every test"""
+    if _docker_compose_running_on_module_level:
+        yield
+    else:
+        with start_stop_docker_compose():
+            yield
+
+
+@pytest.fixture(scope='module')
+def docker_compose_module_level():
+    """Start and stop docker compose once for a test module"""
+    global _docker_compose_running_on_module_level
+    _docker_compose_running_on_module_level = True
     with start_stop_docker_compose():
         yield
+    _docker_compose_running_on_module_level = False
 
 
 def _create_agent_db(db_url: str) -> sa.Engine:
@@ -95,9 +109,10 @@ def btc_rpc(docker_compose) -> BitcoinRPC:
 
 @pytest.fixture()
 def btc_wallet(btc_rpc) -> BitcoinWallet:
-    wallet = BitcoinWallet.create(
+    wallet, created = BitcoinWallet.load_or_create(
         name="testwallet",
         rpc_base_url=btc_rpc.url
     )
-    wallet.mine(432)
+    if created:
+        wallet.mine(432)
     return wallet

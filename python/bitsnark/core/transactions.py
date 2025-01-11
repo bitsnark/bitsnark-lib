@@ -1,4 +1,4 @@
-# dummy file for now. move transaction-specific reusable logic here in the future
+from __future__ import annotations
 from dataclasses import dataclass
 
 from bitcointx.core import CTransaction, CTxIn, CTxOut, COutPoint
@@ -6,7 +6,7 @@ from bitcointx.core.key import CKey
 from bitcointx.core.script import CScript
 from sqlalchemy.orm.session import Session
 from .models import TransactionTemplate
-from .parsing import parse_bignum, parse_hex_bytes, serialize_hex
+from .parsing import parse_bignum, parse_hex_bytes
 from . import signing
 
 
@@ -29,11 +29,19 @@ class SignableTransaction:
     def txid(self) -> str:
         return self.tx.GetTxid()[::-1].hex()
 
+    @property
+    def inputs(self) -> list[SignableInput]:
+        return [
+            SignableInput(signable_tx=self, index=i)
+            for i, _ in enumerate(self.tx.vin)
+        ]
+
     def sign_input_at(
         self,
         *,
         index: int,
         private_key: CKey,
+        hashtype: signing.SIGHASH_Type | None = signing.DEFAULT_HASHTYPE,
     ) -> bytes:
         return signing.sign_input(
             script=self.input_tapscripts[index],
@@ -41,13 +49,8 @@ class SignableTransaction:
             input_index=index,
             spent_outputs=self.spent_outputs,
             private_key=private_key,
+            hashtype=hashtype,
         )
-
-    def sign_all_inputs(self, private_key: CKey) -> list[bytes]:
-        return [
-            self.sign_input_at(index=index, private_key=private_key)
-            for index in range(len(self.tx.vin))
-        ]
 
     def verify_input_signature_at(
         self,
@@ -55,6 +58,7 @@ class SignableTransaction:
         index: int,
         public_key: bytes,
         signature: bytes,
+        hashtype: signing.SIGHASH_Type | None = signing.DEFAULT_HASHTYPE,
     ) -> None:
         signing.verify_input_signature(
             script=self.input_tapscripts[index],
@@ -63,6 +67,39 @@ class SignableTransaction:
             spent_outputs=self.spent_outputs,
             signature=signature,
             public_key=public_key,
+            hashtype=hashtype,
+        )
+
+
+@dataclass()
+class SignableInput:
+    signable_tx: SignableTransaction
+    index: int
+
+    def sign(
+        self,
+        private_key: CKey,
+        *,
+        hashtype: signing.SIGHASH_Type | None = signing.DEFAULT_HASHTYPE,
+    ) -> bytes:
+        return self.signable_tx.sign_input_at(
+            index=self.index,
+            private_key=private_key,
+            hashtype=hashtype,
+        )
+
+    def verify_signature(
+        self,
+        public_key: bytes,
+        signature: bytes,
+        *,
+        hashtype: signing.SIGHASH_Type | None = signing.DEFAULT_HASHTYPE,
+    ):
+        self.signable_tx.verify_input_signature_at(
+            index=self.index,
+            public_key=public_key,
+            signature=signature,
+            hashtype=hashtype,
         )
 
 
@@ -164,9 +201,13 @@ def construct_signable_transaction(
         template_name=tx_template.name,
         setup_id=tx_template.setup_id,
     )
-    if signable_tx.txid != tx_template.txid:
-        raise ValueError(
-            f"Constructed transaction id {signable_tx.txid} does not match template txid {tx_template.txid} "
-            f"(name: {tx_template.name})"
-        )
+
+    # Double-check that if the template has a set tx_id, it is the same as the calculated id if the constructed tx.
+    # Note that template's txid can also be 'undefined'
+    if tx_template.txid and tx_template.txid != 'undefined':
+        if signable_tx.txid != tx_template.txid:
+            raise ValueError(
+                f"Constructed transaction id {signable_tx.txid} does not match template txid {tx_template.txid} "
+                f"(name: {tx_template.name})"
+            )
     return signable_tx

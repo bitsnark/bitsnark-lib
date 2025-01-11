@@ -35,7 +35,7 @@ def sign_setups(dbsession, agent_id, role):
     for setup in unsigned_setups:
         logger.info("Signing setup %s", setup.id)
         try:
-            sign_setup(setup.id, agent_id, role, dbsession, False)
+            sign_setup(setup.id, agent_id, role, dbsession)
             setup.status = SetupStatus.SIGNED
         except TransactionProcessingError:
             logger.exception("Error signing setup %s", setup.id)

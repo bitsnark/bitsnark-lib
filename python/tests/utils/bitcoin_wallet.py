@@ -1,8 +1,10 @@
-from bitcointx.wallet import CCoinAddress
-from decimal import Decimal
 import logging
-from bitsnark.btc.rpc import BitcoinRPC, JSONRPCError
+from decimal import Decimal
 
+from bitcointx.core import COutPoint, CTxOut
+from bitcointx.wallet import CCoinAddress
+
+from bitsnark.btc.rpc import BitcoinRPC, JSONRPCError
 
 logger = logging.getLogger(__name__)
 
@@ -100,11 +102,26 @@ class BitcoinWallet:
     def get_balance_btc(self) -> Decimal:
         return self.rpc.call("getbalance")
 
-    def send(self, *, amount_btc: Decimal | int, receiver: str | CCoinAddress):
-        return self.rpc.call("sendtoaddress", str(receiver), amount_btc)
+    def send(self, *, amount_btc: Decimal | int, receiver: str | CCoinAddress) -> COutPoint:
+        """Send bitcoin and return tx hash and vout as COutPoint"""
+        txid = self.rpc.call("sendtoaddress", str(receiver), amount_btc)
+        tx = self.rpc.call("gettransaction", txid)
+        assert tx["details"][0]["category"] == "send"
+        assert tx["details"][0]["amount"] == -amount_btc
+        assert tx["details"][0]["address"] == str(receiver)
+        vout = tx["details"][0]["vout"]
+        return COutPoint(
+            hash=bytes.fromhex(txid)[::-1],
+            n=vout,
+        )
+
+    def get_output(self, outpoint: COutPoint) -> CTxOut:
+        """Get output, for example for spent_outputs"""
+        return self.rpc.get_output(outpoint)
 
     def import_address(self, address: str | CCoinAddress):
         if not isinstance(address, str):
             address = str(address)
         self.rpc.call("importaddress", address)
         self.addresses.append(address)
+
