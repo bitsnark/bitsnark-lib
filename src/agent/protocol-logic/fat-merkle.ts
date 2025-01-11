@@ -79,7 +79,7 @@ export class FatMerkleProof {
     }
 
     public async verify(): Promise<boolean> {
-        return (await this.indexToRefute()) >= 0;
+        return (await this.indexToRefute()) < 0;
     }
 
     public toArgument(): Buffer[] {

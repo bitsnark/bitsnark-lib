@@ -17,3 +17,4 @@ venv/
 /dist/
 /expose/git-filter-repo/
 /snapshot/
+/coverage/

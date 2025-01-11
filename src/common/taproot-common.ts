@@ -19,7 +19,8 @@ export function getHash(script: Buffer): Buffer {
 }
 
 export function combineHashes(left_h: Buffer, right_h: Buffer): Buffer {
-    if (right_h.compare(left_h) === -1) {
+    const t = right_h.compare(left_h);
+    if (t === -1) {
         [left_h, right_h] = [right_h, left_h];
     }
     return taggedHash('TapBranch', Buffer.concat([left_h, right_h]));

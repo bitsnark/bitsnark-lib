@@ -92,9 +92,7 @@ export class ProtocolProver extends ProtocolBase {
                 break;
             }
             if (incoming.template.name.startsWith(TemplateNames.SELECT)) {
-                const rawTx = incoming.received.raw;
-                selectionPathUnparsed.push(rawTx.vin[0].txinwitness!.map((s) => Buffer.from(s, 'hex')));
-                const selection = this.parseSelection(incoming);
+                const selection = this.parseSelection(incoming, selectionPathUnparsed);
                 selectionPath.push(selection);
                 if (lastFlag) {
                     if (selectionPath.length < iterations) await this.sendState(proof, selectionPath);

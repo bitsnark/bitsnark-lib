@@ -158,7 +158,7 @@ def construct_signable_transaction(
             scriptPubKey=CScript(parse_hex_bytes(prevout['taprootKey']))
         ))
 
-        script_raw = spending_condition.get('script')
+        script_raw = inp.get('script', spending_condition.get('script'))
         if script_raw is None:
             raise MissingScript(
                 f"Spending condition {inp['spendingConditionIndex']} for transaction {prev_tx.name} "
@@ -201,6 +201,7 @@ def construct_signable_transaction(
         template_name=tx_template.name,
         setup_id=tx_template.setup_id,
     )
+
     # Double-check that if the template has a set tx_id, it is the same as the calculated id if the constructed tx.
     # Note that template's txid can also be 'undefined'
     if tx_template.txid and tx_template.txid != 'undefined':

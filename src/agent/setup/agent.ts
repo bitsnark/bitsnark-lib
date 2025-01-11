@@ -306,7 +306,7 @@ export class Agent {
 
         await this.db.upsertTemplates(i.setupId, i.templates!);
 
-        i.templates = await generateAllScripts(this.agentId, i.setupId, this.role, i.templates!, false);
+        i.templates = await generateAllScripts(this.agentId, i.setupId, this.role, i.templates!, true);
         i.templates = await addAmounts(this.agentId, this.role, i.setupId, i.templates!);
 
         await this.db.upsertTemplates(i.setupId, i.templates!);
@@ -431,7 +431,7 @@ export class Agent {
 
 if (require.main === module) {
     const args = minimist(process.argv.slice(2));
-    const agentId = args['agent-id'] ?? 'bitsnark_prover_1';
+    const agentId = args['agent-id'] ?? args._[0] ?? 'bitsnark_prover_1';
     const role = agentId.indexOf('prover') >= 0 ? AgentRoles.PROVER : AgentRoles.VERIFIER;
 
     const agent = new Agent(agentId, role);

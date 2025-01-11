@@ -69,7 +69,7 @@ export class ProtocolVerifier extends ProtocolBase {
                     break;
                 case TemplateNames.ARGUMENT:
                     if (lastFlag) {
-                        this.refuteArgument(proof, states, incoming);
+                        await this.refuteArgument(proof, states, incoming);
                     }
                     break;
                 case TemplateNames.ARGUMENT_UNCONTESTED:
@@ -89,7 +89,7 @@ export class ProtocolVerifier extends ProtocolBase {
                 await this.db.markSetupPegoutSuccessful(this.setupId);
                 break;
             } else if (incoming.template.name.startsWith(TemplateNames.SELECT)) {
-                const selection = this.parseSelection(incoming);
+                const selection = this.parseSelection(incoming, selectionPathUnparsed);
                 selectionPath.push(selection);
                 const rawTx = incoming.received.raw;
                 selectionPathUnparsed.push(rawTx.vin[0].txinwitness!.map((s) => Buffer.from(s, 'hex')));
@@ -108,7 +108,9 @@ export class ProtocolVerifier extends ProtocolBase {
     private checkProof(proof: bigint[]): boolean {
         step1_vm.reset();
         groth16Verify(Key.fromSnarkjs(defaultVerificationKey), Step1_Proof.fromWitness(proof));
-        return step1_vm.success?.value === 1n;
+        const success = step1_vm.success?.value === 1n;
+        console.log('PROOF CHECKS: ', success);
+        return success;
     }
 
     private async refuteArgument(proof: bigint[], states: Buffer[][], incoming: Incoming) {
@@ -118,10 +120,11 @@ export class ProtocolVerifier extends ProtocolBase {
         const argument = new Argument(this.agentId, this.setup!.id, proof);
         const refutation = await argument.refute(argData, states);
 
-        incoming.template.inputs[0].script = refutation.script;
-        incoming.template.inputs[0].controlBlock = refutation.controlBlock;
-
-        await this.db.upsertTemplates(this.setupId, [incoming.template]);
+        // Add the script to the refutation template.
+        const refutationTemplate = getTemplateByName(this.templates!, TemplateNames.PROOF_REFUTED);
+        refutationTemplate.inputs[0].script = refutation.script;
+        refutationTemplate.inputs[0].controlBlock = refutation.controlBlock;
+        await this.db.upsertTemplates(this.setupId, [refutationTemplate]);
 
         const data = refutation.data
             .map((n, dataIndex) =>
@@ -137,7 +140,7 @@ export class ProtocolVerifier extends ProtocolBase {
     private async sendSelect(proof: bigint[], selectionPath: number[], states: Buffer[][]) {
         const iteration = selectionPath.length;
         const txName = TemplateNames.SELECT + '_' + twoDigits(iteration);
-        const selection = await findErrorState(proof, last(states), selectionPath);
+        const selection = await findErrorState(proof, states, selectionPath);
         if (selection < 0) throw new Error('Could not find error state');
         const selectionWi = encodeWinternitz24(BigInt(selection), createUniqueDataId(this.setup!.id, txName, 0, 0, 0));
         this.sendTransaction(txName, [selectionWi]);

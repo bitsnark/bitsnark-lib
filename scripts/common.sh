@@ -2,7 +2,7 @@
 
 bitcoin_container_name=bitcoin-node
 postgres_container_name=postgres
-bitcoin_data_dir=/tmp/bitcoin-data
+bitcoin_data_dir=/tmp/regtest_data
 
 # On macOS, "System Integrety Protection" clears the DYLD_FALLBACK_LIBRARY_PATH,
 # which leaves the Python executable unable to find the secp256k1 library installed by Homebrew.

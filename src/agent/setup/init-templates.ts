@@ -74,5 +74,14 @@ export function initializeTemplates(
 
     generateWotsPublicKeys(setupId, templates, role);
 
+    for (const t of templates) {
+        if (t.isExternal) continue;
+        // check every input has a spending condition to spend
+        for (const input of t.inputs) {
+            // throw if sc not found
+            getSpendingConditionByInput(templates, input);
+        }
+    }
+
     return templates;
 }

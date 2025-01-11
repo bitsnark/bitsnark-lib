@@ -56,6 +56,7 @@
   "dependencies": {
     "@bitauth/libauth": "3.0.0",
     "axios": "1.7.4",
+    "base58-universal": "^2.0.0",
     "bigint-isqrt": "0.3.2",
     "bitcoin-core": "4.2.0",
     "bitcoinjs-lib": "6.1.6",

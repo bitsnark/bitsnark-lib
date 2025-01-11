@@ -9,7 +9,9 @@ import { satsToBtc } from '../bitcoin/common';
 export async function startSetup(proverAgentId: string, verifierAgentId: string, setupId: string) {
     console.log('Starting setup...');
 
-    const lockedFundsAddress = createLockedFundsExternalAddresses(proverAgentId, verifierAgentId, setupId);
+    const proverPublicKey = Buffer.from(agentConf.keyPairs[proverAgentId].schnorrPublic, 'hex');
+    const verifierPublicKey = Buffer.from(agentConf.keyPairs[verifierAgentId].schnorrPublic, 'hex');
+    const lockedFundsAddress = createLockedFundsExternalAddresses(proverPublicKey, verifierPublicKey, setupId);
     const lockedFundsTx = await createRawTx(lockedFundsAddress, satsToBtc(agentConf.payloadAmount));
     const lockedFundsTxid = await rawTransactionToTxid(lockedFundsTx);
 

@@ -3,8 +3,9 @@ import { agentConf } from '../agent.conf';
 import { AgentRoles, SignatureType, Template, TemplateNames } from '../common/types';
 import { SimpleTapTree } from '../common/taptree';
 import { generateWotsPublicKeysForSpendingCondition } from './wots-keys';
-import { generateBoilerplate } from './generate-scripts';
+import { generateBoilerplate, generateSpendLockedFundsScript } from './generate-scripts';
 import { protocolStart } from '../common/templates';
+import { randomBytes } from 'node:crypto';
 
 function getTemplateTaprootAddress(
     proverPublicKey: Buffer,
@@ -29,15 +30,13 @@ function getTemplateTaprootAddress(
 }
 
 export function createLockedFundsExternalAddresses(
-    proverAgentId: string,
-    verifierAgentId: string,
+    proverPublicKey: Buffer,
+    verifierPublicKey: Buffer,
     setupId: string
 ): string {
-    const proverPublicKey = Buffer.from(agentConf.keyPairs[proverAgentId].schnorrPublic, 'hex');
-    const verifierPublicKey = Buffer.from(agentConf.keyPairs[verifierAgentId].schnorrPublic, 'hex');
-    const lockedFunds = protocolStart.find((t) => t.name == TemplateNames.LOCKED_FUNDS);
-    if (!lockedFunds) throw new Error('Locked funds template not found');
-    const lockedFundsAddress = getTemplateTaprootAddress(proverPublicKey, verifierPublicKey, setupId, lockedFunds);
+    const script = generateSpendLockedFundsScript(setupId, [proverPublicKey, verifierPublicKey]);
+    const stt = new SimpleTapTree(agentConf.internalPubkey, [script]);
+    const lockedFundsAddress = stt.getTaprootAddress();
     console.log('lockedFundsAddress: ', lockedFundsAddress);
     return lockedFundsAddress;
 }
@@ -60,11 +59,32 @@ async function main() {
     const args = minimist(process.argv.slice(2));
     const proverAgentId = 'bitsnark_prover_1';
     const verifierAgentId = 'bitsnark_verifier_1';
-    const setupId = args._[0] ?? args['setup-id'] ?? 'test_setup';
+    const setupId = args['setup-id'] ?? 'test_setup';
     console.log('setupId: ', setupId);
 
-    createLockedFundsExternalAddresses(proverAgentId, verifierAgentId, setupId);
+    const proverPublicKey = Buffer.from(agentConf.keyPairs[proverAgentId].schnorrPublic, 'hex');
+    const verifierPublicKey = Buffer.from(agentConf.keyPairs[verifierAgentId].schnorrPublic, 'hex');
+
+    createLockedFundsExternalAddresses(proverPublicKey, verifierPublicKey, setupId);
     createProverStakeExternalAddresses(proverAgentId, verifierAgentId, setupId);
+}
+
+export async function main2() {
+    const r: { setupId: string; pubkey: string }[] = [];
+    const proverAgentId = 'bitsnark_prover_1';
+    const verifierAgentId = 'bitsnark_verifier_1';
+    const proverPublicKey = Buffer.from(agentConf.keyPairs[proverAgentId].schnorrPublic, 'hex');
+    const verifierPublicKey = Buffer.from(agentConf.keyPairs[verifierAgentId].schnorrPublic, 'hex');
+    for (let i = 0; i < 10; i++) {
+        const setupId = randomBytes(32).toString('hex');
+        const script = generateSpendLockedFundsScript(setupId, [proverPublicKey, verifierPublicKey]);
+        const stt = new SimpleTapTree(agentConf.internalPubkey, [script]);
+        r.push({
+            setupId,
+            pubkey: stt.getTaprootPubkey().toString('hex')
+        });
+    }
+    console.log(JSON.stringify(r, null, '\t'));
 }
 
 if (require.main === module) {
