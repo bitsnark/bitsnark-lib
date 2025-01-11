@@ -71,21 +71,21 @@ export const agentConf: AgentConf = {
         bitsnark_prover_1: {
             schnorrPublic: parse.string(
                 'PROVER_SCHNORR_PUBLIC',
-                'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
+                'e4b62e6dd05a73e8028af4682dfc03afb26352356ba84d78aa35e4de40ccbc03'
             ),
             schnorrPrivate: parse.string(
                 'PROVER_SCHNORR_PRIVATE',
-                'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
+                '79c79d4f2132389f14c7c27c1490491913d3df7a4bf461b589cf6af9eb897868'
             )
         },
         bitsnark_verifier_1: {
             schnorrPublic: parse.string(
                 'VERIFIER_SCHNORR_PUBLIC',
-                'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
+                'a203ba071c97e7d9754a9e295773365971eb77d1bc7197b3428e7e44ee8c1a41'
             ),
             schnorrPrivate: parse.string(
                 'VERIFIER_SCHNORR_PRIVATE',
-                'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
+                '65e5e34cdd118aca0c2f512762e95db121840e4750f3fec6c66078f82e067135'
             )
         }
     },
