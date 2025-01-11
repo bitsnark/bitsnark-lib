@@ -91,21 +91,34 @@ export class SimpleTapTree {
         return Buffer.concat([versionBuf, keyBuf, proof]);
     }
 
-    public getTaprootPubkey(): Buffer {
-        const taproot = bitcoin.payments.p2tr({
+    public getTaprootResults(): { pubkey: Buffer; address: string; output: Buffer } {
+        const root = this.getRoot();
+        const t = taggedHash('TapTweak', Buffer.concat([bigintToBufferBE(this.internalPubkey, 256), root]));
+        const mult = pointMul(G, bigintFromBytes(t));
+        const yeven = lift_x(this.internalPubkey).y;
+        const q = pointAdd({ x: this.internalPubkey, y: yeven }, mult);
+        const pubkey = bigintToBufferBE(q!.x, 256);
+
+        const temp = bitcoin.payments.p2tr({
             internalPubkey: bigintToBufferBE(this.internalPubkey, 256),
             hash: this.getRoot(),
             network: bitcoin.networks[agentConf.bitcoinNodeNetwork as keyof typeof bitcoin.networks]
         });
-        return taproot.output!;
+
+        if (pubkey.compare(temp.pubkey!) != 0) throw new Error("Values don't match");
+        return { pubkey: temp.pubkey!, address: temp.address!, output: temp.output! };
+    }
+
+    public getTaprootPubkey(): Buffer {
+        return this.getTaprootResults().pubkey;
+    }
+
+    public getTaprootOutput(): Buffer {
+        return this.getTaprootResults().output;
     }
 
     public getTaprootAddress(): string {
-        return bitcoin.payments.p2tr({
-            internalPubkey: bigintToBufferBE(this.internalPubkey, 256),
-            hash: this.getRoot(),
-            network: bitcoin.networks[agentConf.bitcoinNodeNetwork as keyof typeof bitcoin.networks]
-        }).address!;
+        return this.getTaprootResults().address;
     }
 }
 

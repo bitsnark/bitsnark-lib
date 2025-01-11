@@ -8,6 +8,7 @@ import { DoomsdayGenerator } from '../final-step/doomsday-generator';
 import { AgentRoles, Input, SpendingCondition, Template, TemplateNames } from '../common/types';
 import { getSpendingConditionByInput, getTemplateByName } from '../common/templates';
 import { AgentDb } from '../common/agent-db';
+import { createHash } from 'node:crypto';
 
 const DEAD_SCRIPT = Buffer.from([0x6a]); // opcode fails transaction
 
@@ -65,7 +66,7 @@ export function generateSpendLockedFundsScript(setupId: string, schnorrKeys: Buf
     }
 
     // Add the setupId in so that the result is globally unique
-    bitcoin.DATA(Buffer.from(setupId, 'ascii'));
+    bitcoin.DATA(createHash('sha256').update(setupId, 'ascii').digest());
 
     const script = bitcoin.programToBinary();
     return script;

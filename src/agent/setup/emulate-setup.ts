@@ -186,7 +186,9 @@ async function main(
         lockedFundsTxid = lockedFundsString.split(':')[0];
         lockedFundsOutputIndex = parseInt(lockedFundsString.split(':')[1]);
     } else {
-        const lockedFundsAddress = createLockedFundsExternalAddresses(proverAgentId, verifierAgentId, setupId);
+        const proverPublicKey = Buffer.from(agentConf.keyPairs[proverAgentId].schnorrPublic, 'hex');
+        const verifierPublicKey = Buffer.from(agentConf.keyPairs[verifierAgentId].schnorrPublic, 'hex');
+        const lockedFundsAddress = createLockedFundsExternalAddresses(proverPublicKey, verifierPublicKey, setupId);
         lockedFundsTx = await createRawTx(lockedFundsAddress, satsToBtc(agentConf.payloadAmount));
         lockedFundsTxid = await rawTransactionToTxid(lockedFundsTx);
         lockedFundsOutputIndex = 0;

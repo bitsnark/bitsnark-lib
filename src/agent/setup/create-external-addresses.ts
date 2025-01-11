@@ -5,6 +5,7 @@ import { SimpleTapTree } from '../common/taptree';
 import { generateWotsPublicKeysForSpendingCondition } from './wots-keys';
 import { generateBoilerplate, generateSpendLockedFundsScript } from './generate-scripts';
 import { protocolStart } from '../common/templates';
+import { randomBytes } from 'node:crypto';
 
 function getTemplateTaprootAddress(
     proverPublicKey: Buffer,
@@ -34,7 +35,6 @@ export function createLockedFundsExternalAddresses(
     setupId: string
 ): string {
     const script = generateSpendLockedFundsScript(setupId, [proverPublicKey, verifierPublicKey]);
-
     const stt = new SimpleTapTree(agentConf.internalPubkey, [script]);
     const lockedFundsAddress = stt.getTaprootAddress();
     console.log('lockedFundsAddress: ', lockedFundsAddress);
@@ -59,7 +59,7 @@ async function main() {
     const args = minimist(process.argv.slice(2));
     const proverAgentId = 'bitsnark_prover_1';
     const verifierAgentId = 'bitsnark_verifier_1';
-    const setupId = args._[0] ?? args['setup-id'] ?? 'test_setup';
+    const setupId = args['setup-id'] ?? 'test_setup';
     console.log('setupId: ', setupId);
 
     const proverPublicKey = Buffer.from(agentConf.keyPairs[proverAgentId].schnorrPublic, 'hex');
@@ -67,6 +67,24 @@ async function main() {
 
     createLockedFundsExternalAddresses(proverPublicKey, verifierPublicKey, setupId);
     createProverStakeExternalAddresses(proverAgentId, verifierAgentId, setupId);
+}
+
+export async function main2() {
+    const r: { setupId: string; pubkey: Buffer }[] = [];
+    const proverAgentId = 'bitsnark_prover_1';
+    const verifierAgentId = 'bitsnark_verifier_1';
+    const proverPublicKey = Buffer.from(agentConf.keyPairs[proverAgentId].schnorrPublic, 'hex');
+    const verifierPublicKey = Buffer.from(agentConf.keyPairs[verifierAgentId].schnorrPublic, 'hex');
+    for (let i = 0; i < 10; i++) {
+        const setupId = randomBytes(32).toString('hex');
+        const script = generateSpendLockedFundsScript(setupId, [proverPublicKey, verifierPublicKey]);
+        const stt = new SimpleTapTree(agentConf.internalPubkey, [script]);
+        r.push({
+            setupId,
+            pubkey: stt.getTaprootPubkey().toString('hex')
+        });
+    }
+    console.log(JSON.stringify(r, null, '\t'));
 }
 
 if (require.main === module) {

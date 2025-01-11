@@ -42,7 +42,10 @@ interface AgentConf {
 }
 
 export const agentConf: AgentConf = {
-    internalPubkey: parse.bigint('INTERNAL_PUBKEY', 1n),
+    internalPubkey: parse.bigint(
+        'INTERNAL_PUBKEY',
+        0x0000000000000000000000000000000000000000000000000000000000000001n
+    ),
     timeoutBlocks: parse.integer('TIMEOUT_BLOCKS', 5),
     smallTimeoutBlocks: parse.integer('SMALL_TIMEOUT_BLOCKS', 180),
     largeTimeoutBlocks: parse.integer('LARGE_TIMEOUT_BLOCKS', 360),
