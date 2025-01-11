@@ -69,11 +69,15 @@ class ShowCommand(Command):
             index = outp['index']
             amount = parse_bignum(outp['amount'])
             script_pubkey = CScript(parse_hex_bytes(outp['taprootKey']))
-            address = CCoinAddress.from_scriptPubKey(script_pubkey)
+            try:
+                address = CCoinAddress.from_scriptPubKey(script_pubkey)
+            except Exception as e:
+                address = f"ERROR: {e}"
             print(f'- output {index}:')
             print(f'  - amount:       {amount} sat')
             print(f'  - address:      {address}')
-            print(f'  - scriptPubKey: {script_pubkey!r} ({script_pubkey.hex()})')
+            print(f'  - scriptPubKey: {script_pubkey!r}')
+            print(f'  - scriptPubKey (hex): {script_pubkey.hex()}')
             print(f'  - spendingConditions:')
             for sc in outp['spendingConditions']:
                 print(f'    - #{sc["index"]}:')
