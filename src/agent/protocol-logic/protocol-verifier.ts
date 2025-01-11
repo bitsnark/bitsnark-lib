@@ -120,10 +120,11 @@ export class ProtocolVerifier extends ProtocolBase {
         const argument = new Argument(this.agentId, this.setup!.id, proof);
         const refutation = await argument.refute(argData, states);
 
-        incoming.template.inputs[0].script = refutation.script;
-        incoming.template.inputs[0].controlBlock = refutation.controlBlock;
-
-        await this.db.upsertTemplates(this.setupId, [incoming.template]);
+        // Add the script to the refutation template.
+        const refutationTemplate = getTemplateByName(this.templates!, TemplateNames.PROOF_REFUTED);
+        refutationTemplate.inputs[0].script = refutation.script;
+        refutationTemplate.inputs[0].controlBlock = refutation.controlBlock;
+        await this.db.upsertTemplates(this.setupId, [refutationTemplate]);
 
         const data = refutation.data
             .map((n, dataIndex) =>

@@ -7,7 +7,7 @@ import { sleep } from '../common/sleep';
 function verifyTemplates(templates: Template[], role: AgentRoles) {
     for (const template of templates) {
         if (template.name == TemplateNames.PROOF_REFUTED) {
-            console.warn('Manually skipping script generation for template', template.name);
+            console.warn('Manually skipping checks for template', template.name);
             continue;
         }
         if (!template.txid) throw new Error('Missing txid');

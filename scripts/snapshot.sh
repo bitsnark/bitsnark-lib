@@ -14,7 +14,7 @@ create() {
     docker exec -it "$postgres_container_name" pg_dump -aU postgres $prover > ./snapshot/prover.sql
     docker exec -it "$postgres_container_name" pg_dump -aU postgres $verifier > ./snapshot/verifier.sql
     bitcoin_cli stop
-    cp -a "$bitcoin_data_dir" ./snapshot/bitcoin_data
+    cp -a "$bitcoin_data_dir" ./snapshot/regtest
     $docker_cmd start "$bitcoin_container_name"
 }
 
@@ -22,7 +22,7 @@ load() {
     echo "Loading snapshot from $snapshot_dir"
     npm run start-db
     bitcoin_cli stop || true
-    cp -a ./snapshot/bitcoin_data "$bitcoin_data_dir"
+    cp -a ./snapshot/regtest "$bitcoin_data_dir"
     npm run start-regtest -- persist
     docker exec -i "$postgres_container_name" psql -U postgres $prover < ./snapshot/prover.sql
     docker exec -i "$postgres_container_name" psql -U postgres $verifier < ./snapshot/verifier.sql
@@ -37,8 +37,8 @@ dir_exists() {
     fi
 }
 
-dir_exists "$bitcoin_data_dir" 'Bitcoin data'
 if [ "$1" = create ]; then
+    dir_exists "$bitcoin_data_dir" 'Bitcoin data'
     create
 else
     dir_exists "$snapshot_dir" Snapshot
