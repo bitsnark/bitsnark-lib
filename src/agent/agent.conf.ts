@@ -42,10 +42,13 @@ interface AgentConf {
 }
 
 export const agentConf: AgentConf = {
-    internalPubkey: parse.bigint('INTERNAL_PUBKEY', 1n),
+    internalPubkey: parse.bigint(
+        'INTERNAL_PUBKEY',
+        0x0000000000000000000000000000000000000000000000000000000000000001n
+    ),
     timeoutBlocks: parse.integer('TIMEOUT_BLOCKS', 5),
-    smallTimeoutBlocks: parse.integer('SMALL_TIMEOUT_BLOCKS', 18),
-    largeTimeoutBlocks: parse.integer('LARGE_TIMEOUT_BLOCKS', 36),
+    smallTimeoutBlocks: parse.integer('SMALL_TIMEOUT_BLOCKS', 180),
+    largeTimeoutBlocks: parse.integer('LARGE_TIMEOUT_BLOCKS', 360),
 
     payloadAmount: parse.bigint('PAYLOAD_AMOUNT', ONE_BITCOIN * 10n),
     proverStakeAmount: parse.bigint('PROVER_STAKE_AMOUNT', ONE_BITCOIN * 2n),
@@ -68,21 +71,21 @@ export const agentConf: AgentConf = {
         bitsnark_prover_1: {
             schnorrPublic: parse.string(
                 'PROVER_SCHNORR_PUBLIC',
-                'ae2ea39bca4b6b14567e3c38b9680f6483ceeef4ae17f8dceb5a5a0866999b75'
+                'e4b62e6dd05a73e8028af4682dfc03afb26352356ba84d78aa35e4de40ccbc03'
             ),
             schnorrPrivate: parse.string(
                 'PROVER_SCHNORR_PRIVATE',
-                '415c69b837f4146019574f59c223054c8c144ac61b6ae87bc26824c0f8d034e2'
+                '79c79d4f2132389f14c7c27c1490491913d3df7a4bf461b589cf6af9eb897868'
             )
         },
         bitsnark_verifier_1: {
             schnorrPublic: parse.string(
                 'VERIFIER_SCHNORR_PUBLIC',
-                '86ad52a51b65ab3aed9a64e7202a7aa1f2bd3da7a6a2dae0f5c8e28bda29de79'
+                'a203ba071c97e7d9754a9e295773365971eb77d1bc7197b3428e7e44ee8c1a41'
             ),
             schnorrPrivate: parse.string(
                 'VERIFIER_SCHNORR_PRIVATE',
-                'd4067af1132afcb352b0edef53d8aa2a5fc713df61dee31b1d937e69ece0ebf0'
+                '65e5e34cdd118aca0c2f512762e95db121840e4750f3fec6c66078f82e067135'
             )
         }
     },
@@ -103,5 +106,5 @@ export const agentConf: AgentConf = {
     protocolIntervalMs: parse.integer('PROTOCOL_INTERVAL_MS', 1000),
     blockCheckIntervalMs: parse.integer('BLOCK_CHECK_INTERVAL_MS', 1000),
     telegramChannelId: parse.string('TELEGRAM_CHANNEL_ID', '-1002148850465'),
-    bitcoinFeeRateForExternal: parse.integer('BITCOIN_FEE_RATE', 0.001) // fee rate in BTC per KB
+    bitcoinFeeRateForExternal: parse.number('BITCOIN_FEE_RATE', 0.001) // fee rate in BTC per KB
 };

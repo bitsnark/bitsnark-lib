@@ -11,6 +11,8 @@ import { BLAKE3, Register } from './blake-3-4u';
 import { blake3 as blake3_wasm } from 'hash-wasm';
 import { bufferToBigintBE } from '../common/encoding';
 
+const scriptTotalLines = 400001;
+
 export enum RefutationType {
     INSTR,
     HASH
@@ -27,10 +29,48 @@ export interface RefutationDescriptor {
     whichHash?: number;
 }
 
+export function getMaxRefutationIndex(): number {
+    return scriptTotalLines + scriptTotalLines * totalRefutationProofs * totalRefutationHashes + totalRefutationHashes;
+}
+
+export function getRefutationIndex(refutation: RefutationDescriptor): number {
+    refutation = { ...refutation, line: Math.min(refutation.line, scriptTotalLines) };
+    if (refutation.refutationType == RefutationType.INSTR) return refutation.line;
+    else if (refutation.refutationType == RefutationType.HASH) {
+        if (refutation.whichProof == undefined || refutation.whichHash == undefined)
+            throw new Error('Missing whichProof or whichHash');
+        if (refutation.whichProof < 0 || refutation.whichProof >= totalRefutationProofs)
+            throw new Error('Invalid whichProof');
+        if (refutation.whichHash < 0 || refutation.whichHash >= totalRefutationHashes)
+            throw new Error('Invalid whichHash');
+
+        return (
+            refutation.totalLines +
+            refutation.line * totalRefutationHashes * totalRefutationProofs +
+            refutation.whichProof * totalRefutationHashes +
+            refutation.whichHash
+        );
+    } else throw new Error('Unknown refutation type');
+}
+
+export function getRefutationDescriptor(index: number): RefutationDescriptor {
+    if (index >= getMaxRefutationIndex()) throw new Error('Refutarion index too large');
+    if (index < scriptTotalLines) {
+        return { refutationType: RefutationType.INSTR, line: index, totalLines: scriptTotalLines };
+    }
+    index -= scriptTotalLines;
+    const line = Math.floor(index / (totalRefutationProofs * totalRefutationHashes));
+    index -= line * totalRefutationProofs * totalRefutationHashes;
+    const whichProof = Math.floor(index / totalRefutationHashes);
+    index -= whichProof * totalRefutationHashes;
+    const whichHash = index;
+    return { refutationType: RefutationType.HASH, line, totalLines: scriptTotalLines, whichProof, whichHash };
+}
+
 const scriptTampleCache: { [key: string]: ScriptTemplate } = {};
 
-function renderTemplateWithIndex(template: ScriptTemplate, index: number): Buffer {
-    const nibbles = bigintToNibbles_3(BigInt(index), 8);
+function renderTemplateWithLine(template: ScriptTemplate, line: number): Buffer {
+    const nibbles = bigintToNibbles_3(BigInt(line), 8);
     const map: { [key: string]: number } = {};
     for (let i = 0; i < nibbles.length; i++) {
         map[`indexNibbles_${i}`] = nibbles[i];
@@ -114,46 +154,11 @@ function generateRefuteInstructionScript(
 ): Buffer {
     const instr = decasector.savedVm.program[refutation.line];
     const cacheKey = `${instr.name}/${instr.bit ?? 0}`;
-    if (scriptTampleCache[cacheKey]) return renderTemplateWithIndex(scriptTampleCache[cacheKey], refutation.line);
+    if (scriptTampleCache[cacheKey]) return renderTemplateWithLine(scriptTampleCache[cacheKey], refutation.line);
     const template = generateRefuteInstructionScriptTemplate(decasector, templates, refutation.line);
     scriptTampleCache[cacheKey] = template;
-    const script = renderTemplateWithIndex(template, refutation.line);
+    const script = renderTemplateWithLine(template, refutation.line);
     return script;
-}
-
-export function getMaxRefutationIndex(decasector: Decasector): number {
-    return decasector.total + decasector.total * totalRefutationProofs * totalRefutationHashes;
-}
-
-export function getRefutationIndex(refutation: RefutationDescriptor): number {
-    if (refutation.refutationType == RefutationType.INSTR) return refutation.line;
-    else if (refutation.refutationType == RefutationType.HASH) {
-        if (refutation.whichProof == undefined || refutation.whichHash == undefined)
-            throw new Error('Missing whichProof or whichHash');
-        if (refutation.whichProof < 0 || refutation.whichProof >= totalRefutationProofs)
-            throw new Error('Invalid whichProof');
-        if (refutation.whichHash < 0 || refutation.whichHash >= totalRefutationHashes)
-            throw new Error('Invalid whichHash');
-
-        return (
-            refutation.totalLines +
-            refutation.line * totalRefutationHashes * totalRefutationProofs +
-            refutation.whichProof * totalRefutationHashes +
-            refutation.whichHash
-        );
-    } else throw new Error('Unknown refutation type');
-}
-
-export function getRefutationDescriptor(decasector: Decasector, index: number): RefutationDescriptor {
-    if (index < decasector.total)
-        return { refutationType: RefutationType.INSTR, line: index, totalLines: decasector.total };
-    index -= decasector.total;
-    const line = Math.floor(index / (totalRefutationProofs * totalRefutationHashes));
-    index -= line * totalRefutationProofs * totalRefutationHashes;
-    const whichProof = Math.floor(index / totalRefutationHashes);
-    index -= whichProof * totalRefutationHashes;
-    const whichHash = index;
-    return { refutationType: RefutationType.HASH, line, totalLines: decasector.total, whichProof, whichHash };
 }
 
 function negifyPairHash(

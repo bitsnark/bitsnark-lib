@@ -37,8 +37,8 @@ export function verifyMessage(message: string, signature: string, publicKey: str
 if (require.main === module) {
     // Generate new keypair and sign and verify a message
     const keypair = generateSchnorrKeypair();
-    console.log('Private Key:', keypair.privateKey, keypair.privateKey.length);
     console.log('Public Key:', keypair.publicKey, keypair.publicKey.length);
+    console.log('Private Key:', keypair.privateKey, keypair.privateKey.length);
 
     const myMessage = `Hello, World!`;
     const signature = signMessage(`Hello, World!`, keypair.privateKey);

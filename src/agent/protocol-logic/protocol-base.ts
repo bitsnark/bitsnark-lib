@@ -5,6 +5,7 @@ import { AgentRoles, Setup, SpendingCondition, Template, TemplateStatus, Receive
 import { getTemplateByTemplateId } from '../common/templates';
 import { AgentDb } from '../common/agent-db';
 import { bigintToBufferBE } from '../common/encoding';
+import { WOTS_NIBBLES, WotsType } from '../common/winternitz';
 
 export interface Incoming {
     received: ReceivedTransaction;
@@ -51,7 +52,11 @@ export class ProtocolBase {
         const template = await this.db.getTemplate(this.setupId, name);
         if (template.status == TemplateStatus.REJECTED) throw new Error(`Template ${name} was rejected`);
         if (template.status == TemplateStatus.READY) return;
-        if (template.status == TemplateStatus.PUBLISHED) return;
+        if (template.status == TemplateStatus.PUBLISHED) {
+            // Please keep this log message as long as we manually mine blocks in `npm run e2e`.
+            console.log(`Template ${name} published`);
+            return;
+        }
         await this.db.markTemplateToSend(this.setupId, name, data);
         console.log(`Asking to send template ${name} (make sure sender is listening: npm run start-bitcoin-sender)`);
     }
@@ -66,13 +71,15 @@ export class ProtocolBase {
         return proof;
     }
 
-    parseSelection(incoming: Incoming): number {
+    parseSelection(incoming: Incoming, selectionPathUnparsed: Buffer[][]): number {
         const rawTx = incoming.received.raw as RawTransaction;
+        const usableWitness = rawTx.vin[0].txinwitness!.slice(0, WOTS_NIBBLES[WotsType._24]);
         const data = parseInput(
             this.templates!,
             incoming.template.inputs[0],
-            rawTx.vin[0].txinwitness!.map((s) => Buffer.from(s, 'hex'))
+            usableWitness.map((s) => Buffer.from(s, 'hex'))
         );
+        selectionPathUnparsed.push(usableWitness.map((s) => Buffer.from(s, 'hex')));
         return Number(data[0]);
     }
 

@@ -34,6 +34,9 @@ export class StateCommitment {
     public getValues(): bigint[] {
         if (this.values) return this.values;
         this.values = getRegsAt(this.savedVm, this.left, this.line);
+        if (this.values.length > 128) throw new Error('Too many vars?');
+        // pad with zeros so we always have the same size merkle proof
+        while (this.values.length < 128) this.values.push(0n);
         return this.values;
     }
 }
@@ -128,15 +131,6 @@ export class Decasector {
             left = tl;
             right = tr;
         }
-        return right;
-    }
-}
-
-if (require.main === module) {
-    try {
-        const d = new Decasector();
-        console.log(d.stateCommitmentByLine);
-    } catch (e) {
-        console.error(e);
+        return left;
     }
 }

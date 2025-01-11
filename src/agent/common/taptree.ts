@@ -1,16 +1,27 @@
 import { hasEvenY, lift_x, pointAdd, pointMul } from '../../common/point';
-import { G, SECP256K1_ORDER, combineHashes, getHash, taprootVersion } from '../../common/taproot-common';
+import {
+    G,
+    SECP256K1_ORDER,
+    combineHashes as combineHashesCommon,
+    getHash,
+    taprootVersion
+} from '../../common/taproot-common';
 import { bigintFromBytes, bigintToBufferBE, bytesFromBigint, cat, padHex, taggedHash } from './encoding';
 
 import * as bitcoin from 'bitcoinjs-lib';
 import * as ecc from 'tiny-secp256k1';
-import assert from 'node:assert';
-import { array, last } from './array-utils';
+import { array, last, range } from './array-utils';
 import { agentConf } from '../agent.conf';
-
-export const DEAD_ROOT = Buffer.from([0x6a, 0x6a, 0x6a, 0x6a, 0x6a, 0x6a, 0x6a, 0x6a]);
+import { DEAD_ROOT } from './constants';
 
 bitcoin.initEccLib(ecc);
+
+const DEAD_ROOT_PAIR = combineHashesCommon(DEAD_ROOT, DEAD_ROOT);
+
+function combineHashes(a: Buffer, b: Buffer): Buffer {
+    if (a.compare(b) == 0 && a.compare(DEAD_ROOT) == 0) return DEAD_ROOT_PAIR;
+    return combineHashesCommon(a, b);
+}
 
 function toBinStringPad(n: number, l: number): string {
     let s = n.toString(2);
@@ -80,21 +91,34 @@ export class SimpleTapTree {
         return Buffer.concat([versionBuf, keyBuf, proof]);
     }
 
-    public getTaprootPubkey(): Buffer {
-        const taproot = bitcoin.payments.p2tr({
+    public getTaprootResults(): { pubkey: Buffer; address: string; output: Buffer } {
+        const root = this.getRoot();
+        const t = taggedHash('TapTweak', Buffer.concat([bigintToBufferBE(this.internalPubkey, 256), root]));
+        const mult = pointMul(G, bigintFromBytes(t));
+        const yeven = lift_x(this.internalPubkey).y;
+        const q = pointAdd({ x: this.internalPubkey, y: yeven }, mult);
+        const pubkey = bigintToBufferBE(q!.x, 256);
+
+        const temp = bitcoin.payments.p2tr({
             internalPubkey: bigintToBufferBE(this.internalPubkey, 256),
             hash: this.getRoot(),
             network: bitcoin.networks[agentConf.bitcoinNodeNetwork as keyof typeof bitcoin.networks]
         });
-        return taproot.output!;
+
+        if (pubkey.compare(temp.pubkey!) != 0) throw new Error("Values don't match");
+        return { pubkey: temp.pubkey!, address: temp.address!, output: temp.output! };
+    }
+
+    public getTaprootPubkey(): Buffer {
+        return this.getTaprootResults().pubkey;
+    }
+
+    public getTaprootOutput(): Buffer {
+        return this.getTaprootResults().output;
     }
 
     public getTaprootAddress(): string {
-        return bitcoin.payments.p2tr({
-            internalPubkey: bigintToBufferBE(this.internalPubkey, 256),
-            hash: this.getRoot(),
-            network: bitcoin.networks[agentConf.bitcoinNodeNetwork as keyof typeof bitcoin.networks]
-        }).address!;
+        return this.getTaprootResults().address;
     }
 }
 
@@ -104,17 +128,18 @@ export class Compressor {
     private nextIndex: number = 0;
     private indexToSave: number;
     private indexesForProof: string[] = [];
-    private internalPubkey: bigint;
+    private internalPubKey: bigint;
     public script?: Buffer;
     public proof: Buffer[] = [];
+    public total: number;
+    public count: number = 0;
 
-    constructor(
-        private leavesCount: number,
-        indexToSave: number = -1
-    ) {
-        this.depth = Math.ceil(Math.log2(leavesCount)) + 1;
+    constructor(total: number, indexToSave: number = -1) {
+        const log2 = Math.ceil(Math.log2(total));
+        this.depth = log2 + 1;
+        this.total = 2 ** log2;
         this.data = array(this.depth, (_) => []);
-        this.internalPubkey = agentConf.internalPubkey;
+        this.internalPubKey = agentConf.internalPubkey;
         this.indexToSave = indexToSave;
 
         if (indexToSave >= 0) {
@@ -127,11 +152,8 @@ export class Compressor {
         }
     }
 
-    private sanity() {
-        let n = 0;
-        for (let i = 0; i < this.depth; i++) n = n * 2 + this.data[i].length;
-        assert(this.nextIndex == n);
-        assert(n <= 2 ** this.depth);
+    setInteralPubKey(internalPubKey: bigint) {
+        this.internalPubKey = internalPubKey;
     }
 
     private indexStringForLevel(level: number): string {
@@ -150,38 +172,22 @@ export class Compressor {
                 if (a == b) this.proof[this.data.length - i] = hash;
                 this.data[i] = [];
                 this.data[i - 1].push(hash);
-                this.sanity();
             }
         }
     }
 
     public addHash(hash: Buffer) {
+        if (!hash) throw new Error('Hash cannot be null');
         if (this.nextIndex + 1 > 2 ** this.depth) throw new Error('Too many leaves');
+        if ((this.nextIndex ^ 1) === this.indexToSave) this.proof![0] = hash;
         last(this.data).push(hash);
         this.nextIndex++;
+        this.count++;
         this.compress();
     }
 
-    public addItem(script: Buffer) {
-        if (this.nextIndex === this.indexToSave) {
-            this.script = script;
-        }
-        const hash = getHash(script);
-        if ((this.nextIndex ^ 1) === this.indexToSave) this.proof![0] = hash;
-        this.addHash(hash);
-    }
-
     public getRoot(): Buffer {
-        for (let i = this.data.length - 1; i > 0; i--) {
-            if (this.data[i].length > 0) {
-                const hash = combineHashes(this.data[i][0], this.data[i][1] ?? this.data[i][0]);
-                const a = this.indexStringForLevel(i - 1);
-                const b = this.indexesForProof[i - 2];
-                if (a == b) this.proof[this.data.length - i] = hash;
-                this.data[i] = [];
-                this.data[i - 1].push(hash);
-            }
-        }
+        while (this.count < this.total) this.addHash(DEAD_ROOT);
         return this.data[0][0];
     }
 
@@ -195,13 +201,13 @@ export class Compressor {
     }
 
     public getTaprootPubkey(): Buffer {
-        return Compressor.toPubKey(this.internalPubkey, this.getRoot());
+        return Compressor.toPubKey(this.internalPubKey, this.getRoot());
     }
 
     public getControlBlock(): Buffer {
         const h = this.getRoot();
-        const [parity, _] = taprootTweakPubkey(this.internalPubkey, h);
-        const P = lift_x(this.internalPubkey);
+        const [parity, _] = taprootTweakPubkey(this.internalPubKey, h);
+        const P = lift_x(this.internalPubKey);
         const versionBuf = Buffer.from([taprootVersion | Number(parity)]);
         const keyBuf = Buffer.from(padHex(P.x.toString(16), 32), 'hex');
         return Buffer.concat([versionBuf, keyBuf, ...this.proof]);
@@ -209,32 +215,12 @@ export class Compressor {
 }
 
 function test1() {
-    const index = 3;
-    const scripts = array(8, (i) => Buffer.from([i]));
-    const stt = new SimpleTapTree(1n, scripts);
-
-    const c = new Compressor(scripts.length, index);
-    for (const s of scripts) c.addItem(s);
-
-    const cRoot = c.getRoot();
-    const sttRoot = stt.getRoot();
-    assert(sttRoot.compare(cRoot) == 0);
-
-    const sttKey = stt.getTaprootPubkey();
-    const cKey = c.getTaprootPubkey();
-    assert(sttKey.compare(cKey) == 0);
-
-    const sttScript = stt.scripts[index];
-    const cScript = c.script;
-    assert(sttScript.compare(cScript!) == 0);
-
-    const sttProof = stt.getProof(index);
-    const cProof = Buffer.concat(c.proof);
-    assert(sttProof.compare(cProof!) == 0);
-
-    const sttControl = stt.getControlBlock(index);
-    const cControl = c.getControlBlock();
-    assert(sttControl.compare(cControl!) == 0);
+    const hashes = range(0, 7).map((n) => bigintToBufferBE(BigInt(n), 256));
+    const compressor = new Compressor(hashes.length, 5);
+    hashes.forEach((b) => compressor.addHash(b));
+    const root = compressor.getRoot();
+    const cb = compressor.getControlBlock();
+    console.log(root, cb);
 }
 
 function main() {
