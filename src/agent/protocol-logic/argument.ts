@@ -147,8 +147,7 @@ export class Argument {
             const { requestedScript, requestedControlBlock } = await doomsdayGenerator.generateFinalStepTaprootParallel(
                 {
                     refutationType: RefutationType.INSTR,
-                    line: this.index,
-                    totalLines: decasector.total
+                    line: this.index
                 }
             );
 
@@ -196,8 +195,7 @@ export class Argument {
             refutationType: RefutationType.HASH,
             line: this.index,
             whichProof,
-            whichHash: Math.floor(whichHash / 2),
-            totalLines: decasector.total
+            whichHash: Math.floor(whichHash / 2)
         });
         // return { data, script: script!, controlBlock: controlBlock! };
         return { data, script: requestedScript!, controlBlock: requestedControlBlock! };
