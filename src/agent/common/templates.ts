@@ -108,9 +108,7 @@ export const protocolStart: Template[] = [
         ],
         outputs: [
             {
-                // We don't want to calculate this amount dynamically -- it needs to be so that the template
-                // cannot get sent unless it's funded
-                amount: agentConf.symbolicOutputAmount,
+                amount: agentConf.verifierPaymentAmount,
                 spendingConditions: [
                     {
                         nextRole: AgentRoles.PROVER,

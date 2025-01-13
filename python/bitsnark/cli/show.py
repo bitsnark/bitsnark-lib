@@ -25,6 +25,12 @@ class ShowCommand(Command):
         tx_template = find_tx_template(context)
         dbsession = context.dbsession
 
+        try:
+            terminal = os.get_terminal_size()
+        except OSError:
+            terminal = io.StringIO()
+            terminal.columns = 80
+
         # print("Object structure")
         print("Name:".ljust(19), tx_template.name)
         print("Ordinal:".ljust(19), tx_template.ordinal)
