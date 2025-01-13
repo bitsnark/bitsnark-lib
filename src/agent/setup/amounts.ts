@@ -18,7 +18,7 @@ function calculateTransactionFee(transaction: Template): bigint {
         0
     );
     let totalSize = Math.ceil((inputScriptsSize + outputScriptsSize) / 8);
-    if (transaction.name == TemplateNames.PROOF_REFUTED) totalSize = 600000
+    if (transaction.name == TemplateNames.PROOF_REFUTED) totalSize = 600000;
     const requiredFee = BigInt(totalSize) * agentConf.feePerVbyte;
     const factoredFee = (requiredFee * BigInt(agentConf.feeFactorPercent)) / 100n;
     return factoredFee + 1n;
