@@ -71,7 +71,7 @@ describe('SimpleTapTree', () => {
         }
     ];
 
-    it.skip.each(testCases)('scriptPubKey test case %#', (testcase: Testcase) => {
+    it.each(testCases)('scriptPubKey test case %#', (testcase: Testcase) => {
         const scripts = testcase.given.scripts.map((s) => Buffer.from(s, 'hex'));
         const compressor = new Compressor(scripts.length, 0);
         compressor.setInteralPubKey(stringToBigint(internalPubkey));
@@ -82,15 +82,26 @@ describe('SimpleTapTree', () => {
             testcase.given.scripts.map((s) => Buffer.from(s, 'hex'))
         );
 
+        const sanityRoot = tapTree.getRoot();
+        expect(sanityRoot.toString('hex')).toBe(testcase.expected.root);
+
         const root = compressor.getRoot();
         expect(root.toString('hex')).toBe(testcase.expected.root);
 
         const scriptPubKey = compressor.getTaprootPubkey();
-        const sanityScriptPubKey = tapTree.getTaprootPubkey();
-        expect(scriptPubKey.toString()).toBe(sanityScriptPubKey.toString());
-        expect(scriptPubKey.toString('hex')).toBe(testcase.expected.scriptPubKey);
 
-        const control = compressor.getControlBlock();
-        expect(control.toString('hex')).toBe(testcase.expected.scriptPathControlBlocks[0]);
+        // XXX: we mean scriptPubKey here and bitcoinjs-lib calls it "output" (we don't mean taproot pubkey)
+        // const sanityScriptPubKey = tapTree.getTaprootPubkey();
+        const sanityScriptPubKey = tapTree.getTaprootOutput();
+
+        expect(sanityScriptPubKey.toString('hex')).toBe(testcase.expected.scriptPubKey);
+        expect(scriptPubKey.toString('hex')).toBe(testcase.expected.scriptPubKey);
+        // expect(scriptPubKey.toString('hex')).toBe(sanityScriptPubKey.toString('hex'));
+
+        const sanityControlBlock = tapTree.getControlBlock(0);
+        expect(sanityControlBlock.toString('hex')).toBe(testcase.expected.scriptPathControlBlocks[0]);
+
+        const controlBlock = compressor.getControlBlock();
+        expect(controlBlock.toString('hex')).toBe(testcase.expected.scriptPathControlBlocks[0]);
     });
 });

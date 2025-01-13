@@ -187,7 +187,15 @@ export class Compressor {
     }
 
     public getRoot(): Buffer {
-        while (this.count < this.total) this.addHash(DEAD_ROOT);
+        if (this.count === 0) {
+            return DEAD_ROOT;
+        }
+
+        while (this.count < this.total) {
+            const lastDataItem = this.data[this.data.length - 1];
+            const fillerHash = lastDataItem[lastDataItem.length - 1];
+            this.addHash(fillerHash);
+        }
         return this.data[0][0];
     }
 
