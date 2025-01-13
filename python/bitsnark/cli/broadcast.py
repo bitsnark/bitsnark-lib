@@ -56,7 +56,6 @@ def broadcast_transaction(
             'testmempoolaccept',
             [signed_serialized_tx],
         )
-        logger.info("Test mempool accept result: %s", mempoolaccept_ret)
         if not mempoolaccept_ret[0]['allowed']:
             raise ValueError(
                 f"Transaction {tx_template.name!r} not accepted by mempool: {mempoolaccept_ret[0]['reject-reason']}")
@@ -82,16 +81,6 @@ def create_tx_with_witness(
     input_witnesses = []
 
     for input_index, inp in enumerate(tx_template.inputs):
-        verifier_signature_raw = inp.get('verifierSignature')
-        if not verifier_signature_raw:
-            raise ValueError(f"Transaction {tx_template.name} input #{input_index} has no verifierSignature")
-        verifier_signature = parse_hex_bytes(verifier_signature_raw)
-
-        prover_signature_raw = inp.get('proverSignature')
-        if not prover_signature_raw:
-            raise ValueError(f"Transaction {tx_template.name} input #{input_index} has no proverSignature")
-        prover_signature = parse_hex_bytes(prover_signature_raw)
-
         prev_tx = dbsession.execute(
             select(TransactionTemplate).filter_by(
                 setup_id=tx_template.setup_id,
@@ -104,6 +93,29 @@ def create_tx_with_witness(
         spending_condition = prevout['spendingConditions'][
             inp['spendingConditionIndex']
         ]
+
+        signature_type = spending_condition['signatureType']
+        if signature_type not in ('PROVER', 'VERIFIER', 'BOTH'):
+            raise ValueError(
+                f"Transaction {tx_template.name} input #{input_index} spending condition "
+                f"#{inp['spendingConditionIndex']} has unknown signatureType {signature_type}"
+            )
+
+        signatures: list[bytes] = []
+
+        if signature_type in ('VERIFIER', 'BOTH'):
+            verifier_signature_raw = inp.get('verifierSignature')
+            if not verifier_signature_raw:
+                raise ValueError(f"Transaction {tx_template.name} input #{input_index} has no verifierSignature")
+            verifier_signature = parse_hex_bytes(verifier_signature_raw)
+            signatures.append(verifier_signature)
+
+        if signature_type in ('PROVER', 'BOTH'):
+            prover_signature_raw = inp.get('proverSignature')
+            if not prover_signature_raw:
+                raise ValueError(f"Transaction {tx_template.name} input #{input_index} has no proverSignature")
+            prover_signature = parse_hex_bytes(prover_signature_raw)
+            signatures.append(prover_signature)
 
         tapscript = CScript(parse_hex_bytes(spending_condition['script']))
 
@@ -120,8 +132,7 @@ def create_tx_with_witness(
         input_witness = CTxInWitness(CScriptWitness(
             stack=[
                 *witness,
-                verifier_signature,
-                prover_signature,
+                *signatures,
                 tapscript,
                 control_block,
             ],
