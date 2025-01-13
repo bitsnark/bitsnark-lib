@@ -4,7 +4,6 @@ import {
     getRefutationIndex,
     RefutationDescriptor,
     RefutationType,
-    scriptTotalLines,
     totalRefutationHashes,
     totalRefutationProofs
 } from '../../src/agent/final-step/refutation';
