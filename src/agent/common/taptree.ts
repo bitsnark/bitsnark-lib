@@ -129,6 +129,7 @@ export class Compressor {
     private indexToSave: number;
     private indexesForProof: string[] = [];
     private internalPubKey: bigint;
+    private lastHash: Buffer = DEAD_ROOT;
     public script?: Buffer;
     public proof: Buffer[] = [];
     public total: number;
@@ -183,6 +184,7 @@ export class Compressor {
         last(this.data).push(hash);
         this.nextIndex++;
         this.count++;
+        this.lastHash = hash;
         this.compress();
     }
 
@@ -192,9 +194,7 @@ export class Compressor {
         }
 
         while (this.count < this.total) {
-            const lastDataItem = this.data[this.data.length - 1];
-            const fillerHash = lastDataItem[lastDataItem.length - 1];
-            this.addHash(fillerHash);
+            this.addHash(this.lastHash);
         }
         return this.data[0][0];
     }
