@@ -117,7 +117,13 @@ def create_tx_with_witness(
             prover_signature = parse_hex_bytes(prover_signature_raw)
             signatures.append(prover_signature)
 
-        tapscript = CScript(parse_hex_bytes(spending_condition['script']))
+        # TODO: refactor this so that it always uses inp['script']
+        script_raw = inp.get('script', spending_condition.get('script'))
+        if script_raw is None:
+            raise ValueError(
+                f"Transaction {tx_template.name} input #{input_index} has no script or spendingCondition script"
+            )
+        tapscript = CScript(parse_hex_bytes(script_raw))
 
         if tx_template.protocol_data:
             witness = [
