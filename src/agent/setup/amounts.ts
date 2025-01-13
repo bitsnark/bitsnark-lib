@@ -1,7 +1,7 @@
 import { agentConf } from '../agent.conf';
 import { AgentDb } from '../common/agent-db';
 import { findOutputByInput, getTemplateByName } from '../common/templates';
-import { AgentRoles, Template } from '../common/types';
+import { AgentRoles, Template, TemplateNames } from '../common/types';
 
 // Currently only counting script sizes, not the actual transaction sizes.
 // (Length input scripts + length of output scripts) / 8 bits per byte * fee per byte * fee factor percent / 100
@@ -17,7 +17,8 @@ function calculateTransactionFee(transaction: Template): bigint {
             output.spendingConditions.reduce((totalSize, condition) => totalSize + (condition.script?.length || 0), 0),
         0
     );
-    const totalSize = Math.ceil((inputScriptsSize + outputScriptsSize) / 8);
+    let totalSize = Math.ceil((inputScriptsSize + outputScriptsSize) / 8);
+    if (transaction.name == TemplateNames.PROOF_REFUTED) totalSize = 600000
     const requiredFee = BigInt(totalSize) * agentConf.feePerVbyte;
     const factoredFee = (requiredFee * BigInt(agentConf.feeFactorPercent)) / 100n;
     return factoredFee + 1n;
@@ -66,6 +67,7 @@ export function validateTransactionFees(templates: Template[]) {
 
             // Skip externally funded templates for summing up fees.
             if (t.isExternal) return totals;
+            if (t.name == TemplateNames.PROOF_REFUTED) return totals;
 
             const inputsValue = t.inputs.reduce(
                 (totalValue, input) => totalValue + (findOutputByInput(templates, input).amount || 0n),
