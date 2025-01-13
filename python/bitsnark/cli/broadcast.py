@@ -133,7 +133,13 @@ def create_tx_with_witness(
         else:
             witness = []
 
-        control_block = parse_hex_bytes(spending_condition['controlBlock'])
+        # TODO: refactor it to always use inp['controlBlock']
+        control_block_raw = inp.get('controlBlock', spending_condition.get('controlBlock'))
+        if control_block_raw is None:
+            raise ValueError(
+                f"Transaction {tx_template.name} input #{input_index} has no controlBlock or spendingCondition controlBlock"
+            )
+        control_block = parse_hex_bytes(control_block_raw)
 
         input_witness = CTxInWitness(CScriptWitness(
             stack=[
