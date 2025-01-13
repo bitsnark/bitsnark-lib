@@ -163,6 +163,7 @@ def main(argv: typing.Sequence[str] = None):
                     role=args.role,
                     privkey=privkey,
                 )
+            with dbsession.begin():
                 broadcast_transactions(dbsession, bitcoin_rpc)
 
     listen()
