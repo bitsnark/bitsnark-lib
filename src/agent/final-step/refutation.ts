@@ -11,7 +11,7 @@ import { BLAKE3, Register } from './blake-3-4u';
 import { blake3 as blake3_wasm } from 'hash-wasm';
 import { bufferToBigintBE } from '../common/encoding';
 
-const scriptTotalLines = 400001;
+export const scriptTotalLines = 400001;
 
 export enum RefutationType {
     INSTR,
@@ -24,7 +24,6 @@ export const totalRefutationHashes = 8;
 export interface RefutationDescriptor {
     refutationType: RefutationType;
     line: number;
-    totalLines: number;
     whichProof?: number;
     whichHash?: number;
 }
@@ -45,7 +44,7 @@ export function getRefutationIndex(refutation: RefutationDescriptor): number {
             throw new Error('Invalid whichHash');
 
         return (
-            refutation.totalLines +
+            scriptTotalLines +
             refutation.line * totalRefutationHashes * totalRefutationProofs +
             refutation.whichProof * totalRefutationHashes +
             refutation.whichHash
@@ -56,7 +55,7 @@ export function getRefutationIndex(refutation: RefutationDescriptor): number {
 export function getRefutationDescriptor(index: number): RefutationDescriptor {
     if (index >= getMaxRefutationIndex()) throw new Error('Refutarion index too large');
     if (index < scriptTotalLines) {
-        return { refutationType: RefutationType.INSTR, line: index, totalLines: scriptTotalLines };
+        return { refutationType: RefutationType.INSTR, line: index };
     }
     index -= scriptTotalLines;
     const line = Math.floor(index / (totalRefutationProofs * totalRefutationHashes));
@@ -64,7 +63,7 @@ export function getRefutationDescriptor(index: number): RefutationDescriptor {
     const whichProof = Math.floor(index / totalRefutationHashes);
     index -= whichProof * totalRefutationHashes;
     const whichHash = index;
-    return { refutationType: RefutationType.HASH, line, totalLines: scriptTotalLines, whichProof, whichHash };
+    return { refutationType: RefutationType.HASH, line, whichProof, whichHash };
 }
 
 const scriptTampleCache: { [key: string]: ScriptTemplate } = {};

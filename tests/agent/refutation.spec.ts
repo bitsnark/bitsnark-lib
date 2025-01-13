@@ -19,8 +19,7 @@ describe('Refutation', () => {
                 if (t == RefutationType.INSTR) {
                     rd = {
                         refutationType: t,
-                        line,
-                        totalLines: decasector.total
+                        line
                     };
                     const index = getRefutationIndex(rd!);
                     const rd2 = getRefutationDescriptor(index);
@@ -32,8 +31,7 @@ describe('Refutation', () => {
                                 refutationType: t,
                                 line,
                                 whichProof,
-                                whichHash,
-                                totalLines: decasector.total
+                                whichHash
                             };
                             const index = getRefutationIndex(rd!);
                             const rd2 = getRefutationDescriptor(index);
