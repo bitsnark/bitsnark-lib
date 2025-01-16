@@ -12,14 +12,14 @@ import * as bitcoin from 'bitcoinjs-lib';
 import * as ecc from 'tiny-secp256k1';
 import { array, last, range } from './array-utils';
 import { agentConf } from '../agent.conf';
-import { DEAD_ROOT } from './constants';
 
 bitcoin.initEccLib(ecc);
 
-const DEAD_ROOT_PAIR = combineHashesCommon(DEAD_ROOT, DEAD_ROOT);
+export const DEAD_ROOT_HASH = getHash(Buffer.from([0x6a])); // always fail
+const DEAD_ROOT_PAIR = combineHashesCommon(DEAD_ROOT_HASH, DEAD_ROOT_HASH);
 
 function combineHashes(a: Buffer, b: Buffer): Buffer {
-    if (a.compare(b) == 0 && a.compare(DEAD_ROOT) == 0) return DEAD_ROOT_PAIR;
+    if (a.compare(b) == 0 && a.compare(DEAD_ROOT_HASH) == 0) return DEAD_ROOT_PAIR;
     return combineHashesCommon(a, b);
 }
 
@@ -48,7 +48,7 @@ export class SimpleTapTree {
     }
 
     getRoot(): Buffer {
-        if (this.scripts.length == 0) return DEAD_ROOT;
+        if (this.scripts.length == 0) return DEAD_ROOT_HASH;
         let temp = this.scripts.map((b) => getHash(b));
         while (temp.length > 1) {
             const other: Buffer[] = [];
@@ -122,6 +122,79 @@ export class SimpleTapTree {
     }
 }
 
+export class SimpleTapTreeHashes {
+    internalPubkey: bigint;
+    hashes: Buffer[];
+
+    constructor(internalPubkey: bigint, hashes: Buffer[]) {
+        this.internalPubkey = internalPubkey;
+        this.hashes = hashes;
+    }
+
+    getRoot(): Buffer {
+        if (this.hashes.length == 0) return DEAD_ROOT_HASH;
+        let temp = this.hashes.map(b => b);
+        while (temp.length > 1) {
+            const other: Buffer[] = [];
+            while (temp.length > 0) {
+                const left = temp.shift()!;
+                const right = temp.shift() ?? left;
+                other.push(combineHashes(left, right));
+            }
+            temp = other;
+        }
+        return temp[0];
+    }
+
+    getProof(index: number): Buffer {
+        const buffers: Buffer[] = [];
+        let temp = this.hashes.map(b => b);
+        while (temp.length > 1) {
+            const other: Buffer[] = [];
+            const siblingIndex = index ^ 1;
+            const sibling = temp[siblingIndex] ?? temp[index];
+            buffers.push(sibling);
+            while (temp.length > 0) {
+                const left = temp.shift()!;
+                const right = temp.shift() ?? left;
+                other.push(combineHashes(left, right));
+            }
+            temp = other;
+            index = index >> 1;
+        }
+        return cat(buffers);
+    }
+
+    public getControlBlock(index: number): Buffer {
+        const proof = this.getProof(index);
+        const h = this.getRoot();
+        const [parity, _] = taprootTweakPubkey(this.internalPubkey, h);
+        const P = lift_x(this.internalPubkey);
+        const versionBuf = Buffer.from([taprootVersion | Number(parity)]);
+        const keyBuf = Buffer.from(padHex(P.x.toString(16), 32), 'hex');
+        return Buffer.concat([versionBuf, keyBuf, proof]);
+    }
+
+    public getTaprootResults(): { pubkey: Buffer; address: string; output: Buffer } {
+        const root = this.getRoot();
+        const t = taggedHash('TapTweak', Buffer.concat([bigintToBufferBE(this.internalPubkey, 256), root]));
+        const mult = pointMul(G, bigintFromBytes(t));
+        const yeven = lift_x(this.internalPubkey).y;
+        const q = pointAdd({ x: this.internalPubkey, y: yeven }, mult);
+        const pubkey = bigintToBufferBE(q!.x, 256);
+
+        const temp = bitcoin.payments.p2tr({
+            internalPubkey: bigintToBufferBE(this.internalPubkey, 256),
+            hash: this.getRoot(),
+            network: bitcoin.networks[agentConf.bitcoinNodeNetwork as keyof typeof bitcoin.networks]
+        });
+
+        if (pubkey.compare(temp.pubkey!) != 0) throw new Error("Values don't match");
+        return { pubkey: temp.pubkey!, address: temp.address!, output: temp.output! };
+    }
+
+}
+
 export class Compressor {
     private depth: number;
     private data: Buffer[][];
@@ -187,8 +260,26 @@ export class Compressor {
     }
 
     public getRoot(): Buffer {
-        while (this.count < this.total) this.addHash(DEAD_ROOT);
+        while (this.count < this.total) this.addHash(getHash(DEAD_ROOT_HASH));
         return this.data[0][0];
+    }
+
+    public getTaprootResults(): { pubkey: Buffer; address: string; output: Buffer } {
+        const root = this.getRoot();
+        const t = taggedHash('TapTweak', Buffer.concat([bigintToBufferBE(this.internalPubKey, 256), root]));
+        const mult = pointMul(G, bigintFromBytes(t));
+        const yeven = lift_x(this.internalPubKey).y;
+        const q = pointAdd({ x: this.internalPubKey, y: yeven }, mult);
+        const pubkey = bigintToBufferBE(q!.x, 256);
+
+        const temp = bitcoin.payments.p2tr({
+            internalPubkey: bigintToBufferBE(this.internalPubKey, 256),
+            hash: this.getRoot(),
+            network: bitcoin.networks[agentConf.bitcoinNodeNetwork as keyof typeof bitcoin.networks]
+        });
+
+        if (pubkey.compare(temp.pubkey!) != 0) throw new Error("Values don't match");
+        return { pubkey: temp.pubkey!, address: temp.address!, output: temp.output! };
     }
 
     public static toPubKey(internalPubkey: bigint, root: Buffer): Buffer {
@@ -198,6 +289,14 @@ export class Compressor {
             network: bitcoin.networks[agentConf.bitcoinNodeNetwork as keyof typeof bitcoin.networks]
         });
         return taproot.output!;
+    }
+
+    public getTaprootPubkeyNew(): Buffer {
+        return this.getTaprootResults().output!;
+    }
+
+    public getAddress() {
+        return this.getTaprootResults().address!;
     }
 
     public getTaprootPubkey(): Buffer {

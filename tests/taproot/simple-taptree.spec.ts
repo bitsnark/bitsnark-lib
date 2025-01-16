@@ -1,8 +1,7 @@
 import { describe, expect, it } from '@jest/globals';
 
-import { SimpleTapTree } from '../../src/agent/common/taptree';
+import { DEAD_ROOT_HASH, SimpleTapTree } from '../../src/agent/common/taptree';
 import { stringToBigint } from '../../src/agent/common/encoding';
-import { DEAD_ROOT } from '../../src/agent/common/constants';
 
 describe('SimpleTapTree', () => {
     type Testcase = {
@@ -91,6 +90,6 @@ describe('SimpleTapTree', () => {
         const tapTree = new SimpleTapTree(stringToBigint(internalPubkey), []);
         const root = tapTree.getRoot();
 
-        expect(root).toEqual(DEAD_ROOT);
+        expect(root).toEqual(DEAD_ROOT_HASH);
     });
 });

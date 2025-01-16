@@ -103,5 +103,5 @@ export async function main2() {
 }
 
 if (require.main === module) {
-    main();
+    main2();
 }

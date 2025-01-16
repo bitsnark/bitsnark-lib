@@ -1376,14 +1376,22 @@ export class Bitcoin {
             if (opcode.op == OpcodeType.DATA) {
                 if (opcode.data && opcode.data instanceof Buffer) {
                     byteArray.push(opcode.data.length);
+                    if (opcode.templateItemId) {
+                        items.push({ itemId: opcode.templateItemId!, index: byteArray.length });
+                    }    
                     byteArray.push(...opcode.data);
-                    if (opcode.templateItemId) items.push({ itemId: opcode.templateItemId!, index: byteArray.length });
                 } else if (typeof opcode.data == 'number') {
                     if (opcode.data <= 16) {
+                        if (opcode.templateItemId) {
+                            items.push({ itemId: opcode.templateItemId!, index: byteArray.length });
+                        }        
                         byteArray.push(opcodeValues[hardcode(opcode.data)]);
                     } else {
                         const encoded = bitcoinjs.script.number.encode(opcode.data);
                         byteArray.push(encoded.length);
+                        if (opcode.templateItemId) {
+                            items.push({ itemId: opcode.templateItemId!, index: byteArray.length });
+                        }        
                         byteArray.push(...encoded);
                     }
                 }
