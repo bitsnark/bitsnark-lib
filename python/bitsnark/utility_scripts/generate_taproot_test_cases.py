@@ -1,3 +1,4 @@
+import sys
 import json
 from argparse import ArgumentParser
 import math
@@ -12,13 +13,28 @@ def main():
     parser.add_argument('--leaves', type=int, required=True)
     parser.add_argument('--internal-pubkey', type=XOnlyPubKey.fromhex,
                         default=XOnlyPubKey.fromhex('e0dfe2300b0dd746a3f8674dfd4525623639042569d829c7f0eed9602d263e6f'))
+    parser.add_argument('--pad-to',
+                        choices=['even', 'power-of-2', 'none'],
+                        default='power-of-2')
     args = parser.parse_args()
 
     if args.leaves <= 0:
         raise ValueError('leaves must be greater than 0')
 
-    # The tree will be padded to a power of 2
-    padded_tree_size = 2 ** math.ceil(math.log2(args.leaves))
+    if args.pad_to == 'even':
+        padded_tree_size = args.leaves + args.leaves % 2
+    elif args.pad_to == 'power-of-2':
+        padded_tree_size = 2 ** math.ceil(math.log2(args.leaves))
+    else:
+        padded_tree_size = args.leaves
+
+    # Print stuff to sys.stderr to only have the test vector in stdout
+    print(
+        "Creating a taproot script tree with {} leaves given, {} leaves with padding (padded to {})".format(
+            args.leaves, padded_tree_size, args.pad_to
+        ),
+        file=sys.stderr
+    )
 
     leaves = []
     i = 0
@@ -36,8 +52,8 @@ def main():
         leaves=leaves,
         internal_pubkey=args.internal_pubkey,
     )
-    print("Tree:")
-    print(taptree)
+    print("Tree:", file=sys.stderr)
+    print(taptree, file=sys.stderr)
 
     hex_scripts = []
     hex_control_blocks = []
@@ -57,8 +73,7 @@ def main():
         }
     }
 
-    print("\n")
-    print("Test vector:")
+    print("\nTest vector:", file=sys.stderr)
     print(json.dumps(test_vector, indent=2))
 
 
