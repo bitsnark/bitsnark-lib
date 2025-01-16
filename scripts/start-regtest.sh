@@ -18,6 +18,7 @@ echo ...
 $docker_cmd run -d --name "$bitcoin_container_name" $volume_mount -p 18443:18443 -p 18444:18444 \
     ruimarinho/bitcoin-core:latest -regtest -acceptnonstdtxn=1 \
     -rpcuser=rpcuser -rpcpassword=rpcpassword \
+    -txindex=1 \
     -rpcallowip=0.0.0.0/0 -rpcbind=0.0.0.0 -reindex=1
 printf "Waiting for the Bitcoin node to start..."
 while ! bitcoin_cli getblockchaininfo > /dev/null 2>&1; do
