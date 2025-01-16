@@ -192,7 +192,6 @@ export class Compressor {
         if (this.count === 0) {
             return DEAD_ROOT;
         }
-
         while (this.count < this.total) {
             this.addHash(this.lastHash);
         }

@@ -14,7 +14,8 @@ import {
     getMaxRefutationIndex,
     getRefutationDescriptor,
     getRefutationIndex,
-    RefutationDescriptor
+    RefutationDescriptor,
+    RefutationType
 } from './refutation';
 import { getHash } from '../../../src/common/taproot-common';
 import { prime_bigint } from '../common/constants';
@@ -133,10 +134,17 @@ export class DoomsdayGenerator {
     async generateFinalStepTaprootParallel(
         refutationDescriptor?: RefutationDescriptor
     ): Promise<GenerateTaprootResult> {
+
+        refutationDescriptor = {
+            refutationType: RefutationType.INSTR,
+            line: 3
+        };
+
         const start = Date.now();
         console.log('Starting doomsday parallel...');
         const requestedScriptIndex = refutationDescriptor ? getRefutationIndex(refutationDescriptor) : undefined;
-        const inputs = this.chunkTheWork(64, requestedScriptIndex);
+        let inputs = this.chunkTheWork(10000, requestedScriptIndex);
+        inputs = [inputs[0]];
 
         const results = await parallelize<GenerateFinalTaprootCommand, ChunkResult>(inputs, async (input) => {
             return this.forker.fork(input);
@@ -160,9 +168,15 @@ export class DoomsdayGenerator {
     }
 
     async generateFinalStepTaproot(refutationDescriptor?: RefutationDescriptor): Promise<GenerateTaprootResult> {
+
+        refutationDescriptor = {
+            refutationType: RefutationType.INSTR,
+            line: 3
+        };
+
         const db = new AgentDb(this.agentId);
         const templates = await db.getTemplates(this.setupId);
-        const inputs = this.chunkTheWork(64);
+        const inputs = this.chunkTheWork(10000);
         const requestedScriptIndex = refutationDescriptor ? getRefutationIndex(refutationDescriptor) : undefined;
 
         const start = Date.now();
@@ -180,6 +194,9 @@ export class DoomsdayGenerator {
                 requestedScriptIndex
             );
             results.push(r);
+
+            break;
+            
             const time = Date.now() - start;
             console.log(`Finished chunk ${i} of ${inputs.length}   -   ${timeStr(time)}`);
         }
