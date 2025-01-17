@@ -139,7 +139,7 @@ export class ProtocolVerifier extends ProtocolBase {
 
     private async sendSelect(proof: bigint[], selectionPath: number[], states: Buffer[][]) {
         const iteration = selectionPath.length;
-        const txName = TemplateNames.SELECT + '_' + twoDigits(iteration);
+        const txName = `${TemplateNames.SELECT}_${twoDigits(iteration)}` as TemplateNames;
         const selection = await findErrorState(proof, states, selectionPath);
         if (selection < 0) throw new Error('Could not find error state');
         const selectionWi = encodeWinternitz24(BigInt(selection), createUniqueDataId(this.setup!.id, txName, 0, 0, 0));
@@ -155,7 +155,7 @@ export class ProtocolVerifier extends ProtocolBase {
     }
 
     private async sendSelectUncontested(iteration: number) {
-        await this.sendTransaction(TemplateNames.SELECT_UNCONTESTED + '_' + twoDigits(iteration));
+        await this.sendTransaction(`${TemplateNames.SELECT_UNCONTESTED}_${twoDigits(iteration)}` as TemplateNames);
     }
 }
 

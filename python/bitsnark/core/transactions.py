@@ -181,6 +181,11 @@ def construct_signable_transaction(
             raise ValueError(f"Transaction {tx_template.name} output {output_index} has no taprootKey. Keys: {keys}")
 
         amount = parse_bignum(amount_raw)
+
+        if tx_template.name == 'ARGUMENT':
+            print('!!!!!!!!! 2 pubkey', script_pubkey_raw)
+
+
         script_pubkey = CScript(parse_hex_bytes(script_pubkey_raw))
         tx_outputs.append(
             CTxOut(

@@ -16,4 +16,5 @@ venv/
 /bitcoin/
 /expose/git-filter-repo/
 /snapshot/
+/snapshot*/
 /coverage/

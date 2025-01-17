@@ -7,13 +7,14 @@ import time
 
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm.session import Session
-from bitcointx.core.key import XOnlyPubKey
+from bitcointx.core.key import XOnlyPubKey, CKey
 
 from bitsnark.conf import POSTGRES_BASE_URL
 from bitsnark.btc.rpc import BitcoinRPC
 from bitsnark.core.environ import load_bitsnark_dotenv
+from bitsnark.core.types import Role
 from .models import TransactionTemplate, Setups, SetupStatus, OutgoingStatus
-from .sign_transactions import sign_setup, TransactionProcessingError
+from .sign_transactions import sign_setup, sign_tx_template, TransactionProcessingError
 from ..cli.broadcast import broadcast_transaction
 from ..cli.verify_signatures import verify_setup_signatures
 
@@ -78,6 +79,37 @@ def broadcast_transactions(dbsession, bitcoin_rpc):
             tx.status = OutgoingStatus.REJECTED
 
 
+def handle_special_transactions(
+    *,
+    dbsession: Session,
+    role: Role,
+    privkey: CKey,
+):
+    special_tx_names = []
+    if role == 'verifier':
+        special_tx_names.append('PROOF_REFUTED')
+
+    ready_transactions = dbsession.execute(
+        select(TransactionTemplate).where(TransactionTemplate.status == OutgoingStatus.READY).where(
+            TransactionTemplate.name.in_(special_tx_names)
+        )
+    ).scalars().all()
+    for tx in ready_transactions:
+        logger.info("Handling special transaction %s...", tx.name)
+        try:
+            if tx.name == 'PROOF_REFUTED':
+                logger.info('Signing PROOF_REFUTED')
+                sign_tx_template(
+                    tx_template=tx,
+                    role=role,
+                    private_key=privkey,
+                    dbsession=dbsession,
+                )
+        except Exception:
+            logger.exception("Error handling special transaction %s", tx.name)
+            tx.status = OutgoingStatus.REJECTED
+
+
 def main(argv: typing.Sequence[str] = None):
     'Entry point.'
 
@@ -102,6 +134,16 @@ def main(argv: typing.Sequence[str] = None):
 
     prover_pubkey = XOnlyPubKey.fromhex(os.environ['PROVER_SCHNORR_PUBLIC'])
     verifier_pubkey = XOnlyPubKey.fromhex(os.environ['VERIFIER_SCHNORR_PUBLIC'])
+    if args.role == 'prover':
+        privkey = CKey.fromhex(os.environ['PROVER_SCHNORR_PRIVATE'])
+        pubkey = prover_pubkey
+    else:
+        privkey = CKey.fromhex(os.environ['VERIFIER_SCHNORR_PRIVATE'])
+        pubkey = verifier_pubkey
+    if privkey.xonly_pub != pubkey:
+        raise ValueError(
+            f"X-Only pubkey {privkey.xonly_pub} does not match public key {pubkey}"
+        )
 
     engine = create_engine(f"{POSTGRES_BASE_URL}/{args.agent_id}")
     dbsession = Session(engine, autobegin=False)
@@ -115,6 +157,12 @@ def main(argv: typing.Sequence[str] = None):
             with dbsession.begin():
                 verify_setups(dbsession, prover_pubkey, verifier_pubkey, ignore_missing_script=True)
         if args.broadcast:
+            with dbsession.begin():
+                handle_special_transactions(
+                    dbsession=dbsession,
+                    role=args.role,
+                    privkey=privkey,
+                )
             with dbsession.begin():
                 broadcast_transactions(dbsession, bitcoin_rpc)
 
