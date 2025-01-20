@@ -47,7 +47,9 @@ export async function main(proverAgentId: string, verifierAgentId: string, setup
     if (regtest) {
         for (const agentId of [proverAgentId, verifierAgentId]) {
             console.log(`Starting blockchain listener for ${agentId}`);
-            await new BitcoinListener(agentId).startBlockchainCrawler();
+            new BitcoinListener(agentId).startBlockchainCrawler().catch((error) => {
+                console.error(error);
+            });
         }
     } else {
         console.log('Starting mock publisher');
