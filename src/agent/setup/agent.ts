@@ -436,9 +436,12 @@ if (require.main === module) {
 
     const agent = new Agent(agentId, role);
     console.log('Launching agent', agentId);
-    agent.launch().then(() => {
-        console.log('Quitting');
-    }).catch((e) => {
-        console.error(e);
-    });
+    agent
+        .launch()
+        .then(() => {
+            console.log('Quitting');
+        })
+        .catch((e) => {
+            console.error(e);
+        });
 }

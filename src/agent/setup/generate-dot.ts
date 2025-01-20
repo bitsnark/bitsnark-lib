@@ -248,9 +248,11 @@ if (require.main === module) {
     const setupId = 'test_setup';
     const collapsed = args['collapsed'];
     const db = new AgentDb(agentId);
-    db.getTemplates(setupId).then((templates) => {
-        console.log(dot(templates, collapsed));
-    }).catch((error) => {
-        throw error;
-    });
+    db.getTemplates(setupId)
+        .then((templates) => {
+            console.log(dot(templates, collapsed));
+        })
+        .catch((error) => {
+            throw error;
+        });
 }
