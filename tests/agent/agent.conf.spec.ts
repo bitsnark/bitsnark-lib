@@ -30,7 +30,11 @@ describe('AgentConfig', () => {
             expect(agentConf.keyPairs['bitsnark_prover_1'].schnorrPrivate).toEqual('prover_schnorr_private');
             expect(agentConf.keyPairs['bitsnark_verifier_1'].schnorrPublic).toEqual('verifier_schnorr_public');
             expect(agentConf.keyPairs['bitsnark_verifier_1'].schnorrPrivate).toEqual('verifier_schnorr_private');
-        });
+        }).catch(
+            (error) => {
+                throw error;
+            }
+        );
     });
 
     afterEach(() => {

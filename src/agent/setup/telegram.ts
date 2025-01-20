@@ -63,7 +63,11 @@ export class TelegramBot {
                     context.telegram.getFileLink(file.file_id).then((url) => {
                         axios({ url: url.toString(), responseType: 'text' }).then((response) => {
                             this.client!.messageReceived(response.data, new SimpleContext(context));
+                        }).catch((error) => {
+                            console.error('Error fetching file content:', error);
                         });
+                    }).catch((error) => {
+                        console.error('Error getting file link:', error);
                     });
                 }
             } catch (e) {

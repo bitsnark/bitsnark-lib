@@ -250,5 +250,7 @@ if (require.main === module) {
     const db = new AgentDb(agentId);
     db.getTemplates(setupId).then((templates) => {
         console.log(dot(templates, collapsed));
+    }).catch((error) => {
+        throw error;
     });
 }

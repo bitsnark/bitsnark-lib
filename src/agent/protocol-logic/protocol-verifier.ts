@@ -48,7 +48,7 @@ export class ProtocolVerifier extends ProtocolBase {
                 case TemplateNames.PROOF:
                     proof = this.parseProof(incoming);
                     if (lastFlag && !this.checkProof(proof)) {
-                        this.sendChallenge();
+                        await this.sendChallenge();
                     }
                     break;
                 case TemplateNames.PROOF_UNCONTESTED:
@@ -134,7 +134,7 @@ export class ProtocolVerifier extends ProtocolBase {
                 )
             )
             .flat();
-        this.sendTransaction(TemplateNames.PROOF_REFUTED, [data]);
+        await this.sendTransaction(TemplateNames.PROOF_REFUTED, [data]);
     }
 
     private async sendSelect(proof: bigint[], selectionPath: number[], states: Buffer[][]) {
@@ -143,7 +143,7 @@ export class ProtocolVerifier extends ProtocolBase {
         const selection = await findErrorState(proof, states, selectionPath);
         if (selection < 0) throw new Error('Could not find error state');
         const selectionWi = encodeWinternitz24(BigInt(selection), createUniqueDataId(this.setup!.id, txName, 0, 0, 0));
-        this.sendTransaction(txName, [selectionWi]);
+        await this.sendTransaction(txName, [selectionWi]);
     }
 
     private async sendChallenge() {

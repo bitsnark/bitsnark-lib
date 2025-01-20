@@ -17,10 +17,14 @@ export async function main(proverAgentId: string, verifierAgentId: string, setup
     console.log(`npm run start-bitcoin-services ${proverAgentId} ${verifierAgentId}`);
 
     const proverAgent = new Agent(proverAgentId, AgentRoles.PROVER);
-    proverAgent.launch();
+    proverAgent.launch().catch((error) => {
+        console.error(error);
+    });
 
     const verifierAgent = new Agent(verifierAgentId, AgentRoles.VERIFIER);
-    verifierAgent.launch();
+    verifierAgent.launch().catch((error) => {
+        console.error(error);
+    });
 
     await startSetup(proverAgentId, verifierAgentId, setupId);
 
@@ -43,11 +47,11 @@ export async function main(proverAgentId: string, verifierAgentId: string, setup
     if (regtest) {
         for (const agentId of [proverAgentId, verifierAgentId]) {
             console.log(`Starting blockchain listener for ${agentId}`);
-            new BitcoinListener(agentId).startBlockchainCrawler();
+            await new BitcoinListener(agentId).startBlockchainCrawler();
         }
     } else {
         console.log('Starting mock publisher');
-        new MockPublisher(proverAgentId, verifierAgentId, setupId).start();
+        await new MockPublisher(proverAgentId, verifierAgentId, setupId).start();
     }
 
     const prover = new ProtocolProver(proverAgentId, setupId);
@@ -56,7 +60,7 @@ export async function main(proverAgentId: string, verifierAgentId: string, setup
     const proof = proofBigint.map((p) => p);
     proof[0] = 0n;
 
-    prover.pegOut(proof);
+    await prover.pegOut(proof);
 
     const doit = async () => {
         try {
