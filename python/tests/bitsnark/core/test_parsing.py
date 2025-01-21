@@ -1,9 +1,12 @@
-from bitsnark.core.parsing import parse_bignum, parse_hex_str, parse_hex_bytes
+from bitsnark.core.parsing import parse_bignum, serialize_bignum, parse_hex_str, parse_hex_bytes
 
 
 def test_parse_bignum():
     assert parse_bignum("bigint:3b9aca00n") == 0x3b9aca00
-    pass
+
+
+def test_serialize_bignum():
+    assert serialize_bignum(0x3b9aca00) == "bigint:3b9aca00n"
 
 
 def test_parse_hex_str():
