@@ -10,7 +10,8 @@ export interface UpdateTemplatePartial {
     name: string;
     ordinal?: number;
     txid?: string;
-    unknownTxId?: boolean;
+    unknownTxid?: boolean;
+    fundable?: boolean;
     inputs: Input[];
     outputs: Output[];
 }
@@ -58,6 +59,7 @@ export const templateFields = [
     'role',
     'is_external',
     'unknown_txid',
+    'fundable',
     'ordinal',
     'setup_id',
     'txid',

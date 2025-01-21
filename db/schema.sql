@@ -24,6 +24,7 @@ CREATE TABLE templates (
     role CHARACTER VARYING NOT NULL,
     is_external BOOLEAN NOT NULL,
     unknown_txid BOOLEAN DEFAULT FALSE,
+    fundable BOOLEAN DEFAULT FALSE,
     ordinal INTEGER NOT NULL,
     inputs JSONB NOT NULL,
     outputs JSONB NOT NULL,

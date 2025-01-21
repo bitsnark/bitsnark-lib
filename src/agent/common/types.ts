@@ -134,6 +134,7 @@ export interface Template {
     role: AgentRoles;
     isExternal?: boolean;
     unknownTxid?: boolean;
+    fundable?: boolean;
     ordinal?: number;
     setupId?: string;
     txid?: string;
