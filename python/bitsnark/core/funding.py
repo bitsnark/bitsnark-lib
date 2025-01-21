@@ -87,7 +87,6 @@ def create_funded_transaction(
         psbt_size = estimate_funded_psbt_size_vb(psbt)
         required_fee = int(fee_rate_sat_per_vb * psbt_size)
         psbt_fee = psbt.get_fee(allow_negative=True)
-        print(f"Estimated PSBT size: {psbt_size} vB, req fee: {required_fee} sat, fee: {psbt_fee}")
 
         logger.debug(
             "Estimated PSBT size: %d vB, req fee: %d sat, fee: %d sat",
