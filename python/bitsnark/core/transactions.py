@@ -121,6 +121,7 @@ def construct_signable_transaction(
     *,
     tx_template: TransactionTemplate,
     dbsession: Session,
+    ignore_funded_inputs_and_outputs: bool = False,
 ) -> SignableTransaction:
     if tx_template.is_external:
         raise ValueError(f"Transaction {tx_template.name} is external and cannot be signed")
@@ -129,6 +130,12 @@ def construct_signable_transaction(
     spent_outputs: list[CTxOut] = []
     input_tapscripts: list[CScript] = []
     for input_index, inp in enumerate(tx_template.inputs):
+        if inp.get("funded"):
+            if not ignore_funded_inputs_and_outputs:
+                raise ValueError(f"Transaction {tx_template.name} has funded inputs")
+            if not tx_template.fundable:
+                raise ValueError(f"Fundable input in a non-fundable transaction {tx_template.name}")
+            continue
         prev_tx = dbsession.query(TransactionTemplate).filter_by(
             setup_id=tx_template.setup_id,
             name=inp['templateName'],
@@ -139,6 +146,9 @@ def construct_signable_transaction(
         prev_txid = prev_tx.txid
         if not prev_txid:
             raise ValueError(f"Transaction {inp['templateName']} has no txId")
+
+        if prev_tx.unknown_txid:
+            raise ValueError(f"Transaction {inp['templateName']} has unknown txId")
 
         prevout_index = inp['outputIndex']
         prevout = prev_tx.outputs[prevout_index]
@@ -185,6 +195,12 @@ def construct_signable_transaction(
 
     tx_outputs = []
     for output_index, out in enumerate(tx_template.outputs):
+        if out.get("funded"):
+            if not ignore_funded_inputs_and_outputs:
+                raise ValueError(f"Transaction {tx_template.name} has funded outputs")
+            if not tx_template.fundable:
+                raise ValueError(f"Fundable output in a non-fundable transaction {tx_template.name}")
+            continue
         amount_raw = out.get('amount')
         script_pubkey_raw = out.get('taprootKey')
         keys = ", ".join(out.keys())
@@ -218,7 +234,8 @@ def construct_signable_transaction(
 
     # Double-check that if the template has a set tx_id, it is the same as the calculated id if the constructed tx.
     # Note that template's txid can also be 'undefined'
-    if tx_template.txid and tx_template.txid != 'undefined':
+    # If we're ignoring funded inputs and outputs, we cannot do this check here -- it has to be done by the caller
+    if tx_template.txid and tx_template.txid != 'undefined' and not ignore_funded_inputs_and_outputs:
         if signable_tx.txid != tx_template.txid:
             raise ValueError(
                 f"Constructed transaction id {signable_tx.txid} does not match template txid {tx_template.txid} "
@@ -231,10 +248,12 @@ def construct_signed_transaction(
     *,
     tx_template: TransactionTemplate,
     dbsession: Session,
+    ignore_funded_inputs_and_outputs: bool = False,
 ) -> SignedTransaction:
     signable_tx = construct_signable_transaction(
         tx_template=tx_template,
         dbsession=dbsession,
+        ignore_funded_inputs_and_outputs=ignore_funded_inputs_and_outputs,
     )
     tx = signable_tx.tx.to_mutable()
     if tx.wit is not None and tx.wit.serialize().strip(b'\x00'):
@@ -242,6 +261,11 @@ def construct_signed_transaction(
     input_witnesses = []
 
     for input_index, inp in enumerate(tx_template.inputs):
+        if inp.get('funded'):
+            if not ignore_funded_inputs_and_outputs:
+                raise ValueError(f"Transaction {tx_template.name} has funded inputs")
+            continue
+
         prev_tx = dbsession.execute(
             sa.select(TransactionTemplate).filter_by(
                 setup_id=tx_template.setup_id,

@@ -4,6 +4,7 @@ import argparse
 from dataclasses import dataclass
 import os
 import sys
+from typing import Literal
 
 from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound
@@ -67,3 +68,16 @@ def get_default_prover_privkey_hex() -> str:
 
 def get_default_verifier_privkey_hex() -> str:
     return os.getenv('VERIFIER_SCHNORR_PRIVATE', 'Please use the environment variable VERIFIER_SCHNORR_PRIVATE')
+
+
+def determine_chain(bitcoin_rpc: BitcoinRPC) -> Literal['bitcoin/regtest', 'bitcoin/testnet', 'bitcoin/mainnet']:
+    blockchain_info = bitcoin_rpc.call('getblockchaininfo')
+
+    if blockchain_info['chain'] == 'regtest':
+        return 'bitcoin/regtest'
+    elif blockchain_info['chain'] == 'test':
+        return 'bitcoin/testnet'
+    elif blockchain_info['chain'] == 'main':
+        return 'bitcoin/mainnet'
+    else:
+        raise ValueError(f"Unknown chain {blockchain_info['chain']}")

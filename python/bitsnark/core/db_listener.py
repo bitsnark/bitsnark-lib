@@ -8,10 +8,13 @@ import time
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm.session import Session
 from bitcointx.core.key import XOnlyPubKey, CKey
+from bitcointx import select_chain_params
 
+from bitsnark.cli._base import determine_chain
 from bitsnark.conf import POSTGRES_BASE_URL
 from bitsnark.btc.rpc import BitcoinRPC
 from bitsnark.core.environ import load_bitsnark_dotenv
+from bitsnark.core.funding import fund_tx_template_from_wallet
 from bitsnark.core.types import Role
 from .models import TransactionTemplate, Setups, SetupStatus, OutgoingStatus
 from .sign_transactions import sign_setup, sign_tx_template, TransactionProcessingError
@@ -84,10 +87,13 @@ def handle_special_transactions(
     dbsession: Session,
     role: Role,
     privkey: CKey,
+    bitcoin_rpc: BitcoinRPC,
+    fee_rate_sat_per_vb: int,
 ):
     special_tx_names = []
     if role == 'verifier':
         special_tx_names.append('PROOF_REFUTED')
+        special_tx_names.append('CHALLENGE')
 
     ready_transactions = dbsession.execute(
         select(TransactionTemplate).where(TransactionTemplate.status == OutgoingStatus.READY).where(
@@ -104,6 +110,13 @@ def handle_special_transactions(
                     role=role,
                     private_key=privkey,
                     dbsession=dbsession,
+                )
+            if tx.fundable:
+                fund_tx_template_from_wallet(
+                    tx_template=tx,
+                    dbsession=dbsession,
+                    bitcoin_rpc=bitcoin_rpc,
+                    fee_rate_sat_per_vb=fee_rate_sat_per_vb,
                 )
         except Exception:
             logger.exception("Error handling special transaction %s", tx.name)
@@ -122,6 +135,9 @@ def main(argv: typing.Sequence[str] = None):
     parser.add_argument('--sign', required=False, action='store_true', help='Sign transactions')
     parser.add_argument('--broadcast', required=False, action='store_true', help='Broadcast transactions')
     parser.add_argument('--loop', required=False, action='store_true', help='Run in a loop')
+    # TODO: for now we hardcode the fee rate (or get it from the user), but it would be better to get it from the
+    # blockchain
+    parser.add_argument('--fee-rate', default=20, type=int, help='Fee rate for funded transactions (sat/vB)')
 
     args = parser.parse_args(argv)
 
@@ -149,6 +165,8 @@ def main(argv: typing.Sequence[str] = None):
     dbsession = Session(engine, autobegin=False)
     if args.broadcast:
         bitcoin_rpc = BitcoinRPC(BITCON_NODE_ADDR)
+        chain = determine_chain(bitcoin_rpc)
+        select_chain_params(chain)
 
     def listen():
         if args.sign:
@@ -162,6 +180,8 @@ def main(argv: typing.Sequence[str] = None):
                     dbsession=dbsession,
                     role=args.role,
                     privkey=privkey,
+                    bitcoin_rpc=bitcoin_rpc,
+                    fee_rate_sat_per_vb=args.fee_rate,
                 )
             with dbsession.begin():
                 broadcast_transactions(dbsession, bitcoin_rpc)

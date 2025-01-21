@@ -5,6 +5,7 @@ import sys
 from typing import Sequence, Literal
 
 from bitcointx.core.key import CKey, XOnlyPubKey
+from bitcointx.core.script import SIGHASH_SINGLE, SIGHASH_ANYONECANPAY, SIGHASH_Type
 from sqlalchemy import create_engine, select, update
 from sqlalchemy.orm.attributes import flag_modified
 from sqlalchemy.orm.session import Session
@@ -144,6 +145,8 @@ def sign_tx_template(
         dbsession=dbsession,
     )
 
+    sighash_type = get_sighash_type(tx_template)
+
     # Alter the template
     tx_template.txid = signable_tx.txid
 
@@ -151,6 +154,7 @@ def sign_tx_template(
         index = signable_input.index
         signature = signable_input.sign(
             private_key=private_key,
+            hashtype=sighash_type,
         )
 
         signature_key = get_signature_key(role)
@@ -185,6 +189,10 @@ def verify_tx_template_signatures(
 
     assert len(tx_template.inputs) == len(signable_tx.tx.vin)
     assert len(tx_template.inputs) >= 1
+
+    # TODO: this should probably not verify the number of inputs/outputs for fundable transactions
+    sighash_type = get_sighash_type(tx_template)
+
     for input_index, inp in enumerate(tx_template.inputs):
         signature_raw = inp.get(signature_key)
         if not signature_raw:
@@ -194,7 +202,8 @@ def verify_tx_template_signatures(
         signable_tx.verify_input_signature_at(
             index=input_index,
             public_key=signer_pubkey,
-            signature=signature
+            signature=signature,
+            hashtype=sighash_type,
         )
         logger.info("%s for %s input %d is valid", signature_key, tx_template.name, input_index)
 
@@ -207,6 +216,21 @@ def get_signature_key(role: Role) -> Literal['proverSignature', 'verifierSignatu
         return 'verifierSignature'
     else:
         raise ValueError(f"Unknown role {role}")
+
+
+def get_sighash_type(tx_template: TransactionTemplate) -> SIGHASH_Type | None:
+    if tx_template.fundable:
+        if len(tx_template.inputs) != 1:
+            raise ValueError(
+                f"Fundable transaction {tx_template.name} has {len(tx_template.inputs)} inputs (should be 1)"
+            )
+        if len(tx_template.outputs) != 1:
+            raise ValueError(
+                f"Fundable transaction {tx_template.name} has {len(tx_template.outputs)} outputs (should be 1)"
+            )
+        return SIGHASH_SINGLE | SIGHASH_ANYONECANPAY
+    else:
+        return None
 
 
 if __name__ == "__main__":

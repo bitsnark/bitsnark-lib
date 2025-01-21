@@ -1,14 +1,16 @@
 import logging
 from decimal import Decimal
 
-from bitcointx.core import CTransaction, CTxIn, CTxOut, COutPoint
+from bitcointx.core import CTransaction, CMutableTransaction, CTxIn, CTxOut, COutPoint, CTxInWitness
 from bitcointx.core.psbt import PartiallySignedTransaction, PSBT_Input, PSBT_Output
 from bitcointx.core.key import CKey
-from bitcointx.core.script import CScriptWitness
+from bitcointx.core.script import CScriptWitness, CScript
 from bitcointx.wallet import CCoinAddress, P2TRCoinAddress
 from sqlalchemy.orm.session import Session
+from sqlalchemy.orm.attributes import flag_modified
 
 from .models import TransactionTemplate
+from .parsing import serialize_hex, serialize_bignum, parse_hex_bytes, parse_bignum
 from .transactions import construct_signed_transaction
 from ..btc.rpc import BitcoinRPC
 
@@ -37,6 +39,112 @@ class NotFundable(ValueError):
     pass
 
 
+def fund_tx_template_from_wallet(
+    *,
+    tx_template: TransactionTemplate,
+    dbsession: Session,
+    bitcoin_rpc: BitcoinRPC,
+    test_mempoolaccept: bool = True,
+    fee_rate_sat_per_vb: int | Decimal,
+    change_address: str | CCoinAddress | None = None,
+    lock_unspent: bool = True,
+):
+    """
+    Fund a tx template from wallet, modifying it in place and storing results in the DB
+    """
+    # create_funded_transaction will complain if the template is already funded
+    tx = create_funded_transaction(
+        tx_template=tx_template,
+        dbsession=dbsession,
+        bitcoin_rpc=bitcoin_rpc,
+        test_mempoolaccept=test_mempoolaccept,
+        fee_rate_sat_per_vb=fee_rate_sat_per_vb,
+        change_address=change_address,
+        lock_unspent=lock_unspent,
+    )
+
+    for input_index, tx_input in enumerate(tx.vin):
+        if input_index == 0:
+            # First input is unchanged
+            continue
+        assert len(tx_template.inputs) == input_index
+        tx_template.inputs.append({
+            "funded": True,
+            "index": input_index,
+            "txid": tx_input.prevout.hash[::-1].hex(),
+            "vout": tx_input.prevout.n,
+            "witness": serialize_hex(tx.wit.vtxinwit[input_index].serialize()),
+        })
+
+    for output_index, tx_output in enumerate(tx.vout):
+        if output_index == 0:
+            # First output is unchanged
+            continue
+        assert len(tx_template.outputs) == output_index
+        tx_template.outputs.append({
+            "funded": True,
+            "index": output_index,
+            "amount": serialize_bignum(tx_output.nValue),
+            # Stupidly named scriptPubKey
+            "taprootKey": serialize_hex(tx_output.scriptPubKey),
+        })
+
+    tx_template.txid = tx.GetTxid()[::-1].hex()
+    tx_template.unknown_txid = False
+    flag_modified(tx_template, 'inputs')
+    flag_modified(tx_template, 'outputs')
+
+    dbsession.flush()
+
+
+def get_signed_transaction_from_funded_tx_template(
+    *,
+    tx_template: TransactionTemplate,
+    dbsession: Session,
+) -> CTransaction:
+    """
+    Get a broadcastable transaction from a funded transaction template
+    """
+    if not tx_template.fundable:
+        raise NotFundable(f"Transaction template {tx_template.name} is not fundable")
+
+    signed_nonfunded_tx = construct_signed_transaction(
+        tx_template=tx_template,
+        dbsession=dbsession,
+        # We'll reconstruct the originla transaction without funded inputs/outputs
+        ignore_funded_inputs_and_outputs=True,
+    )
+    tx: CMutableTransaction = signed_nonfunded_tx.tx.to_mutable()
+
+    if tx_template.inputs[0].get("funded"):
+        raise ValueError(f"Input 0 is funded")
+    if tx_template.outputs[0].get("funded"):
+        raise ValueError(f"Output 0 is funded")
+
+    for tx_input in tx_template.inputs[1:]:
+        if not tx_input.get('funded'):
+            raise ValueError(f"Input {tx_input['index']} is not funded")
+        tx.vin.append(CTxIn(
+            prevout=COutPoint(bytes.fromhex(tx_input['txid'])[::-1], tx_input['vout']),
+            nSequence=0,
+        ))
+        tx.wit.vtxinwit.append(CTxInWitness.deserialize(parse_hex_bytes(tx_input['witness'])))
+
+    for tx_output in tx_template.outputs[1:]:
+        if not tx_output.get('funded'):
+            raise ValueError(f"Output {tx_output['index']} is not funded")
+        tx.vout.append(CTxOut(
+            nValue=parse_bignum(tx_output['amount']),
+            scriptPubKey=CScript(parse_hex_bytes(tx_output['taprootKey'])),
+        ))
+
+    txid = tx.GetTxid()[::-1].hex()
+    if txid != tx_template.txid:
+        raise ValueError(f"Constructed transaction has different txid {txid} than template {tx_template.txid}")
+
+    return tx.to_immutable()
+
+
 def create_funded_transaction(
     *,
     tx_template: TransactionTemplate,
@@ -47,6 +155,9 @@ def create_funded_transaction(
     change_address: str | CCoinAddress | None = None,  # Default to getting an address from the wallet
     lock_unspent: bool = True,
 ) -> CTransaction:
+    """
+    Create a broadcastable transaction from a transaction template, funding it from the wallet
+    """
     if not tx_template.fundable:
         raise NotFundable(f"Transaction template {tx_template.name} is not fundable")
 

@@ -5,6 +5,7 @@ import logging
 from bitcointx.core.script import CScript
 
 from ._base import Command, add_tx_template_args, find_tx_template, Context
+from ..core.funding import get_signed_transaction_from_funded_tx_template
 from ..core.models import TransactionTemplate
 from ..core.transactions import construct_signed_transaction
 from ..scripteval import eval_tapscript
@@ -21,11 +22,18 @@ def broadcast_transaction(
     dump: bool = False,
 ) -> str:
     logger.info("Attempting to broadcast %s", tx_template.name)
-    signed_tx = construct_signed_transaction(
-        tx_template=tx_template,
-        dbsession=dbsession,
-    )
-    tx = signed_tx.tx
+
+    if tx_template.fundable:
+        tx = get_signed_transaction_from_funded_tx_template(
+            tx_template=tx_template,
+            dbsession=dbsession,
+        )
+    else:
+        signed_tx = construct_signed_transaction(
+            tx_template=tx_template,
+            dbsession=dbsession,
+        )
+        tx = signed_tx.tx
 
     if evaluate_inputs:
         for input_index, input_witness in enumerate(tx.wit.vtxinwit):
