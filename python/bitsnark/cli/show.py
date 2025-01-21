@@ -25,24 +25,22 @@ class ShowCommand(Command):
         tx_template = find_tx_template(context)
         dbsession = context.dbsession
 
-        terminal = os.get_terminal_size()
-
         # print("Object structure")
         print("Name:".ljust(19), tx_template.name)
         print("Ordinal:".ljust(19), tx_template.ordinal)
-        for key, value in tx_template.__dict__.items():
-            if key.startswith('_'):
-                continue
-            if key in ('name', 'ordinal', 'inputs', 'outputs'):
-                continue
-            key = f"{key}:".ljust(20)
-            value = str(value)
-            maxwidth = max(terminal.columns - 35, 30)
-            if len(value) > maxwidth:
-                value = value[:maxwidth] + "..."
-            print(f"{key}{value}")
+        print_dict(
+            tx_template.__dict__,
+            ignored_keys=('name', 'ordinal', 'inputs', 'outputs'),
+        )
         print("Inputs:")
         for inp in tx_template.inputs:
+            if inp.get('funded'):
+                print(f"- input {index}:")
+                print_dict(
+                    inp,
+                    indent='  - ',
+                )
+                continue
             prev_tx_name = inp['templateName']
             prev_tx = dbsession.execute(
                 sa.select(
@@ -63,18 +61,23 @@ class ShowCommand(Command):
                 f"({prevout_amount} sat, "
                 f"tx: {prev_tx_name}, output: {prevout_index}, spendingCondition: {sc_index})"
             )
-            for key, value in inp.items():
-                if key in ('index', 'templateName', 'outputIndex', 'spendingConditionIndex'):
-                    # Already have these above
-                    continue
-                value = str(value)
-                maxwidth = max(terminal.columns - 50, 30)
-                if len(value) > maxwidth:
-                    value = value[:maxwidth] + "..."
-                key = f"{key}:".ljust(25)
-                print(f'  - {key} {value}')
+            print_dict(
+                inp,
+                indent='  - ',
+                # Already have these above
+                ignored_keys=('index', 'templateName', 'outputIndex', 'spendingConditionIndex'),
+            )
         print("Outputs:")
         for outp in tx_template.outputs:
+            if outp.get('funded'):
+                print(f'- output {index}:')
+                print(f'  - amount:       {amount} sat')
+                print_dict(
+                    outp,
+                    indent='  - ',
+                    ignored_keys=['index', 'amount'],
+                )
+                continue
             index = outp['index']
             amount = parse_bignum(outp['amount'])
             script_pubkey = CScript(parse_hex_bytes(outp['taprootKey']))
@@ -89,17 +92,17 @@ class ShowCommand(Command):
             print(f'  - scriptPubKey (hex): {script_pubkey.hex()}')
             print(f'  - spendingConditions:')
             for sc in outp['spendingConditions']:
-                print(f'    - #{sc["index"]}:')
-                for key, value in sc.items():
-                    value = str(value)
-                    maxwidth = max(terminal.columns - 50, 30)
-                    if len(value) > maxwidth:
-                        value = value[:maxwidth] + "..."
-                    key = f"{key}:".ljust(25)
-                    print(f'      - {key} {value}')
+                print_dict(
+                    sc,
+                    indent='      - '
+                )
 
         # Deserialized tx stuff
-        signed_tx = construct_signed_transaction(tx_template=tx_template, dbsession=dbsession)
+        signed_tx = construct_signed_transaction(
+            tx_template=tx_template,
+            dbsession=dbsession,
+            ignore_funded_inputs_and_outputs=True,
+        )
         tx = signed_tx.tx
         tx_virtual_size = tx.get_virtual_size()
         print("")
@@ -127,3 +130,25 @@ class ShowCommand(Command):
         print_size("- Witness data", total_witness_data_size)
         print_size("- Witness script", total_witness_script_size)
         print_size("- Witness control block", total_witness_cblock_size)
+
+
+def print_dict(
+    d: dict,
+    *,
+    indent='',
+    ignored_keys = tuple(),
+    ignored_key_prefix: str = '_',
+):
+    terminal = os.get_terminal_size()
+
+    for key, value in d.items():
+        if key in ignored_keys:
+            continue
+        if key.startswith(ignored_key_prefix):
+            continue
+        value = str(value)
+        maxwidth = max(terminal.columns - 50, 30)
+        if len(value) > maxwidth:
+            value = value[:maxwidth] + "..."
+        key = f"{key}:".ljust(25)
+        print(f'{indent}{key} {value}')
