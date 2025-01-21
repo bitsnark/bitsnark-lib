@@ -33,7 +33,7 @@ function findInputsByOutput(
 function setTaprootKey(transactions: Template[]) {
     for (const t of transactions) {
         if (t.name === 'ARGUMENT') {
-            console.warn("Refusing to setTaprootKey for ARGUMENT");
+            console.warn('Refusing to setTaprootKey for ARGUMENT');
             continue;
         }
         for (let outputIndex = 0; outputIndex < t.outputs.length; outputIndex++) {
