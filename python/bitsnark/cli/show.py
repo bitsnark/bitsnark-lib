@@ -1,6 +1,5 @@
 import argparse
 import os
-import io
 
 from bitcointx.core.script import CScript
 from bitcointx.wallet import CCoinAddress
@@ -10,7 +9,7 @@ import sqlalchemy as sa
 from bitsnark.core.models import TransactionTemplate
 from bitsnark.core.parsing import parse_bignum, parse_hex_bytes
 from ._base import Command, add_tx_template_args, find_tx_template, Context
-from .broadcast import create_tx_with_witness
+from ..core.transactions import construct_signed_transaction
 
 
 class ShowCommand(Command):
@@ -100,7 +99,8 @@ class ShowCommand(Command):
                     print(f'      - {key} {value}')
 
         # Deserialized tx stuff
-        tx = create_tx_with_witness(tx_template=tx_template, dbsession=dbsession)
+        signed_tx = construct_signed_transaction(tx_template=tx_template, dbsession=dbsession)
+        tx = signed_tx.tx
         tx_virtual_size = tx.get_virtual_size()
         print("")
         print(f"Transaction virtual size: {tx_virtual_size} vB")

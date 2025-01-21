@@ -1,9 +1,10 @@
 from __future__ import annotations
 from dataclasses import dataclass
 
-from bitcointx.core import CTransaction, CTxIn, CTxOut, COutPoint
+from bitcointx.core import CTransaction, CTxIn, CTxOut, COutPoint, CTxInWitness, CTxWitness
 from bitcointx.core.key import CKey
-from bitcointx.core.script import CScript
+from bitcointx.core.script import CScript, CScriptWitness
+import sqlalchemy as sa
 from sqlalchemy.orm.session import Session
 from .models import TransactionTemplate
 from .parsing import parse_bignum, parse_hex_bytes
@@ -12,6 +13,19 @@ from . import signing
 
 class MissingScript(ValueError):
     pass
+
+
+@dataclass(repr=False)
+class SignedTransaction:
+    tx: CTransaction
+    signable_tx: SignableTransaction
+
+    def __repr__(self):
+        return f"<SignedTransaction(name={self.signable_tx.template_name}, txid={self.txid})>"
+
+    @property
+    def txid(self) -> str:
+        return self.tx.GetTxid()[::-1].hex()
 
 
 @dataclass(repr=False)
@@ -211,3 +225,95 @@ def construct_signable_transaction(
                 f"(name: {tx_template.name})"
             )
     return signable_tx
+
+
+def construct_signed_transaction(
+    *,
+    tx_template: TransactionTemplate,
+    dbsession: Session,
+) -> SignedTransaction:
+    signable_tx = construct_signable_transaction(
+        tx_template=tx_template,
+        dbsession=dbsession,
+    )
+    tx = signable_tx.tx.to_mutable()
+    if tx.wit is not None and tx.wit.serialize().strip(b'\x00'):
+        raise ValueError(f"Transaction {tx_template.name} already has witness data")
+    input_witnesses = []
+
+    for input_index, inp in enumerate(tx_template.inputs):
+        prev_tx = dbsession.execute(
+            sa.select(TransactionTemplate).filter_by(
+                setup_id=tx_template.setup_id,
+                name=inp['templateName'],
+            )
+        ).scalar_one()
+
+        prevout_index = inp['outputIndex']
+        prevout = prev_tx.outputs[prevout_index]
+        spending_condition = prevout['spendingConditions'][
+            inp['spendingConditionIndex']
+        ]
+
+        signature_type = spending_condition['signatureType']
+        if signature_type not in ('PROVER', 'VERIFIER', 'BOTH'):
+            raise ValueError(
+                f"Transaction {tx_template.name} input #{input_index} spending condition "
+                f"#{inp['spendingConditionIndex']} has unknown signatureType {signature_type}"
+            )
+
+        signatures: list[bytes] = []
+
+        if signature_type in ('VERIFIER', 'BOTH'):
+            verifier_signature_raw = inp.get('verifierSignature')
+            if not verifier_signature_raw:
+                raise ValueError(f"Transaction {tx_template.name} input #{input_index} has no verifierSignature")
+            verifier_signature = parse_hex_bytes(verifier_signature_raw)
+            signatures.append(verifier_signature)
+
+        if signature_type in ('PROVER', 'BOTH'):
+            prover_signature_raw = inp.get('proverSignature')
+            if not prover_signature_raw:
+                raise ValueError(f"Transaction {tx_template.name} input #{input_index} has no proverSignature")
+            prover_signature = parse_hex_bytes(prover_signature_raw)
+            signatures.append(prover_signature)
+
+        # TODO: refactor this so that it always uses inp['script']
+        script_raw = inp.get('script', spending_condition.get('script'))
+        if script_raw is None:
+            raise ValueError(
+                f"Transaction {tx_template.name} input #{input_index} has no script or spendingCondition script"
+            )
+        tapscript = CScript(parse_hex_bytes(script_raw))
+
+        if tx_template.protocol_data:
+            witness = [
+                parse_hex_bytes(s) for s in
+                tx_template.protocol_data[prevout_index]
+            ]
+        else:
+            witness = []
+
+        # TODO: refactor it to always use inp['controlBlock']
+        control_block_raw = inp.get('controlBlock', spending_condition.get('controlBlock'))
+        if control_block_raw is None:
+            raise ValueError(
+                f"Transaction {tx_template.name} input #{input_index} has no controlBlock or spendingCondition controlBlock"
+            )
+        control_block = parse_hex_bytes(control_block_raw)
+
+        input_witness = CTxInWitness(CScriptWitness(
+            stack=[
+                *witness,
+                *signatures,
+                tapscript,
+                control_block,
+            ],
+        ))
+        input_witnesses.append(input_witness)
+
+    tx.wit = CTxWitness(vtxinwit=input_witnesses)
+    return SignedTransaction(
+        tx=tx.to_immutable(),
+        signable_tx=signable_tx,
+    )
