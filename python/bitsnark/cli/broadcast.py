@@ -143,7 +143,7 @@ def create_tx_with_witness(
         if tx_template.name == 'PROOF_REFUTED':
             print('!!!!!!!!! 1 prevout', prevout)
             print('!!!!!!!!! 1 control_block_raw', control_block_raw)
-            print('!!!!!!!!! 1 script_raw', script_raw)
+            # print('!!!!!!!!! 1 script_raw', script_raw)
 
         control_block = parse_hex_bytes(control_block_raw)
 

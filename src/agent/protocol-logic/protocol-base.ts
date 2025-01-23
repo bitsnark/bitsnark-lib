@@ -8,11 +8,11 @@ import {
     Template,
     TemplateStatus,
     ReceivedTransaction,
-    TemplateNames
+    TemplateNames,
+    WitnessAndValue
 } from '../common/types';
 import { getTemplateByTemplateId } from '../common/templates';
 import { AgentDb } from '../common/agent-db';
-import { bigintToBufferBE } from '../common/encoding';
 import { WOTS_NIBBLES, WotsType } from '../common/winternitz';
 import { sleep } from '../common/sleep';
 import { agentConf } from '../agent.conf';
@@ -58,11 +58,15 @@ export class ProtocolBase {
         return pairs;
     }
 
+    async getTemplateStatus(templateName: TemplateNames): Promise<TemplateStatus> {
+        return (await this.db.getTemplate(this.setupId, templateName)).status!;
+    }
+
     async waitForTransmission(templateName: TemplateNames): Promise<TemplateStatus> {
         while (true) {
-            const t = await this.db.getTemplate(this.setupId, templateName);
-            if (t.status == TemplateStatus.PUBLISHED || t.status == TemplateStatus.REJECTED) {
-                return t.status;
+            const t = await this.getTemplateStatus(templateName);
+            if (t == TemplateStatus.PUBLISHED || t == TemplateStatus.REJECTED) {
+                return t;
             }
             await sleep(agentConf.protocolIntervalMs);
         }
@@ -79,7 +83,10 @@ export class ProtocolBase {
         }
         await this.db.markTemplateToSend(this.setupId, name, data);
         console.log(`Asking to send template ${name} (make sure sender is listening: npm run start-bitcoin-sender)`);
-        await this.waitForTransmission(name);
+        const status = await this.waitForTransmission(name);
+        if (status == TemplateStatus.REJECTED) {
+            console.error(`Template ${name} was rejected!`);
+        }
     }
 
     parseProof(incoming: Incoming): bigint[] {
@@ -88,7 +95,7 @@ export class ProtocolBase {
             this.templates!,
             incoming.template.inputs[0],
             rawTx.vin[0].txinwitness!.map((s: string) => Buffer.from(s, 'hex'))
-        );
+        ).map((wav) => wav.value);
         return proof;
     }
 
@@ -108,14 +115,14 @@ export class ProtocolBase {
         return await this.bitcoinClient.getBlockCount();
     }
 
-    parseState(incoming: Incoming): Buffer[] {
+    parseState(incoming: Incoming): WitnessAndValue[] {
         const rawTx = incoming.received.raw;
         const state = parseInput(
             this.templates!,
             incoming.template.inputs[0],
             rawTx.vin[0].txinwitness!.map((s) => Buffer.from(s, 'hex'))
         );
-        return state.map((n) => bigintToBufferBE(n, 256));
+        return state;
     }
 
     async checkTimeout(incoming: Incoming): Promise<SpendingCondition | null> {

@@ -1,6 +1,7 @@
 import { blake3 as blake3_wasm } from 'hash-wasm';
-import { bigintToBufferBE } from '../common/encoding';
+import { bigintToBufferBE, bufferToBigintBE } from '../common/encoding';
 import { last } from '../common/array-utils';
+import { WitnessAndValue } from '../common/types';
 
 const foo = Buffer.from('fu manchu');
 
@@ -47,10 +48,10 @@ async function makeFatMerkleProof(na: bigint[], leafIndex: number): Promise<Buff
 }
 
 export class FatMerkleProof {
-    hashes: Buffer[] = [];
+    hashes: WitnessAndValue[] = [];
     leafIndex: number = 0;
 
-    private constructor(hashes: Buffer[], leafIndex: number) {
+    private constructor(hashes: WitnessAndValue[], leafIndex: number) {
         this.hashes = hashes;
         this.leafIndex = leafIndex;
     }
@@ -60,22 +61,31 @@ export class FatMerkleProof {
     }
 
     public static async fromRegs(regs: bigint[], leafIndex: number): Promise<FatMerkleProof> {
-        return new FatMerkleProof(await makeFatMerkleProof(regs, leafIndex), leafIndex);
+        const hashes = (await makeFatMerkleProof(regs, leafIndex)).map((buffer) => ({
+            buffer,
+            value: bufferToBigintBE(buffer)
+        }));
+        return new FatMerkleProof(hashes, leafIndex);
     }
 
-    public static fromArgument(hashes: Buffer[], leaf: Buffer, root: Buffer, leafIndex: number): FatMerkleProof {
-        let h: Buffer[];
+    public static fromArgument(
+        hashes: WitnessAndValue[],
+        leaf: WitnessAndValue,
+        root: WitnessAndValue,
+        leafIndex: number
+    ): FatMerkleProof {
+        let h: WitnessAndValue[];
         if (leafIndex % 2 == 0) h = [leaf, ...hashes, root];
         else h = [hashes[0], leaf, ...hashes.slice(1), root];
         return new FatMerkleProof(h, leafIndex);
     }
 
     public getRoot(): Buffer {
-        return last(this.hashes);
+        return last(this.hashes).buffer;
     }
 
     public getLeaf(): Buffer {
-        return this.leafIndex % 2 == 0 ? this.hashes[0] : this.hashes[1];
+        return this.leafIndex % 2 == 0 ? this.hashes[0].buffer : this.hashes[1].buffer;
     }
 
     public async verify(): Promise<boolean> {
@@ -86,13 +96,15 @@ export class FatMerkleProof {
         // remove root
         const r = this.hashes.slice(0, this.hashes.length - 1);
         // remove leaf
-        return this.leafIndex % 1 == 0 ? r.slice(1) : [r[0], ...r.slice(2)];
+        return this.leafIndex % 1 == 0
+            ? r.slice(1).map((eh) => eh.buffer)
+            : [r[0].buffer, ...r.slice(2).map((eh) => eh.buffer)];
     }
 
     public async indexToRefute(): Promise<number> {
         const proof = this.hashes.map((b) => b);
         for (let i = 0; i < proof.length; i += 2) {
-            if ((await hashPair([proof[i], proof[i + 1]])).compare(proof[i + 2]) != 0) return i;
+            if ((await hashPair([proof[i].buffer, proof[i + 1].buffer])).compare(proof[i + 2].buffer) != 0) return i;
         }
         return -1;
     }

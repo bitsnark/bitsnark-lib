@@ -26,7 +26,7 @@ export class ProtocolProver extends ProtocolBase {
         await this.setTemplates();
 
         // read all incoming transactions
-        const incomingArray = await this.getIncoming();
+        const incomingArray = (await this.getIncoming()).filter((t) => !t.template.isExternal);
         if (incomingArray.length == 0) {
             // nothing to do
             return;

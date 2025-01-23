@@ -686,7 +686,7 @@ export class Bitcoin {
     /***  Witness decoding ***/
 
     winternitzDecodeNibble(target: StackItem, witness: StackItem, publicKey: Buffer, iterations: number = 8) {
-        const pk = this.DATA(publicKey, `${this.lastTemplateItemId++}`);
+        const pk = this.DATA(publicKey, `wots_nibble_${this.lastTemplateItemId++}`);
         this.pick(witness); // witness
         for (let i = 0; i < iterations; i++) {
             this.OP_HASH160(); // hash
@@ -1410,11 +1410,13 @@ export function executeProgram(bitcoin: Bitcoin, script: Buffer, printFlag: bool
     let doIf = false;
     let doElse = false;
 
-    const print = printFlag ? console.log : () => {};
-
     for (let i = 0; i < script.length; i++) {
         const opcode = opcodeMap[script[i]];
 
+        const print = printFlag ? (...sa: string[]) => {
+            console.log(`${i}:\t`, ...sa);
+         } : () => {};
+    
         if (opcode == OpcodeType.OP_IF) {
             inIf = true;
             inElse = false;

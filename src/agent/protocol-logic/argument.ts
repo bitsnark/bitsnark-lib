@@ -4,7 +4,7 @@ import { InstrCode, Instruction } from '../../generator/ec_vm/vm/types';
 import { DoomsdayGenerator } from '../final-step/doomsday-generator';
 import { prime_bigint } from '../common/constants';
 import { bigintToBufferBE, bufferToBigintBE } from '../common/encoding';
-import { TemplateNames } from '../common/types';
+import { TemplateNames, WitnessAndValue } from '../common/types';
 import { createUniqueDataId } from '../setup/wots-keys';
 import { Decasector, StateCommitment } from '../setup/decasector';
 import { chunk } from '../common/array-utils';
@@ -98,106 +98,111 @@ export class Argument {
         ];
         return outputs;
     }
+}
 
-    public checkIndex() {
-        // lets make sure it's correct for sanity sake
-        const decasector = new Decasector(this.proof);
-        const tempIndex = decasector.getLineBySelectionPath(this.selectionPath);
-        return tempIndex == this.index;
-    }
+async function refuteInstruction(
+    doomsdayGenerator: DoomsdayGenerator,
+    index: WitnessAndValue,
+    params: WitnessAndValue[]
+): Promise<{ data: WitnessAndValue[]; script: Buffer; controlBlock: Buffer }> {
+    const { requestedScript, requestedControlBlock } = await doomsdayGenerator.generateFinalStepTaprootParallel({
+        refutationType: RefutationType.INSTR,
+        line: Number(index.value)
+    });
+    return {
+        data: [index, ...params],
+        script: requestedScript!,
+        controlBlock: requestedControlBlock!
+    };
+}
 
-    public async refute(
-        argData: bigint[][],
-        states: Buffer[][]
-    ): Promise<{ data: bigint[]; script: Buffer; controlBlock: Buffer }> {
-        // first input is the selection path, 6 selections and then the index
-        // the selection path can't be wrong, because of the winternitz signature on it
-        this.selectionPath = argData[0].slice(0, 6).map((n) => Number(n));
-        this.index = Number(argData[0][6]);
-        if (!this.checkIndex()) throw new Error('Invalid selection path or index');
+async function refuteHash(
+    doomsdayGenerator: DoomsdayGenerator,
+    decasector: Decasector,
+    index: WitnessAndValue,
+    argData: WitnessAndValue[][],
+    states: WitnessAndValue[][]
+) {
+    const instr = decasector.savedVm.program[Number(index.value)];
 
-        const decasector = new Decasector(this.proof);
+    // reorder arg data for proofs
+    const argProofs = chunk(argData.slice(2).flat(), 15);
+    const params = argData[1];
 
-        // check states, useful for debugging
-        // my state before instruction
-        // const runner = Runner.load(decasector.savedVm);
-        // runner.execute(this.index);
-        // const myStateBefore = await FatMerkleProof.calculateRoot(runner.getRegisterValues());
-        // runner.execute(this.index + 1);
-        // const myStateAfter = await FatMerkleProof.calculateRoot(runner.getRegisterValues());
-        // async function getOtherStateBtIndex(index: number): Promise<Buffer> {
-        //     if (index >= 400000) {
-        //         return await FatMerkleProof.calculateRoot(decasector.getRegsForSuccess());
-        //     }
-        //     const iter = decasector.stateCommitmentByLine[index].iteration;
-        //     const which = decasector.stateCommitmentByLine[index].selection;
-        //     return states[iter - 1][which];
-        // }
-        // const hisStateBefore = await getOtherStateBtIndex(this.index);
-        // const hisStateAfter = await getOtherStateBtIndex(this.index + 1);
-
-        // second input is the params a, b, c, and d
-        const [a, b, c, d] = argData[1];
-
-        // let's check the instruction first
-        const doomsdayGenerator = new DoomsdayGenerator(this.agentId, this.setupId);
-        if (!doomsdayGenerator.checkLine(this.index, a, b, c)) {
-            // the line is false, attack it!
-            const data = [a, b, c, d];
-            const { requestedScript, requestedControlBlock } = await doomsdayGenerator.generateFinalStepTaprootParallel(
-                {
-                    refutationType: RefutationType.INSTR,
-                    line: this.index
-                }
-            );
-
-            return { data, script: requestedScript!, controlBlock: requestedControlBlock! };
-        }
-
-        // if not the instruction, then it must be one of the hashes in the
-        // merkle proofs
-
-        const instr = decasector.savedVm.program[this.index];
-
-        // reorder arg data for proofs
-        const argProofs = chunk(argData.slice(2).flat(), 15);
-
-        const makeProof = async (i: number) => {
-            const index = i < 2 ? this.index : this.index + 1;
-            const hashes = argProofs[i].map((n) => bigintToBufferBE(n, 256));
-            const iter = decasector.stateCommitmentByLine[index].iteration;
-            const which = decasector.stateCommitmentByLine[index].selection;
-            const root = states[iter - 1][which];
-            const leaf = bigintToBufferBE([a, b, c, d][i], 256);
-            return await FatMerkleProof.fromArgument(hashes, leaf, root, index);
-        };
-
-        const merkleProofA = await makeProof(0);
-        const merkleProofB = instr.param2 ? await makeProof(1) : merkleProofA;
-        const merkleProofC = await makeProof(2);
-        const proofs = [merkleProofA, merkleProofB, merkleProofC];
-        let whichProof = -1;
-        for (let i = 0; i < proofs.length; i++) {
-            if (!(await proofs[i].verify())) {
-                whichProof = i;
-                break;
-            }
-        }
-        // this should never happen
-        if (whichProof < 0) {
-            throw new Error('All merkle proofs check out!');
-        }
-        const whichHash = await proofs[whichProof].indexToRefute();
-        const data = [...proofs[whichProof].hashes.slice(whichHash * 2, whichHash * 2 + 3)].map((b) =>
-            bufferToBigintBE(b)
+    const makeProof = async (i: number): Promise<FatMerkleProof> => {
+        const line = i < 2 ? Number(index.value) : Number(index.value) + 1;
+        const hashes = argProofs[i];
+        const iter = decasector.stateCommitmentByLine[line].iteration;
+        const which = decasector.stateCommitmentByLine[line].selection;
+        const root = states[iter - 1][which];
+        const leaf = params[i];
+        return await FatMerkleProof.fromArgument(
+            hashes.map((wav) => ({ value: wav.value, buffer: bigintToBufferBE(wav.value, 256), witness: wav.witness })),
+            leaf,
+            root,
+            line
         );
-        const { requestedScript, requestedControlBlock } = await doomsdayGenerator.generateFinalStepTaprootParallel({
-            refutationType: RefutationType.HASH,
-            line: this.index,
-            whichProof,
-            whichHash: Math.floor(whichHash / 2)
-        });
-        // return { data, script: script!, controlBlock: controlBlock! };
-        return { data, script: requestedScript!, controlBlock: requestedControlBlock! };
+    };
+
+    const merkleProofA = await makeProof(0);
+    const merkleProofB = instr.param2 ? await makeProof(1) : merkleProofA;
+    const merkleProofC = await makeProof(2);
+    const proofs = [merkleProofA, merkleProofB, merkleProofC];
+    let whichProof = -1;
+    for (let i = 0; i < proofs.length; i++) {
+        if (!(await proofs[i].verify())) {
+            whichProof = i;
+            break;
+        }
     }
+
+    // this should never happen
+    if (whichProof < 0) {
+        throw new Error('All merkle proofs check out!');
+    }
+    const whichHash = await proofs[whichProof].indexToRefute();
+    if (whichHash < 0) throw new Error("Can't find bad hash");
+    const data = [...proofs[whichProof].hashes.slice(whichHash / 2, whichHash / 2 + 3)];
+    const { requestedScript, requestedControlBlock } = await doomsdayGenerator.generateFinalStepTaprootParallel({
+        refutationType: RefutationType.HASH,
+        line: Number(index.value),
+        whichProof,
+        whichHash: Math.floor(whichHash / 2)
+    });
+
+    return { data, script: requestedScript!, controlBlock: requestedControlBlock! };
+}
+
+export async function refute(
+    agentId: string,
+    setupId: string,
+    proof: bigint[],
+    argData: WitnessAndValue[][],
+    states: WitnessAndValue[][]
+): Promise<{ data: WitnessAndValue[]; script: Buffer; controlBlock: Buffer }> {
+    // first input is the selection path, 6 selections and then the index
+    // the selection path can't be wrong, because of the winternitz signature on it
+    const selectionPath = argData[0].slice(0, 6);
+    const index = argData[0][6];
+    const decasector = new Decasector(proof);
+    const tempIndex = decasector.getLineBySelectionPath(selectionPath.map((wav) => Number(wav.value)));
+    if (tempIndex != Number(index.value)) {
+        throw new Error('Invalid selection path or index');
+    }
+
+    const doomsdayGenerator = new DoomsdayGenerator(agentId, setupId);
+
+    // second input is the params a, b, c, and d
+    const params = argData[1];
+    const [a, b, c] = params;
+    // let's check the instruction first
+    if (!doomsdayGenerator.checkLine(Number(index.value), a.value as bigint, b.value as bigint, c.value as bigint)) {
+        // the line is false, attack it!
+        return refuteInstruction(doomsdayGenerator, index, params);
+    }
+
+    // if not the instruction, then it must be one of the hashes in the
+    // merkle proofs
+
+    return refuteHash(doomsdayGenerator, decasector, index, argData, states);
 }
