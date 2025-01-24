@@ -188,7 +188,7 @@ function negifyPairHash(
     blake3.bitcoin.drop(temp);
 }
 
-async function createRefuteHashScriptTemplate(templates: Template[], decasector: Decasector): Promise<ScriptTemplate> {
+async function createRefuteHashScriptTemplate(templates: Template[]): Promise<ScriptTemplate> {
     const argumentTemplate = getTemplateByName(templates, `${TemplateNames.ARGUMENT}`);
 
     const bitcoin = new Bitcoin();
@@ -297,7 +297,7 @@ async function generateRefuteMerkleProofScript(
 
     let scriptTemplate = scriptTampleCache['hash'];
     if (!scriptTemplate) {
-        scriptTemplate = await createRefuteHashScriptTemplate(templates, decasector);
+        scriptTemplate = await createRefuteHashScriptTemplate(templates);
         scriptTampleCache['hash'] = scriptTemplate;
     }
 

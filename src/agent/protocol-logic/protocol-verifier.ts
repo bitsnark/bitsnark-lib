@@ -4,7 +4,7 @@ import { parseInputs } from './parser';
 import { step1_vm } from '../../generator/ec_vm/vm/vm';
 import groth16Verify, { Key, Proof as Step1_Proof } from '../../generator/ec_vm/verifier';
 import { findErrorState } from './states';
-import { encodeWinternitz24, encodeWinternitz256_4 } from '../common/winternitz';
+import { encodeWinternitz24 } from '../common/winternitz';
 import { refute } from './argument';
 import { last } from '../common/array-utils';
 import { createUniqueDataId } from '../setup/wots-keys';
@@ -137,17 +137,9 @@ export class ProtocolVerifier extends ProtocolBase {
         refutationTemplate.inputs[0].controlBlock = refutation.controlBlock;
         await this.db.upsertTemplates(this.setupId, [refutationTemplate]);
 
-        const data = refutation.data
-            .map((wav, dataIndex) =>
-                encodeWinternitz256_4(
-                    wav.value,
-                    createUniqueDataId(this.setup!.id, TemplateNames.PROOF_REFUTED, 0, 0, dataIndex)
-                )
-            )
-            .flat();
-
         const bitcoin = new Bitcoin();
-        data.forEach((b) => bitcoin.addWitness(b));
+        const data = refutation.data.map((wav) => wav.witness!).flat();
+        data.forEach((b) => bitcoin.addWitness(b!));
         [Buffer.alloc(64), Buffer.alloc(64)].forEach((b) => bitcoin.addWitness(b));
         bitcoin.throwOnFail = true;
         console.log('!!!!!!!!!!!!!!!! Executing....');

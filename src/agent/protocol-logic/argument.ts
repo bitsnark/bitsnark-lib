@@ -126,7 +126,7 @@ async function refuteHash(
     const instr = decasector.savedVm.program[Number(index.value)];
 
     // reorder arg data for proofs
-    const argProofs = chunk(argData.slice(2).flat(), 15);
+    const argProofs = chunk(argData.slice(2).flat(), 13);
     const params = argData[1];
 
     const makeProof = async (i: number): Promise<FatMerkleProof> => {

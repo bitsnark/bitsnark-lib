@@ -108,7 +108,7 @@ export class ProtocolBase {
             usableWitness.map((s) => Buffer.from(s, 'hex'))
         );
         selectionPathUnparsed.push(usableWitness.map((s) => Buffer.from(s, 'hex')));
-        return Number(data[0]);
+        return Number(data[0].value);
     }
 
     async getCurrentBlockHeight(): Promise<number> {
