@@ -140,7 +140,7 @@ export class ProtocolVerifier extends ProtocolBase {
         const bitcoin = new Bitcoin();
         const data = refutation.data.map((wav) => wav.witness!).flat();
         data.forEach((b) => bitcoin.addWitness(b!));
-        [Buffer.alloc(64), Buffer.alloc(64)].forEach((b) => bitcoin.addWitness(b));
+        bitcoin.addWitness(Buffer.alloc(64));
         bitcoin.throwOnFail = true;
         console.log('!!!!!!!!!!!!!!!! Executing....');
         executeProgram(bitcoin, refutation.script, true);

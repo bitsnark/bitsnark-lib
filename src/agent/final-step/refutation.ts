@@ -18,35 +18,39 @@ export enum RefutationType {
 }
 
 export const totalRefutationProofs = 3;
-export const totalRefutationHashes = 8;
+export const totalRefutationHashOptions = 7;
 
 export interface RefutationDescriptor {
     refutationType: RefutationType;
     line: number;
     whichProof?: number;
-    whichHash?: number;
+    whichHashOption?: number;
 }
 
 export function getMaxRefutationIndex(): number {
-    return scriptTotalLines + scriptTotalLines * totalRefutationProofs * totalRefutationHashes + totalRefutationHashes;
+    return (
+        scriptTotalLines +
+        scriptTotalLines * totalRefutationProofs * totalRefutationHashOptions +
+        totalRefutationHashOptions
+    );
 }
 
 export function getRefutationIndex(refutation: RefutationDescriptor): number {
     refutation = { ...refutation, line: Math.min(refutation.line, scriptTotalLines) };
     if (refutation.refutationType == RefutationType.INSTR) return refutation.line;
     else if (refutation.refutationType == RefutationType.HASH) {
-        if (refutation.whichProof == undefined || refutation.whichHash == undefined)
+        if (refutation.whichProof == undefined || refutation.whichHashOption == undefined)
             throw new Error('Missing whichProof or whichHash');
         if (refutation.whichProof < 0 || refutation.whichProof >= totalRefutationProofs)
             throw new Error('Invalid whichProof');
-        if (refutation.whichHash < 0 || refutation.whichHash >= totalRefutationHashes)
-            throw new Error('Invalid whichHash');
+        if (refutation.whichHashOption < 0 || refutation.whichHashOption >= totalRefutationHashOptions)
+            throw new Error('Invalid whichHashOption');
 
         return (
             scriptTotalLines +
-            refutation.line * totalRefutationHashes * totalRefutationProofs +
-            refutation.whichProof * totalRefutationHashes +
-            refutation.whichHash
+            refutation.line * totalRefutationHashOptions * totalRefutationProofs +
+            refutation.whichProof * totalRefutationHashOptions +
+            refutation.whichHashOption
         );
     } else throw new Error('Unknown refutation type');
 }
@@ -57,12 +61,12 @@ export function getRefutationDescriptor(index: number): RefutationDescriptor {
         return { refutationType: RefutationType.INSTR, line: index };
     }
     index -= scriptTotalLines;
-    const line = Math.floor(index / (totalRefutationProofs * totalRefutationHashes));
-    index -= line * totalRefutationProofs * totalRefutationHashes;
-    const whichProof = Math.floor(index / totalRefutationHashes);
-    index -= whichProof * totalRefutationHashes;
-    const whichHash = index;
-    return { refutationType: RefutationType.HASH, line, whichProof, whichHash };
+    const line = Math.floor(index / (totalRefutationProofs * totalRefutationHashOptions));
+    index -= line * totalRefutationProofs * totalRefutationHashOptions;
+    const whichProof = Math.floor(index / totalRefutationHashOptions);
+    index -= whichProof * totalRefutationHashOptions;
+    const whichHashOption = index;
+    return { refutationType: RefutationType.HASH, line, whichProof, whichHashOption };
 }
 
 const scriptTampleCache: { [key: string]: ScriptTemplate } = {};
@@ -230,11 +234,12 @@ async function createRefuteHashScriptTemplate(templates: Template[]): Promise<Sc
 
 function renderScriptTemplateWithKeys(scriptTemplate: ScriptTemplate, keys: Buffer[][]): Buffer {
     const keysFlat = keys.flat();
-
-    scriptTemplate.items.forEach((item, i) => {
+    for (let i = 0; i < scriptTemplate.items.length; i++) {
+        const item = scriptTemplate.items[i];
         const b = keysFlat[i];
+        // console.log('!!!!!!!!!     ', i, '        ', item.index);
         b.copy(scriptTemplate.buffer, item.index, 0);
-    });
+    }
     return scriptTemplate.buffer;
 }
 
@@ -244,14 +249,14 @@ async function generateRefuteMerkleProofScript(
     refutationDescriptor: RefutationDescriptor
 ): Promise<Buffer> {
     if (refutationDescriptor.whichProof == undefined) throw new Error('Missing whichProof');
-    if (refutationDescriptor.whichHash == undefined) throw new Error('Missing whichHash');
+    if (refutationDescriptor.whichHashOption == undefined) throw new Error('Missing whichHashOption');
 
     // TODO: what to do if the line is 0?
     if (refutationDescriptor.line == 0) return Buffer.alloc(0);
 
     // first find the 2 roots for the 3 merkle proofs
-    const stateCommitmentBefore = decasector.stateCommitmentByLine[refutationDescriptor.line - 1];
-    const stateCommitmentAfter = decasector.stateCommitmentByLine[refutationDescriptor.line];
+    const stateCommitmentBefore = decasector.stateCommitmentByLine[refutationDescriptor.line];
+    const stateCommitmentAfter = decasector.stateCommitmentByLine[refutationDescriptor.line + 1];
 
     // transaction names start with 0 while state commitment count starts with 1, so -1 here
     const beforeStateIteration = stateCommitmentBefore.iteration - 1;
@@ -307,9 +312,9 @@ async function generateRefuteMerkleProofScript(
     };
 
     const script = await refuteHash(
-        merkleProofKeys[refutationDescriptor.whichProof][refutationDescriptor.whichHash],
-        merkleProofKeys[refutationDescriptor.whichProof][refutationDescriptor.whichHash + 1],
-        merkleProofKeys[refutationDescriptor.whichProof][refutationDescriptor.whichHash + 2]
+        merkleProofKeys[refutationDescriptor.whichProof][refutationDescriptor.whichHashOption * 2 + 0],
+        merkleProofKeys[refutationDescriptor.whichProof][refutationDescriptor.whichHashOption * 2 + 1],
+        merkleProofKeys[refutationDescriptor.whichProof][refutationDescriptor.whichHashOption * 2 + 2]
     );
 
     return script;

@@ -1369,7 +1369,7 @@ export class Bitcoin {
             }
         }
 
-        const items: { itemId: string; index: number }[] = [];
+        const items: { itemId: string; index: number, length: number }[] = [];
 
         const byteArray: number[] = [];
         for (const opcode of this.opcodes) {
@@ -1377,20 +1377,20 @@ export class Bitcoin {
                 if (opcode.data && opcode.data instanceof Buffer) {
                     byteArray.push(opcode.data.length);
                     if (opcode.templateItemId) {
-                        items.push({ itemId: opcode.templateItemId!, index: byteArray.length });
+                        items.push({ itemId: opcode.templateItemId!, index: byteArray.length, length: opcode.data.length });
                     }    
                     byteArray.push(...opcode.data);
                 } else if (typeof opcode.data == 'number') {
                     if (opcode.data <= 16) {
                         if (opcode.templateItemId) {
-                            items.push({ itemId: opcode.templateItemId!, index: byteArray.length });
+                            items.push({ itemId: opcode.templateItemId!, index: byteArray.length, length: 1 });
                         }        
                         byteArray.push(opcodeValues[hardcode(opcode.data)]);
                     } else {
                         const encoded = bitcoinjs.script.number.encode(opcode.data);
                         byteArray.push(encoded.length);
                         if (opcode.templateItemId) {
-                            items.push({ itemId: opcode.templateItemId!, index: byteArray.length });
+                            items.push({ itemId: opcode.templateItemId!, index: byteArray.length, length: encoded.length });
                         }        
                         byteArray.push(...encoded);
                     }

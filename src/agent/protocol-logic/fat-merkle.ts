@@ -103,7 +103,7 @@ export class FatMerkleProof {
 
     public async indexToRefute(): Promise<number> {
         const proof = this.hashes.map((b) => b);
-        for (let i = 0; i < proof.length; i += 2) {
+        for (let i = 0; i + 2 < proof.length; i += 2) {
             if ((await hashPair([proof[i].buffer, proof[i + 1].buffer])).compare(proof[i + 2].buffer) != 0) return i;
         }
         return -1;

@@ -63,12 +63,17 @@ export class ProtocolBase {
     }
 
     async waitForTransmission(templateName: TemplateNames): Promise<TemplateStatus> {
+        let lastStatus = '';
         while (true) {
             const t = await this.getTemplateStatus(templateName);
+            if (t != lastStatus) {
+                console.log(`Template ${templateName}, status: ${t}`);
+                lastStatus = t;
+            }
             if (t == TemplateStatus.PUBLISHED || t == TemplateStatus.REJECTED) {
                 return t;
             }
-            await sleep(agentConf.protocolIntervalMs);
+            await sleep(1000);
         }
     }
 

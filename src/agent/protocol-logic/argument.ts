@@ -3,7 +3,7 @@ import { encodeWinternitz24, encodeWinternitz256_4 } from '../common/winternitz'
 import { InstrCode, Instruction } from '../../generator/ec_vm/vm/types';
 import { DoomsdayGenerator } from '../final-step/doomsday-generator';
 import { prime_bigint } from '../common/constants';
-import { bigintToBufferBE, bufferToBigintBE } from '../common/encoding';
+import { bufferToBigintBE } from '../common/encoding';
 import { TemplateNames, WitnessAndValue } from '../common/types';
 import { createUniqueDataId } from '../setup/wots-keys';
 import { Decasector, StateCommitment } from '../setup/decasector';
@@ -137,7 +137,7 @@ async function refuteHash(
         const root = states[iter - 1][which];
         const leaf = params[i];
         return await FatMerkleProof.fromArgument(
-            hashes.map((wav) => ({ value: wav.value, buffer: bigintToBufferBE(wav.value, 256), witness: wav.witness })),
+            hashes,
             leaf,
             root,
             line
@@ -162,12 +162,12 @@ async function refuteHash(
     }
     const whichHash = await proofs[whichProof].indexToRefute();
     if (whichHash < 0) throw new Error("Can't find bad hash");
-    const data = [...proofs[whichProof].hashes.slice(whichHash / 2, whichHash / 2 + 3)];
+    const data = [...proofs[whichProof].hashes.slice(whichHash, whichHash + 3)];
     const { requestedScript, requestedControlBlock } = await doomsdayGenerator.generateFinalStepTaprootParallel({
         refutationType: RefutationType.HASH,
         line: Number(index.value),
         whichProof,
-        whichHash: Math.floor(whichHash / 2)
+        whichHashOption: Math.floor(whichHash / 2)
     });
 
     return { data, script: requestedScript!, controlBlock: requestedControlBlock! };
