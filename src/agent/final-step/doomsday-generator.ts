@@ -133,14 +133,17 @@ export class DoomsdayGenerator {
         const start = Date.now();
         console.log('Starting doomsday parallel...');
 
-        // refutationDescriptor = { refutationType: 1, line: 399999, whichProof: 2, whichHashOption: 6 };
+        // FOO
+        refutationDescriptor = { refutationType: 1, line: 399999, whichProof: 2, whichHashOption: 6 };
         const requestedScriptIndex = refutationDescriptor ? getRefutationIndex(refutationDescriptor) : 0;
 
-        const inputs = this.chunkTheWork(64);
-        // const inputs = [
-        //     { skip: true, agentId: this.agentId, setupId: this.setupId, from: 0, to: requestedScriptIndex },
-        //     { skip: false, agentId: this.agentId, setupId: this.setupId, from: requestedScriptIndex, to: getMaxRefutationIndex() }
-        // ];
+        // const inputs = this.chunkTheWork(64);
+
+        // FOO
+        const inputs = [
+            { skip: true, agentId: this.agentId, setupId: this.setupId, from: 0, to: requestedScriptIndex },
+            { skip: false, agentId: this.agentId, setupId: this.setupId, from: requestedScriptIndex, to: getMaxRefutationIndex() }
+        ];
 
         const results = await parallelize<GenerateFinalTaprootCommand, ChunkResult>(inputs, async (input) => {
             if (input.skip) {
