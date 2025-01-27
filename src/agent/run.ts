@@ -11,16 +11,26 @@ import { BitcoinListener } from './listener/bitcoin-listener';
 export async function main(proverAgentId: string, verifierAgentId: string) {
     if (proverAgentId) {
         const agent = new Agent(proverAgentId, AgentRoles.PROVER);
-        agent.launch();
+        agent.launch().catch((error) => {
+            console.error(error);
+        });
+
         const listener = new BitcoinListener(proverAgentId);
-        listener.startBlockchainCrawler();
+        listener.startBlockchainCrawler().catch((error) => {
+            console.error(error);
+        });
     }
 
     if (verifierAgentId) {
         const agent = new Agent(verifierAgentId, AgentRoles.VERIFIER);
-        agent.launch();
+        agent.launch().catch((error) => {
+            console.error(error);
+        });
+
         const listener = new BitcoinListener(proverAgentId);
-        listener.startBlockchainCrawler();
+        listener.startBlockchainCrawler().catch((error) => {
+            console.error(error);
+        });
     }
 
     const doit = async () => {

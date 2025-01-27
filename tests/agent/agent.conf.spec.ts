@@ -19,18 +19,22 @@ describe('AgentConfig', () => {
         `
         );
 
-        import('../../src/agent/agent.conf').then((conf) => {
-            const agentConf = conf.agentConf;
+        import('../../src/agent/agent.conf')
+            .then((conf) => {
+                const agentConf = conf.agentConf;
 
-            expect(agentConf.internalPubkey).toEqual(2n);
-            expect(agentConf.winternitzSecret).toEqual('wots_secret');
-            expect(agentConf.tokens['bitsnark_prover_1']).toEqual('telegram_token_prover');
-            expect(agentConf.tokens['bitsnark_verifier_1']).toEqual('telegram_token_verifier');
-            expect(agentConf.keyPairs['bitsnark_prover_1'].schnorrPublic).toEqual('prover_schnorr_public');
-            expect(agentConf.keyPairs['bitsnark_prover_1'].schnorrPrivate).toEqual('prover_schnorr_private');
-            expect(agentConf.keyPairs['bitsnark_verifier_1'].schnorrPublic).toEqual('verifier_schnorr_public');
-            expect(agentConf.keyPairs['bitsnark_verifier_1'].schnorrPrivate).toEqual('verifier_schnorr_private');
-        });
+                expect(agentConf.internalPubkey).toEqual(2n);
+                expect(agentConf.winternitzSecret).toEqual('wots_secret');
+                expect(agentConf.tokens['bitsnark_prover_1']).toEqual('telegram_token_prover');
+                expect(agentConf.tokens['bitsnark_verifier_1']).toEqual('telegram_token_verifier');
+                expect(agentConf.keyPairs['bitsnark_prover_1'].schnorrPublic).toEqual('prover_schnorr_public');
+                expect(agentConf.keyPairs['bitsnark_prover_1'].schnorrPrivate).toEqual('prover_schnorr_private');
+                expect(agentConf.keyPairs['bitsnark_verifier_1'].schnorrPublic).toEqual('verifier_schnorr_public');
+                expect(agentConf.keyPairs['bitsnark_verifier_1'].schnorrPrivate).toEqual('verifier_schnorr_private');
+            })
+            .catch((error) => {
+                throw error;
+            });
     });
 
     afterEach(() => {

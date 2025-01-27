@@ -121,7 +121,7 @@ export class MockPublisher {
                         await this.dbs[agent].test_markPublished(this.setupId, readyTx.name);
 
                         if (receivedTransactions[otherAgent].every((rt) => rt[0] !== readyTx.txid)) {
-                            this.markReceived(otherAgent, readyTx, hash, tip, rawTx);
+                            await this.markReceived(otherAgent, readyTx, hash, tip, rawTx);
                         }
                     }
                 }
@@ -169,10 +169,12 @@ async function main() {
     const verifierId = 'bitsnark_verifier_1';
     const setupId = 'test_setup';
 
-    new MockPublisher(proverId, verifierId, setupId).start();
+    await new MockPublisher(proverId, verifierId, setupId).start();
 }
 
 if (require.main === module) {
     console.log('Starting mock publisher...');
-    main();
+    main().catch((error) => {
+        throw error;
+    });
 }
