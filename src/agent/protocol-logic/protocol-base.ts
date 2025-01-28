@@ -86,7 +86,7 @@ export class ProtocolBase {
             return;
         }
         await this.db.markTemplateToSend(this.setupId, name, data);
-        console.log(`Asking to send template ${name} (make sure sender is listening: npm run start-bitcoin-sender)`);
+        console.log(`Asking to send template ${name} (make sure sender is listening: npm run bitcoin-sender)`);
         const status = await this.waitForTransmission(name);
         if (status == TemplateStatus.REJECTED) {
             console.error(`Template ${name} was rejected!`);

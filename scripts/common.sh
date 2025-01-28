@@ -1,8 +1,10 @@
 #!/bin/sh
 
-bitcoin_container_name=bitcoin-node
-postgres_container_name=postgres
-bitcoin_data_dir=/tmp/regtest_data
+bitcoin_container_name="${BITCOIN_CONTAINER_NAME:-bitcoin-node}"
+postgres_container_name="${POSTGRES_CONTAINER_NAME:-postgres}"
+bitcoin_data_dir="${BITCOIN_DATA_DIR:-/tmp/regtest_data}"
+bitcoin_rpc_user="${BITCOIN_RPC_USER:-rpcuser}"
+bitcoin_rpc_password="${BITCOIN_RPC_PASSWORD:-rpcpassword}"
 
 # On macOS, "System Integrety Protection" clears the DYLD_FALLBACK_LIBRARY_PATH,
 # which leaves the Python executable unable to find the secp256k1 library installed by Homebrew.
@@ -29,12 +31,17 @@ if [ -z "$INIT_CWD" ]; then
     fi
 fi
 
-if docker ps 2>&1 > /dev/null; then
+if docker ps > /dev/null 2>&1; then
     docker_cmd=docker
-elif sudo docker ps 2>&1 > /dev/null; then
+elif sudo docker ps > /dev/null 2>&1; then
     docker_cmd='sudo docker'
 else
     echo "Can't run docker commands, exiting."
+    return 1
+fi
+
+if ! (mkdir -p "$bitcoin_data_dir" && test -w "$(dirname "$bitcoin_data_dir")"); then
+    echo "Set BITCOIN_DATA_DIR to a directory that can be created and removed (not $bitcoin_data_dir)"
     return 1
 fi
 

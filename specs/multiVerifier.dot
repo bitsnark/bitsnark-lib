@@ -1,0 +1,17 @@
+digraph MultiVerifier {
+    {rank=min locked_funds [color=magenta] proof [color=green]}
+    locked_funds -> {locked_funds_o [shape=point; color=magenta]} [arrowhead=none]
+    locked_funds_o -> {rank=max proof_accepted [color=magenta]} [style=dashed]
+
+    proof -> {challenge_1 [color=blue]} -> {challenge_1_o [shape=point]}
+    challenge_1_o -> {challenge_1_uncontested [color=magenta]} [style=dashed; weight=0]
+    challenge_1_o -> {state_1_0 [color=green]}
+    state_1_0 -> {select_1_0 [color=blue]} -> {select_1_0_o [shape=point]}
+    select_1_0_o -> {select_1_0_uncontested [color=magenta]} [style=dashed; weight=0]
+    select_1_0_o -> {state_1_n [color=green]}
+    state_1_n -> {select_1_n [color=blue]} -> {select_1_n_o [shape=point]}
+    select_1_n_o -> {select_1_n_uncontested [color=magenta]} [style=dashed; weight=0]
+    select_1_n_o -> {argument_1 [color=green]}
+    argument_1 -> {refutation_1 [color=magenta]}
+}
+

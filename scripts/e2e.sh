@@ -7,25 +7,30 @@ prover=bitsnark_prover_1
 verifier=bitsnark_verifier_1
 setup_id=test_setup
 
-npm run start-db
-npm run start-regtest
+npm run postgres
+npm run regtest
 
 echo 'Emulating setup (this will move to a real setup later)'
 npm run emulate-setup-final
-npm run start-protocol-prover &
-npm run start-protocol-verifier &
-generate_blocks 6
+
+echo Starting agents
+npm run prover-protocol &
+npm run verifier-protocol &
+
+echo Starting bitcoin services
+npm run bitcoin-services &
+
 sleep 1
 
-
-read -p 'Fudge the proof? (y/n): ' response
-printf 'Sending '
-if [ "$response" = y ] || [ "$response" = Y ]; then
+if [ "$1" = happiest ]; then
+    shift
+    echo Sending a valid proof to execute the happiest path
+else
     fudge='--fudge'
-    printf 'fudged '
+    echo Sending a fudged proof to execute a successful challenge
 fi
-echo proof
-ts-node ./src/agent/protocol-logic/send-proof.ts $prover "$setup_id" $fudge
+
+ts-node ./src/agent/protocol-logic/send-proof.ts $prover $setup_id $fudge
 
 while sleep 1; do
     [ $(bitcoin_cli getmempoolinfo | jq .unbroadcastcount) -gt 0 ] && generate_blocks

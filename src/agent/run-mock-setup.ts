@@ -14,7 +14,7 @@ import { MockPublisher } from './protocol-logic/mock-publisher';
 export async function main(proverAgentId: string, verifierAgentId: string, setupId: string, regtest?: boolean) {
     console.log(`Starting mock setup ${setupId} with prover ${proverAgentId} and verifier ${verifierAgentId}`);
     console.log('Make sure the bitcoin services are running:');
-    console.log(`npm run start-bitcoin-services ${proverAgentId} ${verifierAgentId}`);
+    console.log(`npm run bitcoin-services ${proverAgentId} ${verifierAgentId}`);
 
     const proverAgent = new Agent(proverAgentId, AgentRoles.PROVER);
     proverAgent.launch().catch((error) => {
