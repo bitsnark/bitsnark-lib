@@ -20,6 +20,8 @@ import { prime_bigint } from '../common/constants';
 import { modInverse } from '../../generator/common/math-utils';
 import { parallelize } from '../common/parallelize';
 
+const allHashesCache: { [key:string]: Buffer[] } = {};
+
 function timeStr(ms: number): string {
     ms /= 1000;
     const h = `${Math.round(ms / 3600)}h`;
@@ -65,7 +67,6 @@ export class DoomsdayGenerator {
             from: i * chunk,
             to: Math.min(total, (i + 1) * chunk),
             skip: false
-
         }));
         return inputs;
     }
@@ -137,23 +138,30 @@ export class DoomsdayGenerator {
         // refutationDescriptor = { refutationType: 1, line: 399999, whichProof: 2, whichHashOption: 6 };
         const requestedScriptIndex = refutationDescriptor ? getRefutationIndex(refutationDescriptor) : 0;
 
-        const inputs = this.chunkTheWork(16);
+        let allHashes = allHashesCache[this.setupId];
+        if (!allHashes) {
+            const inputs = this.chunkTheWork(16);
 
-        // FOO
-        // const inputs = [
-        //     { skip: true, agentId: this.agentId, setupId: this.setupId, from: 0, to: requestedScriptIndex },
-        //     { skip: false, agentId: this.agentId, setupId: this.setupId, from: requestedScriptIndex, to: getMaxRefutationIndex() }
-        // ];
+            // FOO
+            // const inputs = [
+            //     { skip: true, agentId: this.agentId, setupId: this.setupId, from: 0, to: requestedScriptIndex },
+            //     { skip: false, agentId: this.agentId, setupId: this.setupId, from: requestedScriptIndex, to: getMaxRefutationIndex() }
+            // ];
 
-        const results = await parallelize<GenerateFinalTaprootCommand, ChunkResult>(inputs, async (input) => {
-            if (input.skip) {
-                return { hashes: array(input.to - input.from, DEAD_ROOT_HASH) };
-            }
-            return this.forker.fork(input);
-        });
-        const allHashes = results.flatMap((r) => r.hashes);
+            const results = await parallelize<GenerateFinalTaprootCommand, ChunkResult>(inputs, async (input) => {
+                if (input.skip) {
+                    return { hashes: array(input.to - input.from, DEAD_ROOT_HASH) };
+                }
+                return this.forker.fork(input);
+            });
+            allHashes = results.flatMap((r) => r.hashes);
+            allHashesCache[this.setupId] = allHashes;
+        }
+
         const compressor = new Compressor(allHashes.length, requestedScriptIndex);
         allHashes.forEach((h) => compressor.addHash(h));
+        compressor.getRoot();
+        compressor.getTaprootPubkey();
 
         const time = Date.now() - start;
         console.log(`Finished doomsday   -  ${timeStr(time)}`);
