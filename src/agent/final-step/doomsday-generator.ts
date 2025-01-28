@@ -60,7 +60,7 @@ export class DoomsdayGenerator {
 
     chunkTheWork(chunks: number): GenerateFinalTaprootCommand[] {
         const total = getMaxRefutationIndex();
-        const chunk = Math.floor(total / chunks);
+        const chunk = Math.ceil(total / chunks);
         const inputs: GenerateFinalTaprootCommand[] = array(chunks, (i) => ({
             agentId: this.agentId,
             setupId: this.setupId,
@@ -140,7 +140,7 @@ export class DoomsdayGenerator {
 
         let allHashes = allHashesCache[this.setupId];
         if (!allHashes) {
-            const inputs = this.chunkTheWork(16);
+            const inputs = this.chunkTheWork(128);
 
             // FOO
             // const inputs = [
