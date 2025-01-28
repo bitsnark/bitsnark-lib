@@ -47,4 +47,8 @@ async function main() {
     expect(bitcoin.fail).toBeFalsy();
 }
 
-main();
+if (require.main === module) {
+    main().catch((error) => {
+        throw error;
+    });
+}

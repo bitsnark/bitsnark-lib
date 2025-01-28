@@ -103,5 +103,7 @@ export async function main2() {
 }
 
 if (require.main === module) {
-    main2();
+    main().catch((error) => {
+        throw error;
+    });
 }

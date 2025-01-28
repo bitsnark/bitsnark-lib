@@ -1,7 +1,7 @@
 import { calculateMerkleRoot, FatMerkleProof } from '../../src/agent/protocol-logic/fat-merkle';
 import { bigintToBufferBE } from '../../src/agent/common/encoding';
 
-async function test2(test1: bigint[], leafIndex: number) {
+function test2(test1: bigint[], leafIndex: number) {
     it('', async () => {
         const root = await calculateMerkleRoot(test1);
         const proof = await FatMerkleProof.fromRegs(test1, leafIndex);

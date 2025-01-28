@@ -275,7 +275,7 @@ export class Agent {
         );
 
         i.state = SetupState.TRANSACTIONS;
-        this.sendTransactions(context, i.setupId);
+        await this.sendTransactions(context, i.setupId);
     }
 
     // prover sends template structure
@@ -312,7 +312,7 @@ export class Agent {
         await this.db.upsertTemplates(i.setupId, i.templates!);
         i.templates = await signTemplates(this.role, this.agentId, i.setupId, i.templates!);
 
-        if (this.role == AgentRoles.PROVER) this.sendSignatures(context, i.setupId);
+        if (this.role == AgentRoles.PROVER) await this.sendSignatures(context, i.setupId);
     }
 
     /// SIGNING PHASE
@@ -436,7 +436,12 @@ if (require.main === module) {
 
     const agent = new Agent(agentId, role);
     console.log('Launching agent', agentId);
-    agent.launch().then(() => {
-        console.log('Quitting');
-    });
+    agent
+        .launch()
+        .then(() => {
+            console.log('Quitting');
+        })
+        .catch((e) => {
+            console.error(e);
+        });
 }

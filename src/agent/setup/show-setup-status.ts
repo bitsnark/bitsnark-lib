@@ -19,9 +19,11 @@ async function setupStatus(agentId: string, setupId: string, loop: boolean) {
     } while (loop);
 }
 
-if (__filename == process.argv[1]) {
+if (require.main === module) {
     const args = minimist(process.argv.slice(2), { boolean: ['loop'] });
     const agentId = args['agent-id'] ?? 'bitsnark_prover_1';
 
-    setupStatus(agentId, args['setup-id'], !!args['loop']);
+    setupStatus(agentId, args['setup-id'], !!args['loop']).catch((error) => {
+        console.error(error);
+    });
 }
