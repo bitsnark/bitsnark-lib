@@ -20,7 +20,7 @@ import { prime_bigint } from '../common/constants';
 import { modInverse } from '../../generator/common/math-utils';
 import { parallelize } from '../common/parallelize';
 
-const allHashesCache: { [key:string]: Buffer[] } = {};
+const allHashesCache: { [key: string]: Buffer[] } = {};
 
 function timeStr(ms: number): string {
     ms /= 1000;
@@ -154,6 +154,10 @@ export class DoomsdayGenerator {
                 }
                 return this.forker.fork(input);
             });
+
+            if (results.length != inputs.length || results.some((r) => !r || !r.hashes || r.hashes.length == 0))
+                throw new Error('Missing results');
+
             allHashes = results.flatMap((r) => r.hashes);
             allHashesCache[this.setupId] = allHashes;
         }
