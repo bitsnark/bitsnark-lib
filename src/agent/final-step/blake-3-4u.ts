@@ -378,7 +378,6 @@ async function test2() {
 
     console.log('h2', h2);
     console.log(`max stack: ${bitcoin.maxStack}    size: ${bitcoin.programSizeInBitcoinBytes()}`);
-    // console.log(stats);
     assert(h1 == h2);
 }
 

@@ -237,7 +237,6 @@ function renderScriptTemplateWithKeys(scriptTemplate: ScriptTemplate, keys: Buff
     for (let i = 0; i < scriptTemplate.items.length; i++) {
         const item = scriptTemplate.items[i];
         const b = keysFlat[i];
-        // console.log('!!!!!!!!!     ', i, '        ', item.index);
         b.copy(scriptTemplate.buffer, item.index, 0);
     }
     return scriptTemplate.buffer;
@@ -251,7 +250,7 @@ async function generateRefuteMerkleProofScript(
     if (refutationDescriptor.whichProof == undefined) throw new Error('Missing whichProof');
     if (refutationDescriptor.whichHashOption == undefined) throw new Error('Missing whichHashOption');
 
-    // TODO: what to do if the line is 0?
+    // TODO: better validation
     if (refutationDescriptor.line == 0) return Buffer.alloc(0);
 
     // first find the 2 roots for the 3 merkle proofs
@@ -264,7 +263,7 @@ async function generateRefuteMerkleProofScript(
     const stateCommitmentIndexBefore = stateCommitmentBefore.selection;
     const stateCommitmentIndexAfter = stateCommitmentAfter.selection;
 
-    // TODO: what to do in this case?
+    // TODO: better validation
     if (beforeStateIteration < 0) return Buffer.alloc(0);
 
     const stateTxBefore = getTemplateByName(templates, `${TemplateNames.STATE}_${twoDigits(beforeStateIteration)}`);

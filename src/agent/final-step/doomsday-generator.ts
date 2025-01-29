@@ -126,27 +126,15 @@ export class DoomsdayGenerator {
     async generateFinalStepTaprootParallel(
         refutationDescriptor?: RefutationDescriptor
     ): Promise<GenerateTaprootResult> {
-        // if (refutationDescriptor) {
-        //     console.log('!!!! $$$$ %%%%% ', refutationDescriptor, getRefutationIndex(refutationDescriptor!));
-        // }
-        // return this.generateFinalStepTaproot(refutationDescriptor);
 
         const start = Date.now();
         console.log('Starting doomsday parallel...');
 
-        // FOO
-        // refutationDescriptor = { refutationType: 1, line: 399999, whichProof: 2, whichHashOption: 6 };
         const requestedScriptIndex = refutationDescriptor ? getRefutationIndex(refutationDescriptor) : 0;
 
         let allHashes = allHashesCache[this.setupId];
         if (!allHashes) {
             const inputs = this.chunkTheWork(128);
-
-            // FOO
-            // const inputs = [
-            //     { skip: true, agentId: this.agentId, setupId: this.setupId, from: 0, to: requestedScriptIndex },
-            //     { skip: false, agentId: this.agentId, setupId: this.setupId, from: requestedScriptIndex, to: getMaxRefutationIndex() }
-            // ];
 
             const results = await parallelize<GenerateFinalTaprootCommand, ChunkResult>(inputs, async (input) => {
                 if (input.skip) {
@@ -185,7 +173,6 @@ export class DoomsdayGenerator {
             requestedControlBlock
         };
         console.log('!!!!!!!!! 3 taprootPubKey', ret.taprootPubKey?.toString('hex'));
-        // console.log('!!!!!!!!! 3 requestedScript', ret.requestedScript?.toString('hex'));
         console.log('!!!!!!!!! 3 requestedControlBlock', ret.requestedControlBlock?.toString('hex'));
         return ret;
     }
@@ -223,17 +210,6 @@ export class DoomsdayGenerator {
         while (allHashes.length < compressor.total) allHashes.push(DEAD_ROOT_HASH);
 
         allHashes.forEach((h) => compressor.addHash(h));
-
-        // const stt = new SimpleTapTreeHashes(agentConf.internalPubkey, allHashes);
-        // const root1 = compressor.getRoot();
-        // const addr = stt.getTaprootResults().address;
-        // const pk1 = stt.getTaprootResults().output;
-        // const cb1 = compressor.getControlBlock();
-        // const root2 = stt.getRoot();
-        // const cb2 = stt.getControlBlock(requestedScriptIndex);
-        // const addr2 = compressor.getAddress();
-        // const pk2 = compressor.getTaprootPubkey();
-        // const pk3 = compressor.getTaprootPubkeyNew();
 
         let requestedScript;
         if (refutationDescriptor) {

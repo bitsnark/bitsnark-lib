@@ -5,7 +5,6 @@ import { SignatureType, Template } from '../common/types';
 
 export function emulateTransactionScripts(templates: Template[]) {
     for (const template of templates) {
-        // if (template.name != 'state_01') continue;
         console.log(template.name);
 
         for (const input of template.inputs) {
