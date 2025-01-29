@@ -2,6 +2,8 @@
 .vscode/
 nohup.out
 
+dist
+
 .env
 .env.local
 .env.test
