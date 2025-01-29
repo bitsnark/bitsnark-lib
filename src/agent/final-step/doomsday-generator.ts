@@ -126,7 +126,6 @@ export class DoomsdayGenerator {
     async generateFinalStepTaprootParallel(
         refutationDescriptor?: RefutationDescriptor
     ): Promise<GenerateTaprootResult> {
-
         const start = Date.now();
         console.log('Starting doomsday parallel...');
 
