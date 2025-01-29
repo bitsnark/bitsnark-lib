@@ -157,8 +157,6 @@ export class NegifyFinalStep {
         this.bitcoin.equalMany(temp_0, c, zero);
         this.bitcoin.drop(zero);
 
-        // bitValue && temp_b || !bitValue && temp_0
-
         this.bitcoin.pick(bitValue);
         if (notFlag) this.bitcoin.OP_NOT();
         this.bitcoin.pick(temp_b);
