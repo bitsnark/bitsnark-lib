@@ -31,18 +31,20 @@ export async function calculateMerkleRoot(na: bigint[]): Promise<Buffer> {
 }
 
 async function makeFatMerkleProof(na: bigint[], leafIndex: number): Promise<Buffer[]> {
+    if (leafIndex >= na.length) throw new Error('Invlid leaf index');
     let layer = na.map((n) => bigintToBufferBE(n, 256));
     const proof: Buffer[] = [];
     for (; layer.length > 1; leafIndex = leafIndex >> 1) {
         if (leafIndex % 2 == 0) {
-            const sibling = layer[leafIndex + 1] ?? foo;
-            proof.push(layer[leafIndex], sibling);
+            const sibling = layer[leafIndex + 1];
+            proof.push(layer[leafIndex] ?? foo, sibling ?? foo);
         } else {
             const sibling = layer[leafIndex - 1];
-            proof.push(sibling, layer[leafIndex]);
+            proof.push(sibling ?? foo, layer[leafIndex] ?? foo);
         }
         layer = await hashLayer(layer);
     }
+    if (proof.some((b) => !b)) throw new Error('Missing hash in proof');
     proof.push(layer[0]);
     return proof;
 }

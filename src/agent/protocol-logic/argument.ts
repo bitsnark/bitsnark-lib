@@ -136,12 +136,7 @@ async function refuteHash(
         const which = decasector.stateCommitmentByLine[line].selection;
         const root = states[iter - 1][which];
         const leaf = params[i];
-        return await FatMerkleProof.fromArgument(
-            hashes,
-            leaf,
-            root,
-            line
-        );
+        return await FatMerkleProof.fromArgument(hashes, leaf, root, line);
     };
 
     const merkleProofA = await makeProof(0);

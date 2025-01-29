@@ -15,7 +15,6 @@ import { getTemplateByTemplateId } from '../common/templates';
 import { AgentDb } from '../common/agent-db';
 import { WOTS_NIBBLES, WotsType } from '../common/winternitz';
 import { sleep } from '../common/sleep';
-import { agentConf } from '../agent.conf';
 
 export interface Incoming {
     received: ReceivedTransaction;

@@ -4,7 +4,7 @@ import {
     getRefutationIndex,
     RefutationDescriptor,
     RefutationType,
-    totalRefutationHashes,
+    totalRefutationHashOptions,
     totalRefutationProofs
 } from '../../src/agent/final-step/refutation';
 
@@ -26,12 +26,12 @@ describe('Refutation', () => {
                     expect(rd2).toEqual(rd!);
                 } else {
                     for (let whichProof = 0; whichProof < totalRefutationProofs; whichProof++) {
-                        for (let whichHash = 0; whichHash < totalRefutationHashes; whichHash++) {
+                        for (let whichHashOption = 0; whichHashOption < totalRefutationHashOptions; whichHashOption++) {
                             rd = {
                                 refutationType: t,
                                 line,
                                 whichProof,
-                                whichHash
+                                whichHashOption
                             };
                             const index = getRefutationIndex(rd!);
                             const rd2 = getRefutationDescriptor(index);
@@ -50,7 +50,7 @@ describe('Refutation', () => {
             rd = getRefutationDescriptor(index);
             if (rd.refutationType == RefutationType.HASH) {
                 expect(rd.whichProof).toBeDefined();
-                expect(rd.whichHash).toBeDefined();
+                expect(rd.whichHashOption).toBeDefined();
             }
         }
     });
