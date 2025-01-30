@@ -3,23 +3,54 @@ import { AgentDb } from '../common/agent-db';
 import { findOutputByInput, getTemplateByName } from '../common/templates';
 import { AgentRoles, Template, TemplateNames } from '../common/types';
 
-// Currently only counting script sizes, not the actual transaction sizes.
-// (Length input scripts + length of output scripts) / 8 bits per byte * fee per byte * fee factor percent / 100
+// Since we are using Python to construct the transactions, we need to know the size of each transaction.
+// Except for the PROOF_REFUTED transaction, the sizes can be easily obtained with the Python `show` command.
+// If you are lazy and you know it, just use this:
+// echo "SELECT name FROM templates WHERE is_external = FALSE AND name <> 'PROOF_REFUTED' ORDER BY ordinal;" | \
+//     psql -U postgres -h localhost bitsnark_prover_1 | head -n -2 | tail -n +3 | while read name; do
+//         size="$(python -m bitsnark.cli show --setup-id test_setup --agent-id bitsnark_verifier_1 --name $name | \
+//             grep -Po '(?<=^Transaction virtual size: )[0-9]*')"
+//         echo "$name = $size"
+//     done
+const TRANSACTION_SIZES: Record<string, bigint> = {
+    PROOF: 25361n,
+    CHALLENGE: 154n,
+    PROOF_UNCONTESTED: 379n,
+    CHALLENGE_UNCONTESTED: 171n,
+    STATE_00: 28494n,
+    STATE_UNCONTESTED_00: 271n,
+    SELECT_00: 495n,
+    SELECT_UNCONTESTED_00: 163n,
+    STATE_01: 28486n,
+    STATE_UNCONTESTED_01: 271n,
+    SELECT_01: 495n,
+    SELECT_UNCONTESTED_01: 163n,
+    STATE_02: 28486n,
+    STATE_UNCONTESTED_02: 271n,
+    SELECT_02: 495n,
+    SELECT_UNCONTESTED_02: 163n,
+    STATE_03: 28486n,
+    STATE_UNCONTESTED_03: 271n,
+    SELECT_03: 495n,
+    SELECT_UNCONTESTED_03: 163n,
+    STATE_04: 28486n,
+    STATE_UNCONTESTED_04: 271n,
+    SELECT_04: 495n,
+    SELECT_UNCONTESTED_04: 163n,
+    STATE_05: 28486n,
+    STATE_UNCONTESTED_05: 271n,
+    SELECT_05: 710n,
+    SELECT_UNCONTESTED_05: 163n,
+    ARGUMENT: 138164n,
+    ARGUMENT_UNCONTESTED: 171n,
+    // TODO: Cycle through all possible refutations and find the largest one.
+    PROOF_REFUTED: 600000n
+};
+
+// Fee is: size in bytes * fee per byte * fee factor percent / 100 + 1
 // We add 1 satoshi to compensate for possible flooring by BigInt division.
-function calculateTransactionFee(transaction: Template): bigint {
-    const inputScriptsSize = transaction.inputs.reduce(
-        (totalSize, input) => totalSize + (input.script?.length || 0),
-        0
-    );
-    const outputScriptsSize = transaction.outputs.reduce(
-        (totalSize, output) =>
-            totalSize +
-            output.spendingConditions.reduce((totalSize, condition) => totalSize + (condition.script?.length || 0), 0),
-        0
-    );
-    let totalSize = Math.ceil((inputScriptsSize + outputScriptsSize) / 8);
-    if (transaction.name == TemplateNames.PROOF_REFUTED) totalSize = 600000;
-    const requiredFee = BigInt(totalSize) * agentConf.feePerVbyte;
+function calculateBytesFee(sizeInBytes: bigint): bigint {
+    const requiredFee = sizeInBytes * agentConf.feePerVbyte;
     const factoredFee = (requiredFee * BigInt(agentConf.feeFactorPercent)) / 100n;
     return factoredFee + 1n;
 }
@@ -30,88 +61,75 @@ export async function addAmounts(
     setupId: string,
     templates: Template[]
 ): Promise<Template[]> {
-    function addAmounts(transaction: Template): Template {
-        if (transaction.isExternal) return transaction;
-        const amountlessOutputs = transaction.outputs.filter((output) => !output.amount);
-        if (amountlessOutputs.length == 0) return transaction;
-        // If there are multiple undefined amounts, only the first carries the real value and the rest are symbolic.
-        amountlessOutputs.slice(1).forEach((output) => (output.amount = agentConf.symbolicOutputAmount));
-
-        const incomingAmount = transaction.inputs.reduce((totalValue, input) => {
+    function getExistingFee(template: Template): bigint {
+        const incomingAmount = template.inputs.reduce((totalValue, input) => {
             const output = findOutputByInput(templates, input);
-            if (!output.amount) addAmounts(getTemplateByName(templates, input.templateName));
+            if (!output.amount) setTemplateAmounts(getTemplateByName(templates, input.templateName));
             return totalValue + output.amount!;
         }, 0n);
 
-        const existingOutputsAmount = transaction.outputs.reduce(
-            (totalValue, output) => totalValue + (output.amount || 0n),
-            0n
-        );
-
-        amountlessOutputs[0].amount = incomingAmount - existingOutputsAmount - calculateTransactionFee(transaction);
-        return transaction;
+        const outgoingAmount = template.outputs.reduce((totalValue, output) => totalValue + (output.amount || 0n), 0n);
+        return incomingAmount - outgoingAmount;
     }
 
-    templates = templates.map(addAmounts);
-    validateTransactionFees(templates);
+    function setTemplateAmounts(template: Template): Template {
+        const amountlessOutputs = template.outputs.filter((output) => !output.amount);
+        if (amountlessOutputs.length == 0) return template;
+
+        // If there are multiple undefined amounts, only the first carries the real value and the rest are symbolic.
+        amountlessOutputs.slice(1).forEach((output) => (output.amount = agentConf.symbolicOutputAmount));
+
+        const currentFee = getExistingFee(template);
+        const expectedFee = calculateBytesFee(TRANSACTION_SIZES[template.name]);
+        amountlessOutputs[0].amount = currentFee - expectedFee;
+        return template;
+    }
+
+    function validateTemplateAmounts(template: Template): void {
+        if (template.outputs.some((output) => !output.amount))
+            throw new Error(`Template ${template.name} has undefined output amounts`);
+        const fee = getExistingFee(template);
+        if (fee < 1) throw new Error(`Template ${template.name} has no fee: ${fee}`);
+        const expectedFee = calculateBytesFee(TRANSACTION_SIZES[template.name]);
+        if (fee < expectedFee)
+            throw new Error(`Template ${template.name} has low fee: ${fee} instead of ${expectedFee}`);
+        if (fee > expectedFee)
+            throw new Error(`Template ${template.name} has high fee: ${fee} instead of ${expectedFee}`);
+    }
+
+    for (let template of templates) {
+        // Skip externally funded templates.
+        // TODO: once we find how to fund CHALLENGE we should skip it too.
+        if (template.isExternal) continue;
+        template = setTemplateAmounts(template);
+        if (template.name == TemplateNames.CHALLENGE) continue;
+        validateTemplateAmounts(template);
+    }
 
     return templates;
 }
 
 // This should probably be in a unit test.
-export function validateTransactionFees(templates: Template[]) {
-    const totals = templates.reduce(
-        (totals, t) => {
-            if (t.outputs.some((output) => !output.amount))
-                throw new Error(`Template ${t.name} has undefined output amounts`);
+export function validateTemplateFees(templates: Template[]) {
+    for (const template of templates) {
+        // Skip externally funded templates and the challenge template.
+        if (template.isExternal || template.name == TemplateNames.CHALLENGE) continue;
 
-            // Skip externally funded templates for summing up fees.
-            if (t.isExternal) return totals;
-            if (t.name == TemplateNames.PROOF_REFUTED) return totals;
+        if (template.outputs.some((output) => !output.amount))
+            throw new Error(`Template ${template.name} has undefined output amounts`);
 
-            const inputsValue = t.inputs.reduce(
-                (totalValue, input) => totalValue + (findOutputByInput(templates, input).amount || 0n),
-                0n
-            );
-            const outputsValue = t.outputs.reduce((totalValue, output) => totalValue + (output.amount || 0n), 0n);
-            const fee = inputsValue - outputsValue;
-            const size =
-                t.inputs.reduce((totalSize, input) => totalSize + (input.script?.length || 0), 0) +
-                t.outputs.reduce(
-                    (totalSize, output) =>
-                        totalSize +
-                        output.spendingConditions.reduce(
-                            (totalSize, condition) => totalSize + (condition.script?.length || 0),
-                            0
-                        ),
-                    0
-                );
-            const requiredFee = calculateTransactionFee(t);
-
-            if (inputsValue - outputsValue < 0) {
-                throw new Error(`Template ${t.name} has negative value: ${inputsValue - outputsValue}`);
-            }
-
-            if (!t.fundable) {
-                // New inputs can be added to fundable transactions
-                if (inputsValue - outputsValue < requiredFee)
-                    throw new Error(`Template ${t.name} has low fee: ${inputsValue - outputsValue - fee}`);
-            }
-
-            return {
-                size: totals.size + size,
-                fee: totals.fee + fee
-            };
-        },
-        { size: 0, fee: 0n }
-    );
-
-    if (totals.fee / BigInt(Math.ceil((totals.size / 8 / 100) * agentConf.feeFactorPercent)) != agentConf.feePerVbyte) {
-        throw new Error(
-            `Fee per byte is not correct: ` +
-                `${totals.fee / BigInt(Math.ceil((totals.size / 8 / 100) * agentConf.feeFactorPercent))} ` +
-                `!= ${agentConf.feePerVbyte}`
+        const inputsValue = template.inputs.reduce(
+            (totalValue, input) => totalValue + (findOutputByInput(templates, input).amount || 0n),
+            0n
         );
+        const outputsValue = template.outputs.reduce((totalValue, output) => totalValue + (output.amount || 0n), 0n);
+        const fee = inputsValue - outputsValue;
+        const requiredFee = calculateBytesFee(TRANSACTION_SIZES[template.name]);
+
+        if (inputsValue - outputsValue < 0)
+            throw new Error(`Template ${template.name} has negative value: ${inputsValue - outputsValue}`);
+        if (inputsValue - outputsValue < requiredFee)
+            throw new Error(`Template ${template.name} has low fee: ${inputsValue - outputsValue - fee}`);
     }
 }
 

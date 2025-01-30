@@ -3,7 +3,7 @@ import { AgentDb } from '../common/agent-db';
 import { getSpendingConditionByInput } from '../common/templates';
 import { AgentRoles, SignatureType, TemplateNames } from '../common/types';
 import { decodeWinternitz } from '../common/winternitz';
-import { validateTransactionFees } from './amounts';
+import { validateTemplateFees } from './amounts';
 
 const failures: string[] = [];
 function fail(msg: string) {
@@ -27,7 +27,7 @@ export async function verifySetup(agentId: string, setupId: string, role: AgentR
     else console.log('Success');
 
     console.log('check that all outputs have amounts');
-    validateTransactionFees(templates);
+    validateTemplateFees(templates);
     const amountCheck = templates
         .filter((t) => t.name != TemplateNames.CHALLENGE)
         .every((t) =>
