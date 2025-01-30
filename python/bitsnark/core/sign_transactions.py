@@ -1,19 +1,24 @@
 import argparse
+import logging
 import os
 import sys
-from typing import Sequence
+from typing import Sequence, Literal
 
 from bitcointx.core.key import CKey, XOnlyPubKey
+from bitcointx.core.script import SIGHASH_SINGLE, SIGHASH_ANYONECANPAY, SIGHASH_Type
 from sqlalchemy import create_engine, select, update
 from sqlalchemy.orm.attributes import flag_modified
 from sqlalchemy.orm.session import Session
 
 from bitsnark.conf import POSTGRES_BASE_URL
 from bitsnark.core.environ import load_bitsnark_dotenv
-from bitsnark.core.parsing import serialize_hex
+from bitsnark.core.parsing import serialize_hex, parse_hex_bytes
 from bitsnark.core.transactions import construct_signable_transaction, MissingScript
+from tests.conftest import dbsession
 from .models import TransactionTemplate, Setups, SetupStatus
 from .types import Role
+
+logger = logging.getLogger(__name__)
 
 
 class TransactionProcessingError(Exception):
@@ -140,6 +145,8 @@ def sign_tx_template(
         dbsession=dbsession,
     )
 
+    sighash_type = get_sighash_type(tx_template)
+
     # Alter the template
     tx_template.txid = signable_tx.txid
 
@@ -147,21 +154,83 @@ def sign_tx_template(
         index = signable_input.index
         signature = signable_input.sign(
             private_key=private_key,
+            hashtype=sighash_type,
         )
 
-        if role == 'prover':
-            role_signature_key = 'proverSignature'
-        elif role == 'verifier':
-            role_signature_key = 'verifierSignature'
-        else:
-            raise ValueError(f"Unknown role {role}")
+        signature_key = get_signature_key(role)
 
-        tx_template.inputs[index][role_signature_key] = serialize_hex(signature)
+        tx_template.inputs[index][signature_key] = serialize_hex(signature)
 
     # Make sure SQLAlchemy knows that the JSON object has changed
     flag_modified(tx_template, 'inputs')
 
     return True
+
+
+def verify_tx_template_signatures(
+    *,
+    tx_template: TransactionTemplate,
+    dbsession: Session,
+    signer_pubkey: XOnlyPubKey,
+    signer_role: Role,
+    ignore_missing_script: bool = False,
+):
+    signature_key = get_signature_key(signer_role)
+    try:
+        signable_tx = construct_signable_transaction(
+            tx_template=tx_template,
+            dbsession=dbsession,
+        )
+    except MissingScript:
+        if ignore_missing_script:
+            logger.warning("Skipping %s for %s because of missing script", signature_key, tx_template.name)
+            return
+        raise
+
+    assert len(tx_template.inputs) == len(signable_tx.tx.vin)
+    assert len(tx_template.inputs) >= 1
+
+    # TODO: this should probably not verify the number of inputs/outputs for fundable transactions
+    sighash_type = get_sighash_type(tx_template)
+
+    for input_index, inp in enumerate(tx_template.inputs):
+        signature_raw = inp.get(signature_key)
+        if not signature_raw:
+            raise ValueError(f"Transaction {tx_template.name} input #{input_index} has no {signature_key}")
+
+        signature = parse_hex_bytes(signature_raw)
+        signable_tx.verify_input_signature_at(
+            index=input_index,
+            public_key=signer_pubkey,
+            signature=signature,
+            hashtype=sighash_type,
+        )
+        logger.info("%s for %s input %d is valid", signature_key, tx_template.name, input_index)
+
+
+def get_signature_key(role: Role) -> Literal['proverSignature', 'verifierSignature']:
+    role = role.lower()
+    if role == 'prover':
+        return 'proverSignature'
+    elif role == 'verifier':
+        return 'verifierSignature'
+    else:
+        raise ValueError(f"Unknown role {role}")
+
+
+def get_sighash_type(tx_template: TransactionTemplate) -> SIGHASH_Type | None:
+    if tx_template.fundable:
+        if len(tx_template.inputs) != 1:
+            raise ValueError(
+                f"Fundable transaction {tx_template.name} has {len(tx_template.inputs)} inputs (should be 1)"
+            )
+        if len(tx_template.outputs) != 1:
+            raise ValueError(
+                f"Fundable transaction {tx_template.name} has {len(tx_template.outputs)} outputs (should be 1)"
+            )
+        return SIGHASH_SINGLE | SIGHASH_ANYONECANPAY
+    else:
+        return None
 
 
 if __name__ == "__main__":

@@ -88,10 +88,16 @@ export function validateTransactionFees(templates: Template[]) {
                 );
             const requiredFee = calculateTransactionFee(t);
 
-            if (inputsValue - outputsValue < 0)
+            if (inputsValue - outputsValue < 0) {
                 throw new Error(`Template ${t.name} has negative value: ${inputsValue - outputsValue}`);
-            if (inputsValue - outputsValue < requiredFee)
-                throw new Error(`Template ${t.name} has low fee: ${inputsValue - outputsValue - fee}`);
+            }
+
+            if (!t.fundable) {
+                // New inputs can be added to fundable transactions
+                if (inputsValue - outputsValue < requiredFee)
+                    throw new Error(`Template ${t.name} has low fee: ${inputsValue - outputsValue - fee}`);
+            }
+
             return {
                 size: totals.size + size,
                 fee: totals.fee + fee

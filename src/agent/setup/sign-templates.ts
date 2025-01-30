@@ -15,6 +15,19 @@ function verifyTemplates(templates: Template[], role: AgentRoles) {
             throw new Error('Missing signature');
         if (role == AgentRoles.VERIFIER && !template.inputs.every((i) => i.verifierSignature))
             throw new Error('Missing signature');
+
+        // TODO: checks for fundable templates should probably not be in sign-templates
+        if (template.fundable) {
+            if (!template.unknownTxid) {
+                throw new Error(`Fundable template ${template.name} should have unknownTxid`);
+            }
+            if (template.inputs.length !== 1) {
+                throw new Error(`Fundable template ${template.name} should have exactly one input`);
+            }
+            if (template.outputs.length !== 1) {
+                throw new Error(`Fundable template ${template.name} should have exactly one output`);
+            }
+        }
     }
 }
 

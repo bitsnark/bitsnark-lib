@@ -82,8 +82,8 @@ export const protocolStart: Template[] = [
                 ]
             },
             {
-                // Add some extra value to make CHALLENGE output high enough to pass dust limit.
-                amount: agentConf.symbolicOutputAmount * 2n,
+                // Do NOT add any extra value to make CHALLENGE output high enough to pass dust limit.
+                amount: agentConf.symbolicOutputAmount,
                 spendingConditions: [
                     {
                         // challenge
@@ -98,6 +98,7 @@ export const protocolStart: Template[] = [
         role: AgentRoles.VERIFIER,
         name: TemplateNames.CHALLENGE,
         unknownTxid: true,
+        fundable: true,
         inputs: [
             {
                 templateName: TemplateNames.PROOF,
@@ -107,6 +108,9 @@ export const protocolStart: Template[] = [
         ],
         outputs: [
             {
+                // We don't want to calculate this amount dynamically -- it needs to be so that the template
+                // cannot get sent unless it's funded
+                amount: agentConf.symbolicOutputAmount,
                 spendingConditions: [
                     {
                         nextRole: AgentRoles.PROVER,

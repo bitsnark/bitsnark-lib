@@ -25,6 +25,7 @@ const IncomingTransactionsBaseRow: JoinedTemplate = {
     id: 0,
     height: undefined,
     unknownTxid: false,
+    fundable: false,
     protocolData: undefined
 };
 
@@ -90,7 +91,9 @@ export const mockExpected = (function createSetupsIncomingTransactions(): Joined
                 txid: txIdBySetupAndName(setupId, templateName),
                 id: setupIndex * 100 + index,
                 inputs: getInputs(templateName) as Input[],
+                // TODO: get rid of unknownTxid?, fundable should be enough
                 unknownTxid: templateName === TemplateNames.CHALLENGE,
+                fundable: templateName === TemplateNames.CHALLENGE,
                 status: TemplateStatus.PENDING
             };
         });

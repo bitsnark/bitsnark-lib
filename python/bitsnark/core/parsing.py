@@ -15,6 +15,10 @@ def parse_bignum(s: str) -> int:
     return int(ret, 16)
 
 
+def serialize_bignum(n: int) -> str:
+    return f"bigint:{n:x}n"
+
+
 def parse_hex_str(s: str) -> str:
     if not isinstance(s, str):
         raise TypeError(f"Expected string, got {type(s)}")

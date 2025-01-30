@@ -10,7 +10,7 @@ from sqlalchemy.orm.session import Session
 from bitsnark.btc.rpc import BitcoinRPC
 from bitsnark.conf import POSTGRES_BASE_URL
 from bitsnark.core.environ import load_bitsnark_dotenv
-from ._base import Context
+from ._base import Context, determine_chain
 from .fund_and_send import FundAndSendCommand
 from .show import ShowCommand
 from .spend import SpendCommand
@@ -62,18 +62,9 @@ def main(argv: Sequence[str] = None):
 
     bitcoin_rpc = BitcoinRPC(args.rpc)
     try:
-        blockchain_info = bitcoin_rpc.call('getblockchaininfo')
+        chain = determine_chain(bitcoin_rpc)
     except Exception as e:
         sys.exit(f"Cannot connect to the bitcoin node at {args.rpc} (error: {e})")
-
-    if blockchain_info['chain'] == 'regtest':
-        chain = 'bitcoin/regtest'
-    elif blockchain_info['chain'] == 'test':
-        chain = 'bitcoin/testnet'
-    elif blockchain_info['chain'] == 'main':
-        chain = 'bitcoin/mainnet'
-    else:
-        raise ValueError(f"Unknown chain {blockchain_info['chain']}")
 
     with ChainParams(chain):
         with dbsession.begin():
