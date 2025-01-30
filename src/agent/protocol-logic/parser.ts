@@ -1,5 +1,6 @@
-import { findOutputByInput } from '../common/templates';
-import { Input, Template } from '../common/types';
+import { bigintToBufferBE } from '../common/encoding';
+import { getSpendingConditionByInput } from '../common/templates';
+import { Input, Template, WitnessAndValue } from '../common/types';
 import { decodeWinternitz, WOTS_NIBBLES } from '../common/winternitz';
 
 function hashesFromBuffer(data: Buffer): Buffer[] {
@@ -10,33 +11,8 @@ function hashesFromBuffer(data: Buffer): Buffer[] {
     return result;
 }
 
-export interface ProofData {
-    proof: bigint[];
-}
-
-export interface SelectData {
-    selection: number;
-}
-
-export interface StateData {
-    stateRoots: Buffer[];
-}
-
-type MerkleProofData = Buffer[];
-
-export interface ArgumentData {
-    index: number;
-    a: bigint;
-    b: bigint;
-    c: bigint;
-    d: bigint;
-    merkleProofs: MerkleProofData;
-}
-
-export function parseInput(templates: Template[], input: Input, data: Buffer[]): bigint[] {
-    const output = findOutputByInput(templates, input);
-    if (!output) throw new Error('Output not found');
-    const sc = output.spendingConditions[input.spendingConditionIndex];
+export function parseInput(templates: Template[], input: Input, data: Buffer[]): WitnessAndValue[] {
+    const sc = getSpendingConditionByInput(templates, input);
     if (!sc) throw new Error('Spending condition not found');
     if (!sc.wotsSpec) return [];
     if (!sc.wotsPublicKeys) throw new Error('Missing public keys');
@@ -44,14 +20,20 @@ export function parseInput(templates: Template[], input: Input, data: Buffer[]):
     const hashes = data.map((item) => hashesFromBuffer(item)).flat();
     let hashesIndex = 0;
     let resultIndex = 0;
-    const result: bigint[] = [];
+    const result: WitnessAndValue[] = [];
     for (let i = 0; i < sc.wotsSpec.length; i++) {
         const spec = sc.wotsSpec[i];
         const keys = sc.wotsPublicKeys[i];
         const nibbleCount = WOTS_NIBBLES[spec];
         if (keys.length != nibbleCount) throw new Error('Wrong number of keys');
         try {
-            result[resultIndex++] = decodeWinternitz(spec, hashes.slice(hashesIndex, hashesIndex + nibbleCount), keys);
+            const th = hashes.slice(hashesIndex, hashesIndex + nibbleCount);
+            const tv = decodeWinternitz(spec, th, keys);
+            result[resultIndex++] = {
+                value: tv,
+                buffer: bigintToBufferBE(tv, 256),
+                witness: th
+            };
         } catch (e) {
             console.error('Error decoding input:', input);
             throw e;
@@ -61,6 +43,6 @@ export function parseInput(templates: Template[], input: Input, data: Buffer[]):
     return result;
 }
 
-export function parseInputs(templates: Template[], inputs: Input[], witnesses: Buffer[][]): bigint[][] {
+export function parseInputs(templates: Template[], inputs: Input[], witnesses: Buffer[][]): WitnessAndValue[][] {
     return inputs.map((input, i) => parseInput(templates, input, witnesses[i]));
 }

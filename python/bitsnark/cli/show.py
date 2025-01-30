@@ -64,6 +64,16 @@ class ShowCommand(Command):
                 f"({prevout_amount} sat, "
                 f"tx: {prev_tx_name}, output: {prevout_index}, spendingCondition: {sc_index})"
             )
+            for key, value in inp.items():
+                if key in ('index', 'templateName', 'outputIndex', 'spendingConditionIndex'):
+                    # Already have these above
+                    continue
+                value = str(value)
+                maxwidth = max(terminal.columns - 50, 30)
+                if len(value) > maxwidth:
+                    value = value[:maxwidth] + "..."
+                key = f"{key}:".ljust(25)
+                print(f'  - {key} {value}')
         print("Outputs:")
         for outp in tx_template.outputs:
             index = outp['index']

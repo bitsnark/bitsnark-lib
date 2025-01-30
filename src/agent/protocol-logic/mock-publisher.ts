@@ -41,7 +41,6 @@ export class MockPublisher {
     templates: { prover: Template[]; verifier: Template[] } = { prover: [], verifier: [] };
     bitcoinClient: BitcoinNode;
     scheduler: NodeJS.Timeout | undefined;
-    isRunning: boolean = false;
 
     constructor(proverId: string, verifierId: string, setupId: string) {
         this.agents = { prover: proverId, verifier: verifierId };
@@ -60,9 +59,6 @@ export class MockPublisher {
 
         this.scheduler = setInterval(async () => {
             try {
-                if (this.isRunning) return;
-                this.isRunning = true;
-
                 await generateBlocks(this.bitcoinClient.client, 1);
 
                 const readyToSendTemplates = {
@@ -90,7 +86,6 @@ export class MockPublisher {
                 };
 
                 if (!readyToSendTemplates.prover.length && !readyToSendTemplates.verifier.length) {
-                    this.isRunning = false;
                     return;
                 }
 
@@ -125,11 +120,8 @@ export class MockPublisher {
                         }
                     }
                 }
-
-                this.isRunning = false;
             } catch (e) {
                 console.error(e);
-                this.isRunning = false;
             }
         }, agentConf.protocolIntervalMs / 3);
     }

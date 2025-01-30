@@ -117,7 +117,13 @@ def create_tx_with_witness(
             prover_signature = parse_hex_bytes(prover_signature_raw)
             signatures.append(prover_signature)
 
-        tapscript = CScript(parse_hex_bytes(spending_condition['script']))
+        # TODO: refactor this so that it always uses inp['script']
+        script_raw = inp.get('script', spending_condition.get('script'))
+        if script_raw is None:
+            raise ValueError(
+                f"Transaction {tx_template.name} input #{input_index} has no script or spendingCondition script"
+            )
+        tapscript = CScript(parse_hex_bytes(script_raw))
 
         if tx_template.protocol_data:
             witness = [
@@ -127,7 +133,19 @@ def create_tx_with_witness(
         else:
             witness = []
 
-        control_block = parse_hex_bytes(spending_condition['controlBlock'])
+        # TODO: refactor it to always use inp['controlBlock']
+        control_block_raw = inp.get('controlBlock', spending_condition.get('controlBlock'))
+        if control_block_raw is None:
+            raise ValueError(
+                f"Transaction {tx_template.name} input #{input_index} has no controlBlock or spendingCondition controlBlock"
+            )
+        
+        if tx_template.name == 'PROOF_REFUTED':
+            print('!!!!!!!!! 1 prevout', prevout)
+            print('!!!!!!!!! 1 control_block_raw', control_block_raw)
+            # print('!!!!!!!!! 1 script_raw', script_raw)
+
+        control_block = parse_hex_bytes(control_block_raw)
 
         input_witness = CTxInWitness(CScriptWitness(
             stack=[

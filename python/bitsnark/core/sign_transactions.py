@@ -62,7 +62,7 @@ def sign_setup(setup_id: str, agent_id: str, role: Role, dbsession: Session):
     for tx in tx_templates:
         print(f"Processing transaction #{tx.ordinal}: {tx.name}...")
         try:
-            success = _handle_tx_template(
+            success = sign_tx_template(
                 tx_template=tx,
                 role=role,
                 private_key=private_key,
@@ -124,7 +124,7 @@ def main(argv: Sequence[str] = None):
     sign_setup(args.setup_id, args.agent_id, args.role, dbsession)
 
 
-def _handle_tx_template(
+def sign_tx_template(
     *,
     tx_template: TransactionTemplate,
     role: Role,

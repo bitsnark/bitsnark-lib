@@ -20,11 +20,15 @@ async function run(command: string, input: string): Promise<string> {
                 resolve(result.split('\n')[0]);
             }
         });
+        child.stderr.on('data', (data: Buffer) => {
+            const error = data.toString('utf-8');
+            console.error(error);
+            reject(error);
+        });
         child.on('error', (error) => {
             console.error(error);
             reject(error);
         });
-
         child.stdin!.write(input.split('\n').join('') + '\n');
     });
 }

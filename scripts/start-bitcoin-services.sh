@@ -2,7 +2,7 @@
 . "$(dirname "$(realpath "$0")")/common.sh"
 activate_python_venv
 
-pkill -f 'python -m bitsnark.core.db_listener' > /dev/null || true
+pkill -f '[Pp]ython -m bitsnark.core.db_listener' > /dev/null || true
 pkill -f 'ts-node ./src/agent/listener/bitcoin-listener.ts' > /dev/null || true
 
 prover="${1:-bitsnark_prover_1}"

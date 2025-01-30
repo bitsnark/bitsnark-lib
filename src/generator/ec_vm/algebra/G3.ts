@@ -48,40 +48,6 @@ export class G3 extends EC<Fp12t> {
         return new G3Point(this, x, y, z, t);
     }
 
-    // twist(pt: G2Point): G3Point {
-    //     const w = this.initialW;
-    //     const w_2 = w.mul(w);
-    //     const w_3 = w_2.mul(w);
-    //     const x = pt.x;
-    //     const y = pt.y;
-    //     const xcoeffs = [
-    //         x.r.sub(x.i.mul(this.nine)),
-    //         x.i];
-    //     const ycoeffs = [
-    //         y.r.sub(y.i.mul(this.nine)),
-    //         y.i];
-    //     const nx = new Fp12(new Poly12(
-    //         [xcoeffs[0],
-    //         ...this.fiveZeros,
-    //         xcoeffs[1],
-    //         ...this.fiveZeros]));
-    //     const ny = new Fp12(new Poly12(
-    //         [ycoeffs[0],
-    //         ...this.fiveZeros,
-    //         ycoeffs[1],
-    //         ...this.fiveZeros]));
-
-    //     const result = this.makePoint(w_2.mul(nx), w_3.mul(ny));
-    //     return result;
-    // }
-
-    // cast(p: G1Point): G3Point {
-    //     return this.makePoint(
-    //         new Fp12t(new Poly12t([p.x])),
-    //         new Fp12t(new Poly12t([p.y]))
-    //     );
-    // }
-
     // See the mixed addition algorithm from "Faster Computation of the
     // Tate Pairing", http://arxiv.org/pdf/0904.0854v3.pdf
     static lineFunctionAdd(r: G2Point, p: G2Point, q: G1Point, r2: Fp2): { a: Fp2; b: Fp2; c: Fp2; rOut: G2Point } {
@@ -331,7 +297,6 @@ export class G3 extends EC<Fp12t> {
     }
 
     pairingCheck(a: G1Point[], b: G2Point[]) {
-        // let acc = new Fp12t();
         let acc = this.miller(b[0], a[0]);
         acc = acc.mul(this.miller(b[1], a[1]));
         acc = acc.mul(this.miller(b[2], a[2]));
