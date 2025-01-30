@@ -4,16 +4,17 @@ import { parseInputs } from './parser';
 import { step1_vm } from '../../generator/ec_vm/vm/vm';
 import groth16Verify, { Key, Proof as Step1_Proof } from '../../generator/ec_vm/verifier';
 import { findErrorState } from './states';
-import { encodeWinternitz24, encodeWinternitz256_4 } from '../common/winternitz';
-import { Argument } from './argument';
+import { encodeWinternitz24 } from '../common/winternitz';
+import { refute } from './argument';
 import { last } from '../common/array-utils';
 import { createUniqueDataId } from '../setup/wots-keys';
-import { AgentRoles, TemplateNames } from '../common/types';
+import { AgentRoles, TemplateNames, TemplateStatus, WitnessAndValue } from '../common/types';
 import { AgentDb } from '../common/agent-db';
 import { getTemplateByName, twoDigits } from '../common/templates';
 import { Incoming, ProtocolBase } from './protocol-base';
 import { defaultVerificationKey } from '../../generator/ec_vm/constants';
 import { sleep } from '../common/sleep';
+import { Bitcoin, executeProgram } from '../../../src/generator/btc_vm/bitcoin';
 
 export class ProtocolVerifier extends ProtocolBase {
     constructor(agentId: string, setupId: string) {
@@ -29,7 +30,7 @@ export class ProtocolVerifier extends ProtocolBase {
         }
 
         // read all incoming transactions
-        const incomingArray = await this.getIncoming();
+        const incomingArray = (await this.getIncoming()).filter((t) => !t.template.isExternal);
         if (incomingArray.length == 0) {
             // nothing to do
             return;
@@ -38,7 +39,7 @@ export class ProtocolVerifier extends ProtocolBase {
         const selectionPath: number[] = [];
         const selectionPathUnparsed: Buffer[][] = [];
         let proof: bigint[] = [];
-        const states: Buffer[][] = [];
+        const states: WitnessAndValue[][] = [];
 
         // examine each one
         for (const incoming of incomingArray) {
@@ -48,7 +49,7 @@ export class ProtocolVerifier extends ProtocolBase {
                 case TemplateNames.PROOF:
                     proof = this.parseProof(incoming);
                     if (lastFlag && !this.checkProof(proof)) {
-                        this.sendChallenge();
+                        await this.sendChallenge();
                     }
                     break;
                 case TemplateNames.PROOF_UNCONTESTED:
@@ -69,12 +70,22 @@ export class ProtocolVerifier extends ProtocolBase {
                     break;
                 case TemplateNames.ARGUMENT:
                     if (lastFlag) {
-                        await this.refuteArgument(proof, states, incoming);
+                        const status = await this.getTemplateStatus(TemplateNames.PROOF_REFUTED);
+                        if (status == TemplateStatus.REJECTED) {
+                            // We lost, mark it.
+                            await this.db.markSetupPegoutSuccessful(this.setupId);
+                        } else if (status == TemplateStatus.PENDING) {
+                            await this.refuteArgument(proof, states, incoming);
+                        }
                     }
                     break;
                 case TemplateNames.ARGUMENT_UNCONTESTED:
-                    // we lost, mark it
+                    // we lost, mark it.
                     await this.db.markSetupPegoutSuccessful(this.setupId);
+                    break;
+                case TemplateNames.PROOF_REFUTED:
+                    // We won! Mark it.
+                    await this.db.markSetupPegoutFailed(this.setupId);
                     break;
             }
 
@@ -113,12 +124,12 @@ export class ProtocolVerifier extends ProtocolBase {
         return success;
     }
 
-    private async refuteArgument(proof: bigint[], states: Buffer[][], incoming: Incoming) {
+    private async refuteArgument(proof: bigint[], states: WitnessAndValue[][], incoming: Incoming) {
         const rawTx = incoming.received.raw;
         const witnesses = rawTx.vin.map((vin) => vin.txinwitness!.map((s) => Buffer.from(s, 'hex')));
         const argData = parseInputs(this.templates!, incoming.template.inputs, witnesses);
-        const argument = new Argument(this.agentId, this.setup!.id, proof);
-        const refutation = await argument.refute(argData, states);
+
+        const refutation = await refute(this.agentId, this.setupId, proof, argData, states);
 
         // Add the script to the refutation template.
         const refutationTemplate = getTemplateByName(this.templates!, TemplateNames.PROOF_REFUTED);
@@ -126,24 +137,24 @@ export class ProtocolVerifier extends ProtocolBase {
         refutationTemplate.inputs[0].controlBlock = refutation.controlBlock;
         await this.db.upsertTemplates(this.setupId, [refutationTemplate]);
 
-        const data = refutation.data
-            .map((n, dataIndex) =>
-                encodeWinternitz256_4(
-                    n,
-                    createUniqueDataId(this.setup!.id, TemplateNames.PROOF_REFUTED, 0, 0, dataIndex)
-                )
-            )
-            .flat();
-        this.sendTransaction(TemplateNames.PROOF_REFUTED, [data]);
+        const bitcoin = new Bitcoin();
+        const data = refutation.data.map((wav) => wav.witness!).flat();
+        data.forEach((b) => bitcoin.addWitness(b!));
+        bitcoin.addWitness(Buffer.alloc(64));
+        bitcoin.throwOnFail = true;
+        console.log('!!!!!!!!!!!!!!!! Executing....');
+        executeProgram(bitcoin, refutation.script, true);
+
+        await this.sendTransaction(TemplateNames.PROOF_REFUTED, [data]);
     }
 
-    private async sendSelect(proof: bigint[], selectionPath: number[], states: Buffer[][]) {
+    private async sendSelect(proof: bigint[], selectionPath: number[], states: WitnessAndValue[][]) {
         const iteration = selectionPath.length;
-        const txName = TemplateNames.SELECT + '_' + twoDigits(iteration);
+        const txName = `${TemplateNames.SELECT}_${twoDigits(iteration)}` as TemplateNames;
         const selection = await findErrorState(proof, states, selectionPath);
         if (selection < 0) throw new Error('Could not find error state');
         const selectionWi = encodeWinternitz24(BigInt(selection), createUniqueDataId(this.setup!.id, txName, 0, 0, 0));
-        this.sendTransaction(txName, [selectionWi]);
+        await this.sendTransaction(txName, [selectionWi]);
     }
 
     private async sendChallenge() {
@@ -155,7 +166,7 @@ export class ProtocolVerifier extends ProtocolBase {
     }
 
     private async sendSelectUncontested(iteration: number) {
-        await this.sendTransaction(TemplateNames.SELECT_UNCONTESTED + '_' + twoDigits(iteration));
+        await this.sendTransaction(`${TemplateNames.SELECT_UNCONTESTED}_${twoDigits(iteration)}` as TemplateNames);
     }
 }
 

@@ -16,10 +16,14 @@ export async function main(proverAgentId: string, verifierAgentId: string, setup
         setupId = randomBytes(32).toString('hex');
 
         const proverAgent = new Agent(proverAgentId, AgentRoles.PROVER);
-        proverAgent.launch();
+        proverAgent.launch().catch((error) => {
+            console.error(error);
+        });
 
         const verifierAgent = new Agent(verifierAgentId, AgentRoles.VERIFIER);
-        verifierAgent.launch();
+        verifierAgent.launch().catch((error) => {
+            console.error(error);
+        });
 
         await startSetup(proverAgentId, verifierAgentId, setupId);
 
@@ -44,7 +48,9 @@ export async function main(proverAgentId: string, verifierAgentId: string, setup
     }
 
     const listener = new MockPublisher(proverAgentId, verifierAgentId, setupId);
-    listener.start();
+    listener.start().catch((error) => {
+        console.error(error);
+    });
 
     const prover = new ProtocolProver(proverAgentId, setupId);
     const verifier = new ProtocolVerifier(verifierAgentId, setupId);
@@ -52,7 +58,7 @@ export async function main(proverAgentId: string, verifierAgentId: string, setup
     const proof = proofBigint.map((p) => p);
     proof[0] = 0n;
 
-    prover.pegOut(proof);
+    await prover.pegOut(proof);
 
     const doit = async () => {
         try {

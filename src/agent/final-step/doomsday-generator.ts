@@ -1,10 +1,9 @@
 import { InstrCode, Instruction } from '../../generator/ec_vm/vm/types';
-import { Compressor } from '../common/taptree';
+import { Compressor, DEAD_ROOT_HASH } from '../common/taptree';
 import { Template } from '../common/types';
 import { AgentDb } from '../common/agent-db';
 import { ForkCommand, ForkYourself } from '../fork/fork-yourself';
 import { GenerateFinalTaprootCommand } from '../fork/fork-entrypoint';
-import { parallelize } from '../common/parallelize';
 import { array } from '../common/array-utils';
 import { loadProgram } from '../setup/groth16-verify';
 import { Decasector } from '../setup/decasector';
@@ -19,6 +18,9 @@ import {
 import { getHash } from '../../../src/common/taproot-common';
 import { prime_bigint } from '../common/constants';
 import { modInverse } from '../../generator/common/math-utils';
+import { parallelize } from '../common/parallelize';
+
+const allHashesCache: { [key: string]: Buffer[] } = {};
 
 function timeStr(ms: number): string {
     ms /= 1000;
@@ -56,15 +58,15 @@ export class DoomsdayGenerator {
         this.decasector = new Decasector();
     }
 
-    chunkTheWork(chunks: number, requestedScriptIndex?: number): GenerateFinalTaprootCommand[] {
+    chunkTheWork(chunks: number): GenerateFinalTaprootCommand[] {
         const total = getMaxRefutationIndex();
-        const chunk = Math.floor(total / chunks);
+        const chunk = Math.ceil(total / chunks);
         const inputs: GenerateFinalTaprootCommand[] = array(chunks, (i) => ({
             agentId: this.agentId,
             setupId: this.setupId,
             from: i * chunk,
             to: Math.min(total, (i + 1) * chunk),
-            requestedScriptIndex
+            skip: false
         }));
         return inputs;
     }
@@ -106,28 +108,19 @@ export class DoomsdayGenerator {
         }
     }
 
-    async generateFinalStepTaprootChunk(
-        templates: Template[],
-        from: number,
-        to: number,
-        requestedScriptIndex?: number
-    ): Promise<ChunkResult> {
+    async generateFinalStepTaprootChunk(templates: Template[], from: number, to: number): Promise<ChunkResult> {
         const hashes: Buffer[] = [];
-        let requestedScript: Buffer | undefined = undefined;
         for (let i = from; i < to; i++) {
             try {
                 const rd = getRefutationDescriptor(i);
                 const script = await createRefutationScript(this.decasector, templates, rd);
-                if (i == requestedScriptIndex) {
-                    requestedScript = script;
-                }
                 hashes.push(getHash(script));
             } catch (e) {
                 console.error(e);
                 throw new Error('Failed to generate refutation script, index: ' + i);
             }
         }
-        return { hashes, requestedScript };
+        return { hashes };
     }
 
     async generateFinalStepTaprootParallel(
@@ -135,20 +128,42 @@ export class DoomsdayGenerator {
     ): Promise<GenerateTaprootResult> {
         const start = Date.now();
         console.log('Starting doomsday parallel...');
-        const requestedScriptIndex = refutationDescriptor ? getRefutationIndex(refutationDescriptor) : undefined;
-        const inputs = this.chunkTheWork(64, requestedScriptIndex);
 
-        const results = await parallelize<GenerateFinalTaprootCommand, ChunkResult>(inputs, async (input) => {
-            return this.forker.fork(input);
-        });
-        const allHashes = results.flatMap((r) => r.hashes);
+        const requestedScriptIndex = refutationDescriptor ? getRefutationIndex(refutationDescriptor) : 0;
+
+        let allHashes = allHashesCache[this.setupId];
+        if (!allHashes) {
+            const inputs = this.chunkTheWork(128);
+
+            const results = await parallelize<GenerateFinalTaprootCommand, ChunkResult>(inputs, async (input) => {
+                if (input.skip) {
+                    return { hashes: array(input.to - input.from, DEAD_ROOT_HASH) };
+                }
+                return this.forker.fork(input);
+            });
+
+            if (results.length != inputs.length || results.some((r) => !r || !r.hashes || r.hashes.length == 0))
+                throw new Error('Missing results');
+
+            allHashes = results.flatMap((r) => r.hashes);
+            allHashesCache[this.setupId] = allHashes;
+        }
+
         const compressor = new Compressor(allHashes.length, requestedScriptIndex);
         allHashes.forEach((h) => compressor.addHash(h));
-        const requestedScript = results.find((r) => r.requestedScript)?.requestedScript;
-        const requestedControlBlock = refutationDescriptor ? compressor.getControlBlock() : undefined;
+        compressor.getRoot();
+        compressor.getTaprootPubkey();
 
         const time = Date.now() - start;
         console.log(`Finished doomsday   -  ${timeStr(time)}`);
+
+        let requestedScript;
+        const requestedControlBlock = refutationDescriptor ? compressor.getControlBlock() : undefined;
+        if (refutationDescriptor) {
+            const db = new AgentDb(this.agentId);
+            const templates = await db.getTemplates(this.setupId);
+            requestedScript = await createRefutationScript(this.decasector, templates, refutationDescriptor);
+        }
 
         const ret = {
             taprootHash: compressor.getRoot(),
@@ -156,13 +171,15 @@ export class DoomsdayGenerator {
             requestedScript,
             requestedControlBlock
         };
+        console.log('!!!!!!!!! 3 taprootPubKey', ret.taprootPubKey?.toString('hex'));
+        console.log('!!!!!!!!! 3 requestedControlBlock', ret.requestedControlBlock?.toString('hex'));
         return ret;
     }
 
     async generateFinalStepTaproot(refutationDescriptor?: RefutationDescriptor): Promise<GenerateTaprootResult> {
         const db = new AgentDb(this.agentId);
         const templates = await db.getTemplates(this.setupId);
-        const inputs = this.chunkTheWork(64);
+        const inputs = this.chunkTheWork(10000);
         const requestedScriptIndex = refutationDescriptor ? getRefutationIndex(refutationDescriptor) : undefined;
 
         const start = Date.now();
@@ -173,21 +190,30 @@ export class DoomsdayGenerator {
             const start = Date.now();
             console.log(`Starting chunk ${i} of ${inputs.length}`);
 
-            const r = await this.generateFinalStepTaprootChunk(
-                templates,
-                inputs[i].from,
-                inputs[i].to,
-                requestedScriptIndex
-            );
-            results.push(r);
+            if (inputs[i].from <= requestedScriptIndex! && inputs[i].to > requestedScriptIndex!) {
+                const r = await this.generateFinalStepTaprootChunk(templates, inputs[i].from, inputs[i].to);
+                results.push(r);
+            } else {
+                results.push({
+                    hashes: array(inputs[i].to - inputs[i].from, DEAD_ROOT_HASH)
+                });
+            }
+
             const time = Date.now() - start;
             console.log(`Finished chunk ${i} of ${inputs.length}   -   ${timeStr(time)}`);
         }
 
         const allHashes = results.flatMap((r) => r.hashes);
         const compressor = new Compressor(allHashes.length, requestedScriptIndex);
+
+        while (allHashes.length < compressor.total) allHashes.push(DEAD_ROOT_HASH);
+
         allHashes.forEach((h) => compressor.addHash(h));
-        const requestedScript = results.find((r) => r.requestedScript)?.requestedScript;
+
+        let requestedScript;
+        if (refutationDescriptor) {
+            requestedScript = await createRefutationScript(this.decasector, templates, refutationDescriptor);
+        }
         const requestedControlBlock = refutationDescriptor ? compressor.getControlBlock() : undefined;
 
         const time = Date.now() - start;
@@ -206,11 +232,9 @@ async function main() {
     const args = minimist(process.argv.slice(2));
     const agentId = args['agent-id'] ?? 'bitsnark_prover_1';
     const setupId = args['setup-id'] ?? 'test_setup';
-    const parallel = !!args['parallel'];
+    const parallel = true; // !!args['parallel'];
     const ddg = new DoomsdayGenerator(agentId, setupId);
-    const r = parallel
-        ? await ddg.generateFinalStepTaprootParallel(getRefutationDescriptor(123))
-        : await ddg.generateFinalStepTaproot();
+    const r = parallel ? await ddg.generateFinalStepTaprootParallel() : await ddg.generateFinalStepTaproot();
     console.log(r);
 }
 

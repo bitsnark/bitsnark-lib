@@ -1,7 +1,5 @@
 import assert from 'assert';
 
-// const prime = 21888242871839275222246405745257275088696311157297823662689037894645226208583n;
-
 type Nibble = number; // 3 bit integer
 type ExtNibble = number; // 6 bit integer
 type NibbleSet = Nibble[];
@@ -30,8 +28,6 @@ function bigintToNibblesLS(n: bigint, c?: number): NibbleSet {
 
 /***   hardcoded    ***/
 
-// const primeNibbles: NibbleSet = bigintToNibblesLS(prime);
-
 const rowTable: Nibble[] = [];
 const table: Nibble[] = [];
 for (let i = 0; i < 8; i++) {
@@ -48,15 +44,6 @@ function nibbleMult(a: Nibble, b: Nibble): ExtNibble {
     if (rowTable[a] + b >= table.length) teaPot();
     return table[rowTable[a] + b];
 }
-
-// function smallerThanOrEqual(a: NibbleSet, b: NibbleSet): boolean {
-//     let flag = 0;
-//     for (let i = Math.max(a.length, b.length); i >= 0; i--) {
-//         if (flag == 0 && (a[i] ?? 0) < (b[i] ?? 0)) flag = 1;
-//         if (flag == 0 && (a[i] ?? 0) > (b[i] ?? 0)) flag = 2;
-//     }
-//     return flag != 2;
-// }
 
 function add(a: NibbleSet, b: NibbleSet): NibbleSet {
     const result: NibbleSet = [];
@@ -175,14 +162,6 @@ function bigRandom(level: number): bigint {
     }
     return n % (2n ** 128n - 1n);
 }
-
-// const a = 357n;
-// const b = 632n;
-// const c = a * b;
-// const f = checkEqual(
-//     karatsubaMult(bigintToNibblesLS(a, 4), bigintToNibblesLS(b, 4)),
-//     bigintToNibblesLS(c));
-// console.log(a, b, c, f);
 
 for (let i = 1; i < 128; i++) {
     const a = bigRandom(i);

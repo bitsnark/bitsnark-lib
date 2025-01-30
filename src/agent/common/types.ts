@@ -150,3 +150,9 @@ export interface ReceivedTransaction {
     raw: RawTransaction;
     blockHash: string;
 }
+
+export interface WitnessAndValue {
+    witness?: Buffer[];
+    buffer: Buffer;
+    value: bigint;
+}

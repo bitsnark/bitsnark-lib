@@ -26,7 +26,7 @@ export class ProtocolProver extends ProtocolBase {
         await this.setTemplates();
 
         // read all incoming transactions
-        const incomingArray = await this.getIncoming();
+        const incomingArray = (await this.getIncoming()).filter((t) => !t.template.isExternal);
         if (incomingArray.length == 0) {
             // nothing to do
             return;
@@ -135,13 +135,13 @@ export class ProtocolProver extends ProtocolBase {
     }
 
     private async sendStateUncontested(iteration: number) {
-        await this.sendTransaction(TemplateNames.STATE_UNCONTESTED + '_' + twoDigits(iteration));
+        await this.sendTransaction(`${TemplateNames.STATE_UNCONTESTED}_${twoDigits(iteration)}` as TemplateNames);
     }
 
     private async sendState(proof: bigint[], selectionPath: number[]) {
         const iteration = selectionPath.length;
         const states = await calculateStates(AgentRoles.PROVER, proof, selectionPath);
-        const txName = TemplateNames.STATE + '_' + twoDigits(iteration);
+        const txName = `${TemplateNames.STATE}_${twoDigits(iteration)}` as TemplateNames;
         const spendingConditionIndex = iteration == 0 ? 1 : 0;
         const statesWi = states
             .map((s, dataIndex) =>

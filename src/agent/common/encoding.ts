@@ -145,6 +145,7 @@ export function bufferToBigint160(b: Buffer): bigint {
 }
 
 export function bufferToBigintBE(buffer: Buffer): bigint {
+    if (buffer.length == 0) return 0n;
     return BigInt('0x' + buffer.toString('hex'));
 }
 

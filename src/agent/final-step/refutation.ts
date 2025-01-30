@@ -3,13 +3,12 @@ import { StackItem } from '../../../src/generator/btc_vm/stack';
 import { InstrCode } from '../../../src/generator/ec_vm/vm/types';
 import { getSpendingConditionByInput, getTemplateByName, twoDigits } from '../common/templates';
 import { Template, TemplateNames } from '../common/types';
-import { encodeWinternitz24, encodeWinternitz256_4, getWinternitzPublicKeys, WotsType } from '../common/winternitz';
+import { encodeWinternitz24, encodeWinternitz256_4 } from '../common/winternitz';
 import { bigintToNibbles_3 } from './nibbles';
 import { Decasector } from '../setup/decasector';
 import { checkLineBitcoin } from './check-line';
 import { BLAKE3, Register } from './blake-3-4u';
-import { blake3 as blake3_wasm } from 'hash-wasm';
-import { bufferToBigintBE } from '../common/encoding';
+import { array } from '../common/array-utils';
 
 export const scriptTotalLines = 400001;
 
@@ -19,35 +18,39 @@ export enum RefutationType {
 }
 
 export const totalRefutationProofs = 3;
-export const totalRefutationHashes = 8;
+export const totalRefutationHashOptions = 7;
 
 export interface RefutationDescriptor {
     refutationType: RefutationType;
     line: number;
     whichProof?: number;
-    whichHash?: number;
+    whichHashOption?: number;
 }
 
 export function getMaxRefutationIndex(): number {
-    return scriptTotalLines + scriptTotalLines * totalRefutationProofs * totalRefutationHashes + totalRefutationHashes;
+    return (
+        scriptTotalLines +
+        scriptTotalLines * totalRefutationProofs * totalRefutationHashOptions +
+        totalRefutationHashOptions
+    );
 }
 
 export function getRefutationIndex(refutation: RefutationDescriptor): number {
     refutation = { ...refutation, line: Math.min(refutation.line, scriptTotalLines) };
     if (refutation.refutationType == RefutationType.INSTR) return refutation.line;
     else if (refutation.refutationType == RefutationType.HASH) {
-        if (refutation.whichProof == undefined || refutation.whichHash == undefined)
+        if (refutation.whichProof == undefined || refutation.whichHashOption == undefined)
             throw new Error('Missing whichProof or whichHash');
         if (refutation.whichProof < 0 || refutation.whichProof >= totalRefutationProofs)
             throw new Error('Invalid whichProof');
-        if (refutation.whichHash < 0 || refutation.whichHash >= totalRefutationHashes)
-            throw new Error('Invalid whichHash');
+        if (refutation.whichHashOption < 0 || refutation.whichHashOption >= totalRefutationHashOptions)
+            throw new Error('Invalid whichHashOption');
 
         return (
             scriptTotalLines +
-            refutation.line * totalRefutationHashes * totalRefutationProofs +
-            refutation.whichProof * totalRefutationHashes +
-            refutation.whichHash
+            refutation.line * totalRefutationHashOptions * totalRefutationProofs +
+            refutation.whichProof * totalRefutationHashOptions +
+            refutation.whichHashOption
         );
     } else throw new Error('Unknown refutation type');
 }
@@ -58,12 +61,12 @@ export function getRefutationDescriptor(index: number): RefutationDescriptor {
         return { refutationType: RefutationType.INSTR, line: index };
     }
     index -= scriptTotalLines;
-    const line = Math.floor(index / (totalRefutationProofs * totalRefutationHashes));
-    index -= line * totalRefutationProofs * totalRefutationHashes;
-    const whichProof = Math.floor(index / totalRefutationHashes);
-    index -= whichProof * totalRefutationHashes;
-    const whichHash = index;
-    return { refutationType: RefutationType.HASH, line, whichProof, whichHash };
+    const line = Math.floor(index / (totalRefutationProofs * totalRefutationHashOptions));
+    index -= line * totalRefutationProofs * totalRefutationHashOptions;
+    const whichProof = Math.floor(index / totalRefutationHashOptions);
+    index -= whichProof * totalRefutationHashOptions;
+    const whichHashOption = index;
+    return { refutationType: RefutationType.HASH, line, whichProof, whichHashOption };
 }
 
 const scriptTampleCache: { [key: string]: ScriptTemplate } = {};
@@ -101,6 +104,14 @@ function generateRefuteInstructionScriptTemplate(
     if (instr.name == InstrCode.MULMOD || instr.name == InstrCode.DIVMOD) {
         w_d = encodeWinternitz256_4(0n, '').map((b) => bitcoin.addWitness(b));
     }
+
+    const sc = lastSelect?.outputs[0].spendingConditions[0];
+    // check verifier sig
+    if (!sc || !sc.signaturesPublicKeys || !sc.signaturesPublicKeys[0]) {
+        throw new Error('No schnorr public key for verifier in last select template');
+    }
+    bitcoin.addWitness(Buffer.alloc(64));
+    bitcoin.verifySignature(sc.signaturesPublicKeys[0]);
 
     // first output is the index
     bitcoin.verifyIndex(
@@ -181,27 +192,29 @@ function negifyPairHash(
     blake3.bitcoin.drop(temp);
 }
 
-async function createRefuteHashScriptTemplate(): Promise<ScriptTemplate> {
+async function createRefuteHashScriptTemplate(templates: Template[]): Promise<ScriptTemplate> {
+    const argumentTemplate = getTemplateByName(templates, `${TemplateNames.ARGUMENT}`);
+
     const bitcoin = new Bitcoin();
-    bitcoin.throwOnFail = true;
+    bitcoin.throwOnFail = false;
+
+    const leftKeys = array(67, Buffer.alloc(20));
+    const rightKeys = array(67, Buffer.alloc(20));
+    const resultKeys = array(67, Buffer.alloc(20));
+
+    const leftWi = array(67, Buffer.alloc(20)).map((b) => bitcoin.addWitness(b));
+    const rightWi = array(67, Buffer.alloc(20)).map((b) => bitcoin.addWitness(b));
+    const resultWi = array(67, Buffer.alloc(20)).map((b) => bitcoin.addWitness(b));
+
+    const sc = argumentTemplate?.outputs[0].spendingConditions[0];
+    if (!sc || !sc.signaturesPublicKeys || !sc.signaturesPublicKeys[0]) {
+        throw new Error('No schnorr public key for verifier in last select template');
+    }
+    bitcoin.addWitness(Buffer.alloc(64));
+    bitcoin.verifySignature(sc.signaturesPublicKeys[0]);
+
     const blake3 = new BLAKE3(bitcoin);
     blake3.initializeTables();
-
-    const leftKeys = getWinternitzPublicKeys(WotsType._256_4, '');
-    const rightKeys = getWinternitzPublicKeys(WotsType._256_4, '');
-    const resultKeys = getWinternitzPublicKeys(WotsType._256_4, '');
-
-    // mock values for self testing code
-    const left = '12341234';
-    const right = '98769876';
-    const result = Buffer.from(
-        await blake3_wasm(Buffer.concat([Buffer.from(left, 'hex'), Buffer.from(right, 'hex')])),
-        'hex'
-    );
-
-    const leftWi = encodeWinternitz256_4(BigInt('0x' + left), '').map((b) => bitcoin.addWitness(b));
-    const rightWi = encodeWinternitz256_4(BigInt('0x' + right), '').map((b) => bitcoin.addWitness(b));
-    const resultWi = encodeWinternitz256_4(bufferToBigintBE(result), '').map((b) => bitcoin.addWitness(b));
 
     const leftSi = bitcoin.newNibbles(64);
     bitcoin.winternitzDecode256_4(leftSi, leftWi, leftKeys);
@@ -221,10 +234,11 @@ async function createRefuteHashScriptTemplate(): Promise<ScriptTemplate> {
 
 function renderScriptTemplateWithKeys(scriptTemplate: ScriptTemplate, keys: Buffer[][]): Buffer {
     const keysFlat = keys.flat();
-    scriptTemplate.items.forEach((item, i) => {
+    for (let i = 0; i < scriptTemplate.items.length; i++) {
+        const item = scriptTemplate.items[i];
         const b = keysFlat[i];
         b.copy(scriptTemplate.buffer, item.index, 0);
-    });
+    }
     return scriptTemplate.buffer;
 }
 
@@ -234,14 +248,14 @@ async function generateRefuteMerkleProofScript(
     refutationDescriptor: RefutationDescriptor
 ): Promise<Buffer> {
     if (refutationDescriptor.whichProof == undefined) throw new Error('Missing whichProof');
-    if (refutationDescriptor.whichHash == undefined) throw new Error('Missing whichHash');
+    if (refutationDescriptor.whichHashOption == undefined) throw new Error('Missing whichHashOption');
 
-    // TODO: what to do if the line is 0?
+    // TODO: better validation
     if (refutationDescriptor.line == 0) return Buffer.alloc(0);
 
     // first find the 2 roots for the 3 merkle proofs
-    const stateCommitmentBefore = decasector.stateCommitmentByLine[refutationDescriptor.line - 1];
-    const stateCommitmentAfter = decasector.stateCommitmentByLine[refutationDescriptor.line];
+    const stateCommitmentBefore = decasector.stateCommitmentByLine[refutationDescriptor.line];
+    const stateCommitmentAfter = decasector.stateCommitmentByLine[refutationDescriptor.line + 1];
 
     // transaction names start with 0 while state commitment count starts with 1, so -1 here
     const beforeStateIteration = stateCommitmentBefore.iteration - 1;
@@ -249,7 +263,7 @@ async function generateRefuteMerkleProofScript(
     const stateCommitmentIndexBefore = stateCommitmentBefore.selection;
     const stateCommitmentIndexAfter = stateCommitmentAfter.selection;
 
-    // TODO: what to do in this case?
+    // TODO: better validation
     if (beforeStateIteration < 0) return Buffer.alloc(0);
 
     const stateTxBefore = getTemplateByName(templates, `${TemplateNames.STATE}_${twoDigits(beforeStateIteration)}`);
@@ -287,7 +301,7 @@ async function generateRefuteMerkleProofScript(
 
     let scriptTemplate = scriptTampleCache['hash'];
     if (!scriptTemplate) {
-        scriptTemplate = await createRefuteHashScriptTemplate();
+        scriptTemplate = await createRefuteHashScriptTemplate(templates);
         scriptTampleCache['hash'] = scriptTemplate;
     }
 
@@ -297,9 +311,9 @@ async function generateRefuteMerkleProofScript(
     };
 
     const script = await refuteHash(
-        merkleProofKeys[refutationDescriptor.whichProof][refutationDescriptor.whichHash],
-        merkleProofKeys[refutationDescriptor.whichProof][refutationDescriptor.whichHash + 1],
-        merkleProofKeys[refutationDescriptor.whichProof][refutationDescriptor.whichHash + 2]
+        merkleProofKeys[refutationDescriptor.whichProof][refutationDescriptor.whichHashOption * 2 + 0],
+        merkleProofKeys[refutationDescriptor.whichProof][refutationDescriptor.whichHashOption * 2 + 1],
+        merkleProofKeys[refutationDescriptor.whichProof][refutationDescriptor.whichHashOption * 2 + 2]
     );
 
     return script;

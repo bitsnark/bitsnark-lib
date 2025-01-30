@@ -378,7 +378,6 @@ async function test2() {
 
     console.log('h2', h2);
     console.log(`max stack: ${bitcoin.maxStack}    size: ${bitcoin.programSizeInBitcoinBytes()}`);
-    // console.log(stats);
     assert(h1 == h2);
 }
 
@@ -426,5 +425,7 @@ async function main() {
 }
 
 if (require.main === module) {
-    main();
+    main().catch((error) => {
+        throw error;
+    });
 }

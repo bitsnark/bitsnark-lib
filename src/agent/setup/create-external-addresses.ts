@@ -69,6 +69,21 @@ async function main() {
     createProverStakeExternalAddresses(proverAgentId, verifierAgentId, setupId);
 }
 
+export function createUniqueTaprootPubkeys(count: number): Buffer[] {
+    const pubkeys: Buffer[] = [];
+    const proverAgentId = 'bitsnark_prover_1';
+    const verifierAgentId = 'bitsnark_verifier_1';
+    const proverPublicKey = Buffer.from(agentConf.keyPairs[proverAgentId].schnorrPublic, 'hex');
+    const verifierPublicKey = Buffer.from(agentConf.keyPairs[verifierAgentId].schnorrPublic, 'hex');
+    for (let i = 0; i < count; i++) {
+        const setupId = randomBytes(32).toString('hex');
+        const script = generateSpendLockedFundsScript(setupId, [proverPublicKey, verifierPublicKey]);
+        const stt = new SimpleTapTree(agentConf.internalPubkey, [script]);
+        pubkeys.push(stt.getTaprootPubkey());
+    }
+    return pubkeys;
+}
+
 export async function main2() {
     const r: { setupId: string; pubkey: string }[] = [];
     const proverAgentId = 'bitsnark_prover_1';
@@ -88,5 +103,7 @@ export async function main2() {
 }
 
 if (require.main === module) {
-    main();
+    main().catch((error) => {
+        throw error;
+    });
 }

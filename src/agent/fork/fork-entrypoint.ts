@@ -5,11 +5,11 @@ import { ForkCommand } from './fork-yourself';
 import { jsonStringifyCustom } from '../common/json';
 
 export interface GenerateFinalTaprootCommand {
+    skip: boolean;
     agentId: string;
     setupId: string;
     from: number;
     to: number;
-    requestedScriptIndex?: number;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -18,7 +18,7 @@ const commands: { [key: string]: (input: any) => any } = {
         const ddg = new DoomsdayGenerator(input.agentId, input.setupId);
         const db = new AgentDb(input.agentId);
         const templates = await db.getTemplates(input.setupId);
-        const result = ddg.generateFinalStepTaprootChunk(templates, input.from, input.to, input.requestedScriptIndex);
+        const result = ddg.generateFinalStepTaprootChunk(templates, input.from, input.to);
         return result;
     }
 };
@@ -46,5 +46,7 @@ async function main() {
 }
 
 if (require.main === module) {
-    main();
+    main().catch((error) => {
+        throw error;
+    });
 }

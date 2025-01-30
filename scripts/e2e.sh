@@ -9,7 +9,7 @@ setup_id=test_setup
 
 npm run start-db
 npm run start-regtest
-npm run start-bitcoin-services &
+# npm run start-bitcoin-services &
 
 echo 'Emulating setup (this will move to a real setup later)'
 npm run emulate-setup-final

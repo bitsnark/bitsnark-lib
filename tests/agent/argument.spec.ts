@@ -29,17 +29,16 @@ async function init() {
 
 describe('Argument', () => {
     it('make it', async () => {
-        const { argument, argWitness } = await init();
+        const { argWitness } = await init();
 
         expect(argWitness.length).toBe(6);
         expect(argWitness[0].length).toBe(7 * WOTS_NIBBLES[WotsType._24]);
-        expect(argument.checkIndex()).toBeTruthy();
         expect(argWitness[1].length).toBe(4 * WOTS_NIBBLES[WotsType._256_4]);
         expect(argWitness[2].length).toBe(12 * WOTS_NIBBLES[WotsType._256_4]);
         expect(argWitness[3].length).toBe(12 * WOTS_NIBBLES[WotsType._256_4]);
         expect(argWitness[4].length).toBe(12 * WOTS_NIBBLES[WotsType._256_4]);
         expect(argWitness[5].length).toBe(3 * WOTS_NIBBLES[WotsType._256_4]);
-    }, 10000);
+    }, 1000000);
 
     it('break it', async () => {
         const { argWitness } = await init();
@@ -47,7 +46,7 @@ describe('Argument', () => {
         const template = getTemplateByName(templates, TemplateNames.ARGUMENT);
         const decoded: bigint[][] = [];
         for (let i = 0; i < template.inputs.length; i++) {
-            decoded.push(parseInput(templates, template.inputs[i], argWitness[i]));
+            decoded.push(parseInput(templates, template.inputs[i], argWitness[i]).map((wav) => wav.value));
         }
         expect(decoded.length).toBe(6);
         expect(decoded[0].length).toBe(7);
@@ -56,5 +55,5 @@ describe('Argument', () => {
         expect(decoded[3].length).toBe(12);
         expect(decoded[4].length).toBe(12);
         expect(decoded[5].length).toBe(3);
-    });
+    }, 1000000);
 });

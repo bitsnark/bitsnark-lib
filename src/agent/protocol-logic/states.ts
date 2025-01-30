@@ -1,5 +1,5 @@
 import { last } from '../common/array-utils';
-import { AgentRoles } from '../common/types';
+import { AgentRoles, WitnessAndValue } from '../common/types';
 import { Decasector } from '../setup/decasector';
 import { FatMerkleProof } from './fat-merkle';
 
@@ -34,12 +34,12 @@ export async function calculateAggregateStates(
 
 export async function findErrorState(
     proof: bigint[],
-    hisAggStates: Buffer[][],
+    hisAggStates: WitnessAndValue[][],
     selectionPath: number[]
 ): Promise<number> {
     const myAggStates = await calculateAggregateStates(AgentRoles.VERIFIER, proof, selectionPath);
     const myStates = last(myAggStates);
     const hisStates = last(hisAggStates);
-    const t = myStates.findIndex((b, i) => b.compare(hisStates[i]) != 0);
+    const t = myStates.findIndex((b, i) => b.compare(hisStates[i].buffer) != 0);
     return t >= 0 ? t : myStates.length;
 }

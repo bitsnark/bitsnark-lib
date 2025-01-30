@@ -36,12 +36,7 @@ export class VM {
     private pushInstruction(name: InstrCode, target: Register, param1: Register, param2?: Register, bit?: number) {
         if (!this.success) throw new Error('Invalid state');
         this.instructions.push({ name, target: target.index, param1: param1.index, param2: param2?.index, bit });
-        // if (this.instructions.length-1 == 24659)
-        //     throw new Error('fubar');
         this.instrCounter++;
-        if (this.instrCounter % 1000000 == 0) {
-            //console.log(`line number: ${this.instrCounter} \t register count: ${this.state.registers.length}`);
-        }
     }
 
     private setRegister(r: Register, v: bigint) {
