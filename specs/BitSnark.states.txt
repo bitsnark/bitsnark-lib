@@ -1,0 +1,600 @@
+State 1:
+/\ outputs = {"Stakable Funds", "Locked Funds", "Payable Funds"}
+/\ balances = [staked |-> 0, prover |-> 2, verifier |-> 1]
+/\ contentioned = 500000
+
+State 2:
+/\ outputs = {"Proof Value", "Proof Signal", "Locked Funds", "Payable Funds"}
+/\ balances = [staked |-> 2, prover |-> 0, verifier |-> 1]
+/\ contentioned = 500000
+
+State 3:
+/\ outputs = {"Proof Uncontested", "Payable Funds"}
+/\ balances = [staked |-> 0, prover |-> 2, verifier |-> 1]
+/\ contentioned = 500000
+
+State 4:
+/\ outputs = {"Stakable Funds", "Locked Funds", "Payable Funds"}
+/\ balances = [staked |-> 0, prover |-> 2, verifier |-> 1]
+/\ contentioned = 500000
+
+State 5:
+/\ outputs = {"Challenge", "Proof Value", "Locked Funds"}
+/\ balances = [staked |-> 2, prover |-> 1, verifier |-> 0]
+/\ contentioned = 500000
+
+State 6:
+/\ outputs = {"Proof Uncontested", "Payable Funds"}
+/\ balances = [staked |-> 0, prover |-> 2, verifier |-> 1]
+/\ contentioned = 500000
+
+State 7:
+/\ outputs = {"Proof Signal", "Locked Funds", "Payable Funds", "Challenge Uncontested"}
+/\ balances = [staked |-> 0, prover |-> 0, verifier |-> 3]
+/\ contentioned = 500000
+
+State 8:
+/\ outputs = {"Challenge", "Locked Funds", "Challenge Uncontested"}
+/\ balances = [staked |-> 0, prover |-> 1, verifier |-> 2]
+/\ contentioned = 500000
+
+State 9:
+/\ outputs = {"State", "Proof Signal", "Locked Funds", "Payable Funds"}
+/\ balances = [staked |-> 2, prover |-> 0, verifier |-> 1]
+/\ contentioned = 500000
+
+State 10:
+/\ outputs = {"Challenge", "State", "Locked Funds"}
+/\ balances = [staked |-> 2, prover |-> 1, verifier |-> 0]
+/\ contentioned = 500000
+
+State 11:
+/\ outputs = {"Proof Value", "Proof Signal", "Locked Funds", "Payable Funds"}
+/\ balances = [staked |-> 2, prover |-> 0, verifier |-> 1]
+/\ contentioned = 500000
+
+State 12:
+/\ outputs = {"Challenge", "Proof Value", "Locked Funds"}
+/\ balances = [staked |-> 2, prover |-> 1, verifier |-> 0]
+/\ contentioned = 500000
+
+State 13:
+/\ outputs = {"Proof Signal", "Locked Funds", "Payable Funds", "Challenge Uncontested"}
+/\ balances = [staked |-> 0, prover |-> 0, verifier |-> 3]
+/\ contentioned = 500000
+
+State 14:
+/\ outputs = {"Challenge", "Locked Funds", "Challenge Uncontested"}
+/\ balances = [staked |-> 0, prover |-> 1, verifier |-> 2]
+/\ contentioned = 500000
+
+State 15:
+/\ outputs = {"Proof Signal", "Payable Funds", "State Uncontested"}
+/\ balances = [staked |-> 0, prover |-> 2, verifier |-> 1]
+/\ contentioned = 500000
+
+State 16:
+/\ outputs = {"Challenge", "State Uncontested"}
+/\ balances = [staked |-> 0, prover |-> 3, verifier |-> 0]
+/\ contentioned = 500000
+
+State 17:
+/\ outputs = {"Proof Signal", "Payable Funds", "State Uncontested"}
+/\ balances = [staked |-> 0, prover |-> 2, verifier |-> 1]
+/\ contentioned = 500000
+
+State 18:
+/\ outputs = {"Challenge", "State Uncontested"}
+/\ balances = [staked |-> 0, prover |-> 3, verifier |-> 0]
+/\ contentioned = 500000
+
+State 19:
+/\ outputs = {"Challenge", "Select", "Locked Funds"}
+/\ balances = [staked |-> 2, prover |-> 1, verifier |-> 0]
+/\ contentioned = 50000
+
+State 20:
+/\ outputs = {"Select", "Proof Signal", "Locked Funds", "Payable Funds"}
+/\ balances = [staked |-> 2, prover |-> 0, verifier |-> 1]
+/\ contentioned = 50000
+
+State 21:
+/\ outputs = {"State", "Proof Signal", "Locked Funds", "Payable Funds"}
+/\ balances = [staked |-> 2, prover |-> 0, verifier |-> 1]
+/\ contentioned = 500000
+
+State 22:
+/\ outputs = {"Challenge", "State", "Locked Funds"}
+/\ balances = [staked |-> 2, prover |-> 1, verifier |-> 0]
+/\ contentioned = 50000
+
+State 23:
+/\ outputs = {"Challenge", "State", "Locked Funds"}
+/\ balances = [staked |-> 2, prover |-> 1, verifier |-> 0]
+/\ contentioned = 500000
+
+State 24:
+/\ outputs = {"State", "Proof Signal", "Locked Funds", "Payable Funds"}
+/\ balances = [staked |-> 2, prover |-> 0, verifier |-> 1]
+/\ contentioned = 50000
+
+State 25:
+/\ outputs = {"Challenge", "Locked Funds", "Select Uncontested"}
+/\ balances = [staked |-> 0, prover |-> 1, verifier |-> 2]
+/\ contentioned = 50000
+
+State 26:
+/\ outputs = {"Proof Signal", "Locked Funds", "Payable Funds", "Select Uncontested"}
+/\ balances = [staked |-> 0, prover |-> 0, verifier |-> 3]
+/\ contentioned = 50000
+
+State 27:
+/\ outputs = {"Challenge", "Select", "Locked Funds"}
+/\ balances = [staked |-> 2, prover |-> 1, verifier |-> 0]
+/\ contentioned = 50000
+
+State 28:
+/\ outputs = {"Select", "Proof Signal", "Locked Funds", "Payable Funds"}
+/\ balances = [staked |-> 2, prover |-> 0, verifier |-> 1]
+/\ contentioned = 50000
+
+State 29:
+/\ outputs = {"Challenge", "State Uncontested"}
+/\ balances = [staked |-> 0, prover |-> 3, verifier |-> 0]
+/\ contentioned = 50000
+
+State 30:
+/\ outputs = {"Proof Signal", "Payable Funds", "State Uncontested"}
+/\ balances = [staked |-> 0, prover |-> 2, verifier |-> 1]
+/\ contentioned = 50000
+
+State 31:
+/\ outputs = {"Select", "Proof Signal", "Locked Funds", "Payable Funds"}
+/\ balances = [staked |-> 2, prover |-> 0, verifier |-> 1]
+/\ contentioned = 5000
+
+State 32:
+/\ outputs = {"State", "Proof Signal", "Locked Funds", "Payable Funds"}
+/\ balances = [staked |-> 2, prover |-> 0, verifier |-> 1]
+/\ contentioned = 50000
+
+State 33:
+/\ outputs = {"Challenge", "Select", "Locked Funds"}
+/\ balances = [staked |-> 2, prover |-> 1, verifier |-> 0]
+/\ contentioned = 5000
+
+State 34:
+/\ outputs = {"Challenge", "State", "Locked Funds"}
+/\ balances = [staked |-> 2, prover |-> 1, verifier |-> 0]
+/\ contentioned = 50000
+
+State 35:
+/\ outputs = {"Challenge", "Locked Funds", "Select Uncontested"}
+/\ balances = [staked |-> 0, prover |-> 1, verifier |-> 2]
+/\ contentioned = 50000
+
+State 36:
+/\ outputs = {"Proof Signal", "Locked Funds", "Payable Funds", "Select Uncontested"}
+/\ balances = [staked |-> 0, prover |-> 0, verifier |-> 3]
+/\ contentioned = 50000
+
+State 37:
+/\ outputs = {"Challenge", "State Uncontested"}
+/\ balances = [staked |-> 0, prover |-> 3, verifier |-> 0]
+/\ contentioned = 50000
+
+State 38:
+/\ outputs = {"Proof Signal", "Payable Funds", "State Uncontested"}
+/\ balances = [staked |-> 0, prover |-> 2, verifier |-> 1]
+/\ contentioned = 50000
+
+State 39:
+/\ outputs = {"State", "Proof Signal", "Locked Funds", "Payable Funds"}
+/\ balances = [staked |-> 2, prover |-> 0, verifier |-> 1]
+/\ contentioned = 5000
+
+State 40:
+/\ outputs = {"Proof Signal", "Locked Funds", "Payable Funds", "Select Uncontested"}
+/\ balances = [staked |-> 0, prover |-> 0, verifier |-> 3]
+/\ contentioned = 5000
+
+State 41:
+/\ outputs = {"Select", "Proof Signal", "Locked Funds", "Payable Funds"}
+/\ balances = [staked |-> 2, prover |-> 0, verifier |-> 1]
+/\ contentioned = 5000
+
+State 42:
+/\ outputs = {"Challenge", "State", "Locked Funds"}
+/\ balances = [staked |-> 2, prover |-> 1, verifier |-> 0]
+/\ contentioned = 5000
+
+State 43:
+/\ outputs = {"Challenge", "Locked Funds", "Select Uncontested"}
+/\ balances = [staked |-> 0, prover |-> 1, verifier |-> 2]
+/\ contentioned = 5000
+
+State 44:
+/\ outputs = {"Challenge", "Select", "Locked Funds"}
+/\ balances = [staked |-> 2, prover |-> 1, verifier |-> 0]
+/\ contentioned = 5000
+
+State 45:
+/\ outputs = {"Proof Signal", "Payable Funds", "State Uncontested"}
+/\ balances = [staked |-> 0, prover |-> 2, verifier |-> 1]
+/\ contentioned = 5000
+
+State 46:
+/\ outputs = {"Select", "Proof Signal", "Locked Funds", "Payable Funds"}
+/\ balances = [staked |-> 2, prover |-> 0, verifier |-> 1]
+/\ contentioned = 500
+
+State 47:
+/\ outputs = {"State", "Proof Signal", "Locked Funds", "Payable Funds"}
+/\ balances = [staked |-> 2, prover |-> 0, verifier |-> 1]
+/\ contentioned = 5000
+
+State 48:
+/\ outputs = {"Proof Signal", "Locked Funds", "Payable Funds", "Select Uncontested"}
+/\ balances = [staked |-> 0, prover |-> 0, verifier |-> 3]
+/\ contentioned = 5000
+
+State 49:
+/\ outputs = {"Challenge", "State Uncontested"}
+/\ balances = [staked |-> 0, prover |-> 3, verifier |-> 0]
+/\ contentioned = 5000
+
+State 50:
+/\ outputs = {"Challenge", "Select", "Locked Funds"}
+/\ balances = [staked |-> 2, prover |-> 1, verifier |-> 0]
+/\ contentioned = 500
+
+State 51:
+/\ outputs = {"Challenge", "State", "Locked Funds"}
+/\ balances = [staked |-> 2, prover |-> 1, verifier |-> 0]
+/\ contentioned = 5000
+
+State 52:
+/\ outputs = {"Challenge", "Locked Funds", "Select Uncontested"}
+/\ balances = [staked |-> 0, prover |-> 1, verifier |-> 2]
+/\ contentioned = 5000
+
+State 53:
+/\ outputs = {"Proof Signal", "Payable Funds", "State Uncontested"}
+/\ balances = [staked |-> 0, prover |-> 2, verifier |-> 1]
+/\ contentioned = 5000
+
+State 54:
+/\ outputs = {"State", "Proof Signal", "Locked Funds", "Payable Funds"}
+/\ balances = [staked |-> 2, prover |-> 0, verifier |-> 1]
+/\ contentioned = 500
+
+State 55:
+/\ outputs = {"Proof Signal", "Locked Funds", "Payable Funds", "Select Uncontested"}
+/\ balances = [staked |-> 0, prover |-> 0, verifier |-> 3]
+/\ contentioned = 500
+
+State 56:
+/\ outputs = {"Select", "Proof Signal", "Locked Funds", "Payable Funds"}
+/\ balances = [staked |-> 2, prover |-> 0, verifier |-> 1]
+/\ contentioned = 500
+
+State 57:
+/\ outputs = {"Challenge", "State Uncontested"}
+/\ balances = [staked |-> 0, prover |-> 3, verifier |-> 0]
+/\ contentioned = 5000
+
+State 58:
+/\ outputs = {"Challenge", "State", "Locked Funds"}
+/\ balances = [staked |-> 2, prover |-> 1, verifier |-> 0]
+/\ contentioned = 500
+
+State 59:
+/\ outputs = {"Proof Signal", "Payable Funds", "State Uncontested"}
+/\ balances = [staked |-> 0, prover |-> 2, verifier |-> 1]
+/\ contentioned = 500
+
+State 60:
+/\ outputs = {"Challenge", "Locked Funds", "Select Uncontested"}
+/\ balances = [staked |-> 0, prover |-> 1, verifier |-> 2]
+/\ contentioned = 500
+
+State 61:
+/\ outputs = {"Challenge", "Select", "Locked Funds"}
+/\ balances = [staked |-> 2, prover |-> 1, verifier |-> 0]
+/\ contentioned = 500
+
+State 62:
+/\ outputs = {"Select", "Proof Signal", "Locked Funds", "Payable Funds"}
+/\ balances = [staked |-> 2, prover |-> 0, verifier |-> 1]
+/\ contentioned = 50
+
+State 63:
+/\ outputs = {"State", "Proof Signal", "Locked Funds", "Payable Funds"}
+/\ balances = [staked |-> 2, prover |-> 0, verifier |-> 1]
+/\ contentioned = 500
+
+State 64:
+/\ outputs = {"Proof Signal", "Locked Funds", "Payable Funds", "Select Uncontested"}
+/\ balances = [staked |-> 0, prover |-> 0, verifier |-> 3]
+/\ contentioned = 500
+
+State 65:
+/\ outputs = {"Challenge", "State Uncontested"}
+/\ balances = [staked |-> 0, prover |-> 3, verifier |-> 0]
+/\ contentioned = 500
+
+State 66:
+/\ outputs = {"Challenge", "Select", "Locked Funds"}
+/\ balances = [staked |-> 2, prover |-> 1, verifier |-> 0]
+/\ contentioned = 50
+
+State 67:
+/\ outputs = {"Proof Signal", "Payable Funds", "State Uncontested"}
+/\ balances = [staked |-> 0, prover |-> 2, verifier |-> 1]
+/\ contentioned = 500
+
+State 68:
+/\ outputs = {"Challenge", "State", "Locked Funds"}
+/\ balances = [staked |-> 2, prover |-> 1, verifier |-> 0]
+/\ contentioned = 500
+
+State 69:
+/\ outputs = {"Challenge", "Locked Funds", "Select Uncontested"}
+/\ balances = [staked |-> 0, prover |-> 1, verifier |-> 2]
+/\ contentioned = 500
+
+State 70:
+/\ outputs = {"State", "Proof Signal", "Locked Funds", "Payable Funds"}
+/\ balances = [staked |-> 2, prover |-> 0, verifier |-> 1]
+/\ contentioned = 50
+
+State 71:
+/\ outputs = {"Proof Signal", "Locked Funds", "Payable Funds", "Select Uncontested"}
+/\ balances = [staked |-> 0, prover |-> 0, verifier |-> 3]
+/\ contentioned = 50
+
+State 72:
+/\ outputs = {"Select", "Proof Signal", "Locked Funds", "Payable Funds"}
+/\ balances = [staked |-> 2, prover |-> 0, verifier |-> 1]
+/\ contentioned = 50
+
+State 73:
+/\ outputs = {"Challenge", "State Uncontested"}
+/\ balances = [staked |-> 0, prover |-> 3, verifier |-> 0]
+/\ contentioned = 500
+
+State 74:
+/\ outputs = {"Challenge", "State", "Locked Funds"}
+/\ balances = [staked |-> 2, prover |-> 1, verifier |-> 0]
+/\ contentioned = 50
+
+State 75:
+/\ outputs = {"Proof Signal", "Payable Funds", "State Uncontested"}
+/\ balances = [staked |-> 0, prover |-> 2, verifier |-> 1]
+/\ contentioned = 50
+
+State 76:
+/\ outputs = {"Challenge", "Locked Funds", "Select Uncontested"}
+/\ balances = [staked |-> 0, prover |-> 1, verifier |-> 2]
+/\ contentioned = 50
+
+State 77:
+/\ outputs = {"Select", "Proof Signal", "Locked Funds", "Payable Funds"}
+/\ balances = [staked |-> 2, prover |-> 0, verifier |-> 1]
+/\ contentioned = 5
+
+State 78:
+/\ outputs = {"Challenge", "Select", "Locked Funds"}
+/\ balances = [staked |-> 2, prover |-> 1, verifier |-> 0]
+/\ contentioned = 50
+
+State 79:
+/\ outputs = {"State", "Proof Signal", "Locked Funds", "Payable Funds"}
+/\ balances = [staked |-> 2, prover |-> 0, verifier |-> 1]
+/\ contentioned = 50
+
+State 80:
+/\ outputs = {"Proof Signal", "Locked Funds", "Payable Funds", "Select Uncontested"}
+/\ balances = [staked |-> 0, prover |-> 0, verifier |-> 3]
+/\ contentioned = 50
+
+State 81:
+/\ outputs = {"Challenge", "State Uncontested"}
+/\ balances = [staked |-> 0, prover |-> 3, verifier |-> 0]
+/\ contentioned = 50
+
+State 82:
+/\ outputs = {"Challenge", "Select", "Locked Funds"}
+/\ balances = [staked |-> 2, prover |-> 1, verifier |-> 0]
+/\ contentioned = 5
+
+State 83:
+/\ outputs = {"Proof Signal", "Payable Funds", "State Uncontested"}
+/\ balances = [staked |-> 0, prover |-> 2, verifier |-> 1]
+/\ contentioned = 50
+
+State 84:
+/\ outputs = {"Challenge", "State", "Locked Funds"}
+/\ balances = [staked |-> 2, prover |-> 1, verifier |-> 0]
+/\ contentioned = 50
+
+State 85:
+/\ outputs = {"Challenge", "Locked Funds", "Select Uncontested"}
+/\ balances = [staked |-> 0, prover |-> 1, verifier |-> 2]
+/\ contentioned = 50
+
+State 86:
+/\ outputs = {"State", "Proof Signal", "Locked Funds", "Payable Funds"}
+/\ balances = [staked |-> 2, prover |-> 0, verifier |-> 1]
+/\ contentioned = 5
+
+State 87:
+/\ outputs = {"Challenge", "State Uncontested"}
+/\ balances = [staked |-> 0, prover |-> 3, verifier |-> 0]
+/\ contentioned = 50
+
+State 88:
+/\ outputs = {"Proof Signal", "Locked Funds", "Payable Funds", "Select Uncontested"}
+/\ balances = [staked |-> 0, prover |-> 0, verifier |-> 3]
+/\ contentioned = 5
+
+State 89:
+/\ outputs = {"Select", "Proof Signal", "Locked Funds", "Payable Funds"}
+/\ balances = [staked |-> 2, prover |-> 0, verifier |-> 1]
+/\ contentioned = 5
+
+State 90:
+/\ outputs = {"Challenge", "State", "Locked Funds"}
+/\ balances = [staked |-> 2, prover |-> 1, verifier |-> 0]
+/\ contentioned = 5
+
+State 91:
+/\ outputs = {"Challenge", "Locked Funds", "Select Uncontested"}
+/\ balances = [staked |-> 0, prover |-> 1, verifier |-> 2]
+/\ contentioned = 5
+
+State 92:
+/\ outputs = {"Challenge", "Select", "Locked Funds"}
+/\ balances = [staked |-> 2, prover |-> 1, verifier |-> 0]
+/\ contentioned = 5
+
+State 93:
+/\ outputs = {"Proof Signal", "Payable Funds", "State Uncontested"}
+/\ balances = [staked |-> 0, prover |-> 2, verifier |-> 1]
+/\ contentioned = 5
+
+State 94:
+/\ outputs = {"Proof Signal", "Locked Funds", "Payable Funds", "Select Uncontested"}
+/\ balances = [staked |-> 0, prover |-> 0, verifier |-> 3]
+/\ contentioned = 5
+
+State 95:
+/\ outputs = {"Select", "Proof Signal", "Locked Funds", "Payable Funds"}
+/\ balances = [staked |-> 2, prover |-> 0, verifier |-> 1]
+/\ contentioned = 1
+
+State 96:
+/\ outputs = {"State", "Proof Signal", "Locked Funds", "Payable Funds"}
+/\ balances = [staked |-> 2, prover |-> 0, verifier |-> 1]
+/\ contentioned = 5
+
+State 97:
+/\ outputs = {"Challenge", "State Uncontested"}
+/\ balances = [staked |-> 0, prover |-> 3, verifier |-> 0]
+/\ contentioned = 5
+
+State 98:
+/\ outputs = {"Challenge", "Select", "Locked Funds"}
+/\ balances = [staked |-> 2, prover |-> 1, verifier |-> 0]
+/\ contentioned = 1
+
+State 99:
+/\ outputs = {"Challenge", "State", "Locked Funds"}
+/\ balances = [staked |-> 2, prover |-> 1, verifier |-> 0]
+/\ contentioned = 5
+
+State 100:
+/\ outputs = {"Challenge", "Locked Funds", "Select Uncontested"}
+/\ balances = [staked |-> 0, prover |-> 1, verifier |-> 2]
+/\ contentioned = 5
+
+State 101:
+/\ outputs = {"Proof Signal", "Payable Funds", "State Uncontested"}
+/\ balances = [staked |-> 0, prover |-> 2, verifier |-> 1]
+/\ contentioned = 5
+
+State 102:
+/\ outputs = {"Proof Signal", "Locked Funds", "Payable Funds", "Select Uncontested"}
+/\ balances = [staked |-> 0, prover |-> 0, verifier |-> 3]
+/\ contentioned = 1
+
+State 103:
+/\ outputs = {"Argument", "Proof Signal", "Locked Funds", "Payable Funds"}
+/\ balances = [staked |-> 2, prover |-> 0, verifier |-> 1]
+/\ contentioned = 1
+
+State 104:
+/\ outputs = {"Select", "Proof Signal", "Locked Funds", "Payable Funds"}
+/\ balances = [staked |-> 2, prover |-> 0, verifier |-> 1]
+/\ contentioned = 1
+
+State 105:
+/\ outputs = {"Challenge", "State Uncontested"}
+/\ balances = [staked |-> 0, prover |-> 3, verifier |-> 0]
+/\ contentioned = 5
+
+State 106:
+/\ outputs = {"Challenge", "Locked Funds", "Select Uncontested"}
+/\ balances = [staked |-> 0, prover |-> 1, verifier |-> 2]
+/\ contentioned = 1
+
+State 107:
+/\ outputs = {"Challenge", "Argument", "Locked Funds"}
+/\ balances = [staked |-> 2, prover |-> 1, verifier |-> 0]
+/\ contentioned = 1
+
+State 108:
+/\ outputs = {"Challenge", "Select", "Locked Funds"}
+/\ balances = [staked |-> 2, prover |-> 1, verifier |-> 0]
+/\ contentioned = 1
+
+State 109:
+/\ outputs = {"Proof Signal", "Locked Funds", "Payable Funds", "Select Uncontested"}
+/\ balances = [staked |-> 0, prover |-> 0, verifier |-> 3]
+/\ contentioned = 1
+
+State 110:
+/\ outputs = {"Proof Signal", "Payable Funds", "Argument Uncontested"}
+/\ balances = [staked |-> 0, prover |-> 2, verifier |-> 1]
+/\ contentioned = 1
+
+State 111:
+/\ outputs = {"Challenge", "Locked Funds", "Select Uncontested"}
+/\ balances = [staked |-> 0, prover |-> 1, verifier |-> 2]
+/\ contentioned = 1
+
+State 112:
+/\ outputs = {"Proof Signal", "Locked Funds", "Payable Funds", "Proof Refuted"}
+/\ balances = [staked |-> 0, prover |-> 0, verifier |-> 3]
+/\ contentioned = 1
+
+State 113:
+/\ outputs = {"Challenge", "Argument Uncontested"}
+/\ balances = [staked |-> 0, prover |-> 3, verifier |-> 0]
+/\ contentioned = 1
+
+State 114:
+/\ outputs = {"Argument", "Proof Signal", "Locked Funds", "Payable Funds"}
+/\ balances = [staked |-> 2, prover |-> 0, verifier |-> 1]
+/\ contentioned = 1
+
+State 115:
+/\ outputs = {"Challenge", "Locked Funds", "Proof Refuted"}
+/\ balances = [staked |-> 0, prover |-> 1, verifier |-> 2]
+/\ contentioned = 1
+
+State 116:
+/\ outputs = {"Challenge", "Argument", "Locked Funds"}
+/\ balances = [staked |-> 2, prover |-> 1, verifier |-> 0]
+/\ contentioned = 1
+
+State 117:
+/\ outputs = {"Proof Signal", "Payable Funds", "Argument Uncontested"}
+/\ balances = [staked |-> 0, prover |-> 2, verifier |-> 1]
+/\ contentioned = 1
+
+State 118:
+/\ outputs = {"Proof Signal", "Locked Funds", "Payable Funds", "Proof Refuted"}
+/\ balances = [staked |-> 0, prover |-> 0, verifier |-> 3]
+/\ contentioned = 1
+
+State 119:
+/\ outputs = {"Challenge", "Argument Uncontested"}
+/\ balances = [staked |-> 0, prover |-> 3, verifier |-> 0]
+/\ contentioned = 1
+
+State 120:
+/\ outputs = {"Challenge", "Locked Funds", "Proof Refuted"}
+/\ balances = [staked |-> 0, prover |-> 1, verifier |-> 2]
+/\ contentioned = 1
+

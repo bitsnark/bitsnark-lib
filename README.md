@@ -42,7 +42,7 @@ It's important to remember that neither the prover stake nor the verifier paymen
 
 The diagram below shows a condensed version of the transactions flow in the BitSNARK protocol with an external `Locked Funds` transaction.
 
-![BitSNARK Transactions Flow](/analysis/transactions.collapsed.svg)
+![BitSNARK Transactions Flow](/specs/transactions.collapsed.svg)
 
 Most transactions are simple boxes, but
 UTXOs that input funds into the protocol are drawn as ovals, transactions that output funds are marked with a folded corner, and protocl transactions are simple boxes. Transactions publishable by the prover are green, ones publishable by the verifier are blue, and the `Locked Funds` transaction is magenta. Dashed lines are timelocked to a pre-specified number of blocks, and gray lines are outputs that only carry a symbolic amount of satoshis (just above the dust limit) either used to make transactions mutually exclusive or to accommodate the per-input size limitations of Bitcoin transactions. For simplicity's sake, the entire dissection process is collapsed into a single node marked with a triple octagon, but below you can find a full version of the diagram with all the steps expanded (it currently takes us 5 dissections to identify one out of about half a million operations in our zk-SNARK verification program).
@@ -50,7 +50,7 @@ UTXOs that input funds into the protocol are drawn as ovals, transactions that o
 <details>
 <summary>Expand here for a full Diagram with all the steps</summary>
 
-![BitSNARK Full Transactions Flow](/analysis/transactions.svg)
+![BitSNARK Full Transactions Flow](/specs/transactions.svg)
 </details>
 
 Once the prover signs and publishes the `Proof` transaction, it spends the prover's stake and locks it.
@@ -77,7 +77,7 @@ The verifier can now claim the prover's stake and prevent the release of any loc
 
 If, however, the prover's argument is correct, the `Proof Refuted` transaction will never be valid, the timelock will expire and the prover will be able to claim his stake back along with any locked funds using the `Argument Uncontested` transaction.
 
-Available is also a [TLA+ specification of the protocol](/analysis/BitSnark.pdf), including some basic invariants, all fully tested and verified using the TLA+ Toolbox.
+Available is also a [TLA+ specification of the protocol](/specs/BitSnark.pdf), including some basic invariants, all fully tested and verified using the TLA+ Toolbox.
 
 ## Multiple Verifiers
 
@@ -93,7 +93,7 @@ The diagram below shows the flow of a single verifier's outputs from the `proof`
 
 For simplicity, the lines connecting `locked funds` to its spenders within the challenge chain is omitted and the dissection process is shortened to two steps.
 
-![BitSNARK Transactions Flow](/analysis/multiVerifier.svg)
+![BitSNARK Transactions Flow](/specs/multiVerifier.svg)
 
 ## A Note About Fees
 
@@ -137,6 +137,17 @@ Before starting, make sure you have local `.env` file setting `TELEGRAM_TOKEN_PR
 ```sh
 npm run e2e
 ```
+
+### Files and Directories of Interest
+
+* `./specs/` - contains the TLA+ specification of the protocol and generated SVGs of the transactions flow.
+* `./db/schema.sql` - our database schema.
+* `./python/bitsnark/core/db_listener.py` - the only entry point we actually use for "production" (this is important since the `python` directory contains a multitude of scripts and helpers and debugging tools for internal use only). It provides two main functionalities:
+    * During the setup, signing transaction templates that need to be signed.
+    * During the execution of the protocol, constructing and broadcasting transactions that need to be broadcasted. This includes adding required signatures and sometimes creating and broadcasting funding transactions.
+* `./scripts/e2e.sh` - entry point for the end-to-end demo, runs almost all of the different parts of the system. It still doesn't negotiate the setup through telegram, but everything else should be there.
+* `./src/agent/setup/agent.ts` - runs a full agent, including the setup negotiation through telegram and execution.
+* `./src/agent/setup/emulate-setup.ts` - creates a setup locally, without the need for a telegram bot.
 
 ## Future Plans
 

@@ -41,6 +41,6 @@
         interval: 2s
 #      volumes:
 #        - ./volumes/bitcoind/bitcoind:/home/bitcoin/.bitcoin
-      # NOTE: we use 19443 instead of 18443 to avoid clashing with npm run start-regtest
+      # NOTE: we use 19443 instead of 18443 to avoid clashing with npm run regtest
       ports:
         - '19443:18443'

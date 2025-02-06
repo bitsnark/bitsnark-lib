@@ -17,7 +17,7 @@ make_svg() {
     echo "Generated $svg_path from $dot_path"
 }
 
-base_file_path=./analysis/transactions
+base_file_path=./specs/transactions
 base_collapsed_file_path="$base_file_path.collapsed"
 
 make_dot "$base_file_path"

@@ -33,7 +33,7 @@ export async function emulateSetup(
         await verifierDb.createSetup(setupId);
     } catch (error) {
         console.log('setup already exists: ', setupId);
-        console.log('Use npm run start-db to reset the database');
+        console.log('Use npm run postgres to reset the database');
         throw error;
     }
 

@@ -60,7 +60,7 @@ export async function signTemplates(
 ): Promise<Template[]> {
     const db = new AgentDb(agentId);
     await db.markSetupUnsigned(setupId);
-    console.log('Waiting for setup to be signed (make sure signer is running: npm run start-bitcoin-signer)');
+    console.log('Waiting for setup to be signed (make sure signer is running: npm run bitcoin-signer)');
     do {
         const setup = await db.getSetup(setupId);
         if (setup.status == SetupStatus.SIGNED) break;
@@ -75,7 +75,7 @@ export async function signTemplates(
 export async function verifySignatures(agentId: string, setupId: string): Promise<void> {
     const db = new AgentDb(agentId);
     await db.markSetupMerged(setupId);
-    console.log('Waiting for setup to be verified (make sure signer is running: npm run start-bitcoin-signer)');
+    console.log('Waiting for setup to be verified (make sure signer is running: npm run bitcoin-signer)');
     do {
         const setup = await db.getSetup(setupId);
         if (setup.status == SetupStatus.VERIFIED) return;

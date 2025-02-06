@@ -212,10 +212,6 @@ def construct_signable_transaction(
 
         amount = parse_bignum(amount_raw)
 
-        if tx_template.name == 'ARGUMENT':
-            print('!!!!!!!!! 2 pubkey', script_pubkey_raw)
-
-
         script_pubkey = CScript(parse_hex_bytes(script_pubkey_raw))
         tx_outputs.append(
             CTxOut(

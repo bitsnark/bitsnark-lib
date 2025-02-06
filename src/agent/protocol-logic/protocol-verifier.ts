@@ -142,7 +142,7 @@ export class ProtocolVerifier extends ProtocolBase {
         data.forEach((b) => bitcoin.addWitness(b!));
         bitcoin.addWitness(Buffer.alloc(64));
         bitcoin.throwOnFail = true;
-        console.log('!!!!!!!!!!!!!!!! Executing....');
+        console.log('Executing Program...');
         executeProgram(bitcoin, refutation.script, true);
 
         await this.sendTransaction(TemplateNames.PROOF_REFUTED, [data]);

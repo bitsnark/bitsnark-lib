@@ -20,10 +20,10 @@ create() {
 
 load() {
     echo "Loading snapshot from $snapshot_dir"
-    npm run start-db
+    npm run postgres
     bitcoin_cli stop || true
     cp -a ./snapshot/regtest "$bitcoin_data_dir"
-    npm run start-regtest -- persist
+    npm run regtest -- persist
     $docker_cmd exec -i "$postgres_container_name" psql -U postgres $prover < ./snapshot/prover.sql
     $docker_cmd exec -i "$postgres_container_name" psql -U postgres $verifier < ./snapshot/verifier.sql
 }
