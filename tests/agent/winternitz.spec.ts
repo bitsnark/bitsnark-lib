@@ -17,7 +17,8 @@ function bitcoinWinernitzCheck(wotsType: WotsType, encoded: Buffer[], keys: Buff
         [WotsType._1]: bitcoin.winternitzCheck1,
         [WotsType._24]: bitcoin.winternitzCheck24,
         [WotsType._256]: bitcoin.winternitzCheck256,
-        [WotsType._256_4]: bitcoin.winternitzCheck256_4
+        [WotsType._256_4]: bitcoin.winternitzCheck256_4,
+        [WotsType._256_4_LP]: bitcoin.winternitzCheck256_listpick4
     };
     t[wotsType].apply(bitcoin, [witness, keys]);
     expect(bitcoin.success).toBeTruthy();
@@ -32,7 +33,8 @@ function bitcoinWinernitzDecode(wotsType: WotsType, encoded: Buffer[], keys: Buf
         [WotsType._1]: bitcoin.winternitzDecode1,
         [WotsType._24]: bitcoin.winternitzDecode24,
         [WotsType._256]: bitcoin.winternitzDecode256,
-        [WotsType._256_4]: bitcoin.winternitzDecode256_4
+        [WotsType._256_4]: bitcoin.winternitzDecode256_4,
+        [WotsType._256_4_LP]: bitcoin.winternitzDecode256_listpick4,
     };
     t[wotsType].apply(bitcoin, [target, witness, keys]);
     expect(bitcoin.success).toBeTruthy();

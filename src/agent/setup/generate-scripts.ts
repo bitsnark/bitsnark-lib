@@ -81,21 +81,12 @@ export function generateBoilerplate(myRole: AgentRoles, spendingCondition: Spend
 
     bitcoin.throwOnFail = spendingCondition.nextRole == myRole;
 
-    if (spendingCondition.signaturesPublicKeys) {
-        for (const key of spendingCondition.signaturesPublicKeys) {
-            bitcoin.addWitness(Buffer.from(new Array(64)));
-            bitcoin.verifySignature(key);
-        }
-    }
-
     if (spendingCondition.timeoutBlocks) {
         bitcoin.checkTimeout(spendingCondition.timeoutBlocks);
     }
 
+    let witnessSIs: StackItem[][] = [];
     if (spendingCondition.wotsSpec) {
-        const keys = spendingCondition.wotsPublicKeys!;
-
-        let witnessSIs: StackItem[][];
         if (spendingCondition.exampleWitness) {
             witnessSIs = spendingCondition.exampleWitness.map((values) => values.map((b) => bitcoin.addWitness(b)));
         } else {
@@ -103,6 +94,19 @@ export function generateBoilerplate(myRole: AgentRoles, spendingCondition: Spend
                 .map((spec) => encodeWinternitz(spec, 0n, ''))
                 .map((values) => values.map((b) => bitcoin.addWitness(b)));
         }
+    }
+
+    if (spendingCondition.signaturesPublicKeys) {
+        for (const _ of spendingCondition.signaturesPublicKeys) {
+            bitcoin.addWitness(Buffer.from(new Array(64)));
+        }
+        for (const key of spendingCondition.signaturesPublicKeys) {
+            bitcoin.verifySignature(key);
+        }
+    }
+
+    if (spendingCondition.wotsSpec) {
+        const keys = spendingCondition.wotsPublicKeys!;
         const decoders = {
             [WotsType._256]: (dataIndex: number) => bitcoin.winternitzCheck256(witnessSIs[dataIndex], keys[dataIndex]),
             [WotsType._256_4]: (dataIndex: number) =>
@@ -112,11 +116,9 @@ export function generateBoilerplate(myRole: AgentRoles, spendingCondition: Spend
             [WotsType._256_4_LP]: (dataIndex: number) => bitcoin.winternitzCheck256_listpick4(witnessSIs[dataIndex], keys[dataIndex])
         };
         for (const [dataIndex, spec] of spendingCondition.wotsSpec.entries()) {
-
             if (witnessSIs[dataIndex].length != WOTS_OUTPUT[spec]) {
                 throw new Error('size mismatch');
             }
-                        
             decoders[spec](dataIndex);
             bitcoin.drop(witnessSIs[dataIndex]);
         }

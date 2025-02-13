@@ -11,10 +11,11 @@ import {
     TemplateNames,
     WitnessAndValue
 } from '../common/types';
-import { getTemplateByTemplateId } from '../common/templates';
+import { getSpendingConditionByInput, getTemplateByTemplateId } from '../common/templates';
 import { AgentDb } from '../common/agent-db';
 import { WOTS_NIBBLES, WotsType } from '../common/winternitz';
 import { sleep } from '../common/sleep';
+import { Bitcoin, executeProgram } from '../../../src/generator/btc_vm/bitcoin';
 
 export interface Incoming {
     received: ReceivedTransaction;
@@ -85,6 +86,22 @@ export class ProtocolBase {
             console.log(`Template ${name} published`);
             return;
         }
+
+        for (let i = 0; i < template.inputs.length; i++) {
+            const bitcoin = new Bitcoin();
+            bitcoin.throwOnFail = true;
+                const input = template.inputs[i];
+            if (!input.script) continue;
+            if (data && data[i]) data[i].forEach(b => bitcoin.addWitness(b));
+            const sc = getSpendingConditionByInput(this.templates!, input);
+            if (sc.script!.compare(input.script!) != 0) throw new Error('Different scripts!');
+            if (sc.signaturesPublicKeys) {
+                for (const key of sc.signaturesPublicKeys) bitcoin.addWitness(key);
+            }
+            console.log(`Checking script for ${template.name}/${i}...`);
+            executeProgram(bitcoin, input.script!, false);
+        }
+
         await this.db.markTemplateToSend(this.setupId, name, data);
         console.log(`Asking to send template ${name} (make sure sender is listening: npm run bitcoin-sender)`);
         const status = await this.waitForTransmission(name);

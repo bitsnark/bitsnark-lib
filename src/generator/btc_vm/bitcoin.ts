@@ -1186,7 +1186,7 @@ export class Bitcoin {
         this.drop(checksumNibbles);
     }
 
-// expecting stack to contain:
+    // expecting stack to contain:
     // 4-bit nibble
     // 20 byte hash
     // poush nibble to altstack
@@ -1230,54 +1230,13 @@ export class Bitcoin {
         target.value = Number(bufferToBigintBE(target.value as Buffer));
     }
 
-    // expecting stack to contain:
-    // 4-bit nibble
-    // 20 byte hash
-    // ... 67 times
     winternitzCheck256_listpick4(witness: StackItem[], publicKeys: Buffer[]) {
         const totalNibbles = 67;
         if (publicKeys.length != totalNibbles) throw new Error('Size mismatch');
         if (witness.length != 2 * totalNibbles) throw new Error('Size mismatch');
 
         const target = this.newNibbles(64);
-
-        publicKeys = reverse(publicKeys);
-
-        const checksum = this.newStackItem(0);
-        for (let i = 0; i < 64; i++) {
-            this.winternitzDecodeNibble_listpick4(
-                target[63 - i],
-                witness.slice((3 + i) * 2, (3 + i) * 2 + 2),
-                publicKeys[3 + i]
-            );
-            this.add(checksum, checksum, target[63 - i]);
-        }
-
-        // do the checksum
-        const checksumNibbles = this.newNibbles(3);
-        for (let i = 0; i < 3; i++) {
-            this.winternitzDecodeNibble_listpick4(checksumNibbles[i], witness.slice(i * 2, i * 2 + 2), publicKeys[i]);
-        }
-
-        this.DATA(15);
-        this.pick(checksumNibbles[0]);
-        this.OP_SUB();
-        this.mul(16);
-        this.DATA(15);
-        this.pick(checksumNibbles[1]);
-        this.OP_SUB();
-        this.OP_ADD();
-        this.mul(16);
-        this.DATA(15);
-        this.pick(checksumNibbles[2]);
-        this.OP_SUB();
-        this.OP_ADD();
-
-        this.pick(checksum);
-        this.OP_NUMEQUALVERIFY();
-
-        this.drop(checksum);
-        this.drop(checksumNibbles);
+        this.winternitzDecode256_listpick4(target, witness, publicKeys);
         this.drop(target);
     }
 
@@ -1506,13 +1465,8 @@ export class Bitcoin {
 
         if (opts.validateStack == true) {
             // program has to end with a single 1 on the stack
-            while (this.stack.length() > 1) this.drop(this.stack.top());
-            if (this.stack.length() == 0) {
-                this.OP_0_16(1);
-            } else if (this.stack.top().value !== 1) {
-                this.drop(this.stack.top());
-                this.OP_0_16(1);
-            }
+            while (this.stack.length() > 0) this.drop(this.stack.top());
+            this.OP_0_16(1);
         }
 
         const items: { itemId: string; index: number; length: number }[] = [];
@@ -1626,7 +1580,7 @@ export function executeProgram(bitcoin: Bitcoin, script: Buffer, printFlag: bool
         } else {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (bitcoin as any)[String(opcode!)]();
-            print(opcode);
+            print(`${opcode}    -    ${bitcoin.stack.length()}`);
         }
     }
 

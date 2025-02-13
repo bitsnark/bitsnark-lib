@@ -43,7 +43,7 @@ export class Argument {
             instr.name == InstrCode.MULMOD || instr.name == InstrCode.DIVMOD ? calculateD(aValue, bValue) : 0n;
         return [aValue, bValue, cValue, dValue]
             .map((n, dataIndex) =>
-                encodeWinternitz256_4(n, createUniqueDataId(this.setupId, TemplateNames.ARGUMENT, 1, 0, dataIndex))
+                encodeWinternitz256_4_lp(n, createUniqueDataId(this.setupId, TemplateNames.ARGUMENT, 1, 0, dataIndex))
             )
             .flat();
     }
