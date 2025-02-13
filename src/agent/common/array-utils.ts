@@ -30,3 +30,9 @@ export function chunk<T>(arr: T[], size: number): T[][] {
     }
     return chunks;
 }
+
+export function reverse<T>(a: T[]): T[] {
+    const r: T[] = [];
+    for (let i = 0; i < a.length; i++) r[a.length - 1 - i] = a[i];
+    return r;
+}

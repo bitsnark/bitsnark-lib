@@ -1,5 +1,5 @@
 import { Bitcoin } from '../../generator/btc_vm/bitcoin';
-import { WOTS_NIBBLES, WotsType } from '../common/winternitz';
+import { encodeWinternitz, WOTS_NIBBLES, WOTS_OUTPUT, WotsType } from '../common/winternitz';
 import { StackItem } from '../../generator/btc_vm/stack';
 import { SimpleTapTree } from '../common/taptree';
 import { agentConf } from '../agent.conf';
@@ -95,18 +95,28 @@ export function generateBoilerplate(myRole: AgentRoles, spendingCondition: Spend
     if (spendingCondition.wotsSpec) {
         const keys = spendingCondition.wotsPublicKeys!;
 
-        const witnessSIs = (
-            spendingCondition.exampleWitness ? spendingCondition.exampleWitness! : spendingCondition.wotsPublicKeys!
-        ).map((values) => values.map((b) => bitcoin.addWitness(b)));
-
+        let witnessSIs: StackItem[][];
+        if (spendingCondition.exampleWitness) {
+            witnessSIs = spendingCondition.exampleWitness.map((values) => values.map((b) => bitcoin.addWitness(b)));
+        } else {
+            witnessSIs = spendingCondition.wotsSpec
+                .map((spec) => encodeWinternitz(spec, 0n, ''))
+                .map((values) => values.map((b) => bitcoin.addWitness(b)));
+        }
         const decoders = {
             [WotsType._256]: (dataIndex: number) => bitcoin.winternitzCheck256(witnessSIs[dataIndex], keys[dataIndex]),
             [WotsType._256_4]: (dataIndex: number) =>
                 bitcoin.winternitzCheck256_4(witnessSIs[dataIndex], keys[dataIndex]),
             [WotsType._24]: (dataIndex: number) => bitcoin.winternitzCheck24(witnessSIs[dataIndex], keys[dataIndex]),
-            [WotsType._1]: (dataIndex: number) => bitcoin.winternitzCheck1(witnessSIs[dataIndex], keys[dataIndex])
+            [WotsType._1]: (dataIndex: number) => bitcoin.winternitzCheck1(witnessSIs[dataIndex], keys[dataIndex]),
+            [WotsType._256_4_LP]: (dataIndex: number) => bitcoin.winternitzCheck256_listpick4(witnessSIs[dataIndex], keys[dataIndex])
         };
         for (const [dataIndex, spec] of spendingCondition.wotsSpec.entries()) {
+
+            if (witnessSIs[dataIndex].length != WOTS_OUTPUT[spec]) {
+                throw new Error('size mismatch');
+            }
+                        
             decoders[spec](dataIndex);
             bitcoin.drop(witnessSIs[dataIndex]);
         }
@@ -172,6 +182,11 @@ export async function generateAllScripts(
         if (t.name == TemplateNames.PROOF_REFUTED) {
             const ddg = new DoomsdayGenerator(agentId, setupId);
             let taproot;
+
+            // TODO: remove before merge!!!!!
+
+            generateFinal = false;
+
             if (generateFinal) {
                 taproot = (await ddg.generateFinalStepTaprootParallel()).taprootPubKey;
             } else {

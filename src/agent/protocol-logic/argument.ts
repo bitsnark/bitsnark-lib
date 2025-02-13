@@ -1,5 +1,5 @@
 import { FatMerkleProof } from './fat-merkle';
-import { encodeWinternitz24, encodeWinternitz256_4 } from '../common/winternitz';
+import { encodeWinternitz24, encodeWinternitz256_4, encodeWinternitz256_4_lp } from '../common/winternitz';
 import { InstrCode, Instruction } from '../../generator/ec_vm/vm/types';
 import { DoomsdayGenerator } from '../final-step/doomsday-generator';
 import { prime_bigint } from '../common/constants';

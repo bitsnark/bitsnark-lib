@@ -2,6 +2,8 @@ import * as bitcoinjs from 'bitcoinjs-lib';
 import { hardcode, opcodeMap, OpcodeType, opcodeValues } from './bitcoin-opcodes';
 import { StackItem, Stack } from './stack';
 import { createHash } from 'crypto';
+import { bufferToBigintBE } from '../../../src/agent/common/encoding';
+import { reverse } from '../../../src/agent/common/array-utils';
 
 interface Operation {
     op?: OpcodeType;
@@ -112,10 +114,10 @@ export class Bitcoin {
 
     popNumber(): number {
         const n = this.stack.pop().value;
-        if (typeof n != 'number') throw new Error('Not a number');
-        return n as number;
+        if (typeof n == 'number') return n;
+        return Number(bufferToBigintBE(n));
     }
-
+    
     /// NATIVE OPERATIONS ///
 
     DATA(data: number | Buffer, templateItemId?: string): StackItem {
@@ -1183,6 +1185,150 @@ export class Bitcoin {
         this.drop(checksum);
         this.drop(checksumNibbles);
     }
+
+// expecting stack to contain:
+    // 4-bit nibble
+    // 20 byte hash
+    // poush nibble to altstack
+    winternitzVerifyNibble_listpick4(publicKey: Buffer) {
+        this.OP_HASH160();
+        for (let i = 0; i < 15; i++) {
+            this.OP_DUP();
+            this.OP_HASH160();
+        }
+        // after this there are 16 hashes
+        this.OP_0_16(16);
+        this.OP_PICK();
+        this.OP_PICK();
+        this.DATA(publicKey, `wots_nibble_${this.lastTemplateItemId++}`);
+        this.OP_NUMEQUALVERIFY();
+        for (let i = 0; i < 16; i++) {
+            this.OP_DROP();
+        }
+        // only nibble remains
+        this.OP_TOALTSTACK();
+    }
+
+    winternitzDecodeNibble_listpick4(target: StackItem, witness: StackItem[], publicKey: Buffer) {
+        this.pick(witness[1]);
+        this.OP_HASH160();
+        for (let i = 0; i < 15; i++) {
+            this.OP_DUP();
+            this.OP_HASH160();
+        }
+        // after this there are 16 hashes
+        this.pick(witness[0]);
+        this.OP_PICK();
+        this.DATA(publicKey, `wots_nibble_${this.lastTemplateItemId++}`);
+        this.OP_NUMEQUALVERIFY();
+        for (let i = 0; i < 16; i++) {
+            this.OP_DROP();
+        }
+        this.mov(target, witness[0]);
+
+        // hack for now
+        target.value = Number(bufferToBigintBE(target.value as Buffer));
+    }
+
+    // expecting stack to contain:
+    // 4-bit nibble
+    // 20 byte hash
+    // ... 67 times
+    winternitzCheck256_listpick4(witness: StackItem[], publicKeys: Buffer[]) {
+        const totalNibbles = 67;
+        if (publicKeys.length != totalNibbles) throw new Error('Size mismatch');
+        if (witness.length != 2 * totalNibbles) throw new Error('Size mismatch');
+
+        const target = this.newNibbles(64);
+
+        publicKeys = reverse(publicKeys);
+
+        const checksum = this.newStackItem(0);
+        for (let i = 0; i < 64; i++) {
+            this.winternitzDecodeNibble_listpick4(
+                target[63 - i],
+                witness.slice((3 + i) * 2, (3 + i) * 2 + 2),
+                publicKeys[3 + i]
+            );
+            this.add(checksum, checksum, target[63 - i]);
+        }
+
+        // do the checksum
+        const checksumNibbles = this.newNibbles(3);
+        for (let i = 0; i < 3; i++) {
+            this.winternitzDecodeNibble_listpick4(checksumNibbles[i], witness.slice(i * 2, i * 2 + 2), publicKeys[i]);
+        }
+
+        this.DATA(15);
+        this.pick(checksumNibbles[0]);
+        this.OP_SUB();
+        this.mul(16);
+        this.DATA(15);
+        this.pick(checksumNibbles[1]);
+        this.OP_SUB();
+        this.OP_ADD();
+        this.mul(16);
+        this.DATA(15);
+        this.pick(checksumNibbles[2]);
+        this.OP_SUB();
+        this.OP_ADD();
+
+        this.pick(checksum);
+        this.OP_NUMEQUALVERIFY();
+
+        this.drop(checksum);
+        this.drop(checksumNibbles);
+        this.drop(target);
+    }
+
+    // expecting stack to contain:
+    // 4-bit nibble
+    // 20 byte hash
+    // ... 67 times
+    winternitzDecode256_listpick4(target: StackItem[], witness: StackItem[], publicKeys: Buffer[]) {
+        const totalNibbles = 67;
+        if (publicKeys.length != totalNibbles) throw new Error('Size mismatch');
+        if (target.length != 64) throw new Error('Size mismatch');
+        if (witness.length != 2 * totalNibbles) throw new Error('Size mismatch');
+
+        publicKeys = reverse(publicKeys);
+
+        const checksum = this.newStackItem(0);
+        for (let i = 0; i < 64; i++) {
+            this.winternitzDecodeNibble_listpick4(
+                target[63 - i],
+                witness.slice((3 + i) * 2, (3 + i) * 2 + 2),
+                publicKeys[3 + i]
+            );
+            this.add(checksum, checksum, target[63 - i]);
+        }
+
+        // do the checksum
+        const checksumNibbles = this.newNibbles(3);
+        for (let i = 0; i < 3; i++) {
+            this.winternitzDecodeNibble_listpick4(checksumNibbles[i], witness.slice(i * 2, i * 2 + 2), publicKeys[i]);
+        }
+
+        this.DATA(15);
+        this.pick(checksumNibbles[0]);
+        this.OP_SUB();
+        this.mul(16);
+        this.DATA(15);
+        this.pick(checksumNibbles[1]);
+        this.OP_SUB();
+        this.OP_ADD();
+        this.mul(16);
+        this.DATA(15);
+        this.pick(checksumNibbles[2]);
+        this.OP_SUB();
+        this.OP_ADD();
+
+        this.pick(checksum);
+        this.OP_NUMEQUALVERIFY();
+
+        this.drop(checksum);
+        this.drop(checksumNibbles);
+    }    
 
     checkInitialTransaction(witness: StackItem[], publicKeys: Buffer[]) {
         for (let i = 0; i < 10; i++) {
