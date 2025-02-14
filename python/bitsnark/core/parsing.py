@@ -1,6 +1,7 @@
 """
 JSON parsing utilities
 """
+from bitcointx.core.script import ScriptElement_Type
 
 
 def parse_bignum(s: str) -> int:
@@ -39,3 +40,9 @@ def serialize_hex(b: bytes | str) -> str:
         return "Buffer:" + b
     assert isinstance(b, bytes)
     return "Buffer:" + b.hex()
+
+
+def parse_witness_element(raw: str | int) -> ScriptElement_Type:
+    if isinstance(raw, int):
+        return raw
+    return parse_hex_bytes(raw)
