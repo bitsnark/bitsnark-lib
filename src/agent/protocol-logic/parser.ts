@@ -1,7 +1,7 @@
 import { bigintToBufferBE } from '../common/encoding';
 import { getSpendingConditionByInput } from '../common/templates';
 import { Input, Template, WitnessAndValue } from '../common/types';
-import { decodeWinternitz, WOTS_NIBBLES } from '../common/winternitz';
+import { decodeWinternitz, WOTS_NIBBLES, WOTS_OUTPUT } from '../common/winternitz';
 
 function hashesFromBuffer(data: Buffer): Buffer[] {
     const result: Buffer[] = [];
@@ -24,10 +24,9 @@ export function parseInput(templates: Template[], input: Input, data: Buffer[]):
     for (let i = 0; i < sc.wotsSpec.length; i++) {
         const spec = sc.wotsSpec[i];
         const keys = sc.wotsPublicKeys[i];
-        const nibbleCount = WOTS_NIBBLES[spec];
-        if (keys.length != nibbleCount) throw new Error('Wrong number of keys');
+        if (keys.length != WOTS_NIBBLES[spec]) throw new Error('Wrong number of keys');
         try {
-            const th = hashes.slice(hashesIndex, hashesIndex + nibbleCount);
+            const th = hashes.slice(hashesIndex, hashesIndex + WOTS_OUTPUT[spec]);
             const tv = decodeWinternitz(spec, th, keys);
             result[resultIndex++] = {
                 value: tv,
@@ -38,7 +37,7 @@ export function parseInput(templates: Template[], input: Input, data: Buffer[]):
             console.error('Error decoding input:', input);
             throw e;
         }
-        hashesIndex += nibbleCount;
+        hashesIndex += WOTS_OUTPUT[spec];
     }
     return result;
 }

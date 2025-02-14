@@ -1201,7 +1201,8 @@ export class Bitcoin {
         this.OP_PICK();
         this.OP_PICK();
         this.DATA(publicKey, `wots_nibble_${this.lastTemplateItemId++}`);
-        this.OP_NUMEQUALVERIFY();
+        this.OP_EQUAL();
+        this.OP_VERIFY();
         for (let i = 0; i < 16; i++) {
             this.OP_DROP();
         }
@@ -1220,7 +1221,8 @@ export class Bitcoin {
         this.pick(witness[0]);
         this.OP_PICK();
         this.DATA(publicKey, `wots_nibble_${this.lastTemplateItemId++}`);
-        this.OP_NUMEQUALVERIFY();
+        this.OP_EQUAL();
+        this.OP_VERIFY();
         for (let i = 0; i < 16; i++) {
             this.OP_DROP();
         }
@@ -1474,6 +1476,9 @@ export class Bitcoin {
         const byteArray: number[] = [];
         for (const opcode of this.opcodes) {
             if (opcode.op == OpcodeType.DATA) {
+                if (opcode.data && opcode.data instanceof Buffer && opcode.data.length <= 4) {
+                    opcode.data = Number(bufferToBigintBE(opcode.data));
+                }
                 if (opcode.data && opcode.data instanceof Buffer) {
                     byteArray.push(opcode.data.length);
                     if (opcode.templateItemId) {

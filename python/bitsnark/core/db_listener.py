@@ -75,7 +75,8 @@ def broadcast_transactions(dbsession, bitcoin_rpc):
     for tx in ready_transactions:
         logger.info("Broadcasting transaction %s...", tx.name)
         try:
-            broadcast_transaction(tx, dbsession, bitcoin_rpc)
+            evaluate_inputs = False # tx.name == 'ARGUMENT'
+            broadcast_transaction(tx, dbsession, bitcoin_rpc, evaluate_inputs)
             tx.status = OutgoingStatus.PUBLISHED
         except ValueError:
             logger.exception("Error broadcasting transaction %s", tx.name)
