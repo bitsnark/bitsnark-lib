@@ -126,8 +126,13 @@ export class ProtocolProver extends ProtocolBase {
 
     private async sendArgument(proof: bigint[], selectionPath: number[], selectionPathUnparsed: Buffer[][]) {
         const argument = new Argument(this.agentId, this.setup!.id, proof);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const argumentData = await argument.makeArgument(selectionPath, selectionPathUnparsed);
-        await this.sendTransaction(TemplateNames.ARGUMENT, argumentData);
+        const argumentDataMixed = argumentData.map(ad => ad.map((b: Buffer) => {
+            if (b.length == 1) return Number(b[0]);
+            return b;
+        }));
+        await this.sendTransaction(TemplateNames.ARGUMENT, argumentDataMixed);
     }
 
     private async sendArgumentUncontested() {

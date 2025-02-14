@@ -9,6 +9,7 @@ import { AgentRoles, Input, SpendingCondition, Template, TemplateNames } from '.
 import { getSpendingConditionByInput, getTemplateByName } from '../common/templates';
 import { AgentDb } from '../common/agent-db';
 import { createHash } from 'node:crypto';
+import { array } from '../common/array-utils';
 
 const DEAD_SCRIPT = Buffer.from([0x6a]); // opcode fails transaction
 
@@ -211,6 +212,12 @@ export async function generateAllScripts(
                 if (t.name == TemplateNames.ARGUMENT && input.index == 0) {
                     script = generateProcessSelectionPath(sc);
                 }
+                // TODO: testing
+                // else if (t.name == TemplateNames.ARGUMENT && input.index == 1) {
+                //     const foo: number[] = array(538, 117);
+                //     foo.push(81);
+                //     script = Buffer.from(foo);
+                // }
                 // The locked funds is different
                 else if (input.templateName == TemplateNames.LOCKED_FUNDS) {
                     const sc = getSpendingConditionByInput(templates, input);

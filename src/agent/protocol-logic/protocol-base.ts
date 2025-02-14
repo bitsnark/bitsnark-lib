@@ -77,7 +77,7 @@ export class ProtocolBase {
         }
     }
 
-    async sendTransaction(name: TemplateNames, data?: Buffer[][]) {
+    async sendTransaction(name: TemplateNames, data?: (Buffer | number)[][]) {
         const template = await this.db.getTemplate(this.setupId, name);
         if (template.status == TemplateStatus.REJECTED) throw new Error(`Template ${name} was rejected`);
         if (template.status == TemplateStatus.READY) return;
