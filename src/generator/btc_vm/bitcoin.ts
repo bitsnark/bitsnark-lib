@@ -50,10 +50,8 @@ export class Bitcoin {
         if (typeof value == 'number' && (value < 0 || value > 65535)) throw new Error('Invalid value');
         const si = this.DATA(value);
         this.maxStack = Math.max(this.maxStack, this.stack.items.length + this.altStack.length);
-        if (this.throwOnFail) {
-            if (this.stack.items.length + this.altStack.length > 1000)
-                throw new Error(`Stack too big: ${this.stack.items.length + this.altStack.length}`);
-        }
+        if (this.stack.items.length + this.altStack.length > 1000)
+            throw new Error(`Stack too big: ${this.stack.items.length + this.altStack.length}`);
         return si;
     }
 
@@ -117,7 +115,7 @@ export class Bitcoin {
         if (typeof n == 'number') return n;
         return Number(bufferToBigintBE(n));
     }
-    
+
     /// NATIVE OPERATIONS ///
 
     DATA(data: number | Buffer, templateItemId?: string): StackItem {
@@ -1237,15 +1235,44 @@ export class Bitcoin {
         if (publicKeys.length != totalNibbles) throw new Error('Size mismatch');
         if (witness.length != 2 * totalNibbles) throw new Error('Size mismatch');
 
-        const target = this.newNibbles(64);
-        this.winternitzDecode256_listpick4(target, witness, publicKeys);
-        this.drop(target);
+        //publicKeys = reverse(publicKeys);
+
+        // do the checksum
+        const checksumNibbles = this.newNibbles(3);
+        for (let i = 0; i < 3; i++) {
+            const tn = witness.slice(i * 2, i * 2 + 2);
+            this.winternitzDecodeNibble_listpick4(checksumNibbles[i], tn, publicKeys[totalNibbles - i - 1]);
+        }
+
+        const checksum = this.newStackItem(0);
+        const temp = this.newStackItem(0);
+        for (let i = 0; i < 64; i++) {
+            this.winternitzDecodeNibble_listpick4(temp, witness.slice((3 + i) * 2, (3 + i) * 2 + 2), publicKeys[totalNibbles - i - 1 - 3]);
+            this.add(checksum, checksum, temp);
+        }
+
+        this.DATA(15);
+        this.pick(checksumNibbles[0]);
+        this.OP_SUB();
+        this.mul(16);
+        this.DATA(15);
+        this.pick(checksumNibbles[1]);
+        this.OP_SUB();
+        this.OP_ADD();
+        this.mul(16);
+        this.DATA(15);
+        this.pick(checksumNibbles[2]);
+        this.OP_SUB();
+        this.OP_ADD();
+
+        this.pick(checksum);
+        this.OP_NUMEQUALVERIFY();
+
+        this.drop(checksum);
+        this.drop(temp);
+        this.drop(checksumNibbles);
     }
 
-    // expecting stack to contain:
-    // 4-bit nibble
-    // 20 byte hash
-    // ... 67 times
     winternitzDecode256_listpick4(target: StackItem[], witness: StackItem[], publicKeys: Buffer[]) {
         const totalNibbles = 67;
         if (publicKeys.length != totalNibbles) throw new Error('Size mismatch');
@@ -1267,7 +1294,8 @@ export class Bitcoin {
         // do the checksum
         const checksumNibbles = this.newNibbles(3);
         for (let i = 0; i < 3; i++) {
-            this.winternitzDecodeNibble_listpick4(checksumNibbles[i], witness.slice(i * 2, i * 2 + 2), publicKeys[i]);
+            const tn = witness.slice(i * 2, i * 2 + 2);
+            this.winternitzDecodeNibble_listpick4(checksumNibbles[i], tn, publicKeys[i]);
         }
 
         this.DATA(15);
@@ -1289,7 +1317,7 @@ export class Bitcoin {
 
         this.drop(checksum);
         this.drop(checksumNibbles);
-    }    
+    }
 
     checkInitialTransaction(witness: StackItem[], publicKeys: Buffer[]) {
         for (let i = 0; i < 10; i++) {
@@ -1517,78 +1545,87 @@ export class Bitcoin {
     }
 }
 
-export function executeProgram(bitcoin: Bitcoin, script: Buffer, printFlag: boolean): boolean {
+export function executeProgram(bitcoin: Bitcoin, script: Buffer): boolean {
     let inIf = false;
     let inElse = false;
     let doIf = false;
     let doElse = false;
 
-    for (let i = 0; i < script.length; i++) {
-        const opcode = opcodeMap[script[i]];
+    const log: string[] = [];
 
-        const print = printFlag
-            ? (...sa: string[]) => {
-                  console.log(`${i}:\t`, ...sa);
-              }
-            : () => {};
+    try {
+        for (let i = 0; i < script.length; i++) {
+            const opcode = opcodeMap[script[i]];
 
-        if (opcode == OpcodeType.OP_IF) {
-            inIf = true;
-            inElse = false;
-            doIf = bitcoin.stack.top().value != 0;
-            doElse = !doIf;
-
-            bitcoin.OP_IF();
-            print(opcode);
-
-            continue;
-        }
-        if (opcode == OpcodeType.OP_ELSE) {
-            inIf = false;
-            inElse = true;
-
-            bitcoin.OP_ELSE();
-            print(opcode);
-
-            continue;
-        }
-        if (opcode == OpcodeType.OP_ENDIF) {
-            inIf = false;
-            inElse = false;
-
-            bitcoin.OP_ENDIF();
-            print(opcode);
-
-            continue;
-        }
-
-        if (inIf && !doIf) continue;
-        if (inElse && !doElse) continue;
-
-        if (script[i] == 0) {
-            bitcoin.OP_0_16(0);
-            print('<0>');
-        } else if (script[i] >= 81 && script[i] <= 96) {
-            bitcoin.OP_0_16(1 + script[i] - 81);
-            print(`<${1 + script[i] - 81}>`);
-        } else if (script[i] > 0 && script[i] <= 75) {
-            const b = script.subarray(i + 1, i + script[i] + 1);
-            if (b.length == 1) {
-                bitcoin.newStackItem(b[0]);
-            } else if (b.length == 2) {
-                bitcoin.newStackItem(b[0] + (b[1] << 8));
-            } else {
-                bitcoin.newStackItem(b);
+            const print = (s: string) => {
+                log.push(`${i}:\t${s}\t\t${bitcoin.stack.items.length}`);
+                // console.log(`${i}:\t${s}\t\t${bitcoin.stack.items.length}`);
             }
-            i += b.length;
-            print(`<${b.toString('hex')}>`);
-        } else {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (bitcoin as any)[String(opcode!)]();
-            print(`${opcode}    -    ${bitcoin.stack.length()}`);
-        }
-    }
 
-    if (bitcoin.stack.length() != 1) throw new Error('Stack size must be 1');
-    return bitcoin.success;
+            if (opcode == OpcodeType.OP_IF) {
+                inIf = true;
+                inElse = false;
+                doIf = bitcoin.stack.top().value != 0;
+                doElse = !doIf;
+
+                bitcoin.OP_IF();
+                print(opcode);
+
+                continue;
+            }
+            if (opcode == OpcodeType.OP_ELSE) {
+                inIf = false;
+                inElse = true;
+
+                bitcoin.OP_ELSE();
+                print(opcode);
+
+                continue;
+            }
+            if (opcode == OpcodeType.OP_ENDIF) {
+                inIf = false;
+                inElse = false;
+
+                bitcoin.OP_ENDIF();
+                print(opcode);
+
+                continue;
+            }
+
+            if (inIf && !doIf) continue;
+            if (inElse && !doElse) continue;
+
+            if (script[i] == 0) {
+                bitcoin.OP_0_16(0);
+                print('<0>');
+            } else if (script[i] >= 81 && script[i] <= 96) {
+                bitcoin.OP_0_16(1 + script[i] - 81);
+                print(`<${1 + script[i] - 81}>`);
+            } else if (script[i] > 0 && script[i] <= 75) {
+                const b = script.subarray(i + 1, i + script[i] + 1);
+                if (b.length == 1) {
+                    bitcoin.newStackItem(b[0]);
+                } else if (b.length == 2) {
+                    bitcoin.newStackItem(b[0] + (b[1] << 8));
+                } else {
+                    bitcoin.newStackItem(b);
+                }
+                i += b.length;
+                print(`<${b.toString('hex')}>`);
+            } else {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                (bitcoin as any)[String(opcode!)]();
+                print(`${opcode}`);
+            }
+        }
+
+        if (bitcoin.stack.length() != 1) throw new Error('Stack size must be 1');
+        bitcoin.stack.pop();
+
+        return bitcoin.success;
+    } catch (e) {
+        log.forEach((s) => console.log(s));
+        console.error(e);
+        throw e;
+    }
 }

@@ -155,4 +155,5 @@ export interface WitnessAndValue {
     witness?: Buffer[];
     buffer: Buffer;
     value: bigint;
+    publicKeys?: Buffer[];
 }

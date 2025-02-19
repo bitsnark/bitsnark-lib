@@ -43,7 +43,7 @@ async function main() {
     argWitness[0].forEach((b) => bitcoin.addWitness(b));
     [Buffer.alloc(64), Buffer.alloc(64)].forEach((b) => bitcoin.addWitness(b));
     bitcoin.throwOnFail = true;
-    executeProgram(bitcoin, script0a, true);
+    executeProgram(bitcoin, script0a);
     expect(bitcoin.fail).toBeFalsy();
 }
 

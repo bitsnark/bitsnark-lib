@@ -50,6 +50,8 @@ def broadcast_transaction(
 
     signed_serialized_tx = tx.serialize().hex()
 
+    print("Broadcasting transaction: ", tx_template.name, len(signed_serialized_tx) // 2)
+
     if dump:
         dump_filename = f"{tx_template.name}-signed-serialized-tx.dump"
         with open(dump_filename, "w", encoding="utf-8") as f:

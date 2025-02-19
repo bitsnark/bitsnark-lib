@@ -52,7 +52,7 @@ export const WOTS_TOTAL_BITS: { [key in WotsType]: number } = {
     [WotsType._256_4_LP]: 256
 };
 
-function hash(input: Buffer, times: number = 1): Buffer {
+export function hash(input: Buffer, times: number = 1): Buffer {
     let t = input;
     for (let i = 0; i < times; i++) {
         const h1 = createHash('sha256').update(t).digest();
@@ -61,7 +61,7 @@ function hash(input: Buffer, times: number = 1): Buffer {
     return t;
 }
 
-function unhash(prehash: Buffer, publicKey: Buffer): number {
+export function unhash(prehash: Buffer, publicKey: Buffer): number {
     for (let i = 0; i < 256; i++) {
         prehash = hash(prehash);
         if (prehash.equals(publicKey)) return i;
@@ -274,11 +274,12 @@ export function decodeWinternitz(type: WotsType, input: Buffer[], keys: Buffer[]
         [WotsType._1]: decodeWinternitz1,
         [WotsType._256_4_LP]: decodeWinternitz256_4_lp
     };
-    return decoders[type](input, keys);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return decoders[type](input as any, keys);
 }
 
-function reversePreservePairs(a: Buffer[]): Buffer[] {
-    const r: Buffer[] = [];
+function reversePreservePairs<T>(a: T[]): T[] {
+    const r: T[] = [];
     for (let i = 0; i < a.length; ) {
         const t1 = a[i++];
         const t2 = a[i++];
@@ -306,23 +307,32 @@ export function encodeWinternitz256_4_lp(input: bigint, unique: string): Buffer[
     return reversePreservePairs(output);
 }
 
+function lpNibble(a: Buffer | number): number {
+    let trueNibble: number | Buffer = 0;
+    if (typeof a == 'number') trueNibble = a;
+    else if (a instanceof Buffer && (a as Buffer).length == 0) trueNibble = 0;
+    else if (a instanceof Buffer && (a as Buffer).length == 1) trueNibble = (a as Buffer)[0];
+    else {
+        throw new Error('Invalid nibble');
+    }
+    return trueNibble;
+}
+
 export function decodeWinternitz256_4_lp(input: Buffer[], publicKeys: Buffer[]): bigint {
     input = reversePreservePairs(input);
     let n = 0n;
     let checksum = 0;
     for (let i = 0; i < 64; i++) {
-        if (input[i * 2].length != 1) throw new Error('Invalid nibble');
-        const trueNibble = input[i * 2][0];
-        const nibble = 15 - unhash(input[i * 2 + 1], publicKeys[i]);
+        const trueNibble = lpNibble(input[i * 2]);
+        const nibble = 15 - unhash(input[i * 2 + 1] as Buffer, publicKeys[i]);
         if (trueNibble != nibble) throw new Error('Invalid hash');
         checksum += nibble;
         n += BigInt(nibble) << BigInt(i * 4);
     }
     const checksumNibbles = toNibbles_4(BigInt(checksum), 3);
     for (let i = 0; i < 3; i++) {
-        if (input[(64 + i) * 2].length != 1) throw new Error('Invalid nibble');
-        const trueNibble = 15 - input[(64 + i) * 2][0];
-        const nibble = unhash(input[(64 + i) * 2 + 1], publicKeys[64 + i]);
+        const trueNibble = 15 - lpNibble(input[(64 + i) * 2]);
+        const nibble = unhash(input[(64 + i) * 2 + 1] as Buffer, publicKeys[64 + i]);
         if (trueNibble != nibble || checksumNibbles[i] != nibble) throw new Error('Invalid checksum');
     }
     return n;

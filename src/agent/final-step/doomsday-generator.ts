@@ -113,7 +113,7 @@ export class DoomsdayGenerator {
         for (let i = from; i < to; i++) {
             try {
                 const rd = getRefutationDescriptor(i);
-                const script = await createRefutationScript(this.decasector, templates, rd);
+                const script = await createRefutationScript(this.decasector, templates, rd, false);
                 hashes.push(getHash(script));
             } catch (e) {
                 console.error(e);
@@ -134,6 +134,8 @@ export class DoomsdayGenerator {
         let allHashes = allHashesCache[this.setupId];
         if (!allHashes) {
             const inputs = this.chunkTheWork(128);
+            inputs.forEach(i => i.skip = i.from > 8800000 || i.to < 8800000);
+            // const inputs = [last(this.chunkTheWork(1280))];
 
             const results = await parallelize<GenerateFinalTaprootCommand, ChunkResult>(inputs, async (input) => {
                 if (input.skip) {
@@ -162,7 +164,7 @@ export class DoomsdayGenerator {
         if (refutationDescriptor) {
             const db = new AgentDb(this.agentId);
             const templates = await db.getTemplates(this.setupId);
-            requestedScript = await createRefutationScript(this.decasector, templates, refutationDescriptor);
+            requestedScript = await createRefutationScript(this.decasector, templates, refutationDescriptor, true);
         }
 
         const ret = {
@@ -212,7 +214,7 @@ export class DoomsdayGenerator {
 
         let requestedScript;
         if (refutationDescriptor) {
-            requestedScript = await createRefutationScript(this.decasector, templates, refutationDescriptor);
+            requestedScript = await createRefutationScript(this.decasector, templates, refutationDescriptor, true);
         }
         const requestedControlBlock = refutationDescriptor ? compressor.getControlBlock() : undefined;
 

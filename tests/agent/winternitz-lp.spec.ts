@@ -72,6 +72,14 @@ describe('Winternitz listpick4 variation', () => {
         const nibbles = bigintToNibbles_4(data, 64);
 
         expect(target.map((si) => si.value)).toEqual(nibbles);
+
+        const script = bitcoin.programToBinary();
+        const secondBitcoin = new Bitcoin();
+        secondBitcoin.throwOnFail = true;
+        encoded.map((b) => secondBitcoin.addWitness(b));
+
+        executeProgram(secondBitcoin, script);
+        expect(secondBitcoin.success).toBeTruthy();
     });
 
     it('bitcoin check - listpick', () => {
@@ -82,10 +90,6 @@ describe('Winternitz listpick4 variation', () => {
         bitcoin.throwOnFail = true;
         const publicKeys = getWinternitzPublicKeys(WotsType._256_4_LP, '');
         const witness = [0, 1, 2, 3].map(() => encoded.map((b) => bitcoin.addWitness(b)));
-        for (let i = 0; i < 2; i++) {
-            bitcoin.addWitness(Buffer.from(new Array(64)));
-            bitcoin.verifySignature(Buffer.alloc(32));
-        }
         for (let i = 0; i < 4; i++) {
             bitcoin.winternitzCheck256_listpick4(witness[i], publicKeys);
             bitcoin.drop(witness[i]);
@@ -97,11 +101,8 @@ describe('Winternitz listpick4 variation', () => {
         for (let i = 0; i < 4; i++) {
             encoded.map((b) => secondBitcoin.addWitness(b));
         }
-        for (let i = 0; i < 2; i++) {
-            secondBitcoin.addWitness(Buffer.from(new Array(64)));
-        }
-        
-        executeProgram(secondBitcoin, script, true);
+
+        executeProgram(secondBitcoin, script);
         expect(secondBitcoin.success).toBeTruthy();
     });
 });

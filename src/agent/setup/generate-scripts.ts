@@ -9,7 +9,6 @@ import { AgentRoles, Input, SpendingCondition, Template, TemplateNames } from '.
 import { getSpendingConditionByInput, getTemplateByName } from '../common/templates';
 import { AgentDb } from '../common/agent-db';
 import { createHash } from 'node:crypto';
-import { array } from '../common/array-utils';
 
 const DEAD_SCRIPT = Buffer.from([0x6a]); // opcode fails transaction
 
@@ -114,7 +113,8 @@ export function generateBoilerplate(myRole: AgentRoles, spendingCondition: Spend
                 bitcoin.winternitzCheck256_4(witnessSIs[dataIndex], keys[dataIndex]),
             [WotsType._24]: (dataIndex: number) => bitcoin.winternitzCheck24(witnessSIs[dataIndex], keys[dataIndex]),
             [WotsType._1]: (dataIndex: number) => bitcoin.winternitzCheck1(witnessSIs[dataIndex], keys[dataIndex]),
-            [WotsType._256_4_LP]: (dataIndex: number) => bitcoin.winternitzCheck256_listpick4(witnessSIs[dataIndex], keys[dataIndex])
+            [WotsType._256_4_LP]: (dataIndex: number) =>
+                bitcoin.winternitzCheck256_listpick4(witnessSIs[dataIndex], keys[dataIndex])
         };
         for (const [dataIndex, spec] of spendingCondition.wotsSpec.entries()) {
             if (witnessSIs[dataIndex].length != WOTS_OUTPUT[spec]) {
@@ -186,10 +186,6 @@ export async function generateAllScripts(
             const ddg = new DoomsdayGenerator(agentId, setupId);
             let taproot;
 
-            // TODO: remove before merge!!!!!
-
-            generateFinal = false;
-
             if (generateFinal) {
                 taproot = (await ddg.generateFinalStepTaprootParallel()).taprootPubKey;
             } else {
@@ -212,12 +208,6 @@ export async function generateAllScripts(
                 if (t.name == TemplateNames.ARGUMENT && input.index == 0) {
                     script = generateProcessSelectionPath(sc);
                 }
-                // TODO: testing
-                // else if (t.name == TemplateNames.ARGUMENT && input.index == 1) {
-                //     const foo: number[] = array(538, 117);
-                //     foo.push(81);
-                //     script = Buffer.from(foo);
-                // }
                 // The locked funds is different
                 else if (input.templateName == TemplateNames.LOCKED_FUNDS) {
                     const sc = getSpendingConditionByInput(templates, input);

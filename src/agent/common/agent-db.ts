@@ -268,7 +268,7 @@ export class AgentDb extends Db {
         await this.updateTemplates(setupId, toUpdate);
     }
 
-    public async markTemplateToSend(setupId: string, templateName: string, data?: (Buffer | number)[][]) {
+    public async markTemplateToSend(setupId: string, templateName: string, data?: Buffer[][]) {
         await this.query(
             `UPDATE templates
                 SET updated_at = NOW(), protocol_data = $1, status = $2

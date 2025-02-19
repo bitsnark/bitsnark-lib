@@ -1,5 +1,5 @@
 import { FatMerkleProof } from './fat-merkle';
-import { encodeWinternitz24, encodeWinternitz256_4, encodeWinternitz256_4_lp } from '../common/winternitz';
+import { decodeWinternitz256_4_lp, encodeWinternitz24, encodeWinternitz256_4_lp } from '../common/winternitz';
 import { InstrCode, Instruction } from '../../generator/ec_vm/vm/types';
 import { DoomsdayGenerator } from '../final-step/doomsday-generator';
 import { prime_bigint } from '../common/constants';
@@ -67,11 +67,11 @@ export class Argument {
             throw new Error('Invalid number of hashes in merkle proof');
 
         const hashes = [merkleProofA.toArgument(), merkleProofB.toArgument(), merkleProofC.toArgument()];
-        const inputHashes = chunk(hashes.flat(), 12);
+        const inputHashes = chunk(hashes.flat(), 6);
         const encoded = inputHashes.map((o, oi) =>
             o
                 .map((b, dataIndex) =>
-                    encodeWinternitz256_4(
+                    encodeWinternitz256_4_lp(
                         bufferToBigintBE(b),
                         createUniqueDataId(this.setupId, TemplateNames.ARGUMENT, 2 + oi, 0, dataIndex)
                     )
@@ -158,6 +158,10 @@ async function refuteHash(
     const whichHash = await proofs[whichProof].indexToRefute();
     if (whichHash < 0) throw new Error("Can't find bad hash");
     const data = [...proofs[whichProof].hashes.slice(whichHash, whichHash + 3)];
+
+    const n = decodeWinternitz256_4_lp(data[0].witness!, data[0].publicKeys!);
+    console.log('!!!!!!!!! ', n);
+
     const { requestedScript, requestedControlBlock } = await doomsdayGenerator.generateFinalStepTaprootParallel({
         refutationType: RefutationType.HASH,
         line: Number(index.value),

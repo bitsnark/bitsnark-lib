@@ -25,12 +25,7 @@ export function emulateTransactionScripts(templates: Template[]) {
                 bitcoin.newStackItem(Buffer.from(new Array(64)));
             }
 
-            try {
-                executeProgram(bitcoin, sc.script!, false);
-            } catch (e) {
-                console.error(e);
-                executeProgram(bitcoin, sc.script!, true);
-            }
+            executeProgram(bitcoin, sc.script!);
         }
     }
 }

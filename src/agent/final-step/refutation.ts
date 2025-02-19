@@ -3,12 +3,12 @@ import { StackItem } from '../../../src/generator/btc_vm/stack';
 import { InstrCode } from '../../../src/generator/ec_vm/vm/types';
 import { getSpendingConditionByInput, getTemplateByName, twoDigits } from '../common/templates';
 import { Template, TemplateNames } from '../common/types';
-import { encodeWinternitz24, encodeWinternitz256_4 } from '../common/winternitz';
+import { encodeWinternitz24, encodeWinternitz256_4_lp, getWinternitzPublicKeys, WotsType } from '../common/winternitz';
 import { bigintToNibbles_3 } from './nibbles';
 import { Decasector } from '../setup/decasector';
 import { checkLineBitcoin } from './check-line';
 import { BLAKE3, Register } from './blake-3-4u';
-import { array } from '../common/array-utils';
+import { chunk } from '../common/array-utils';
 
 export const scriptTotalLines = 400001;
 
@@ -69,7 +69,7 @@ export function getRefutationDescriptor(index: number): RefutationDescriptor {
     return { refutationType: RefutationType.HASH, line, whichProof, whichHashOption };
 }
 
-const scriptTampleCache: { [key: string]: ScriptTemplate } = {};
+const scriptTemplateCache: { [key: string]: ScriptTemplate } = {};
 
 function renderTemplateWithLine(template: ScriptTemplate, line: number): Buffer {
     const nibbles = bigintToNibbles_3(BigInt(line), 8);
@@ -97,12 +97,12 @@ function generateRefuteInstructionScriptTemplate(
 
     const indexWitness = encodeWinternitz24(BigInt(line), '').map((b) => bitcoin.addWitness(b));
 
-    const w_a = encodeWinternitz256_4(0n, '').map((b) => bitcoin.addWitness(b));
-    const w_b = encodeWinternitz256_4(0n, '').map((b) => bitcoin.addWitness(b));
-    const w_c = encodeWinternitz256_4(0n, '').map((b) => bitcoin.addWitness(b));
+    const w_a = encodeWinternitz256_4_lp(0n, '').map((b) => bitcoin.addWitness(b));
+    const w_b = encodeWinternitz256_4_lp(0n, '').map((b) => bitcoin.addWitness(b));
+    const w_c = encodeWinternitz256_4_lp(0n, '').map((b) => bitcoin.addWitness(b));
     let w_d: StackItem[] | undefined;
     if (instr.name == InstrCode.MULMOD || instr.name == InstrCode.DIVMOD) {
-        w_d = encodeWinternitz256_4(0n, '').map((b) => bitcoin.addWitness(b));
+        w_d = encodeWinternitz256_4_lp(0n, '').map((b) => bitcoin.addWitness(b));
     }
 
     const sc = lastSelect?.outputs[0].spendingConditions[0];
@@ -123,21 +123,21 @@ function generateRefuteInstructionScriptTemplate(
 
     // a is the first element in the second output
     const a_4 = bitcoin.newNibbles(64);
-    bitcoin.winternitzDecode256_4(a_4, w_a, lastSelect.outputs[1].spendingConditions[0].wotsPublicKeys![0]);
+    bitcoin.winternitzDecode256_listpick4(a_4, w_a, lastSelect.outputs[1].spendingConditions[0].wotsPublicKeys![0]);
     bitcoin.drop(w_a);
     const a = bitcoin.nibbles4To3(a_4);
     bitcoin.drop(a_4);
 
     // b is the second element in the second output
     const b_4 = bitcoin.newNibbles(64);
-    bitcoin.winternitzDecode256_4(b_4, w_b, lastSelect.outputs[1].spendingConditions[0].wotsPublicKeys![1]);
+    bitcoin.winternitzDecode256_listpick4(b_4, w_b, lastSelect.outputs[1].spendingConditions[0].wotsPublicKeys![1]);
     bitcoin.drop(w_b);
     const b = bitcoin.nibbles4To3(b_4);
     bitcoin.drop(b_4);
 
     // c is the third element in the second output
     const c_4 = bitcoin.newNibbles(64);
-    bitcoin.winternitzDecode256_4(c_4, w_c, lastSelect.outputs[1].spendingConditions[0].wotsPublicKeys![2]);
+    bitcoin.winternitzDecode256_listpick4(c_4, w_c, lastSelect.outputs[1].spendingConditions[0].wotsPublicKeys![2]);
     bitcoin.drop(w_c);
     const c = bitcoin.nibbles4To3(c_4);
     bitcoin.drop(c_4);
@@ -146,7 +146,7 @@ function generateRefuteInstructionScriptTemplate(
     let d: StackItem[];
     if (w_d) {
         const d_4 = bitcoin.newNibbles(64);
-        bitcoin.winternitzDecode256_4(d_4, w_d, lastSelect.outputs[1].spendingConditions[0].wotsPublicKeys![3]);
+        bitcoin.winternitzDecode256_listpick4(d_4, w_d, lastSelect.outputs[1].spendingConditions[0].wotsPublicKeys![3]);
         bitcoin.drop(w_d);
         d = bitcoin.nibbles4To3(d_4);
         bitcoin.drop(d_4);
@@ -164,9 +164,9 @@ function generateRefuteInstructionScript(
 ): Buffer {
     const instr = decasector.savedVm.program[refutation.line];
     const cacheKey = `${instr.name}/${instr.bit ?? 0}`;
-    if (scriptTampleCache[cacheKey]) return renderTemplateWithLine(scriptTampleCache[cacheKey], refutation.line);
+    if (scriptTemplateCache[cacheKey]) return renderTemplateWithLine(scriptTemplateCache[cacheKey], refutation.line);
     const template = generateRefuteInstructionScriptTemplate(decasector, templates, refutation.line);
-    scriptTampleCache[cacheKey] = template;
+    scriptTemplateCache[cacheKey] = template;
     const script = renderTemplateWithLine(template, refutation.line);
     return script;
 }
@@ -192,19 +192,18 @@ function negifyPairHash(
     blake3.bitcoin.drop(temp);
 }
 
-async function createRefuteHashScriptTemplate(templates: Template[]): Promise<ScriptTemplate> {
-    const argumentTemplate = getTemplateByName(templates, `${TemplateNames.ARGUMENT}`);
+export async function createRefuteHashScriptTemplate(argumentTemplate: Template): Promise<ScriptTemplate> {
 
     const bitcoin = new Bitcoin();
-    bitcoin.throwOnFail = false;
+    bitcoin.throwOnFail = true;
 
-    const leftKeys = array(67, Buffer.alloc(20));
-    const rightKeys = array(67, Buffer.alloc(20));
-    const resultKeys = array(67, Buffer.alloc(20));
+    const leftKeys = getWinternitzPublicKeys(WotsType._256_4_LP, '');
+    const rightKeys = getWinternitzPublicKeys(WotsType._256_4_LP, '');
+    const resultKeys = getWinternitzPublicKeys(WotsType._256_4_LP, '');
 
-    const leftWi = array(67, Buffer.alloc(20)).map((b) => bitcoin.addWitness(b));
-    const rightWi = array(67, Buffer.alloc(20)).map((b) => bitcoin.addWitness(b));
-    const resultWi = array(67, Buffer.alloc(20)).map((b) => bitcoin.addWitness(b));
+    const leftWi = encodeWinternitz256_4_lp(0n, '').map((b) => bitcoin.addWitness(b));
+    const rightWi = encodeWinternitz256_4_lp(0n, '').map((b) => bitcoin.addWitness(b));
+    const resultWi = encodeWinternitz256_4_lp(0n, '').map((b) => bitcoin.addWitness(b));
 
     const sc = argumentTemplate?.outputs[0].spendingConditions[0];
     if (!sc || !sc.signaturesPublicKeys || !sc.signaturesPublicKeys[0]) {
@@ -213,26 +212,26 @@ async function createRefuteHashScriptTemplate(templates: Template[]): Promise<Sc
     bitcoin.addWitness(Buffer.alloc(64));
     bitcoin.verifySignature(sc.signaturesPublicKeys[0]);
 
-    const blake3 = new BLAKE3(bitcoin);
-    blake3.initializeTables();
-
     const leftSi = bitcoin.newNibbles(64);
-    bitcoin.winternitzDecode256_4(leftSi, leftWi, leftKeys);
+    bitcoin.winternitzDecode256_listpick4(leftSi, leftWi, leftKeys);
     bitcoin.drop(leftWi);
 
     const rightSi = bitcoin.newNibbles(64);
-    bitcoin.winternitzDecode256_4(rightSi, rightWi, rightKeys);
+    bitcoin.winternitzDecode256_listpick4(rightSi, rightWi, rightKeys);
     bitcoin.drop(rightWi);
 
     const resultSi = bitcoin.newNibbles(64);
-    bitcoin.winternitzDecode256_4(resultSi, resultWi, resultKeys);
+    bitcoin.winternitzDecode256_listpick4(resultSi, resultWi, resultKeys);
     bitcoin.drop(resultWi);
 
+    const blake3 = new BLAKE3(bitcoin);
+    blake3.initializeTables();
     negifyPairHash(blake3, rightSi, leftSi, resultSi);
+
     return bitcoin.programToTemplate({ validateStack: true });
 }
 
-function renderScriptTemplateWithKeys(scriptTemplate: ScriptTemplate, keys: Buffer[][]): Buffer {
+export function renderScriptTemplateWithKeys(scriptTemplate: ScriptTemplate, keys: Buffer[][]): Buffer {
     const keysFlat = keys.flat();
     for (let i = 0; i < scriptTemplate.items.length; i++) {
         const item = scriptTemplate.items[i];
@@ -245,7 +244,8 @@ function renderScriptTemplateWithKeys(scriptTemplate: ScriptTemplate, keys: Buff
 async function generateRefuteMerkleProofScript(
     decasector: Decasector,
     templates: Template[],
-    refutationDescriptor: RefutationDescriptor
+    refutationDescriptor: RefutationDescriptor,
+    debugFlag: boolean
 ): Promise<Buffer> {
     if (refutationDescriptor.whichProof == undefined) throw new Error('Missing whichProof');
     if (refutationDescriptor.whichHashOption == undefined) throw new Error('Missing whichHashOption');
@@ -267,12 +267,18 @@ async function generateRefuteMerkleProofScript(
     if (beforeStateIteration < 0) return Buffer.alloc(0);
 
     const stateTxBefore = getTemplateByName(templates, `${TemplateNames.STATE}_${twoDigits(beforeStateIteration)}`);
-    const scBefore = getSpendingConditionByInput(templates, stateTxBefore.inputs[0]);
-    const beforeRootKeys = scBefore.wotsPublicKeys![stateCommitmentIndexBefore];
+    const wotsPublicKeysBefore = stateTxBefore.inputs.map(input => {
+        const scBefore = getSpendingConditionByInput(templates, input);
+        return scBefore.wotsPublicKeys;
+    }).flat();
+    const beforeRootKeys = wotsPublicKeysBefore[stateCommitmentIndexBefore];
 
     const stateTxAfter = getTemplateByName(templates, `${TemplateNames.STATE}_${twoDigits(afterStateIteration)}`);
-    const scAfter = getSpendingConditionByInput(templates, stateTxAfter.inputs[0]);
-    const afterRootKeys = scAfter.wotsPublicKeys![stateCommitmentIndexAfter];
+    const wotsPublicKeysAfter = stateTxAfter.inputs.map(input => {
+        const scBefore = getSpendingConditionByInput(templates, input);
+        return scBefore.wotsPublicKeys;
+    }).flat();
+    const afterRootKeys = wotsPublicKeysAfter[stateCommitmentIndexAfter];
 
     // now let's get the merkle proofs keys, there are 3 proofs
     const merkleProofKeysAll: Buffer[][] = [];
@@ -285,7 +291,7 @@ async function generateRefuteMerkleProofScript(
         merkleProofKeysAll.push(...sc.wotsPublicKeys!);
     }
     // divide these into 3 sets of 13
-    const merkleProofKeys: Buffer[][][] = [0, 1, 2].map((i) => merkleProofKeysAll.slice(i * 13, (i + 1) * 13));
+    const merkleProofKeys: Buffer[][][] = chunk(merkleProofKeysAll, 13);
 
     // now add the value before the proof, and the root after it
     {
@@ -294,20 +300,24 @@ async function generateRefuteMerkleProofScript(
         merkleProofKeys[1].unshift(sc.wotsPublicKeys![1]); // b
         merkleProofKeys[2].unshift(sc.wotsPublicKeys![2]); // c
 
-        merkleProofKeys[0].push(beforeRootKeys);
-        merkleProofKeys[1].push(beforeRootKeys);
-        merkleProofKeys[2].push(afterRootKeys);
+        merkleProofKeys[0].push(beforeRootKeys!);
+        merkleProofKeys[1].push(beforeRootKeys!);
+        merkleProofKeys[2].push(afterRootKeys!);
     }
 
-    let scriptTemplate = scriptTampleCache['hash'];
+    let scriptTemplate = scriptTemplateCache['hash'];
     if (!scriptTemplate) {
-        scriptTemplate = await createRefuteHashScriptTemplate(templates);
-        scriptTampleCache['hash'] = scriptTemplate;
+        const argumentTemplate = getTemplateByName(templates, `${TemplateNames.ARGUMENT}`);
+        scriptTemplate = await createRefuteHashScriptTemplate(argumentTemplate);
+        scriptTemplateCache['hash'] = scriptTemplate;
     }
 
     // here's the script to refute one hash
     const refuteHash = async (leftKeys: Buffer[], rightKeys: Buffer[], resultKeys: Buffer[]): Promise<Buffer> => {
-        return renderScriptTemplateWithKeys(scriptTemplate!, [leftKeys, rightKeys, resultKeys]);
+        const keys = [leftKeys, rightKeys, resultKeys];
+        if (debugFlag) 
+            console.log('!!!!!!!!! ', keys);
+        return renderScriptTemplateWithKeys(scriptTemplate!, keys);
     };
 
     const script = await refuteHash(
@@ -322,11 +332,12 @@ async function generateRefuteMerkleProofScript(
 export async function createRefutationScript(
     decasector: Decasector,
     templates: Template[],
-    refutation: RefutationDescriptor
+    refutation: RefutationDescriptor,
+    debugFlag: boolean
 ): Promise<Buffer> {
     if (refutation.refutationType == RefutationType.INSTR) {
         return generateRefuteInstructionScript(decasector, templates, refutation);
     } else if (refutation.refutationType == RefutationType.HASH) {
-        return await generateRefuteMerkleProofScript(decasector, templates, refutation);
+        return await generateRefuteMerkleProofScript(decasector, templates, refutation, debugFlag);
     } else throw new Error('Unknown refutation type');
 }

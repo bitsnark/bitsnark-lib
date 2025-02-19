@@ -71,7 +71,7 @@ export const protocolStart: Template[] = [
                         // state
                         nextRole: AgentRoles.PROVER,
                         signatureType: SignatureType.BOTH,
-                        wotsSpec: array(9, WotsType._256_4)
+                        wotsSpec: array(5, WotsType._256_4_LP)
                     },
                     {
                         // challenge but no state
@@ -80,7 +80,16 @@ export const protocolStart: Template[] = [
                         signatureType: SignatureType.BOTH
                     }
                 ]
-            },
+            }, {
+                spendingConditions: [
+                    {
+                        // state
+                        nextRole: AgentRoles.PROVER,
+                        signatureType: SignatureType.BOTH,
+                        wotsSpec: array(4, WotsType._256_4_LP)
+                    }
+                ]
+            } ,
             {
                 // Do NOT add any extra value to make CHALLENGE output high enough to pass dust limit.
                 amount: agentConf.symbolicOutputAmount,
@@ -102,7 +111,7 @@ export const protocolStart: Template[] = [
         inputs: [
             {
                 templateName: TemplateNames.PROOF,
-                outputIndex: 1,
+                outputIndex: 2,
                 spendingConditionIndex: 0
             }
         ],
@@ -176,7 +185,7 @@ export const protocolEnd: Template[] = [
     {
         role: AgentRoles.PROVER,
         name: TemplateNames.ARGUMENT,
-        inputs: array(6, (i) => ({
+        inputs: array(9, (i) => ({
             templateName: `${TemplateNames.SELECT}_${twoDigits(iterations - 1)}`,
             outputIndex: i,
             spendingConditionIndex: 0
@@ -258,6 +267,10 @@ export function makeProtocolSteps(): Template[] {
                     templateName: i == 0 ? TemplateNames.PROOF : `${TemplateNames.SELECT}_${twoDigits(i - 1)}`,
                     outputIndex: 0,
                     spendingConditionIndex: i == 0 ? 1 : 0
+                }, {
+                    templateName: i == 0 ? TemplateNames.PROOF : `${TemplateNames.SELECT}_${twoDigits(i - 1)}`,
+                    outputIndex: 1,
+                    spendingConditionIndex: 0
                 }
             ],
             outputs: [
@@ -327,13 +340,21 @@ export function makeProtocolSteps(): Template[] {
                         {
                             nextRole: AgentRoles.PROVER,
                             signatureType: SignatureType.BOTH,
-                            wotsSpec: array(9, WotsType._256_4)
+                            wotsSpec: array(5, WotsType._256_4_LP)
                         },
                         // timeout
                         {
                             nextRole: AgentRoles.VERIFIER,
                             timeoutBlocks: agentConf.smallTimeoutBlocks,
                             signatureType: SignatureType.BOTH
+                        }
+                    ]
+                }, {
+                    spendingConditions: [
+                        {
+                            nextRole: AgentRoles.PROVER,
+                            signatureType: SignatureType.BOTH,
+                            wotsSpec: array(4, WotsType._256_4_LP)
                         }
                     ]
                 }
@@ -368,12 +389,12 @@ export function makeProtocolSteps(): Template[] {
                         }
                     ]
                 },
-                ...array<Output>(3, (_) => ({
+                ...array<Output>(6, (_) => ({
                     spendingConditions: [
                         {
                             nextRole: AgentRoles.PROVER,
                             signatureType: SignatureType.BOTH,
-                            wotsSpec: array<WotsType>(12, WotsType._256_4)
+                            wotsSpec: array<WotsType>(6, WotsType._256_4_LP)
                         }
                     ]
                 })),
@@ -382,7 +403,7 @@ export function makeProtocolSteps(): Template[] {
                         {
                             nextRole: AgentRoles.PROVER,
                             signatureType: SignatureType.BOTH,
-                            wotsSpec: array<WotsType>(3, WotsType._256_4)
+                            wotsSpec: array<WotsType>(3, WotsType._256_4_LP)
                         }
                     ]
                 }
