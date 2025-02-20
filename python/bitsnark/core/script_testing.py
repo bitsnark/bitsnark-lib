@@ -13,7 +13,7 @@ from bitcointx.wallet import P2TRCoinAddress
 
 from ..btc.rpc import BitcoinRPC
 from ..core.models import TransactionTemplate
-from ..core.parsing import parse_hex_bytes
+from ..core.parsing import parse_hex_bytes, parse_witness_element
 from ..core.signing import sign_input
 from ..scripteval import eval_tapscript
 
@@ -127,7 +127,7 @@ def collect_script_test_cases(
                 #     continue
 
                 witness_elems = [
-                    parse_hex_bytes(s) for s in
+                    parse_witness_element(s) for s in
                     # This flattens the list of lists
                     itertools.chain.from_iterable(example_witness)
                 ]
