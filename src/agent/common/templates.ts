@@ -80,7 +80,8 @@ export const protocolStart: Template[] = [
                         signatureType: SignatureType.BOTH
                     }
                 ]
-            }, {
+            },
+            {
                 spendingConditions: [
                     {
                         // state
@@ -89,7 +90,7 @@ export const protocolStart: Template[] = [
                         wotsSpec: array(4, WotsType._256_4_LP)
                     }
                 ]
-            } ,
+            },
             {
                 // Do NOT add any extra value to make CHALLENGE output high enough to pass dust limit.
                 amount: agentConf.symbolicOutputAmount,
@@ -267,7 +268,8 @@ export function makeProtocolSteps(): Template[] {
                     templateName: i == 0 ? TemplateNames.PROOF : `${TemplateNames.SELECT}_${twoDigits(i - 1)}`,
                     outputIndex: 0,
                     spendingConditionIndex: i == 0 ? 1 : 0
-                }, {
+                },
+                {
                     templateName: i == 0 ? TemplateNames.PROOF : `${TemplateNames.SELECT}_${twoDigits(i - 1)}`,
                     outputIndex: 1,
                     spendingConditionIndex: 0
@@ -349,7 +351,8 @@ export function makeProtocolSteps(): Template[] {
                             signatureType: SignatureType.BOTH
                         }
                     ]
-                }, {
+                },
+                {
                     spendingConditions: [
                         {
                             nextRole: AgentRoles.PROVER,

@@ -149,9 +149,13 @@ export class ProtocolProver extends ProtocolBase {
                 .map((s, dataIndex) =>
                     encodeWinternitz256_4_lp(
                         bufferToBigintBE(s),
-                        createUniqueDataId(this.setup!.id, txName, inputIndex, 
-                            iteration == 0 && inputIndex == 0 ? 1 : 0, 
-                            dataIndex)
+                        createUniqueDataId(
+                            this.setup!.id,
+                            txName,
+                            inputIndex,
+                            iteration == 0 && inputIndex == 0 ? 1 : 0,
+                            dataIndex
+                        )
                     )
                 )
                 .flat()

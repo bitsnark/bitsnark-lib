@@ -1554,7 +1554,6 @@ export function executeProgram(bitcoin: Bitcoin, script: Buffer): boolean {
 
     try {
         for (let i = 0; i < script.length; i++) {
-
             const opcode = opcodeMap[script[i]];
             if (opcode == OpcodeType.OP_BREAKPOINT) {
                 console.log('!!! Breakpoint reached !!!');

@@ -100,7 +100,7 @@ export class ProtocolBase {
         //     executeProgram(bitcoin, input.script!);
         // }
 
-        const bufferOrNumberData = data ? data.map(d => d.map(b => b.length == 1 ? b[0] : b)) : undefined;
+        const bufferOrNumberData = data ? data.map((d) => d.map((b) => (b.length == 1 ? b[0] : b))) : undefined;
 
         await this.db.markTemplateToSend(this.setupId, name, bufferOrNumberData);
         console.log(`Asking to send template ${name} (make sure sender is listening: npm run bitcoin-sender)`);

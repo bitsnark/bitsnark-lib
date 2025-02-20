@@ -165,7 +165,7 @@ async function refuteHash(
         whichProof,
         whichHashOption: Math.floor(whichHash / 2)
     });
-    
+
     return { data, script: requestedScript!, controlBlock: requestedControlBlock! };
 }
 

@@ -61,14 +61,14 @@ describe('Refutation', () => {
 
     it.skip('Refute hash script works', async () => {
         const scriptTemplate = await createRefuteHashScriptTemplate(Buffer.alloc(32));
-        const keys = [0, 1, 2].map(v => getWinternitzPublicKeys(WotsType._256_4_LP, `${v}`));
+        const keys = [0, 1, 2].map((v) => getWinternitzPublicKeys(WotsType._256_4_LP, `${v}`));
         const script = renderScriptTemplateWithKeys(scriptTemplate, keys);
-        const witness = [0, 1, 2].map(v => encodeWinternitz256_4_lp(BigInt(v), `${v}`));
+        const witness = [0, 1, 2].map((v) => encodeWinternitz256_4_lp(BigInt(v), `${v}`));
 
         const bitcoin = new Bitcoin();
         bitcoin.throwOnFail = true;
 
-        witness.flat().forEach(w => bitcoin.addWitness(w));
+        witness.flat().forEach((w) => bitcoin.addWitness(w));
         bitcoin.addWitness(Buffer.alloc(64));
 
         executeProgram(bitcoin, script);

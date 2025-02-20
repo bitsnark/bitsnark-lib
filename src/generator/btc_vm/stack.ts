@@ -45,8 +45,7 @@ export class Stack {
 
     pick(i: number) {
         const t = this.items[i];
-        if (!t) 
-            throw new Error('Stack out of bounds');
+        if (!t) throw new Error('Stack out of bounds');
         this.push({ value: t.value, id: lastId++, name: `${t.name} picked` });
     }
 

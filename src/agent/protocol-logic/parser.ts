@@ -23,7 +23,7 @@ export function parseInput(templates: Template[], input: Input, data: Buffer[]):
                 value: tv,
                 buffer: bigintToBufferBE(tv, 256),
                 witness: th,
-                publicKeys: keys 
+                publicKeys: keys
             };
         } catch (e) {
             console.error('Error decoding input:', input);
