@@ -1,5 +1,4 @@
 """Re-usable code for testing scripts of tx templates"""
-import itertools
 import logging
 from dataclasses import dataclass
 from decimal import Decimal
@@ -116,21 +115,12 @@ def collect_script_test_cases(
                     )
                     continue
 
-                example_witness = spending_condition.get('exampleWitness', [])
-                # if 'exampleWitness' not in spending_condition:
-                #     logger.info(
-                #         'Skipping spending condition without exampleWitness (%s/%s/%s)',
-                #         tx_template.name,
-                #         output_index,
-                #         spending_condition['index']
-                #     )
-                #     continue
-
+                prevout_index = output_index  # ???
                 witness_elems = [
                     parse_witness_element(s) for s in
-                    # This flattens the list of lists
-                    itertools.chain.from_iterable(example_witness)
+                    tx_template.protocol_data[prevout_index]
                 ]
+
                 test_case = TestCase(
                     script=CScript(parse_hex_bytes(spending_condition['script']), name='script'),
                     role=spending_condition_role,
