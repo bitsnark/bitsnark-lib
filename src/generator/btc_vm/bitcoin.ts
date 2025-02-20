@@ -1563,7 +1563,6 @@ export function executeProgram(bitcoin: Bitcoin, script: Buffer): boolean {
 
             const print = (s: string) => {
                 log.push(`${i}:\t${s}\t\t${bitcoin.stack.items.length}`);
-                console.log(`${i}:\t${s}\t\t${bitcoin.stack.items.length}`);
             };
 
             if (opcode == OpcodeType.OP_IF) {

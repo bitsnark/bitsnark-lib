@@ -11,11 +11,10 @@ import {
     TemplateNames,
     WitnessAndValue
 } from '../common/types';
-import { getSpendingConditionByInput, getTemplateByTemplateId } from '../common/templates';
+import { getTemplateByTemplateId } from '../common/templates';
 import { AgentDb } from '../common/agent-db';
 import { WOTS_NIBBLES, WotsType } from '../common/winternitz';
 import { sleep } from '../common/sleep';
-import { Bitcoin, executeProgram } from '../../../src/generator/btc_vm/bitcoin';
 
 export interface Incoming {
     received: ReceivedTransaction;
@@ -101,7 +100,9 @@ export class ProtocolBase {
         //     executeProgram(bitcoin, input.script!);
         // }
 
-        await this.db.markTemplateToSend(this.setupId, name, data);
+        const bufferOrNumberData = data ? data.map(d => d.map(b => b.length == 1 ? b[0] : b)) : undefined;
+
+        await this.db.markTemplateToSend(this.setupId, name, bufferOrNumberData);
         console.log(`Asking to send template ${name} (make sure sender is listening: npm run bitcoin-sender)`);
         const status = await this.waitForTransmission(name);
         if (status == TemplateStatus.REJECTED) {

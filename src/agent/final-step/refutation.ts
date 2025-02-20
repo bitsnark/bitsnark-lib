@@ -223,12 +223,12 @@ export async function createRefuteHashScriptTemplate(
     bitcoin.winternitzDecode256_listpick4(resultSi, resultWi, resultKeys);
     bitcoin.drop(resultWi);
 
-    bitcoin.setBreakPoint();
+    // bitcoin.setBreakPoint();
 
     const blake3 = new BLAKE3(bitcoin);
     blake3.initializeTables();
 
-    bitcoin.setBreakPoint();
+    // bitcoin.setBreakPoint();
 
     negifyPairHash(blake3, rightSi, leftSi, resultSi);
 

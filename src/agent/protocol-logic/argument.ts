@@ -8,8 +8,7 @@ import { TemplateNames, WitnessAndValue } from '../common/types';
 import { createUniqueDataId } from '../setup/wots-keys';
 import { Decasector, StateCommitment } from '../setup/decasector';
 import { chunk } from '../common/array-utils';
-import { createRefuteHashScriptTemplate, RefutationType } from '../final-step/refutation';
-import { agentConf } from '../agent.conf';
+import { RefutationType } from '../final-step/refutation';
 
 function calculateD(a: bigint, b: bigint): bigint {
     return (a * b) / prime_bigint;

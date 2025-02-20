@@ -134,8 +134,7 @@ export class DoomsdayGenerator {
         let allHashes = allHashesCache[this.setupId];
         if (!allHashes) {
             const inputs = this.chunkTheWork(128);
-            inputs.forEach(i => i.skip = i.from > 8800000 || i.to < 8800000);
-            // const inputs = [last(this.chunkTheWork(1280))];
+            // inputs.forEach(i => i.skip = i.from > 8800000 || i.to < 8800000);
 
             const results = await parallelize<GenerateFinalTaprootCommand, ChunkResult>(inputs, async (input) => {
                 if (input.skip) {
@@ -173,8 +172,6 @@ export class DoomsdayGenerator {
             requestedScript,
             requestedControlBlock
         };
-        console.log('!!!!!!!!! 3 taprootPubKey', ret.taprootPubKey?.toString('hex'));
-        console.log('!!!!!!!!! 3 requestedControlBlock', ret.requestedControlBlock?.toString('hex'));
         return ret;
     }
 

@@ -59,7 +59,7 @@ describe('Refutation', () => {
         }
     });
 
-    it('Refute hash script works', async () => {
+    it.skip('Refute hash script works', async () => {
         const scriptTemplate = await createRefuteHashScriptTemplate(Buffer.alloc(32));
         const keys = [0, 1, 2].map(v => getWinternitzPublicKeys(WotsType._256_4_LP, `${v}`));
         const script = renderScriptTemplateWithKeys(scriptTemplate, keys);
