@@ -165,14 +165,6 @@ async function refuteHash(
         whichProof,
         whichHashOption: Math.floor(whichHash / 2)
     });
-
-    // const scriptTemplate = await createRefuteHashScriptTemplate(
-    //     Buffer.from(agentConf.keyPairs['bitsnark_verifier_1'].schnorrPublic, 'hex'),
-    //     data.map((d) => d.publicKeys!),
-    //     data.map((d) => d.witness!)
-    // );
-
-    // console.log(scriptTemplate);
     
     return { data, script: requestedScript!, controlBlock: requestedControlBlock! };
 }
