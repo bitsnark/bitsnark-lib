@@ -54,7 +54,9 @@ export enum OpcodeType {
     OP_HASH160 = 'OP_HASH160',
     OP_VERIFY = 'OP_VERIFY',
     OP_CHECKSIGVERIFY = 'OP_CHECKSIGVERIFY',
-    OP_CHECKSEQUENCEVERIFY = 'OP_CHECKSEQUENCEVERIFY'
+    OP_CHECKSEQUENCEVERIFY = 'OP_CHECKSEQUENCEVERIFY',
+
+    OP_BREAKPOINT = 'OP_BREAKPOINT'
 }
 
 export function hardcode(value: number): OpcodeType {
@@ -136,7 +138,9 @@ export const opcodeValues = {
     [OpcodeType.OP_HASH160]: 169,
     [OpcodeType.OP_VERIFY]: 105,
     [OpcodeType.OP_CHECKSIGVERIFY]: 173,
-    [OpcodeType.OP_CHECKSEQUENCEVERIFY]: 178
+    [OpcodeType.OP_CHECKSEQUENCEVERIFY]: 178,
+
+    [OpcodeType.OP_BREAKPOINT]: 255
 };
 
 export const opcodeMap: OpcodeType[] = [];

@@ -1,5 +1,5 @@
 import { FatMerkleProof } from './fat-merkle';
-import { decodeWinternitz256_4_lp, encodeWinternitz24, encodeWinternitz256_4_lp } from '../common/winternitz';
+import { encodeWinternitz24, encodeWinternitz256_4_lp } from '../common/winternitz';
 import { InstrCode, Instruction } from '../../generator/ec_vm/vm/types';
 import { DoomsdayGenerator } from '../final-step/doomsday-generator';
 import { prime_bigint } from '../common/constants';
@@ -8,7 +8,8 @@ import { TemplateNames, WitnessAndValue } from '../common/types';
 import { createUniqueDataId } from '../setup/wots-keys';
 import { Decasector, StateCommitment } from '../setup/decasector';
 import { chunk } from '../common/array-utils';
-import { RefutationType } from '../final-step/refutation';
+import { createRefuteHashScriptTemplate, RefutationType } from '../final-step/refutation';
+import { agentConf } from '../agent.conf';
 
 function calculateD(a: bigint, b: bigint): bigint {
     return (a * b) / prime_bigint;
@@ -159,9 +160,6 @@ async function refuteHash(
     if (whichHash < 0) throw new Error("Can't find bad hash");
     const data = [...proofs[whichProof].hashes.slice(whichHash, whichHash + 3)];
 
-    const n = decodeWinternitz256_4_lp(data[0].witness!, data[0].publicKeys!);
-    console.log('!!!!!!!!! ', n);
-
     const { requestedScript, requestedControlBlock } = await doomsdayGenerator.generateFinalStepTaprootParallel({
         refutationType: RefutationType.HASH,
         line: Number(index.value),
@@ -169,6 +167,14 @@ async function refuteHash(
         whichHashOption: Math.floor(whichHash / 2)
     });
 
+    // const scriptTemplate = await createRefuteHashScriptTemplate(
+    //     Buffer.from(agentConf.keyPairs['bitsnark_verifier_1'].schnorrPublic, 'hex'),
+    //     data.map((d) => d.publicKeys!),
+    //     data.map((d) => d.witness!)
+    // );
+
+    // console.log(scriptTemplate);
+    
     return { data, script: requestedScript!, controlBlock: requestedControlBlock! };
 }
 

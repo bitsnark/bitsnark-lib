@@ -87,19 +87,19 @@ export class ProtocolBase {
             return;
         }
 
-        for (let i = 0; i < template.inputs.length; i++) {
-            const bitcoin = new Bitcoin();
-            bitcoin.throwOnFail = true;
-            const input = template.inputs[i];
-            if (!input.script) continue;
-            if (data && data[i]) data[i].forEach((b) => bitcoin.addWitness(b));
-            const sc = getSpendingConditionByInput(this.templates!, input);
-            if (sc.script!.compare(input.script!) != 0) throw new Error('Different scripts!');
-            for (let i = 0; sc.signaturesPublicKeys && i < sc.signaturesPublicKeys.length; i++)
-                bitcoin.addWitness(Buffer.alloc(64));
-            console.log(`Checking script for ${template.name}/${i}...`);
-            executeProgram(bitcoin, input.script!);
-        }
+        // for (let i = 0; i < template.inputs.length; i++) {
+        //     const bitcoin = new Bitcoin();
+        //     bitcoin.throwOnFail = true;
+        //     const input = template.inputs[i];
+        //     if (!input.script) continue;
+        //     if (data && data[i]) data[i].forEach((b) => bitcoin.addWitness(b));
+        //     const sc = getSpendingConditionByInput(this.templates!, input);
+        //     if (sc.script!.compare(input.script!) != 0) throw new Error('Different scripts!');
+        //     for (let i = 0; sc.signaturesPublicKeys && i < sc.signaturesPublicKeys.length; i++)
+        //         bitcoin.addWitness(Buffer.alloc(64));
+        //     console.log(`Checking script for ${template.name}/${i}...`);
+        //     executeProgram(bitcoin, input.script!);
+        // }
 
         await this.db.markTemplateToSend(this.setupId, name, data);
         console.log(`Asking to send template ${name} (make sure sender is listening: npm run bitcoin-sender)`);

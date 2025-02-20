@@ -113,7 +113,7 @@ export class DoomsdayGenerator {
         for (let i = from; i < to; i++) {
             try {
                 const rd = getRefutationDescriptor(i);
-                const script = await createRefutationScript(this.decasector, templates, rd, false);
+                const script = await createRefutationScript(this.decasector, templates, rd);
                 hashes.push(getHash(script));
             } catch (e) {
                 console.error(e);
@@ -164,7 +164,7 @@ export class DoomsdayGenerator {
         if (refutationDescriptor) {
             const db = new AgentDb(this.agentId);
             const templates = await db.getTemplates(this.setupId);
-            requestedScript = await createRefutationScript(this.decasector, templates, refutationDescriptor, true);
+            requestedScript = await createRefutationScript(this.decasector, templates, refutationDescriptor);
         }
 
         const ret = {
@@ -214,7 +214,7 @@ export class DoomsdayGenerator {
 
         let requestedScript;
         if (refutationDescriptor) {
-            requestedScript = await createRefutationScript(this.decasector, templates, refutationDescriptor, true);
+            requestedScript = await createRefutationScript(this.decasector, templates, refutationDescriptor);
         }
         const requestedControlBlock = refutationDescriptor ? compressor.getControlBlock() : undefined;
 

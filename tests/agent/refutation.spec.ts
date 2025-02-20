@@ -9,7 +9,6 @@ import {
     totalRefutationHashOptions,
     totalRefutationProofs
 } from '../../src/agent/final-step/refutation';
-import { AgentRoles, SignatureType, TemplateNames } from '../../src/agent/common/types';
 import { encodeWinternitz256_4_lp, getWinternitzPublicKeys, WotsType } from '../../src/agent/common/winternitz';
 import { Bitcoin, executeProgram } from '../../src/generator/btc_vm/bitcoin';
 
@@ -61,25 +60,10 @@ describe('Refutation', () => {
     });
 
     it('Refute hash script works', async () => {
-        const scriptTemplate = await createRefuteHashScriptTemplate({
-            name: TemplateNames.ARGUMENT,
-            role: AgentRoles.PROVER,
-            inputs: [],
-            outputs: [
-                {
-                    spendingConditions: [
-                        {
-                            signaturesPublicKeys: [Buffer.alloc(32)],
-                            signatureType: SignatureType.VERIFIER,
-                            nextRole: AgentRoles.PROVER
-                        }
-                    ]
-                }
-            ]
-        });
-        const keys = [0, 1, 2, 3].map(v => getWinternitzPublicKeys(WotsType._256_4_LP, `${v}`));
+        const scriptTemplate = await createRefuteHashScriptTemplate(Buffer.alloc(32));
+        const keys = [0, 1, 2].map(v => getWinternitzPublicKeys(WotsType._256_4_LP, `${v}`));
         const script = renderScriptTemplateWithKeys(scriptTemplate, keys);
-        const witness = [0, 1, 2, 3].map(v => encodeWinternitz256_4_lp(BigInt(v), `${v}`));
+        const witness = [0, 1, 2].map(v => encodeWinternitz256_4_lp(BigInt(v), `${v}`));
 
         const bitcoin = new Bitcoin();
         bitcoin.throwOnFail = true;

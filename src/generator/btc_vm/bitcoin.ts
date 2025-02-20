@@ -3,7 +3,6 @@ import { hardcode, opcodeMap, OpcodeType, opcodeValues } from './bitcoin-opcodes
 import { StackItem, Stack } from './stack';
 import { createHash } from 'crypto';
 import { bufferToBigintBE } from '../../../src/agent/common/encoding';
-import { reverse } from '../../../src/agent/common/array-utils';
 
 interface Operation {
     op?: OpcodeType;
@@ -53,6 +52,10 @@ export class Bitcoin {
         if (this.stack.items.length + this.altStack.length > 1000)
             throw new Error(`Stack too big: ${this.stack.items.length + this.altStack.length}`);
         return si;
+    }
+
+    setBreakPoint() {
+        this.opcodes.push({ op: OpcodeType.OP_BREAKPOINT });
     }
 
     hardcode(value: number | Buffer): StackItem {
@@ -1208,6 +1211,8 @@ export class Bitcoin {
         this.OP_TOALTSTACK();
     }
 
+    counter = 0;
+
     winternitzDecodeNibble_listpick4(target: StackItem, witness: StackItem[], publicKey: Buffer) {
         this.pick(witness[1]);
         this.OP_HASH160();
@@ -1235,24 +1240,22 @@ export class Bitcoin {
         if (publicKeys.length != totalNibbles) throw new Error('Size mismatch');
         if (witness.length != 2 * totalNibbles) throw new Error('Size mismatch');
 
-        //publicKeys = reverse(publicKeys);
+        const checksum = this.newStackItem(0);
+        const temp = this.newStackItem(0);
+        for (let i = 0; i < 64; i++) {
+            this.winternitzDecodeNibble_listpick4(temp, witness.slice(i * 2, i * 2 + 2), publicKeys[i]);
+            this.add(checksum, checksum, temp);
+        }
 
         // do the checksum
         const checksumNibbles = this.newNibbles(3);
         for (let i = 0; i < 3; i++) {
-            const tn = witness.slice(i * 2, i * 2 + 2);
-            this.winternitzDecodeNibble_listpick4(checksumNibbles[i], tn, publicKeys[totalNibbles - i - 1]);
-        }
-
-        const checksum = this.newStackItem(0);
-        const temp = this.newStackItem(0);
-        for (let i = 0; i < 64; i++) {
-            this.winternitzDecodeNibble_listpick4(temp, witness.slice((3 + i) * 2, (3 + i) * 2 + 2), publicKeys[totalNibbles - i - 1 - 3]);
-            this.add(checksum, checksum, temp);
+            const tn = witness.slice((64 + i) * 2, (64 + i) * 2 + 2);
+            this.winternitzDecodeNibble_listpick4(checksumNibbles[i], tn, publicKeys[64 + i]);
         }
 
         this.DATA(15);
-        this.pick(checksumNibbles[0]);
+        this.pick(checksumNibbles[2]);
         this.OP_SUB();
         this.mul(16);
         this.DATA(15);
@@ -1261,7 +1264,7 @@ export class Bitcoin {
         this.OP_ADD();
         this.mul(16);
         this.DATA(15);
-        this.pick(checksumNibbles[2]);
+        this.pick(checksumNibbles[0]);
         this.OP_SUB();
         this.OP_ADD();
 
@@ -1279,27 +1282,21 @@ export class Bitcoin {
         if (target.length != 64) throw new Error('Size mismatch');
         if (witness.length != 2 * totalNibbles) throw new Error('Size mismatch');
 
-        publicKeys = reverse(publicKeys);
-
         const checksum = this.newStackItem(0);
         for (let i = 0; i < 64; i++) {
-            this.winternitzDecodeNibble_listpick4(
-                target[63 - i],
-                witness.slice((3 + i) * 2, (3 + i) * 2 + 2),
-                publicKeys[3 + i]
-            );
-            this.add(checksum, checksum, target[63 - i]);
+            this.winternitzDecodeNibble_listpick4(target[i], witness.slice(i * 2, i * 2 + 2), publicKeys[i]);
+            this.add(checksum, checksum, target[i]);
         }
 
         // do the checksum
         const checksumNibbles = this.newNibbles(3);
         for (let i = 0; i < 3; i++) {
-            const tn = witness.slice(i * 2, i * 2 + 2);
-            this.winternitzDecodeNibble_listpick4(checksumNibbles[i], tn, publicKeys[i]);
+            const tn = witness.slice((64 + i) * 2, (i + 64) * 2 + 2);
+            this.winternitzDecodeNibble_listpick4(checksumNibbles[i], tn, publicKeys[64 + i]);
         }
 
         this.DATA(15);
-        this.pick(checksumNibbles[0]);
+        this.pick(checksumNibbles[2]);
         this.OP_SUB();
         this.mul(16);
         this.DATA(15);
@@ -1308,7 +1305,7 @@ export class Bitcoin {
         this.OP_ADD();
         this.mul(16);
         this.DATA(15);
-        this.pick(checksumNibbles[2]);
+        this.pick(checksumNibbles[0]);
         this.OP_SUB();
         this.OP_ADD();
 
@@ -1502,7 +1499,9 @@ export class Bitcoin {
         const items: { itemId: string; index: number; length: number }[] = [];
 
         const byteArray: number[] = [];
-        for (const opcode of this.opcodes) {
+        for (let line = 0; line < this.opcodes.length; line++) {
+            const opcode = this.opcodes[line];
+
             if (opcode.op == OpcodeType.DATA) {
                 if (opcode.data && opcode.data instanceof Buffer && opcode.data.length <= 4) {
                     opcode.data = Number(bufferToBigintBE(opcode.data));
@@ -1555,12 +1554,17 @@ export function executeProgram(bitcoin: Bitcoin, script: Buffer): boolean {
 
     try {
         for (let i = 0; i < script.length; i++) {
+
             const opcode = opcodeMap[script[i]];
+            if (opcode == OpcodeType.OP_BREAKPOINT) {
+                console.log('!!! Breakpoint reached !!!');
+                continue;
+            }
 
             const print = (s: string) => {
                 log.push(`${i}:\t${s}\t\t${bitcoin.stack.items.length}`);
-                // console.log(`${i}:\t${s}\t\t${bitcoin.stack.items.length}`);
-            }
+                console.log(`${i}:\t${s}\t\t${bitcoin.stack.items.length}`);
+            };
 
             if (opcode == OpcodeType.OP_IF) {
                 inIf = true;

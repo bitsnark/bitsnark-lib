@@ -278,16 +278,6 @@ export function decodeWinternitz(type: WotsType, input: Buffer[], keys: Buffer[]
     return decoders[type](input as any, keys);
 }
 
-function reversePreservePairs<T>(a: T[]): T[] {
-    const r: T[] = [];
-    for (let i = 0; i < a.length; ) {
-        const t1 = a[i++];
-        const t2 = a[i++];
-        r.unshift(t1, t2);
-    }
-    return r;
-}
-
 export function encodeWinternitz256_4_lp(input: bigint, unique: string): Buffer[] {
     const output: Buffer[] = [];
     let checksum = 0;
@@ -304,7 +294,7 @@ export function encodeWinternitz256_4_lp(input: bigint, unique: string): Buffer[
         output.push(Buffer.from([15 - nibble]));
         output.push(hash(getWinternitzPrivateKey(unique + '/' + (64 + i)), 15 - nibble));
     }
-    return reversePreservePairs(output);
+    return output;
 }
 
 function lpNibble(a: Buffer | number): number {
@@ -319,7 +309,6 @@ function lpNibble(a: Buffer | number): number {
 }
 
 export function decodeWinternitz256_4_lp(input: Buffer[], publicKeys: Buffer[]): bigint {
-    input = reversePreservePairs(input);
     let n = 0n;
     let checksum = 0;
     for (let i = 0; i < 64; i++) {
