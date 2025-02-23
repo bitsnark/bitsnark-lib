@@ -56,6 +56,7 @@ export enum OpcodeType {
     OP_CHECKSIGVERIFY = 'OP_CHECKSIGVERIFY',
     OP_CHECKSEQUENCEVERIFY = 'OP_CHECKSEQUENCEVERIFY',
 
+    // Invalid op, used for debugging
     OP_BREAKPOINT = 'OP_BREAKPOINT'
 }
 

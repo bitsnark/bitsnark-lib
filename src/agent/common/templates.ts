@@ -144,7 +144,7 @@ export const protocolStart: Template[] = [
             },
             {
                 templateName: TemplateNames.PROOF,
-                outputIndex: 1,
+                outputIndex: 2,
                 spendingConditionIndex: 0
             }
         ],
