@@ -256,8 +256,14 @@ def execute_script_test_case(
         spent_outputs=spent_outputs,
         private_key=verifier_privkey,
     )
+
+    new_array = [
+        buf[0] if isinstance(buf, (bytes, bytearray)) and len(buf) == 1 else buf
+        for buf in test_case.witness_elems
+    ]
+
     full_witness_elems = [
-        *test_case.witness_elems,
+        *new_array,
         verifier_signature,
         prover_signature,
     ]
