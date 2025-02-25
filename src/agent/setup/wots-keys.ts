@@ -22,8 +22,6 @@ export function createUniqueDataId(
 
 export function setWotsPublicKeysForArgument(setupId: string, templates: Template[]) {
     const template = getTemplateByName(templates, TemplateNames.ARGUMENT);
-    // there should be 5 inputs
-    if (template.inputs.length != 6) throw new Error('Wrong number of inputs');
     // 0 is the index
     const input = template.inputs[0];
     const sc = getSpendingConditionByInput(templates, input);

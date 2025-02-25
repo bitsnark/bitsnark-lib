@@ -1,4 +1,4 @@
-import { encodeWinternitz24, WOTS_NIBBLES, WotsType } from '../../src/agent/common/winternitz';
+import { encodeWinternitz24, WotsType, WOTS_OUTPUT } from '../../src/agent/common/winternitz';
 import { proofBigint } from '../../src/agent/common/constants';
 import { Argument } from '../../src/agent/protocol-logic/argument';
 import { parseInput } from '../../src/agent/protocol-logic/parser';
@@ -31,13 +31,16 @@ describe('Argument', () => {
     it('make it', async () => {
         const { argWitness } = await init();
 
-        expect(argWitness.length).toBe(6);
-        expect(argWitness[0].length).toBe(7 * WOTS_NIBBLES[WotsType._24]);
-        expect(argWitness[1].length).toBe(4 * WOTS_NIBBLES[WotsType._256_4]);
-        expect(argWitness[2].length).toBe(12 * WOTS_NIBBLES[WotsType._256_4]);
-        expect(argWitness[3].length).toBe(12 * WOTS_NIBBLES[WotsType._256_4]);
-        expect(argWitness[4].length).toBe(12 * WOTS_NIBBLES[WotsType._256_4]);
-        expect(argWitness[5].length).toBe(3 * WOTS_NIBBLES[WotsType._256_4]);
+        expect(argWitness.length).toBe(9);
+        expect(argWitness[0].length).toBe(7 * WOTS_OUTPUT[WotsType._24]);
+        expect(argWitness[1].length).toBe(4 * WOTS_OUTPUT[WotsType._256_4_LP]);
+        expect(argWitness[2].length).toBe(6 * WOTS_OUTPUT[WotsType._256_4_LP]);
+        expect(argWitness[3].length).toBe(6 * WOTS_OUTPUT[WotsType._256_4_LP]);
+        expect(argWitness[4].length).toBe(6 * WOTS_OUTPUT[WotsType._256_4_LP]);
+        expect(argWitness[5].length).toBe(6 * WOTS_OUTPUT[WotsType._256_4_LP]);
+        expect(argWitness[6].length).toBe(6 * WOTS_OUTPUT[WotsType._256_4_LP]);
+        expect(argWitness[7].length).toBe(6 * WOTS_OUTPUT[WotsType._256_4_LP]);
+        expect(argWitness[8].length).toBe(3 * WOTS_OUTPUT[WotsType._256_4_LP]);
     }, 1000000);
 
     it('break it', async () => {
@@ -48,12 +51,15 @@ describe('Argument', () => {
         for (let i = 0; i < template.inputs.length; i++) {
             decoded.push(parseInput(templates, template.inputs[i], argWitness[i]).map((wav) => wav.value));
         }
-        expect(decoded.length).toBe(6);
+        expect(decoded.length).toBe(9);
         expect(decoded[0].length).toBe(7);
         expect(decoded[1].length).toBe(4);
-        expect(decoded[2].length).toBe(12);
-        expect(decoded[3].length).toBe(12);
-        expect(decoded[4].length).toBe(12);
-        expect(decoded[5].length).toBe(3);
+        expect(decoded[2].length).toBe(6);
+        expect(decoded[3].length).toBe(6);
+        expect(decoded[4].length).toBe(6);
+        expect(decoded[5].length).toBe(6);
+        expect(decoded[6].length).toBe(6);
+        expect(decoded[7].length).toBe(6);
+        expect(decoded[8].length).toBe(3);
     }, 1000000);
 });

@@ -7,7 +7,7 @@ from bitcointx.core.script import CScript, CScriptWitness
 import sqlalchemy as sa
 from sqlalchemy.orm.session import Session
 from .models import TransactionTemplate
-from .parsing import parse_bignum, parse_hex_bytes
+from .parsing import parse_bignum, parse_hex_bytes, parse_witness_element
 from . import signing
 
 
@@ -313,7 +313,7 @@ def construct_signed_transaction(
 
         if tx_template.protocol_data:
             witness = [
-                parse_hex_bytes(s) for s in
+                parse_witness_element(s) for s in
                 tx_template.protocol_data[prevout_index]
             ]
         else:

@@ -13,7 +13,7 @@ from bitcointx.wallet import P2TRCoinAddress
 
 from ..btc.rpc import BitcoinRPC
 from ..core.models import TransactionTemplate
-from ..core.parsing import parse_hex_bytes
+from ..core.parsing import parse_hex_bytes, parse_witness_element
 from ..core.signing import sign_input
 from ..scripteval import eval_tapscript
 
@@ -117,20 +117,23 @@ def collect_script_test_cases(
                     continue
 
                 example_witness = spending_condition.get('exampleWitness', [])
-                # if 'exampleWitness' not in spending_condition:
-                #     logger.info(
-                #         'Skipping spending condition without exampleWitness (%s/%s/%s)',
-                #         tx_template.name,
-                #         output_index,
-                #         spending_condition['index']
-                #     )
-                #     continue
+                if 'exampleWitness' not in spending_condition:
+                    logger.info(
+                    'Skipping spending condition without exampleWitness (%s/%s/%s)',
+                    tx_template.name,
+                        output_index,
+                        spending_condition['index']
+                    )
+                    continue
 
-                witness_elems = [
-                    parse_hex_bytes(s) for s in
-                    # This flattens the list of lists
-                    itertools.chain.from_iterable(example_witness)
-                ]
+                witness_elems = []
+                for raw in itertools.chain.from_iterable(example_witness):
+                    elem = parse_witness_element(raw)
+                    # convert single-byte elements to ints so that they get encoded properly
+                    if isinstance(elem, bytes) and len(elem) == 1:
+                        elem = int.from_bytes(elem, 'little')
+                    witness_elems.append(elem)
+
                 test_case = TestCase(
                     script=CScript(parse_hex_bytes(spending_condition['script']), name='script'),
                     role=spending_condition_role,
@@ -256,8 +259,14 @@ def execute_script_test_case(
         spent_outputs=spent_outputs,
         private_key=verifier_privkey,
     )
+
+    new_array = [
+        buf[0] if isinstance(buf, (bytes, bytearray)) and len(buf) == 1 else buf
+        for buf in test_case.witness_elems
+    ]
+
     full_witness_elems = [
-        *test_case.witness_elems,
+        *new_array,
         verifier_signature,
         prover_signature,
     ]

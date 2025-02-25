@@ -10,11 +10,10 @@ import { last } from '../common/array-utils';
 import { createUniqueDataId } from '../setup/wots-keys';
 import { AgentRoles, TemplateNames, TemplateStatus, WitnessAndValue } from '../common/types';
 import { AgentDb } from '../common/agent-db';
-import { getTemplateByName, twoDigits } from '../common/templates';
+import { getSpendingConditionByInput, getTemplateByName, twoDigits } from '../common/templates';
 import { Incoming, ProtocolBase } from './protocol-base';
 import { defaultVerificationKey } from '../../generator/ec_vm/constants';
 import { sleep } from '../common/sleep';
-import { Bitcoin, executeProgram } from '../../../src/generator/btc_vm/bitcoin';
 
 export class ProtocolVerifier extends ProtocolBase {
     constructor(agentId: string, setupId: string) {
@@ -128,23 +127,15 @@ export class ProtocolVerifier extends ProtocolBase {
         const rawTx = incoming.received.raw;
         const witnesses = rawTx.vin.map((vin) => vin.txinwitness!.map((s) => Buffer.from(s, 'hex')));
         const argData = parseInputs(this.templates!, incoming.template.inputs, witnesses);
-
         const refutation = await refute(this.agentId, this.setupId, proof, argData, states);
-
         // Add the script to the refutation template.
         const refutationTemplate = getTemplateByName(this.templates!, TemplateNames.PROOF_REFUTED);
         refutationTemplate.inputs[0].script = refutation.script;
         refutationTemplate.inputs[0].controlBlock = refutation.controlBlock;
+        const sc = getSpendingConditionByInput(this.templates!, refutationTemplate.inputs[0]);
+        sc.script = refutation.script;
         await this.db.upsertTemplates(this.setupId, [refutationTemplate]);
-
-        const bitcoin = new Bitcoin();
         const data = refutation.data.map((wav) => wav.witness!).flat();
-        data.forEach((b) => bitcoin.addWitness(b!));
-        bitcoin.addWitness(Buffer.alloc(64));
-        bitcoin.throwOnFail = true;
-        console.log('Executing Program...');
-        executeProgram(bitcoin, refutation.script, true);
-
         await this.sendTransaction(TemplateNames.PROOF_REFUTED, [data]);
     }
 

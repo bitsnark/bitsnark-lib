@@ -59,8 +59,6 @@ export async function verifySetup(agentId: string, setupId: string, role: AgentR
             }
         }
     }
-    console.warn('Not checking signature validity!!!');
-
     console.log('Check that all example witness parses correctly...');
     for (const template of templates) {
         for (const input of template.inputs) {

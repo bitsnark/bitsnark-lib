@@ -1,6 +1,6 @@
 import { RawTransaction } from 'bitcoin-core';
 import { BitcoinNode } from '../common/bitcoin-node';
-import { parseInput } from './parser';
+import { parseInput, parseInputs } from './parser';
 import {
     AgentRoles,
     Setup,
@@ -85,7 +85,24 @@ export class ProtocolBase {
             console.log(`Template ${name} published`);
             return;
         }
-        await this.db.markTemplateToSend(this.setupId, name, data);
+
+        // for (let i = 0; i < template.inputs.length; i++) {
+        //     const bitcoin = new Bitcoin();
+        //     bitcoin.throwOnFail = true;
+        //     const input = template.inputs[i];
+        //     if (!input.script) continue;
+        //     if (data && data[i]) data[i].forEach((b) => bitcoin.addWitness(b));
+        //     const sc = getSpendingConditionByInput(this.templates!, input);
+        //     if (sc.script!.compare(input.script!) != 0) throw new Error('Different scripts!');
+        //     for (let i = 0; sc.signaturesPublicKeys && i < sc.signaturesPublicKeys.length; i++)
+        //         bitcoin.addWitness(Buffer.alloc(64));
+        //     console.log(`Checking script for ${template.name}/${i}...`);
+        //     executeProgram(bitcoin, input.script!);
+        // }
+
+        const bufferOrNumberData = data ? data.map((d) => d.map((b) => (b.length == 1 ? b[0] : b))) : undefined;
+
+        await this.db.markTemplateToSend(this.setupId, name, bufferOrNumberData);
         console.log(`Asking to send template ${name} (make sure sender is listening: npm run bitcoin-sender)`);
         const status = await this.waitForTransmission(name);
         if (status == TemplateStatus.REJECTED) {
@@ -121,12 +138,12 @@ export class ProtocolBase {
 
     parseState(incoming: Incoming): WitnessAndValue[] {
         const rawTx = incoming.received.raw;
-        const state = parseInput(
+        const state = parseInputs(
             this.templates!,
-            incoming.template.inputs[0],
-            rawTx.vin[0].txinwitness!.map((s) => Buffer.from(s, 'hex'))
+            incoming.template.inputs,
+            rawTx.vin.map((vin) => vin.txinwitness!.map((s) => Buffer.from(s, 'hex')))
         );
-        return state;
+        return state.flat();
     }
 
     async checkTimeout(incoming: Incoming): Promise<SpendingCondition | null> {

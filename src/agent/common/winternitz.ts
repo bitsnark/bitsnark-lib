@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { agentConf } from '../agent.conf';
+import { bigintToBufferBE } from './encoding';
 
 export const winternitzHashSizeInBytes = 20;
 
@@ -7,31 +8,51 @@ export enum WotsType {
     _256 = 'WOTS_256',
     _256_4 = 'WOTS_256_4',
     _24 = 'WOTS_24',
-    _1 = 'WOTS_1'
+    _1 = 'WOTS_1',
+    _256_4_LP = '_256_4_LP'
 }
 
 export const WOTS_NIBBLES: { [key in WotsType]: number } = {
     [WotsType._256]: 90,
     [WotsType._256_4]: 67,
     [WotsType._24]: 10,
-    [WotsType._1]: 2
+    [WotsType._1]: 2,
+    [WotsType._256_4_LP]: 67
 };
 
 export const WOTS_DATA_NIBBLES: { [key in WotsType]: number } = {
     [WotsType._256]: 86,
     [WotsType._256_4]: 64,
     [WotsType._24]: 8,
-    [WotsType._1]: 1
+    [WotsType._1]: 1,
+    [WotsType._256_4_LP]: 64
 };
 
 export const WOTS_BITS: { [key in WotsType]: number } = {
     [WotsType._256]: 3,
     [WotsType._256_4]: 4,
     [WotsType._24]: 3,
-    [WotsType._1]: 3
+    [WotsType._1]: 3,
+    [WotsType._256_4_LP]: 4
 };
 
-function hash(input: Buffer, times: number = 1): Buffer {
+export const WOTS_OUTPUT: { [key in WotsType]: number } = {
+    [WotsType._256]: 90,
+    [WotsType._256_4]: 67,
+    [WotsType._24]: 10,
+    [WotsType._1]: 2,
+    [WotsType._256_4_LP]: 134
+};
+
+export const WOTS_TOTAL_BITS: { [key in WotsType]: number } = {
+    [WotsType._256]: 256,
+    [WotsType._256_4]: 256,
+    [WotsType._24]: 24,
+    [WotsType._1]: 1,
+    [WotsType._256_4_LP]: 256
+};
+
+export function hash(input: Buffer, times: number = 1): Buffer {
     let t = input;
     for (let i = 0; i < times; i++) {
         const h1 = createHash('sha256').update(t).digest();
@@ -40,7 +61,7 @@ function hash(input: Buffer, times: number = 1): Buffer {
     return t;
 }
 
-function unhash(prehash: Buffer, publicKey: Buffer): number {
+export function unhash(prehash: Buffer, publicKey: Buffer): number {
     for (let i = 0; i < 256; i++) {
         prehash = hash(prehash);
         if (prehash.equals(publicKey)) return i;
@@ -239,7 +260,8 @@ export function encodeWinternitz(type: WotsType, input: bigint, unique: string):
         [WotsType._256]: encodeWinternitz256,
         [WotsType._256_4]: encodeWinternitz256_4,
         [WotsType._24]: encodeWinternitz24,
-        [WotsType._1]: encodeWinternitz1
+        [WotsType._1]: encodeWinternitz1,
+        [WotsType._256_4_LP]: encodeWinternitz256_4_lp
     };
     return encoders[type](input, unique);
 }
@@ -249,7 +271,75 @@ export function decodeWinternitz(type: WotsType, input: Buffer[], keys: Buffer[]
         [WotsType._256]: decodeWinternitz256,
         [WotsType._256_4]: decodeWinternitz256_4,
         [WotsType._24]: decodeWinternitz24,
-        [WotsType._1]: decodeWinternitz1
+        [WotsType._1]: decodeWinternitz1,
+        [WotsType._256_4_LP]: decodeWinternitz256_4_lp
     };
-    return decoders[type](input, keys);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return decoders[type](input as any, keys);
+}
+
+export function encodeWinternitz256_4_lp(input: bigint, unique: string): Buffer[] {
+    const output: Buffer[] = [];
+    let checksum = 0;
+    const nibbles = toNibbles_4(input, 64);
+    for (let i = 0; i < nibbles.length; i++) {
+        const nibble = nibbles[i];
+        checksum += nibble;
+        output.push(Buffer.from([nibble]));
+        output.push(hash(getWinternitzPrivateKey(unique + '/' + i), nibble));
+    }
+    const checksumNibbles = toNibbles_4(BigInt(checksum), 3);
+    for (let i = 0; i < checksumNibbles.length; i++) {
+        const nibble = checksumNibbles[i];
+        output.push(Buffer.from([15 - nibble]));
+        output.push(hash(getWinternitzPrivateKey(unique + '/' + (64 + i)), 15 - nibble));
+    }
+    return output;
+}
+
+function lpNibble(a: Buffer | number): number {
+    let trueNibble: number | Buffer = 0;
+    if (typeof a == 'number') trueNibble = a;
+    else if (a instanceof Buffer && (a as Buffer).length == 0) trueNibble = 0;
+    else if (a instanceof Buffer && (a as Buffer).length == 1) trueNibble = (a as Buffer)[0];
+    else {
+        throw new Error('Invalid nibble');
+    }
+    return trueNibble;
+}
+
+export function decodeWinternitz256_4_lp(input: Buffer[], publicKeys: Buffer[]): bigint {
+    let n = 0n;
+    let checksum = 0;
+    for (let i = 0; i < 64; i++) {
+        const trueNibble = lpNibble(input[i * 2]);
+        const nibble = 15 - unhash(input[i * 2 + 1] as Buffer, publicKeys[i]);
+        if (trueNibble != nibble) throw new Error('Invalid hash');
+        checksum += nibble;
+        n += BigInt(nibble) << BigInt(i * 4);
+    }
+    const checksumNibbles = toNibbles_4(BigInt(checksum), 3);
+    for (let i = 0; i < 3; i++) {
+        const trueNibble = 15 - lpNibble(input[(64 + i) * 2]);
+        const nibble = unhash(input[(64 + i) * 2 + 1] as Buffer, publicKeys[64 + i]);
+        if (trueNibble != nibble || checksumNibbles[i] != nibble) throw new Error('Invalid checksum');
+    }
+    return n;
+}
+
+export function decodeWinternitzToBigint(type: WotsType, input: Buffer[], publicKeys: Buffer[]): bigint {
+    if (input.length != WOTS_OUTPUT[type]) throw new Error('Invalid size');
+    if (publicKeys.length != WOTS_NIBBLES[type]) throw new Error('Invalid size');
+    const decoders = {
+        [WotsType._256]: decodeWinternitz256,
+        [WotsType._256_4]: decodeWinternitz256_4,
+        [WotsType._24]: decodeWinternitz24,
+        [WotsType._1]: decodeWinternitz1,
+        [WotsType._256_4_LP]: decodeWinternitz256_4_lp
+    };
+    return decoders[type](input, publicKeys);
+}
+
+export function decodeWinternitzToBuffer(type: WotsType, input: Buffer[], publicKeys: Buffer[]): Buffer {
+    return bigintToBufferBE(decodeWinternitzToBigint(type, input, publicKeys), WOTS_TOTAL_BITS[type]);
 }

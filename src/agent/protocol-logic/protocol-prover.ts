@@ -1,6 +1,6 @@
 import minimist from 'minimist';
 import { agentConf } from '../agent.conf';
-import { encodeWinternitz256_4 } from '../common/winternitz';
+import { encodeWinternitz256_4, encodeWinternitz256_4_lp } from '../common/winternitz';
 import { calculateStates } from './states';
 import { Argument } from './argument';
 import { bufferToBigintBE } from '../common/encoding';
@@ -126,8 +126,10 @@ export class ProtocolProver extends ProtocolBase {
 
     private async sendArgument(proof: bigint[], selectionPath: number[], selectionPathUnparsed: Buffer[][]) {
         const argument = new Argument(this.agentId, this.setup!.id, proof);
+
         const argumentData = await argument.makeArgument(selectionPath, selectionPathUnparsed);
-        await this.sendTransaction(TemplateNames.ARGUMENT, argumentData);
+        const argumentDataMixed = argumentData;
+        await this.sendTransaction(TemplateNames.ARGUMENT, argumentDataMixed);
     }
 
     private async sendArgumentUncontested() {
@@ -142,16 +144,23 @@ export class ProtocolProver extends ProtocolBase {
         const iteration = selectionPath.length;
         const states = await calculateStates(AgentRoles.PROVER, proof, selectionPath);
         const txName = `${TemplateNames.STATE}_${twoDigits(iteration)}` as TemplateNames;
-        const spendingConditionIndex = iteration == 0 ? 1 : 0;
-        const statesWi = states
-            .map((s, dataIndex) =>
-                encodeWinternitz256_4(
-                    bufferToBigintBE(s),
-                    createUniqueDataId(this.setup!.id, txName, 0, spendingConditionIndex, dataIndex)
+        const statesWi = [states.slice(0, 5), states.slice(5)].map((sa, inputIndex) =>
+            sa
+                .map((s, dataIndex) =>
+                    encodeWinternitz256_4_lp(
+                        bufferToBigintBE(s),
+                        createUniqueDataId(
+                            this.setup!.id,
+                            txName,
+                            inputIndex,
+                            iteration == 0 && inputIndex == 0 ? 1 : 0,
+                            dataIndex
+                        )
+                    )
                 )
-            )
-            .flat();
-        await this.sendTransaction(txName, [statesWi]);
+                .flat()
+        );
+        await this.sendTransaction(txName, statesWi);
     }
 }
 

@@ -1,12 +1,16 @@
 import { Decasector } from '../../src/agent/setup/decasector';
 import {
+    createRefuteHashScriptTemplate,
     getRefutationDescriptor,
     getRefutationIndex,
     RefutationDescriptor,
     RefutationType,
+    renderScriptTemplateWithKeys,
     totalRefutationHashOptions,
     totalRefutationProofs
 } from '../../src/agent/final-step/refutation';
+import { encodeWinternitz256_4_lp, getWinternitzPublicKeys, WotsType } from '../../src/agent/common/winternitz';
+import { Bitcoin, executeProgram } from '../../src/generator/btc_vm/bitcoin';
 
 describe('Refutation', () => {
     it.skip('index is created and interpreted correctly', async () => {
@@ -53,5 +57,22 @@ describe('Refutation', () => {
                 expect(rd.whichHashOption).toBeDefined();
             }
         }
+    });
+
+    it.skip('Refute hash script works', async () => {
+        const scriptTemplate = await createRefuteHashScriptTemplate(Buffer.alloc(32));
+        const keys = [0, 1, 2].map((v) => getWinternitzPublicKeys(WotsType._256_4_LP, `${v}`));
+        const script = renderScriptTemplateWithKeys(scriptTemplate, keys);
+        const witness = [0, 1, 2].map((v) => encodeWinternitz256_4_lp(BigInt(v), `${v}`));
+
+        const bitcoin = new Bitcoin();
+        bitcoin.throwOnFail = true;
+
+        witness.flat().forEach((w) => bitcoin.addWitness(w));
+        bitcoin.addWitness(Buffer.alloc(64));
+
+        executeProgram(bitcoin, script);
+
+        expect(bitcoin.success).toBeTruthy();
     });
 });

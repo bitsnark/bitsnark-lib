@@ -2,6 +2,7 @@ import * as bitcoinjs from 'bitcoinjs-lib';
 import { hardcode, opcodeMap, OpcodeType, opcodeValues } from './bitcoin-opcodes';
 import { StackItem, Stack } from './stack';
 import { createHash } from 'crypto';
+import { bufferToBigintBE } from '../../../src/agent/common/encoding';
 
 interface Operation {
     op?: OpcodeType;
@@ -48,11 +49,13 @@ export class Bitcoin {
         if (typeof value == 'number' && (value < 0 || value > 65535)) throw new Error('Invalid value');
         const si = this.DATA(value);
         this.maxStack = Math.max(this.maxStack, this.stack.items.length + this.altStack.length);
-        if (this.throwOnFail) {
-            if (this.stack.items.length + this.altStack.length > 1000)
-                throw new Error(`Stack too big: ${this.stack.items.length + this.altStack.length}`);
-        }
+        if (this.stack.items.length + this.altStack.length > 1000)
+            throw new Error(`Stack too big: ${this.stack.items.length + this.altStack.length}`);
         return si;
+    }
+
+    setBreakPoint() {
+        this.opcodes.push({ op: OpcodeType.OP_BREAKPOINT });
     }
 
     hardcode(value: number | Buffer): StackItem {
@@ -112,8 +115,8 @@ export class Bitcoin {
 
     popNumber(): number {
         const n = this.stack.pop().value;
-        if (typeof n != 'number') throw new Error('Not a number');
-        return n as number;
+        if (typeof n == 'number') return n;
+        return Number(bufferToBigintBE(n));
     }
 
     /// NATIVE OPERATIONS ///
@@ -1184,6 +1187,135 @@ export class Bitcoin {
         this.drop(checksumNibbles);
     }
 
+    // expecting stack to contain:
+    // 4-bit nibble
+    // 20 byte hash
+    // poush nibble to altstack
+    winternitzVerifyNibble_listpick4(publicKey: Buffer) {
+        this.OP_HASH160();
+        for (let i = 0; i < 15; i++) {
+            this.OP_DUP();
+            this.OP_HASH160();
+        }
+        // after this there are 16 hashes
+        this.OP_0_16(16);
+        this.OP_PICK();
+        this.OP_PICK();
+        this.DATA(publicKey, `wots_nibble_${this.lastTemplateItemId++}`);
+        this.OP_EQUAL();
+        this.OP_VERIFY();
+        for (let i = 0; i < 16; i++) {
+            this.OP_DROP();
+        }
+        // only nibble remains
+        this.OP_TOALTSTACK();
+    }
+
+    counter = 0;
+
+    winternitzDecodeNibble_listpick4(target: StackItem, witness: StackItem[], publicKey: Buffer) {
+        this.pick(witness[1]);
+        this.OP_HASH160();
+        for (let i = 0; i < 15; i++) {
+            this.OP_DUP();
+            this.OP_HASH160();
+        }
+        // after this there are 16 hashes
+        this.pick(witness[0]);
+        this.OP_PICK();
+        this.DATA(publicKey, `wots_nibble_${this.lastTemplateItemId++}`);
+        this.OP_EQUAL();
+        this.OP_VERIFY();
+        for (let i = 0; i < 16; i++) {
+            this.OP_DROP();
+        }
+        this.mov(target, witness[0]);
+
+        // hack for now
+        target.value = Number(bufferToBigintBE(target.value as Buffer));
+    }
+
+    winternitzCheck256_listpick4(witness: StackItem[], publicKeys: Buffer[]) {
+        const totalNibbles = 67;
+        if (publicKeys.length != totalNibbles) throw new Error('Size mismatch');
+        if (witness.length != 2 * totalNibbles) throw new Error('Size mismatch');
+
+        const checksum = this.newStackItem(0);
+        const temp = this.newStackItem(0);
+        for (let i = 0; i < 64; i++) {
+            this.winternitzDecodeNibble_listpick4(temp, witness.slice(i * 2, i * 2 + 2), publicKeys[i]);
+            this.add(checksum, checksum, temp);
+        }
+
+        // do the checksum
+        const checksumNibbles = this.newNibbles(3);
+        for (let i = 0; i < 3; i++) {
+            const tn = witness.slice((64 + i) * 2, (64 + i) * 2 + 2);
+            this.winternitzDecodeNibble_listpick4(checksumNibbles[i], tn, publicKeys[64 + i]);
+        }
+
+        this.DATA(15);
+        this.pick(checksumNibbles[2]);
+        this.OP_SUB();
+        this.mul(16);
+        this.DATA(15);
+        this.pick(checksumNibbles[1]);
+        this.OP_SUB();
+        this.OP_ADD();
+        this.mul(16);
+        this.DATA(15);
+        this.pick(checksumNibbles[0]);
+        this.OP_SUB();
+        this.OP_ADD();
+
+        this.pick(checksum);
+        this.OP_NUMEQUALVERIFY();
+
+        this.drop(checksum);
+        this.drop(temp);
+        this.drop(checksumNibbles);
+    }
+
+    winternitzDecode256_listpick4(target: StackItem[], witness: StackItem[], publicKeys: Buffer[]) {
+        const totalNibbles = 67;
+        if (publicKeys.length != totalNibbles) throw new Error('Size mismatch');
+        if (target.length != 64) throw new Error('Size mismatch');
+        if (witness.length != 2 * totalNibbles) throw new Error('Size mismatch');
+
+        const checksum = this.newStackItem(0);
+        for (let i = 0; i < 64; i++) {
+            this.winternitzDecodeNibble_listpick4(target[i], witness.slice(i * 2, i * 2 + 2), publicKeys[i]);
+            this.add(checksum, checksum, target[i]);
+        }
+
+        // do the checksum
+        const checksumNibbles = this.newNibbles(3);
+        for (let i = 0; i < 3; i++) {
+            const tn = witness.slice((64 + i) * 2, (i + 64) * 2 + 2);
+            this.winternitzDecodeNibble_listpick4(checksumNibbles[i], tn, publicKeys[64 + i]);
+        }
+
+        this.DATA(15);
+        this.pick(checksumNibbles[2]);
+        this.OP_SUB();
+        this.mul(16);
+        this.DATA(15);
+        this.pick(checksumNibbles[1]);
+        this.OP_SUB();
+        this.OP_ADD();
+        this.mul(16);
+        this.DATA(15);
+        this.pick(checksumNibbles[0]);
+        this.OP_SUB();
+        this.OP_ADD();
+
+        this.pick(checksum);
+        this.OP_NUMEQUALVERIFY();
+
+        this.drop(checksum);
+        this.drop(checksumNibbles);
+    }
+
     checkInitialTransaction(witness: StackItem[], publicKeys: Buffer[]) {
         for (let i = 0; i < 10; i++) {
             this.winternitzCheck256(witness.slice(i * 90, i * 90 + 90), publicKeys.slice(i * 90, i * 90 + 90));
@@ -1360,20 +1492,20 @@ export class Bitcoin {
 
         if (opts.validateStack == true) {
             // program has to end with a single 1 on the stack
-            while (this.stack.length() > 1) this.drop(this.stack.top());
-            if (this.stack.length() == 0) {
-                this.OP_0_16(1);
-            } else if (this.stack.top().value !== 1) {
-                this.drop(this.stack.top());
-                this.OP_0_16(1);
-            }
+            while (this.stack.length() > 0) this.drop(this.stack.top());
+            this.OP_0_16(1);
         }
 
         const items: { itemId: string; index: number; length: number }[] = [];
 
         const byteArray: number[] = [];
-        for (const opcode of this.opcodes) {
+        for (let line = 0; line < this.opcodes.length; line++) {
+            const opcode = this.opcodes[line];
+
             if (opcode.op == OpcodeType.DATA) {
+                if (opcode.data && opcode.data instanceof Buffer && opcode.data.length <= 4) {
+                    opcode.data = Number(bufferToBigintBE(opcode.data));
+                }
                 if (opcode.data && opcode.data instanceof Buffer) {
                     byteArray.push(opcode.data.length);
                     if (opcode.templateItemId) {
@@ -1412,78 +1544,90 @@ export class Bitcoin {
     }
 }
 
-export function executeProgram(bitcoin: Bitcoin, script: Buffer, printFlag: boolean): boolean {
+export function executeProgram(bitcoin: Bitcoin, script: Buffer): boolean {
     let inIf = false;
     let inElse = false;
     let doIf = false;
     let doElse = false;
 
-    for (let i = 0; i < script.length; i++) {
-        const opcode = opcodeMap[script[i]];
+    const log: string[] = [];
 
-        const print = printFlag
-            ? (...sa: string[]) => {
-                  console.log(`${i}:\t`, ...sa);
-              }
-            : () => {};
-
-        if (opcode == OpcodeType.OP_IF) {
-            inIf = true;
-            inElse = false;
-            doIf = bitcoin.stack.top().value != 0;
-            doElse = !doIf;
-
-            bitcoin.OP_IF();
-            print(opcode);
-
-            continue;
-        }
-        if (opcode == OpcodeType.OP_ELSE) {
-            inIf = false;
-            inElse = true;
-
-            bitcoin.OP_ELSE();
-            print(opcode);
-
-            continue;
-        }
-        if (opcode == OpcodeType.OP_ENDIF) {
-            inIf = false;
-            inElse = false;
-
-            bitcoin.OP_ENDIF();
-            print(opcode);
-
-            continue;
-        }
-
-        if (inIf && !doIf) continue;
-        if (inElse && !doElse) continue;
-
-        if (script[i] == 0) {
-            bitcoin.OP_0_16(0);
-            print('<0>');
-        } else if (script[i] >= 81 && script[i] <= 96) {
-            bitcoin.OP_0_16(1 + script[i] - 81);
-            print(`<${1 + script[i] - 81}>`);
-        } else if (script[i] > 0 && script[i] <= 75) {
-            const b = script.subarray(i + 1, i + script[i] + 1);
-            if (b.length == 1) {
-                bitcoin.newStackItem(b[0]);
-            } else if (b.length == 2) {
-                bitcoin.newStackItem(b[0] + (b[1] << 8));
-            } else {
-                bitcoin.newStackItem(b);
+    try {
+        for (let i = 0; i < script.length; i++) {
+            const opcode = opcodeMap[script[i]];
+            if (opcode == OpcodeType.OP_BREAKPOINT) {
+                console.log('!!! Breakpoint reached !!!');
+                continue;
             }
-            i += b.length;
-            print(`<${b.toString('hex')}>`);
-        } else {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (bitcoin as any)[String(opcode!)]();
-            print(opcode);
-        }
-    }
 
-    if (bitcoin.stack.length() != 1) throw new Error('Stack size must be 1');
-    return bitcoin.success;
+            const print = (s: string) => {
+                log.push(`${i}:\t${s}\t\t${bitcoin.stack.items.length}`);
+            };
+
+            if (opcode == OpcodeType.OP_IF) {
+                inIf = true;
+                inElse = false;
+                doIf = bitcoin.stack.top().value != 0;
+                doElse = !doIf;
+
+                bitcoin.OP_IF();
+                print(opcode);
+
+                continue;
+            }
+            if (opcode == OpcodeType.OP_ELSE) {
+                inIf = false;
+                inElse = true;
+
+                bitcoin.OP_ELSE();
+                print(opcode);
+
+                continue;
+            }
+            if (opcode == OpcodeType.OP_ENDIF) {
+                inIf = false;
+                inElse = false;
+
+                bitcoin.OP_ENDIF();
+                print(opcode);
+
+                continue;
+            }
+
+            if (inIf && !doIf) continue;
+            if (inElse && !doElse) continue;
+
+            if (script[i] == 0) {
+                bitcoin.OP_0_16(0);
+                print('<0>');
+            } else if (script[i] >= 81 && script[i] <= 96) {
+                bitcoin.OP_0_16(1 + script[i] - 81);
+                print(`<${1 + script[i] - 81}>`);
+            } else if (script[i] > 0 && script[i] <= 75) {
+                const b = script.subarray(i + 1, i + script[i] + 1);
+                if (b.length == 1) {
+                    bitcoin.newStackItem(b[0]);
+                } else if (b.length == 2) {
+                    bitcoin.newStackItem(b[0] + (b[1] << 8));
+                } else {
+                    bitcoin.newStackItem(b);
+                }
+                i += b.length;
+                print(`<${b.toString('hex')}>`);
+            } else {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                (bitcoin as any)[String(opcode!)]();
+                print(`${opcode}`);
+            }
+        }
+
+        if (bitcoin.stack.length() != 1) throw new Error('Stack size must be 1');
+        bitcoin.stack.pop();
+
+        return bitcoin.success;
+    } catch (e) {
+        log.forEach((s) => console.log(s));
+        console.error(e);
+        throw e;
+    }
 }

@@ -22,6 +22,7 @@ async function run(command: string, input: string): Promise<string> {
         });
         child.stderr.on('data', (data: Buffer) => {
             const error = data.toString('utf-8');
+            if (error.startsWith('Debugger attached.')) return;
             console.error(error);
             reject(error);
         });
