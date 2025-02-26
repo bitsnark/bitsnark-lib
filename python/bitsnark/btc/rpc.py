@@ -33,7 +33,9 @@ class ScanTxOutSetResponse(typing.TypedDict):
 
 
 class JSONRPCError(requests.HTTPError):
-    def __init__(self, *, message, code=None, request=None, response=None, jsonrpc_data=None):
+    def __init__(
+        self, *, message, code=None, request=None, response=None, jsonrpc_data=None
+    ):
         self.code = code
         self.message = message
         super().__init__(
@@ -52,15 +54,16 @@ class TestMempoolAcceptFailure(Exception):
         self.resp = resp
         if not isinstance(resp, dict):
             resp = resp[0]
-        self.allowed = resp['allowed']
-        self.reason = resp['reject-reason']
-        self.txid = resp['txid']
-        self.wtxid = resp.get('wtxid')
+        self.allowed = resp["allowed"]
+        self.reason = resp["reject-reason"]
+        self.txid = resp["txid"]
+        self.wtxid = resp.get("wtxid")
         super().__init__(self.reason)
 
 
 class BitcoinRPC:
     """Requests-based RPC client, because bitcointx.rpc.RPCCaller is riddled with cryptic http errors"""
+
     url: str
 
     def __init__(self, url: str):
@@ -69,7 +72,11 @@ class BitcoinRPC:
 
         # parse the url
         urlparts = urllib.parse.urlparse(url)
-        self._auth = (urlparts.username, urlparts.password) if (urlparts.username or urlparts.password) else None
+        self._auth = (
+            (urlparts.username, urlparts.password)
+            if (urlparts.username or urlparts.password)
+            else None
+        )
         if urlparts.port:
             netloc = f"{urlparts.hostname}:{urlparts.port}"
         else:
@@ -154,11 +161,15 @@ class BitcoinRPC:
             )
         return response_json["result"]
 
-    def mine_blocks(self, num: int = 1, to_address: str = None, *, sleep: float = 1.1) -> list[str]:
+    def mine_blocks(
+        self, num: int = 1, to_address: str = None, *, sleep: float = 1.1
+    ) -> list[str]:
         # Regtest only: mine blocks
         if to_address is None:
             # Use a random address if none is provided (not important)
-            to_address = "bcrt1qtxysk2megp39dnpw9va32huk5fesrlvutl0zdpc29asar4hfkrlqs2kzv5"
+            to_address = (
+                "bcrt1qtxysk2megp39dnpw9va32huk5fesrlvutl0zdpc29asar4hfkrlqs2kzv5"
+            )
         ret = self.call("generatetoaddress", num, to_address)
         if sleep:
             # Sleep here by default, otherwise the tap nodes will not have time to process the block(s)
@@ -171,10 +182,14 @@ class BitcoinRPC:
         address: str | CCoinAddress,
     ) -> ScanTxOutSetResponse:
         desc = f"addr({address})"
-        response = self.call("scantxoutset", "start", [
-            desc,
-        ])
-        logger.info('scantxoutset: %s', response)
+        response = self.call(
+            "scantxoutset",
+            "start",
+            [
+                desc,
+            ],
+        )
+        logger.info("scantxoutset: %s", response)
         return response
 
     def get_address_balance(
@@ -195,17 +210,23 @@ class BitcoinRPC:
         if not candidates:
             raise LookupError(f"No outputs to {address} in tx {txid}")
         if len(candidates) > 1:
-            raise LookupError(f"Multiple outputs to {address} in tx {txid}: {candidates}")
+            raise LookupError(
+                f"Multiple outputs to {address} in tx {txid}: {candidates}"
+            )
         return candidates[0]
 
-    def test_mempoolaccept(self, tx: str | bytes | CTransaction | CMutableTransaction) -> None:
+    def test_mempoolaccept(
+        self, tx: str | bytes | CTransaction | CMutableTransaction
+    ) -> None:
         if isinstance(tx, (CTransaction, CMutableTransaction)):
             tx = tx.serialize().hex()
         elif isinstance(tx, bytes):
             tx = tx.hex()
         else:
             if not isinstance(tx, str):
-                raise ValueError("tx must be either a CTransaction, CMutableTransaction, bytes, or str")
+                raise ValueError(
+                    "tx must be either a CTransaction, CMutableTransaction, bytes, or str"
+                )
         response = self.call("testmempoolaccept", [tx])
         if not response[0]["allowed"]:
             raise TestMempoolAcceptFailure(response[0])

@@ -13,7 +13,7 @@ from ..core.transactions import construct_signed_transaction
 
 
 class ShowCommand(Command):
-    name = 'show'
+    name = "show"
 
     def init_parser(self, parser: argparse.ArgumentParser):
         add_tx_template_args(parser)
@@ -36,18 +36,18 @@ class ShowCommand(Command):
         print("Ordinal:".ljust(19), tx_template.ordinal)
         print_dict(
             tx_template.__dict__,
-            ignored_keys=('name', 'ordinal', 'inputs', 'outputs'),
+            ignored_keys=("name", "ordinal", "inputs", "outputs"),
         )
         print("Inputs:")
         for inp in tx_template.inputs:
-            if inp.get('funded'):
+            if inp.get("funded"):
                 print(f"- input {index}:")
                 print_dict(
                     inp,
-                    indent='  - ',
+                    indent="  - ",
                 )
                 continue
-            prev_tx_name = inp['templateName']
+            prev_tx_name = inp["templateName"]
             prev_tx = dbsession.execute(
                 sa.select(
                     TransactionTemplate,
@@ -57,11 +57,11 @@ class ShowCommand(Command):
                 )
             ).scalar_one()
             prev_txid = prev_tx.txid
-            prevout_index = inp['outputIndex']
-            sc_index = inp['spendingConditionIndex']
-            index = inp['index']
+            prevout_index = inp["outputIndex"]
+            sc_index = inp["spendingConditionIndex"]
+            index = inp["index"]
             prevout = prev_tx.outputs[prevout_index]
-            prevout_amount = parse_bignum(prevout['amount'])
+            prevout_amount = parse_bignum(prevout["amount"])
             print(
                 f"- input {index}: {prev_txid}:{prevout_index} "
                 f"({prevout_amount} sat, "
@@ -69,39 +69,41 @@ class ShowCommand(Command):
             )
             print_dict(
                 inp,
-                indent='  - ',
+                indent="  - ",
                 # Already have these above
-                ignored_keys=('index', 'templateName', 'outputIndex', 'spendingConditionIndex'),
+                ignored_keys=(
+                    "index",
+                    "templateName",
+                    "outputIndex",
+                    "spendingConditionIndex",
+                ),
             )
         print("Outputs:")
         for outp in tx_template.outputs:
-            if outp.get('funded'):
-                print(f'- output {index}:')
-                print(f'  - amount:       {amount} sat')
+            if outp.get("funded"):
+                print(f"- output {index}:")
+                print(f"  - amount:       {amount} sat")
                 print_dict(
                     outp,
-                    indent='  - ',
-                    ignored_keys=['index', 'amount'],
+                    indent="  - ",
+                    ignored_keys=["index", "amount"],
                 )
                 continue
-            index = outp['index']
-            amount = parse_bignum(outp['amount'])
-            script_pubkey = CScript(parse_hex_bytes(outp['taprootKey']))
+            index = outp["index"]
+            amount = parse_bignum(outp["amount"])
+            script_pubkey = CScript(parse_hex_bytes(outp["taprootKey"]))
             try:
                 address = CCoinAddress.from_scriptPubKey(script_pubkey)
             except Exception as e:
                 address = f"ERROR: {e}"
-            print(f'- output {index}:')
-            print(f'  - amount:       {amount} sat')
-            print(f'  - address:      {address}')
-            print(f'  - scriptPubKey: {script_pubkey!r}')
-            print(f'  - scriptPubKey (hex): {script_pubkey.hex()}')
-            print(f'  - spendingConditions:')
-            for sc in outp['spendingConditions']:
-                print_dict(
-                    sc,
-                    indent='      - '
-                )
+            print(f"- output {index}:")
+            print(f"  - amount:       {amount} sat")
+            print(f"  - address:      {address}")
+            print(f"  - scriptPubKey: {script_pubkey!r}")
+            print(f"  - scriptPubKey (hex): {script_pubkey.hex()}")
+            print(f"  - spendingConditions:")
+            for sc in outp["spendingConditions"]:
+                print_dict(sc, indent="      - ")
 
         # Deserialized tx stuff
         signed_tx = construct_signed_transaction(
@@ -115,7 +117,9 @@ class ShowCommand(Command):
         print(f"Transaction virtual size: {tx_virtual_size} vB")
 
         def print_size(prefix, size):
-            print(f"{prefix} size: {size} B ({size / 4} vB, {size / 4 / tx_virtual_size * 100:.2f}% of tx size)")
+            print(
+                f"{prefix} size: {size} B ({size / 4} vB, {size / 4 / tx_virtual_size * 100:.2f}% of tx size)"
+            )
 
         print_size("Witness", len(tx.wit.serialize()))
 
@@ -128,7 +132,9 @@ class ShowCommand(Command):
             witness_data_size = sum(len(e) for e in witness_elems)
             witness_script_size = len(tapscript)
             witness_cblock_size = len(cblock)
-            print(f"- Input witness {i}: data {witness_data_size} B, script {witness_script_size} B, cblock {witness_cblock_size} B, stack elems: {len(witness_elems)}")
+            print(
+                f"- Input witness {i}: data {witness_data_size} B, script {witness_script_size} B, cblock {witness_cblock_size} B, stack elems: {len(witness_elems)}"
+            )
             total_witness_data_size += witness_data_size
             total_witness_script_size += witness_script_size
             total_witness_cblock_size += witness_cblock_size
@@ -141,9 +147,9 @@ class ShowCommand(Command):
 def print_dict(
     d: dict,
     *,
-    indent='',
-    ignored_keys = tuple(),
-    ignored_key_prefix: str = '_',
+    indent="",
+    ignored_keys=tuple(),
+    ignored_key_prefix: str = "_",
 ):
     terminal = os.get_terminal_size()
 
@@ -157,4 +163,4 @@ def print_dict(
         if len(value) > maxwidth:
             value = value[:maxwidth] + "..."
         key = f"{key}:".ljust(25)
-        print(f'{indent}{key} {value}')
+        print(f"{indent}{key} {value}")

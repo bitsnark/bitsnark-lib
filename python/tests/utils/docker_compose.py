@@ -10,12 +10,20 @@ from types import SimpleNamespace
 logger = logging.getLogger(__name__)
 
 COMPOSE_VERBOSE = os.environ.get("COMPOSE_VERBOSE", "").lower() in ("1", "true")
-BASE_DIR = pathlib.Path(__file__).parent.parent.parent  # just use the root python dir for now
+BASE_DIR = pathlib.Path(
+    __file__
+).parent.parent.parent  # just use the root python dir for now
 COMPOSE_COMMAND = ["docker", "compose"]
 COMPOSE_FILE = BASE_DIR / "docker-compose.yaml"
 ENV_FILE = BASE_DIR / "env.test"
 MAX_WAIT_TIME_S = 120
-COMPOSE_BASE_ARGS = (*COMPOSE_COMMAND, "-f", str(COMPOSE_FILE), "--env-file", str(ENV_FILE))
+COMPOSE_BASE_ARGS = (
+    *COMPOSE_COMMAND,
+    "-f",
+    str(COMPOSE_FILE),
+    "--env-file",
+    str(ENV_FILE),
+)
 
 assert ENV_FILE.exists(), f"Missing {ENV_FILE}"
 
@@ -59,6 +67,7 @@ def compose_popen(*args, **kwargs) -> subprocess.Popen:
         **kwargs,
     )
 
+
 def is_service_running(service: str):
     """
     Checks if the service is running.
@@ -73,9 +82,13 @@ def is_service_running(service: str):
 
 
 def get_container_info(service: str):
-    output = run_docker_compose_command(
-        "ps", "-a", "--format", "json", service, capture=True
-    ).stdout.decode("utf-8").strip()
+    output = (
+        run_docker_compose_command(
+            "ps", "-a", "--format", "json", service, capture=True
+        )
+        .stdout.decode("utf-8")
+        .strip()
+    )
 
     if not output:
         return None
@@ -92,7 +105,6 @@ def start_docker_compose():
         time.sleep(1)
     else:
         raise TimeoutError("a service did not start in time")
-
 
 
 def stop_docker_compose():

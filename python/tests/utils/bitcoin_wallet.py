@@ -72,17 +72,23 @@ class BitcoinWallet:
                 pass  # create = True
 
         if create:
-            return cls.create(
-                name=name,
-                rpc_base_url=rpc_base_url,
-                blank=blank,
-                disable_private_keys=disable_private_keys,
-            ), True
+            return (
+                cls.create(
+                    name=name,
+                    rpc_base_url=rpc_base_url,
+                    blank=blank,
+                    disable_private_keys=disable_private_keys,
+                ),
+                True,
+            )
         else:
-            return cls(
-                name=name,
-                rpc=BitcoinRPC(f"{rpc_base_url}/wallet/{name}"),
-            ), False
+            return (
+                cls(
+                    name=name,
+                    rpc=BitcoinRPC(f"{rpc_base_url}/wallet/{name}"),
+                ),
+                False,
+            )
 
     def get_new_address(self) -> str:
         address = self.rpc.call("getnewaddress")
@@ -102,7 +108,9 @@ class BitcoinWallet:
     def get_balance_btc(self) -> Decimal:
         return self.rpc.call("getbalance")
 
-    def send(self, *, amount_btc: Decimal | int, receiver: str | CCoinAddress) -> COutPoint:
+    def send(
+        self, *, amount_btc: Decimal | int, receiver: str | CCoinAddress
+    ) -> COutPoint:
         """Send bitcoin and return tx hash and vout as COutPoint"""
         txid = self.rpc.call("sendtoaddress", str(receiver), amount_btc)
         tx = self.rpc.call("gettransaction", txid)
@@ -124,4 +132,3 @@ class BitcoinWallet:
             address = str(address)
         self.rpc.call("importaddress", address)
         self.addresses.append(address)
-

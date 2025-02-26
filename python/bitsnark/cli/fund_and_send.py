@@ -17,13 +17,23 @@ class FundAndSendCommand(Command):
     """
     Send a transaction with identical outputs to a transaction template, but inputs from the wallet
     """
-    name = 'fund_and_send'
+
+    name = "fund_and_send"
 
     def init_parser(self, parser: argparse.ArgumentParser):
         add_tx_template_args(parser)
-        parser.add_argument('--fee-rate', help='Fee rate in sat/vB', type=float, default=10)
-        parser.add_argument('--change-address', help='Address to send the change to', required=False)
-        parser.add_argument('--output-amount', help='Overwrite the amount of the outputs', type=int, required=False)
+        parser.add_argument(
+            "--fee-rate", help="Fee rate in sat/vB", type=float, default=10
+        )
+        parser.add_argument(
+            "--change-address", help="Address to send the change to", required=False
+        )
+        parser.add_argument(
+            "--output-amount",
+            help="Overwrite the amount of the outputs",
+            type=int,
+            required=False,
+        )
 
     def run(
         self,
@@ -37,30 +47,36 @@ class FundAndSendCommand(Command):
         change_address = context.args.change_address
         output_amount_override = context.args.output_amount
         if not change_address:
-            change_address = bitcoin_rpc.call('getnewaddress')
+            change_address = bitcoin_rpc.call("getnewaddress")
 
         outputs = []
         for output_index, out in enumerate(tx_template.outputs):
-            script_pubkey_raw = out.get('taprootKey')
+            script_pubkey_raw = out.get("taprootKey")
             keys = ", ".join(out.keys())
 
             if output_amount_override:
                 amount = output_amount_override
             else:
-                amount_raw = out.get('amount')
+                amount_raw = out.get("amount")
                 if amount_raw is None:
-                    raise ValueError(f"Transaction {tx_template.name} output {output_index} has no amount. Keys: {keys}")
+                    raise ValueError(
+                        f"Transaction {tx_template.name} output {output_index} has no amount. Keys: {keys}"
+                    )
                 amount = parse_bignum(amount_raw)
 
             if script_pubkey_raw is None:
-                raise ValueError(f"Transaction {tx_template.name} output {output_index} has no taprootKey. Keys: {keys}")
+                raise ValueError(
+                    f"Transaction {tx_template.name} output {output_index} has no taprootKey. Keys: {keys}"
+                )
 
             amount_dec = Decimal(amount) / Decimal(10**8)
             script_pubkey = CScript(parse_hex_bytes(script_pubkey_raw))
             address = CCoinAddress.from_scriptPubKey(script_pubkey)
-            outputs.append({
-                str(address): str(amount_dec),
-            })
+            outputs.append(
+                {
+                    str(address): str(amount_dec),
+                }
+            )
 
         change_index = len(outputs)
 
@@ -68,48 +84,50 @@ class FundAndSendCommand(Command):
             logger.info(
                 f"Funding transaction with identical outputs as %s (amount override: %s sat)",
                 tx_template.name,
-                output_amount_override
+                output_amount_override,
             )
         else:
-            logger.info(f"Funding transaction with identical outputs as %s", tx_template.name)
+            logger.info(
+                f"Funding transaction with identical outputs as %s", tx_template.name
+            )
 
         ret = bitcoin_rpc.call(
-            'walletcreatefundedpsbt',
+            "walletcreatefundedpsbt",
             [],  # Inputs
             outputs,  # Outputs
             0,  # Locktime
             {
-                'add_inputs': True,
-                'changeAddress': change_address,
-                'changePosition': change_index,
-                'fee_rate': context.args.fee_rate,
+                "add_inputs": True,
+                "changeAddress": change_address,
+                "changePosition": change_index,
+                "fee_rate": context.args.fee_rate,
                 # 'lockUnspents': True,
-            }
+            },
         )
         # print('walletcreatefundedpsbt', ret)
 
         ret = bitcoin_rpc.call(
-            'walletprocesspsbt',
-            ret['psbt'],
+            "walletprocesspsbt",
+            ret["psbt"],
         )
-        if not ret['complete']:
+        if not ret["complete"]:
             raise ValueError(f"PSBT not complete: {ret}")
         # print('walletprocesspsbt', ret)
-        signed_psbt = PartiallySignedTransaction.from_base64(ret['psbt'])
+        signed_psbt = PartiallySignedTransaction.from_base64(ret["psbt"])
 
         tx = signed_psbt.extract_transaction()
         serialized_tx = tx.serialize().hex()
 
         logger.info(f"Testing mempool acceptance...")
         mempool_accept = bitcoin_rpc.call(
-            'testmempoolaccept',
+            "testmempoolaccept",
             [serialized_tx],
         )
-        assert mempool_accept[0]['allowed'], mempool_accept
+        assert mempool_accept[0]["allowed"], mempool_accept
 
         logger.info(f"Broadcasting transaction...")
         txid = bitcoin_rpc.call(
-            'sendrawtransaction',
+            "sendrawtransaction",
             serialized_tx,
         )
         # print(txid)

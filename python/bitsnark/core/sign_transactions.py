@@ -27,18 +27,18 @@ class TransactionProcessingError(Exception):
 
 def load_keypairs():
     keypairs = {
-        'bitsnark_prover_1': {
-            'public': XOnlyPubKey.fromhex(os.environ['PROVER_SCHNORR_PUBLIC']),
-            'private': CKey.fromhex(os.environ['PROVER_SCHNORR_PRIVATE']),
+        "bitsnark_prover_1": {
+            "public": XOnlyPubKey.fromhex(os.environ["PROVER_SCHNORR_PUBLIC"]),
+            "private": CKey.fromhex(os.environ["PROVER_SCHNORR_PRIVATE"]),
         },
-        'bitsnark_verifier_1': {
-            'public': XOnlyPubKey.fromhex(os.environ['VERIFIER_SCHNORR_PUBLIC']),
-            'private': CKey.fromhex(os.environ['VERIFIER_SCHNORR_PRIVATE']),
+        "bitsnark_verifier_1": {
+            "public": XOnlyPubKey.fromhex(os.environ["VERIFIER_SCHNORR_PUBLIC"]),
+            "private": CKey.fromhex(os.environ["VERIFIER_SCHNORR_PRIVATE"]),
         },
     }
     for role, role_keypairs in keypairs.items():
-        pub = role_keypairs['public']
-        pub_from_priv = XOnlyPubKey(role_keypairs['private'].pub)
+        pub = role_keypairs["public"]
+        pub_from_priv = XOnlyPubKey(role_keypairs["private"].pub)
         if pub != pub_from_priv:
             raise ValueError(
                 f"Public key {pub_from_priv} derived from private key for {role} does not match the public key {pub} provided"
@@ -50,11 +50,13 @@ def load_keypairs():
 def sign_setup(setup_id: str, agent_id: str, role: Role, dbsession: Session):
     # This is a bit silly
     keypairs = load_keypairs()
-    private_key = keypairs[agent_id]['private']
+    private_key = keypairs[agent_id]["private"]
 
     successes = []
 
-    tx_template_query = (select(TransactionTemplate).order_by(TransactionTemplate.ordinal))
+    tx_template_query = select(TransactionTemplate).order_by(
+        TransactionTemplate.ordinal
+    )
 
     tx_template_query = tx_template_query.filter(
         TransactionTemplate.setup_id == setup_id
@@ -91,9 +93,7 @@ def sign_setup(setup_id: str, agent_id: str, role: Role, dbsession: Session):
         print("")
 
     dbsession.execute(
-        update(Setups)
-        .where(Setups.id == setup_id)
-        .values(status=SetupStatus.SIGNED)
+        update(Setups).where(Setups.id == setup_id).values(status=SetupStatus.SIGNED)
     )
 
     # Print the final summary
@@ -101,19 +101,25 @@ def sign_setup(setup_id: str, agent_id: str, role: Role, dbsession: Session):
     print("All done.")
     print("")
     print(f"Successes: {len(successes)}")
-    print(', '.join(successes))
+    print(", ".join(successes))
 
 
 def main(argv: Sequence[str] = None):
     load_bitsnark_dotenv()
     parser = argparse.ArgumentParser()
-    parser.add_argument('--db', default=POSTGRES_BASE_URL)
-    parser.add_argument('--setup-id', required=True,
-                        help='Process only transactions with this setup ID')
-    parser.add_argument('--agent-id', required=True,
-                        help='Process only transactions with this agent ID')
-    parser.add_argument('--role', required=True, choices=['prover', 'verifier'],
-                        help='Role of the agent (prover or verifier)')
+    parser.add_argument("--db", default=POSTGRES_BASE_URL)
+    parser.add_argument(
+        "--setup-id", required=True, help="Process only transactions with this setup ID"
+    )
+    parser.add_argument(
+        "--agent-id", required=True, help="Process only transactions with this agent ID"
+    )
+    parser.add_argument(
+        "--role",
+        required=True,
+        choices=["prover", "verifier"],
+        help="Role of the agent (prover or verifier)",
+    )
 
     args = parser.parse_args(argv)
 
@@ -162,7 +168,7 @@ def sign_tx_template(
         tx_template.inputs[index][signature_key] = serialize_hex(signature)
 
     # Make sure SQLAlchemy knows that the JSON object has changed
-    flag_modified(tx_template, 'inputs')
+    flag_modified(tx_template, "inputs")
 
     return True
 
@@ -183,7 +189,11 @@ def verify_tx_template_signatures(
         )
     except MissingScript:
         if ignore_missing_script:
-            logger.warning("Skipping %s for %s because of missing script", signature_key, tx_template.name)
+            logger.warning(
+                "Skipping %s for %s because of missing script",
+                signature_key,
+                tx_template.name,
+            )
             return
         raise
 
@@ -196,7 +206,9 @@ def verify_tx_template_signatures(
     for input_index, inp in enumerate(tx_template.inputs):
         signature_raw = inp.get(signature_key)
         if not signature_raw:
-            raise ValueError(f"Transaction {tx_template.name} input #{input_index} has no {signature_key}")
+            raise ValueError(
+                f"Transaction {tx_template.name} input #{input_index} has no {signature_key}"
+            )
 
         signature = parse_hex_bytes(signature_raw)
         signable_tx.verify_input_signature_at(
@@ -205,15 +217,17 @@ def verify_tx_template_signatures(
             signature=signature,
             hashtype=sighash_type,
         )
-        logger.info("%s for %s input %d is valid", signature_key, tx_template.name, input_index)
+        logger.info(
+            "%s for %s input %d is valid", signature_key, tx_template.name, input_index
+        )
 
 
-def get_signature_key(role: Role) -> Literal['proverSignature', 'verifierSignature']:
+def get_signature_key(role: Role) -> Literal["proverSignature", "verifierSignature"]:
     role = role.lower()
-    if role == 'prover':
-        return 'proverSignature'
-    elif role == 'verifier':
-        return 'verifierSignature'
+    if role == "prover":
+        return "proverSignature"
+    elif role == "verifier":
+        return "verifierSignature"
     else:
         raise ValueError(f"Unknown role {role}")
 

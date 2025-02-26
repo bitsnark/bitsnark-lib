@@ -13,7 +13,8 @@ from .constants import (
     POSTGRES_URL_ROOT,
     POSTGRES_URL_PROVER,
     POSTGRES_URL_VERIFIER,
-    BITCOIN_RPC_URL, DB_SCHEMA_FILE,
+    BITCOIN_RPC_URL,
+    DB_SCHEMA_FILE,
 )
 
 logger = logging.getLogger(__name__)
@@ -21,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 @pytest.fixture(autouse=True)
 def use_regtest_bitcointx():
-    with ChainParams('bitcoin/regtest'):
+    with ChainParams("bitcoin/regtest"):
         yield
 
 
@@ -31,6 +32,7 @@ def npm() -> NPMCommandRunner:
 
 
 _docker_compose_running_on_module_level = False
+
 
 @pytest.fixture()
 def docker_compose():
@@ -42,7 +44,7 @@ def docker_compose():
             yield
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope="module")
 def docker_compose_module_level():
     """Start and stop docker compose once for a test module"""
     global _docker_compose_running_on_module_level
@@ -93,7 +95,7 @@ def dbsession_verifier(db_engine_root) -> Session:
 @pytest.fixture()
 def btc_rpc(docker_compose) -> BitcoinRPC:
     rpc = BitcoinRPC(BITCOIN_RPC_URL)
-    blockcount = rpc.call('getblockcount')
+    blockcount = rpc.call("getblockcount")
     # Mine enough blocks to activate segwit
     required = 432 - blockcount
     if required > 0:
@@ -110,8 +112,7 @@ def btc_rpc(docker_compose) -> BitcoinRPC:
 @pytest.fixture()
 def btc_wallet(btc_rpc) -> BitcoinWallet:
     wallet, created = BitcoinWallet.load_or_create(
-        name="testwallet",
-        rpc_base_url=btc_rpc.url
+        name="testwallet", rpc_base_url=btc_rpc.url
     )
     if created:
         wallet.mine(432)

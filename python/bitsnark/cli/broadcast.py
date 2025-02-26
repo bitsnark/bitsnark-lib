@@ -1,4 +1,5 @@
 """Quick and dirty transaction broadcaster."""
+
 import argparse
 import logging
 
@@ -50,7 +51,11 @@ def broadcast_transaction(
 
     signed_serialized_tx = tx.serialize().hex()
 
-    logger.info("Broadcasting transaction: %s   -   %d bytes", tx_template.name, len(signed_serialized_tx) // 2)
+    logger.info(
+        "Broadcasting transaction: %s   -   %d bytes",
+        tx_template.name,
+        len(signed_serialized_tx) // 2,
+    )
 
     if dump:
         dump_filename = f"{tx_template.name}-signed-serialized-tx.dump"
@@ -60,14 +65,15 @@ def broadcast_transaction(
 
     if not no_test_mempool_accept:
         mempoolaccept_ret = bitcoin_rpc.call(
-            'testmempoolaccept',
+            "testmempoolaccept",
             [signed_serialized_tx],
         )
-        if not mempoolaccept_ret[0]['allowed']:
+        if not mempoolaccept_ret[0]["allowed"]:
             raise ValueError(
-                f"Transaction {tx_template.name!r} not accepted by mempool: {mempoolaccept_ret[0]['reject-reason']}")
+                f"Transaction {tx_template.name!r} not accepted by mempool: {mempoolaccept_ret[0]['reject-reason']}"
+            )
 
-    txid = bitcoin_rpc.call('sendrawtransaction', signed_serialized_tx)
+    txid = bitcoin_rpc.call("sendrawtransaction", signed_serialized_tx)
     assert txid == tx_template.txid
     logger.info("Transaction broadcast: %s", txid)
     return txid
@@ -77,24 +83,25 @@ class BroadcastCommand(Command):
     """
     Broadcast a transaction template to the blockchain
     """
-    name = 'broadcast'
+
+    name = "broadcast"
 
     def init_parser(self, parser: argparse.ArgumentParser):
         add_tx_template_args(parser)
         parser.add_argument(
-            '--no-test-mempool-accept',
-            help='Test mempool acceptance before broadcasting',
-            action='store_true',
+            "--no-test-mempool-accept",
+            help="Test mempool acceptance before broadcasting",
+            action="store_true",
         )
         parser.add_argument(
-            '--eval-inputs',
-            help='Evaluate input tapscript execution (experimental)',
-            action='store_true',
+            "--eval-inputs",
+            help="Evaluate input tapscript execution (experimental)",
+            action="store_true",
         )
         parser.add_argument(
-            '--dump',
-            help='Dump tx as hex',
-            action='store_true',
+            "--dump",
+            help="Dump tx as hex",
+            action="store_true",
         )
 
     def run(
@@ -104,9 +111,9 @@ class BroadcastCommand(Command):
         tx_template = find_tx_template(context)
         bitcoin_rpc = context.bitcoin_rpc
         dbsession = context.dbsession
-        evaluate_inputs = getattr(context.args, 'eval_inputs')
-        no_test_mempool_accept = getattr(context.args, 'no_test_mempool_accept')
-        dump = getattr(context.args, 'dump', None)
+        evaluate_inputs = getattr(context.args, "eval_inputs")
+        no_test_mempool_accept = getattr(context.args, "no_test_mempool_accept")
+        dump = getattr(context.args, "dump", None)
         return broadcast_transaction(
             tx_template=tx_template,
             dbsession=dbsession,

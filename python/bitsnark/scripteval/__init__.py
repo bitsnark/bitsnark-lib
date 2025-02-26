@@ -24,9 +24,7 @@ module.
 
 import hashlib
 import logging
-from typing import (
-    List, Set
-)
+from typing import List, Set
 
 import bitcointx.core
 import bitcointx.core._bignum
@@ -34,18 +32,59 @@ import bitcointx.core._ripemd160
 import bitcointx.core.key
 import bitcointx.core.serialize
 from bitcointx.core.script import (
-    CScript, SIGVERSION_BASE, SIGVERSION_WITNESS_V0,
-    MAX_SCRIPT_ELEMENT_SIZE, FindAndDelete, DISABLED_OPCODES,
-    SIGVERSION_Type, OP_CHECKMULTISIGVERIFY, OP_CHECKMULTISIG, OP_CHECKSIG, OP_CHECKSIGVERIFY,
-    OP_1NEGATE, OP_EQUAL, OP_EQUALVERIFY,
+    CScript,
+    SIGVERSION_BASE,
+    SIGVERSION_WITNESS_V0,
+    MAX_SCRIPT_ELEMENT_SIZE,
+    FindAndDelete,
+    DISABLED_OPCODES,
+    SIGVERSION_Type,
+    OP_CHECKMULTISIGVERIFY,
+    OP_CHECKMULTISIG,
+    OP_CHECKSIG,
+    OP_CHECKSIGVERIFY,
+    OP_1NEGATE,
+    OP_EQUAL,
+    OP_EQUALVERIFY,
     OP_PUSHDATA4,
-    OP_1, OP_16,
-    OP_IF, OP_ENDIF, OP_ELSE, OP_DROP, OP_DUP, OP_2DROP, OP_2DUP, OP_2OVER,
-    OP_2ROT, OP_2SWAP, OP_3DUP, OP_CODESEPARATOR, OP_DEPTH,
-    OP_FROMALTSTACK, OP_HASH160, OP_HASH256, OP_NOTIF, OP_IFDUP, OP_NIP,
-    OP_NOP, OP_NOP1, OP_NOP10, OP_OVER, OP_PICK, OP_ROLL, OP_RETURN,
-    OP_RIPEMD160, OP_ROT, OP_SIZE, OP_SHA1, OP_SHA256, OP_SWAP, OP_TOALTSTACK,
-    OP_TUCK, OP_VERIFY, OP_WITHIN,
+    OP_1,
+    OP_16,
+    OP_IF,
+    OP_ENDIF,
+    OP_ELSE,
+    OP_DROP,
+    OP_DUP,
+    OP_2DROP,
+    OP_2DUP,
+    OP_2OVER,
+    OP_2ROT,
+    OP_2SWAP,
+    OP_3DUP,
+    OP_CODESEPARATOR,
+    OP_DEPTH,
+    OP_FROMALTSTACK,
+    OP_HASH160,
+    OP_HASH256,
+    OP_NOTIF,
+    OP_IFDUP,
+    OP_NIP,
+    OP_NOP,
+    OP_NOP1,
+    OP_NOP10,
+    OP_OVER,
+    OP_PICK,
+    OP_ROLL,
+    OP_RETURN,
+    OP_RIPEMD160,
+    OP_ROT,
+    OP_SIZE,
+    OP_SHA1,
+    OP_SHA256,
+    OP_SWAP,
+    OP_TOALTSTACK,
+    OP_TUCK,
+    OP_VERIFY,
+    OP_WITHIN,
     SIGVERSION_TAPSCRIPT,
 )
 from bitcointx.core.scripteval import (
@@ -75,9 +114,8 @@ from bitcointx.core.scripteval import (
 logger = logging.getLogger(__name__)
 
 
-__all__ = (
-    'eval_tapscript',
-)
+__all__ = ("eval_tapscript",)
+
 
 def eval_tapscript(
     *,
@@ -88,7 +126,7 @@ def eval_tapscript(
     verify_stack: bool = True,
     # The rest of these options should probably not exist in the final API,
     # but let's have them here anyway
-    txTo: 'bitcointx.core.CTransaction' = bitcointx.core.CTransaction(),
+    txTo: "bitcointx.core.CTransaction" = bitcointx.core.CTransaction(),
     inIdx: int = 0,
     flags: Set[ScriptVerifyFlag_Type] = frozenset(),
     amount: int = 0,
@@ -118,7 +156,9 @@ def eval_tapscript(
             len(state.altstack) if state.altstack is not None else None,
         )
         if debug:
-            logger.info("Entering Python debugger. The exception is stored in variable `exc` and state in `state`")
+            logger.info(
+                "Entering Python debugger. The exception is stored in variable `exc` and state in `state`"
+            )
             breakpoint()
             pass
         raise
@@ -128,7 +168,7 @@ def _eval_tapscript(
     *,
     witness_elems: List[bytes],
     script: CScript,
-    txTo: 'bitcointx.core.CTransaction',
+    txTo: "bitcointx.core.CTransaction",
     inIdx: int,
     flags: Set[ScriptVerifyFlag_Type] = frozenset(),
     amount: int = 0,
@@ -173,8 +213,8 @@ def _eval_tapscript(
                     altstack=altstack,
                     vfExec=vfExec,
                     pbegincodehash=pbegincodehash,
-                    nOpCount=nOpCount[0]
-                )
+                    nOpCount=nOpCount[0],
+                ),
             )
 
     for sop_index, (sop, sop_data, sop_pc) in enumerate(scriptIn.raw_iter()):
@@ -183,9 +223,9 @@ def _eval_tapscript(
             "%5d: %s %s (start byte: %s) (%s)",
             sop_index,
             sop,
-            sop_data.hex() if sop_data is not None else '(No data)',
+            sop_data.hex() if sop_data is not None else "(No data)",
             sop_pc,
-            'executed' if fExec else 'not executed',
+            "executed" if fExec else "not executed",
         )
 
         def get_eval_state() -> ScriptEvalState:
@@ -201,11 +241,13 @@ def _eval_tapscript(
                 altstack=altstack,
                 vfExec=vfExec,
                 pbegincodehash=pbegincodehash,
-                nOpCount=nOpCount[0])
+                nOpCount=nOpCount[0],
+            )
 
         if sop in DISABLED_OPCODES:
-            raise EvalScriptError(f'opcode {_opcode_name(sop)} is disabled',
-                                  get_eval_state())
+            raise EvalScriptError(
+                f"opcode {_opcode_name(sop)} is disabled", get_eval_state()
+            )
 
         if sop > OP_16:
             nOpCount[0] += 1
@@ -215,16 +257,18 @@ def _eval_tapscript(
 
         def check_args(n: int) -> None:
             if len(stack) < n:
-                raise MissingOpArgumentsError(get_eval_state(),
-                                              expected_stack_depth=n)
+                raise MissingOpArgumentsError(get_eval_state(), expected_stack_depth=n)
 
         if sop <= OP_PUSHDATA4:
             assert sop_data is not None
             if len(sop_data) > MAX_SCRIPT_ELEMENT_SIZE:
                 raise EvalScriptError(
-                    (f'PUSHDATA of length {len(sop_data)}; '
-                     f'maximum allowed is {MAX_SCRIPT_ELEMENT_SIZE}'),
-                    get_eval_state())
+                    (
+                        f"PUSHDATA of length {len(sop_data)}; "
+                        f"maximum allowed is {MAX_SCRIPT_ELEMENT_SIZE}"
+                    ),
+                    get_eval_state(),
+                )
 
             elif fExec:
                 stack.append(sop_data)
@@ -291,9 +335,18 @@ def _eval_tapscript(
 
             elif sop == OP_CHECKMULTISIG or sop == OP_CHECKMULTISIGVERIFY:
                 tmpScript = scriptIn.__class__(scriptIn[pbegincodehash:])
-                _CheckMultiSig(sop, tmpScript, stack, txTo, inIdx, flags,
-                               get_eval_state, nOpCount,
-                               amount=amount, sigversion=sigversion)
+                _CheckMultiSig(
+                    sop,
+                    tmpScript,
+                    stack,
+                    txTo,
+                    inIdx,
+                    flags,
+                    get_eval_state,
+                    nOpCount,
+                    amount=amount,
+                    sigversion=sigversion,
+                )
 
             elif sop == OP_CHECKSIG or sop == OP_CHECKSIGVERIFY:
                 check_args(2)
@@ -305,8 +358,7 @@ def _eval_tapscript(
 
                 if sigversion == SIGVERSION_BASE:
                     # Drop the signature in pre-segwit scripts but not segwit scripts
-                    tmpScript = FindAndDelete(tmpScript,
-                                              scriptIn.__class__([vchSig]))
+                    tmpScript = FindAndDelete(tmpScript, scriptIn.__class__([vchSig]))
 
                 ok = checksig_tapscript(
                     vchSig,
@@ -320,7 +372,9 @@ def _eval_tapscript(
                     ignore_errors=ignore_signature_errors,
                 )
                 if not ok and SCRIPT_VERIFY_NULLFAIL in flags and len(vchSig):
-                    raise VerifyScriptError("signature check failed, and signature is not empty")
+                    raise VerifyScriptError(
+                        "signature check failed, and signature is not empty"
+                    )
                 if not ok and sop == OP_CHECKSIGVERIFY:
                     raise VerifyOpFailedError(get_eval_state())
 
@@ -354,14 +408,16 @@ def _eval_tapscript(
 
             elif sop == OP_ELSE:
                 if len(vfExec) == 0:
-                    raise EvalScriptError('ELSE found without prior IF',
-                                          get_eval_state())
+                    raise EvalScriptError(
+                        "ELSE found without prior IF", get_eval_state()
+                    )
                 vfExec[-1] = not vfExec[-1]
 
             elif sop == OP_ENDIF:
                 if len(vfExec) == 0:
-                    raise EvalScriptError('ENDIF found without prior IF',
-                                          get_eval_state())
+                    raise EvalScriptError(
+                        "ENDIF found without prior IF", get_eval_state()
+                    )
                 vfExec.pop()
 
             elif sop == OP_EQUAL:
@@ -388,7 +444,7 @@ def _eval_tapscript(
             elif sop == OP_FROMALTSTACK:
                 if len(altstack) < 1:
                     raise EvalScriptError(
-                        'Attempted to pop from an empty altstack',
+                        "Attempted to pop from an empty altstack",
                         get_eval_state(),
                     )
                 v_bytes = altstack.pop()
@@ -409,11 +465,18 @@ def _eval_tapscript(
                     check_args(1)
                     vch = stack.pop()
 
-                    if sigversion == SIGVERSION_WITNESS_V0 and SCRIPT_VERIFY_MINIMALIF in flags:
+                    if (
+                        sigversion == SIGVERSION_WITNESS_V0
+                        and SCRIPT_VERIFY_MINIMALIF in flags
+                    ):
                         if len(vch) > 1:
-                            raise VerifyScriptError("SCRIPT_VERIFY_MINIMALIF check failed")
+                            raise VerifyScriptError(
+                                "SCRIPT_VERIFY_MINIMALIF check failed"
+                            )
                         if len(vch) == 1 and vch[0] != 1:
-                            raise VerifyScriptError("SCRIPT_VERIFY_MINIMALIF check failed")
+                            raise VerifyScriptError(
+                                "SCRIPT_VERIFY_MINIMALIF check failed"
+                            )
 
                     val = _CastToBool(vch)
                     if sop == OP_NOTIF:
@@ -436,9 +499,10 @@ def _eval_tapscript(
 
             elif sop >= OP_NOP1 and sop <= OP_NOP10:
                 if SCRIPT_VERIFY_DISCOURAGE_UPGRADABLE_NOPS in flags:
-                    raise EvalScriptError((f"{_opcode_name(sop)} reserved "
-                                           f"for soft-fork upgrades"),
-                                          get_eval_state())
+                    raise EvalScriptError(
+                        (f"{_opcode_name(sop)} reserved " f"for soft-fork upgrades"),
+                        get_eval_state(),
+                    )
                 else:
                     pass
 
@@ -455,10 +519,11 @@ def _eval_tapscript(
                     raise EvalScriptError(
                         f"Argument for {_opcode_name(sop)} out of bounds "
                         f"(n_raw={raw_stack_item.hex()} n_bignum={n}, stack size={len(stack)})",
-                        get_eval_state())
-                vch = stack[-n-1]
+                        get_eval_state(),
+                    )
+                vch = stack[-n - 1]
                 if sop == OP_ROLL:
-                    del stack[-n-1]
+                    del stack[-n - 1]
                 stack.append(vch)
 
             elif sop == OP_RETURN:
@@ -532,40 +597,59 @@ def _eval_tapscript(
                     stack.append(b"\x00")
 
             else:
-                raise EvalScriptError('unsupported opcode 0x%x' % sop,
-                                      get_eval_state())
+                raise EvalScriptError("unsupported opcode 0x%x" % sop, get_eval_state())
 
         # size limits
         if len(stack) + len(altstack) > MAX_STACK_ITEMS:
-            raise EvalScriptError('max stack items limit reached',
-                                  get_eval_state())
+            raise EvalScriptError("max stack items limit reached", get_eval_state())
 
     # Unterminated IF/NOTIF/ELSE block
     if len(vfExec):
         raise EvalScriptError(
-            'Unterminated IF/ELSE block',
-            ScriptEvalState(stack=stack, altstack=altstack, scriptIn=scriptIn,
-                            txTo=txTo, inIdx=inIdx, flags=flags))
+            "Unterminated IF/ELSE block",
+            ScriptEvalState(
+                stack=stack,
+                altstack=altstack,
+                scriptIn=scriptIn,
+                txTo=txTo,
+                inIdx=inIdx,
+                flags=flags,
+            ),
+        )
 
     if verify_stack:
         if len(stack) != 1:
             raise EvalScriptError(
-                f'stack size must be exactly one after execution (got {len(stack)})',
-                ScriptEvalState(stack=stack, altstack=altstack, scriptIn=scriptIn,
-                                txTo=txTo, inIdx=inIdx, flags=flags))
+                f"stack size must be exactly one after execution (got {len(stack)})",
+                ScriptEvalState(
+                    stack=stack,
+                    altstack=altstack,
+                    scriptIn=scriptIn,
+                    txTo=txTo,
+                    inIdx=inIdx,
+                    flags=flags,
+                ),
+            )
 
         if not any(stack[0]):
             raise EvalScriptError(
-                'top stack element is false',
-                ScriptEvalState(stack=stack, altstack=altstack, scriptIn=scriptIn,
-                                txTo=txTo, inIdx=inIdx, flags=flags))
+                "top stack element is false",
+                ScriptEvalState(
+                    stack=stack,
+                    altstack=altstack,
+                    scriptIn=scriptIn,
+                    txTo=txTo,
+                    inIdx=inIdx,
+                    flags=flags,
+                ),
+            )
 
 
 def checksig_tapscript(
     sig: bytes,
     pubkey: bytes,
     script: CScript,
-    txTo: 'bitcointx.core.CTransaction',
+    txTo: "bitcointx.core.CTransaction",
     inIdx: int,
     flags: Set[ScriptVerifyFlag_Type],
     amount: int = 0,
