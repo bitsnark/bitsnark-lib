@@ -8,13 +8,10 @@ conditionally_remove_container $bitcoin_container_name
 [ "$1" = persist ] || rm -rf "$bitcoin_data_dir"
 
 echo Starting Bitcoin node...
-# FIXME: We accept non standard transactions because our transactions are larger than the regtest limit.
-# We need to find out what's the real limit with real miners on mainnet (and testnet) and set it to that.
 $docker_cmd run -d --name "$bitcoin_container_name" \
     -v $bitcoin_data_dir:/home/bitcoin/.bitcoin \
     -p 18443:18443 -p 18444:18444 \
     ruimarinho/bitcoin-core:latest -regtest \
-    -acceptnonstdtxn=1 \
     -rpcuser="$bitcoin_rpc_user" -rpcpassword="$bitcoin_rpc_password" \
     -rpcallowip=0.0.0.0/0 -rpcbind=0.0.0.0 -reindex=1
 
