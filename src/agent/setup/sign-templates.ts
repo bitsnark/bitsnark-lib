@@ -65,7 +65,7 @@ export async function signTemplates(
         const setup = await db.getSetup(setupId);
         if (setup.status == SetupStatus.SIGNED) break;
         if (setup.status == SetupStatus.FAILED) throw new Error('Setup signature failed');
-    } while (!(await sleep(1000)));
+    } while (await sleep(1000));
 
     templates = await db.getTemplates(setupId);
     verifyTemplates(templates, role);
@@ -80,7 +80,7 @@ export async function verifySignatures(agentId: string, setupId: string): Promis
         const setup = await db.getSetup(setupId);
         if (setup.status == SetupStatus.VERIFIED) return;
         if (setup.status == SetupStatus.FAILED) throw new Error('Setup verification failed');
-    } while (!(await sleep(1000)));
+    } while (await sleep(1000));
 }
 
 async function main() {

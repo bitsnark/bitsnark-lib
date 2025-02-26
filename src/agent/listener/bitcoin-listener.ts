@@ -26,9 +26,7 @@ export class BitcoinListener {
             } catch (error) {
                 console.error('Error in blockchain listener:', error);
             }
-            await sleep(agentConf.blockCheckIntervalMs);
-            /*eslint no-constant-condition: "off"*/
-        } while (true);
+        } while (await sleep(agentConf.blockCheckIntervalMs));
     }
 
     async checkForNewBlock() {

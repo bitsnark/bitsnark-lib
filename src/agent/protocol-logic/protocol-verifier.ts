@@ -177,9 +177,7 @@ export async function main(agentId: string) {
 
     do {
         await doit();
-        await sleep(agentConf.protocolIntervalMs);
-        /*eslint no-constant-condition: "off"*/
-    } while (true);
+    } while (await sleep(agentConf.protocolIntervalMs));
 }
 
 if (require.main === module) {

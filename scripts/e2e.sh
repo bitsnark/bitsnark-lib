@@ -11,7 +11,13 @@ npm run postgres
 npm run regtest
 
 echo 'Emulating setup (this will move to a real setup later)'
-npm run emulate-setup-final
+if [ "$1" = tg-setup ]; then
+    shift
+    echo Telegram setup not yet supported for e2e
+    exit 1
+else
+    npm run emulate-setup-final
+fi
 
 echo Starting agents
 npm run prover-protocol &
