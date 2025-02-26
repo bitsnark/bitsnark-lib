@@ -15,7 +15,7 @@ class NPMCommandRunner:
     def run(self, command: str, *args: str) -> str:
         try:
             ret = subprocess.check_output(
-                ['npm', 'run', command, *args],
+                ["npm", "run", command, *args],
                 cwd=self.cwd,
                 env={
                     **os.environ,

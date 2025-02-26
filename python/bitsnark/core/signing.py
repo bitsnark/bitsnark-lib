@@ -4,6 +4,7 @@ from bitcointx.core.script import CScript, SIGHASH_Type
 
 DEFAULT_HASHTYPE = None
 
+
 def sign_input(
     *,
     script: CScript,
@@ -40,7 +41,9 @@ def verify_input_signature(
     hashtype: SIGHASH_Type | None = DEFAULT_HASHTYPE,
 ):
     if len(signature) not in (64, 65):
-        raise ValueError(f"Expected a signature of 64 or 65 bytes, got {len(signature)}")
+        raise ValueError(
+            f"Expected a signature of 64 or 65 bytes, got {len(signature)}"
+        )
     if len(signature) == 65:
         hashtype_from_signature = signature[-1]
         if hashtype_from_signature != hashtype:

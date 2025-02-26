@@ -8,26 +8,26 @@ from sqlalchemy.schema import FetchedValue
 
 
 class SetupStatus(enum.Enum):
-    PENDING = 'PENDING'
-    UNSIGNED = 'UNSIGNED'
-    SIGNED = 'SIGNED'
-    MERGED = 'MERGED'
-    VERIFIED = 'VERIFIED'
-    FAILED = 'FAILED'
+    PENDING = "PENDING"
+    UNSIGNED = "UNSIGNED"
+    SIGNED = "SIGNED"
+    MERGED = "MERGED"
+    VERIFIED = "VERIFIED"
+    FAILED = "FAILED"
 
 
 class OutgoingStatus(enum.Enum):
-    PENDING = 'PENDING'
-    READY = 'READY'
-    PUBLISHED = 'PUBLISHED'
-    REJECTED = 'REJECTED'
+    PENDING = "PENDING"
+    READY = "READY"
+    PUBLISHED = "PUBLISHED"
+    REJECTED = "REJECTED"
 
 
 Base = declarative_base()
 
 
 class Setups(Base):
-    __tablename__ = 'setups'
+    __tablename__ = "setups"
     id: Mapped[str] = mapped_column(String, primary_key=True, nullable=False)
     protocol_version: Mapped[str] = mapped_column(String, nullable=False)
     status: Mapped[str] = mapped_column(Enum(SetupStatus), nullable=False)
@@ -38,11 +38,13 @@ class Setups(Base):
     stake_txid: Mapped[Optional[str]] = mapped_column(String)
     stake_output_index: Mapped[Optional[int]] = mapped_column(Integer)
     stake_amount: Mapped[Optional[int]] = mapped_column(Integer)
-    created_at: Mapped[datetime.datetime] = mapped_column(TIMESTAMP, server_default=FetchedValue(), nullable=False)
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        TIMESTAMP, server_default=FetchedValue(), nullable=False
+    )
 
 
 class TransactionTemplate(Base):
-    __tablename__ = 'templates'
+    __tablename__ = "templates"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     txid: Mapped[str] = mapped_column(String, nullable=False)
     setup_id: Mapped[str] = mapped_column(String, nullable=False)
@@ -56,13 +58,16 @@ class TransactionTemplate(Base):
     outputs: Mapped[list] = mapped_column(JSON, nullable=False)
     status: Mapped[str] = mapped_column(Enum(OutgoingStatus), nullable=False)
     protocol_data: Mapped[Optional[dict]] = mapped_column(JSON)
-    updated_at: Mapped[datetime.datetime] = mapped_column(TIMESTAMP, server_default=FetchedValue(), nullable=False)
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        TIMESTAMP, server_default=FetchedValue(), nullable=False
+    )
 
     def __repr__(self):
         return (
             f"<TransactionTemplate(name={self.name}, "
             f"setup_id={self.setup_id}, id={self.id}, ordinal={self.ordinal}, "
-            f"role={self.role}, is_external={self.is_external}, inputs=..., outputs=...)>")
+            f"role={self.role}, is_external={self.is_external}, inputs=..., outputs=...)>"
+        )
 
 
 JsonHexStr = str

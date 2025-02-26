@@ -1,6 +1,7 @@
 """
 JSON parsing utilities
 """
+
 from bitcointx.core.script import ScriptElement_Type
 
 

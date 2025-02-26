@@ -19,7 +19,7 @@ def run_py_client_script(func: Callable[[Any], Any]) -> None:
         with redirect_stdout(sys.stderr):
             result = func(input_data)
     except Exception as e:
-        logger.exception('py-client script error')
+        logger.exception("py-client script error")
         result = {"error": str(e), "errorType": type(e).__name__}
     else:
         result = {"result": result}

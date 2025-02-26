@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 class CalculateScriptOptimizationsCommand(Command):
-    name = 'calculate_script_optimizations'
+    name = "calculate_script_optimizations"
 
     def init_parser(self, parser: argparse.ArgumentParser):
         add_tx_template_args(parser)
@@ -23,8 +23,10 @@ class CalculateScriptOptimizationsCommand(Command):
 
         logger.info("Optimizing scripts for transaction template %s", tx_template.name)
         for output_index, output in enumerate(tx_template.outputs):
-            for spending_condition_index, spending_condition in enumerate(output['spendingConditions']):
-                script_raw = spending_condition.get('script')
+            for spending_condition_index, spending_condition in enumerate(
+                output["spendingConditions"]
+            ):
+                script_raw = spending_condition.get("script")
                 if script_raw is None:
                     logger.warning(
                         "Output %s spending condition %s has no script -- skipping",
@@ -40,12 +42,24 @@ class CalculateScriptOptimizationsCommand(Command):
                 )
                 original_script = CScript(parse_hex_bytes(script_raw))
                 logger.info("\tOriginal script size: %s", len(original_script))
-                theoretically_optimal_script = get_theoretically_optimal_script(original_script)
-                logger.info("\tTheoretically optimal script size (not reasonable): %s", len(theoretically_optimal_script))
-                logger.info("\t\tSavings: %s %%", 100 - len(theoretically_optimal_script) / len(original_script) * 100)
+                theoretically_optimal_script = get_theoretically_optimal_script(
+                    original_script
+                )
+                logger.info(
+                    "\tTheoretically optimal script size (not reasonable): %s",
+                    len(theoretically_optimal_script),
+                )
+                logger.info(
+                    "\t\tSavings: %s %%",
+                    100
+                    - len(theoretically_optimal_script) / len(original_script) * 100,
+                )
                 optimized_script = optimize_script(original_script)
                 logger.info("\tOptimized script size: %s", len(optimized_script))
-                logger.info("\t\tSavings: %s %%", 100 - len(optimized_script) / len(original_script) * 100)
+                logger.info(
+                    "\t\tSavings: %s %%",
+                    100 - len(optimized_script) / len(original_script) * 100,
+                )
 
 
 def optimize_script(script: CScript) -> CScript:

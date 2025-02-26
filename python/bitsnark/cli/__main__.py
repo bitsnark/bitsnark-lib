@@ -36,12 +36,15 @@ def main(argv: Sequence[str] = None):
     load_bitsnark_dotenv()
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--db', help='database url', default=POSTGRES_BASE_URL)
-    parser.add_argument('--rpc', help='bitcoin rpc url, including wallet',
-                        default='http://rpcuser:rpcpassword@localhost:18443/wallet/testwallet')
+    parser.add_argument("--db", help="database url", default=POSTGRES_BASE_URL)
+    parser.add_argument(
+        "--rpc",
+        help="bitcoin rpc url, including wallet",
+        default="http://rpcuser:rpcpassword@localhost:18443/wallet/testwallet",
+    )
 
     subparsers = parser.add_subparsers(
-        dest='command',
+        dest="command",
     )
     commands = {}
     for command_cls in COMMAND_CLASSES:
@@ -69,11 +72,13 @@ def main(argv: Sequence[str] = None):
     with ChainParams(chain):
         with dbsession.begin():
             command = commands[args.command]
-            command.run(Context(
-                args=args,
-                bitcoin_rpc=bitcoin_rpc,
-                dbsession=dbsession,
-            ))
+            command.run(
+                Context(
+                    args=args,
+                    bitcoin_rpc=bitcoin_rpc,
+                    dbsession=dbsession,
+                )
+            )
 
 
 if __name__ == "__main__":

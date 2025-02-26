@@ -16,4 +16,4 @@ class TxOut:
     amount: int
 
 
-Role = Literal['prover', 'verifier']
+Role = Literal["prover", "verifier"]

@@ -1,4 +1,5 @@
 """Monitor DB to sign and broadcast transactions."""
+
 import argparse
 import logging
 import os
@@ -32,10 +33,12 @@ BITCON_NODE_ADDR = f"http://rpcuser:rpcpassword@localhost:{os.getenv('BITCOIN_NO
 
 
 def sign_setups(dbsession, agent_id, role):
-    'Loop over unsigned setups and sign them.'
-    unsigned_setups = dbsession.execute(
-        select(Setups).where(Setups.status == SetupStatus.UNSIGNED)
-    ).scalars().all()
+    "Loop over unsigned setups and sign them."
+    unsigned_setups = (
+        dbsession.execute(select(Setups).where(Setups.status == SetupStatus.UNSIGNED))
+        .scalars()
+        .all()
+    )
     for setup in unsigned_setups:
         logger.info("Signing setup %s", setup.id)
         try:
@@ -47,20 +50,26 @@ def sign_setups(dbsession, agent_id, role):
 
 
 def verify_setups(dbsession, prover_pubkey, verifier_pubkey, ignore_missing_script):
-    'Loop over merged setups and verify the signatures of the specified signer.'
-    merged_setups = dbsession.execute(
-        select(Setups).where(Setups.status == SetupStatus.MERGED)
-    ).scalars().all()
+    "Loop over merged setups and verify the signatures of the specified signer."
+    merged_setups = (
+        dbsession.execute(select(Setups).where(Setups.status == SetupStatus.MERGED))
+        .scalars()
+        .all()
+    )
     for setup in merged_setups:
         logger.info("Verifying setup %s", setup.id)
         try:
-            for signer_role, signer_pubkey in [('PROVER', prover_pubkey), ('VERIFIER', verifier_pubkey)]:
+            for signer_role, signer_pubkey in [
+                ("PROVER", prover_pubkey),
+                ("VERIFIER", verifier_pubkey),
+            ]:
                 verify_setup_signatures(
                     dbsession=dbsession,
                     setup_id=setup.id,
                     signer_role=signer_role,
                     signer_pubkey=signer_pubkey,
-                    ignore_missing_script=ignore_missing_script)
+                    ignore_missing_script=ignore_missing_script,
+                )
             setup.status = SetupStatus.VERIFIED
         except TransactionProcessingError:
             logger.exception("Error verifying setup %s", setup.id)
@@ -68,10 +77,16 @@ def verify_setups(dbsession, prover_pubkey, verifier_pubkey, ignore_missing_scri
 
 
 def broadcast_transactions(dbsession, bitcoin_rpc):
-    'Loop over ready transactions and broadcast them.'
-    ready_transactions = dbsession.execute(
-        select(TransactionTemplate).where(TransactionTemplate.status == OutgoingStatus.READY)
-    ).scalars().all()
+    "Loop over ready transactions and broadcast them."
+    ready_transactions = (
+        dbsession.execute(
+            select(TransactionTemplate).where(
+                TransactionTemplate.status == OutgoingStatus.READY
+            )
+        )
+        .scalars()
+        .all()
+    )
     for tx in ready_transactions:
         logger.info("Broadcasting transaction %s...", tx.name)
         try:
@@ -91,20 +106,24 @@ def handle_special_transactions(
     fee_rate_sat_per_vb: int,
 ):
     special_tx_names = []
-    if role == 'verifier':
-        special_tx_names.append('PROOF_REFUTED')
-        special_tx_names.append('CHALLENGE')
+    if role == "verifier":
+        special_tx_names.append("PROOF_REFUTED")
+        special_tx_names.append("CHALLENGE")
 
-    ready_transactions = dbsession.execute(
-        select(TransactionTemplate).where(TransactionTemplate.status == OutgoingStatus.READY).where(
-            TransactionTemplate.name.in_(special_tx_names)
+    ready_transactions = (
+        dbsession.execute(
+            select(TransactionTemplate)
+            .where(TransactionTemplate.status == OutgoingStatus.READY)
+            .where(TransactionTemplate.name.in_(special_tx_names))
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     for tx in ready_transactions:
         logger.info("Handling special transaction %s...", tx.name)
         try:
-            if tx.name == 'PROOF_REFUTED':
-                logger.info('Signing PROOF_REFUTED')
+            if tx.name == "PROOF_REFUTED":
+                logger.info("Signing PROOF_REFUTED")
                 sign_tx_template(
                     tx_template=tx,
                     role=role,
@@ -124,20 +143,40 @@ def handle_special_transactions(
 
 
 def main(argv: typing.Sequence[str] = None):
-    'Entry point.'
+    "Entry point."
 
     load_bitsnark_dotenv()
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--agent-id', required=True, help='Process only transactions with this agent ID')
-    parser.add_argument('--role', required=True, choices=['prover', 'verifier'],
-                        help='Role of the agent (prover or verifier)')
-    parser.add_argument('--sign', required=False, action='store_true', help='Sign transactions')
-    parser.add_argument('--broadcast', required=False, action='store_true', help='Broadcast transactions')
-    parser.add_argument('--loop', required=False, action='store_true', help='Run in a loop')
+    parser.add_argument(
+        "--agent-id", required=True, help="Process only transactions with this agent ID"
+    )
+    parser.add_argument(
+        "--role",
+        required=True,
+        choices=["prover", "verifier"],
+        help="Role of the agent (prover or verifier)",
+    )
+    parser.add_argument(
+        "--sign", required=False, action="store_true", help="Sign transactions"
+    )
+    parser.add_argument(
+        "--broadcast",
+        required=False,
+        action="store_true",
+        help="Broadcast transactions",
+    )
+    parser.add_argument(
+        "--loop", required=False, action="store_true", help="Run in a loop"
+    )
     # TODO: for now we hardcode the fee rate (or get it from the user), but it would be better to get it from the
     # blockchain
-    parser.add_argument('--fee-rate', default=20, type=int, help='Fee rate for funded transactions (sat/vB)')
+    parser.add_argument(
+        "--fee-rate",
+        default=20,
+        type=int,
+        help="Fee rate for funded transactions (sat/vB)",
+    )
 
     args = parser.parse_args(argv)
 
@@ -148,13 +187,13 @@ def main(argv: typing.Sequence[str] = None):
     if not args.sign and not args.broadcast:
         parser.error("Must specify --sign or --broadcast")
 
-    prover_pubkey = XOnlyPubKey.fromhex(os.environ['PROVER_SCHNORR_PUBLIC'])
-    verifier_pubkey = XOnlyPubKey.fromhex(os.environ['VERIFIER_SCHNORR_PUBLIC'])
-    if args.role == 'prover':
-        privkey = CKey.fromhex(os.environ['PROVER_SCHNORR_PRIVATE'])
+    prover_pubkey = XOnlyPubKey.fromhex(os.environ["PROVER_SCHNORR_PUBLIC"])
+    verifier_pubkey = XOnlyPubKey.fromhex(os.environ["VERIFIER_SCHNORR_PUBLIC"])
+    if args.role == "prover":
+        privkey = CKey.fromhex(os.environ["PROVER_SCHNORR_PRIVATE"])
         pubkey = prover_pubkey
     else:
-        privkey = CKey.fromhex(os.environ['VERIFIER_SCHNORR_PRIVATE'])
+        privkey = CKey.fromhex(os.environ["VERIFIER_SCHNORR_PRIVATE"])
         pubkey = verifier_pubkey
     if privkey.xonly_pub != pubkey:
         raise ValueError(
@@ -173,7 +212,12 @@ def main(argv: typing.Sequence[str] = None):
             with dbsession.begin():
                 sign_setups(dbsession, args.agent_id, args.role)
             with dbsession.begin():
-                verify_setups(dbsession, prover_pubkey, verifier_pubkey, ignore_missing_script=True)
+                verify_setups(
+                    dbsession,
+                    prover_pubkey,
+                    verifier_pubkey,
+                    ignore_missing_script=True,
+                )
         if args.broadcast:
             with dbsession.begin():
                 handle_special_transactions(
