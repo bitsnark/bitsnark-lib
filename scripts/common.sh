@@ -2,7 +2,7 @@
 
 bitcoin_container_name="${BITCOIN_CONTAINER_NAME:-bitcoin-node}"
 postgres_container_name="${POSTGRES_CONTAINER_NAME:-postgres}"
-bitcoin_data_dir="${BITCOIN_DATA_DIR:-/tmp/regtest_data}"
+bitcoin_data_dir="${BITCOIN_DATA_DIR:-/tmp/bitcoin_data}"
 bitcoin_rpc_user="${BITCOIN_RPC_USER:-rpcuser}"
 bitcoin_rpc_password="${BITCOIN_RPC_PASSWORD:-rpcpassword}"
 

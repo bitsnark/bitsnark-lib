@@ -5,11 +5,11 @@
 # returns error (and therefore exits) if container exists but not removed.
 conditionally_remove_container $bitcoin_container_name
 
-[ "$1" = persist ] || rm -rf "$bitcoin_data_dir"
+[ "$1" = persist ] || rm -rf "$bitcoin_data_dir" && mkdir -p "$bitcoin_data_dir"
 
 echo Starting Bitcoin node...
 $docker_cmd run -d --name "$bitcoin_container_name" \
-    -v $bitcoin_data_dir:/home/bitcoin/.bitcoin \
+    -v $bitcoin_data_dir/regtest:/home/bitcoin/.bitcoin \
     -p 18443:18443 -p 18444:18444 \
     ruimarinho/bitcoin-core:latest -regtest \
     -rpcuser="$bitcoin_rpc_user" -rpcpassword="$bitcoin_rpc_password" \
