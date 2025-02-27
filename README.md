@@ -135,17 +135,11 @@ To run the entire protocol over a local regtest network, use the `e2e` script.
 npm run e2e
 ```
 
-If you wish to examine the setup as well, make sure have the following environment variables set in you local `.env` file:
+If you wish to examine the setup negotiation process as well, make sure have the following environment variables set in you local `.env` file:
 
   * `TELEGRAM_TOKEN_PROVER`
   * `TELEGRAM_TOKEN_VERIFIER`
   * `TELEGRAM_CHANNEL_ID`
-
-Then run the demo with the `tg-setup` flag:
-
-```sh
-npm run e2e -- tg-setup
-```
 
 ### Files and Directories of Interest
 
