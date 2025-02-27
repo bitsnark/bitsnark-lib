@@ -74,9 +74,10 @@ export async function main(proverAgentId: string, verifierAgentId: string, setup
         }
     };
 
-    do {
+    while (true) {
         await doit();
-    } while (await sleep(agentConf.protocolIntervalMs));
+        await sleep(agentConf.protocolIntervalMs);
+    }
 }
 
 if (require.main === module) {

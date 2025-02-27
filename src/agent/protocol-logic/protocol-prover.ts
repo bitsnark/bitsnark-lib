@@ -178,9 +178,10 @@ export async function main(agentId: string) {
         }
     };
 
-    do {
+    while (true) {
         await doit();
-    } while (await sleep(agentConf.protocolIntervalMs));
+        await sleep(agentConf.protocolIntervalMs);
+    }
 }
 
 if (require.main === module) {
