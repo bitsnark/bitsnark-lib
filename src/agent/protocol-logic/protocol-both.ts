@@ -29,11 +29,10 @@ export async function main(proverAgentId: string, verifierAgentId: string) {
         }
     };
 
-    do {
+    while (true) {
         await doit();
         await sleep(agentConf.protocolIntervalMs);
-        /*eslint no-constant-condition: "off"*/
-    } while (true);
+    }
 }
 
 if (require.main === module) {

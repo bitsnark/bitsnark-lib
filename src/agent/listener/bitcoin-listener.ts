@@ -20,15 +20,14 @@ export class BitcoinListener {
     }
 
     async startBlockchainCrawler(): Promise<void> {
-        do {
+        while (true) {
             try {
                 await this.checkForNewBlock();
             } catch (error) {
                 console.error('Error in blockchain listener:', error);
             }
             await sleep(agentConf.blockCheckIntervalMs);
-            /*eslint no-constant-condition: "off"*/
-        } while (true);
+        }
     }
 
     async checkForNewBlock() {

@@ -61,11 +61,12 @@ export async function signTemplates(
     const db = new AgentDb(agentId);
     await db.markSetupUnsigned(setupId);
     console.log('Waiting for setup to be signed (make sure signer is running: npm run bitcoin-signer)');
-    do {
+    while (true) {
         const setup = await db.getSetup(setupId);
         if (setup.status == SetupStatus.SIGNED) break;
         if (setup.status == SetupStatus.FAILED) throw new Error('Setup signature failed');
-    } while (!(await sleep(1000)));
+        await sleep(1000);
+    }
 
     templates = await db.getTemplates(setupId);
     verifyTemplates(templates, role);
@@ -76,11 +77,12 @@ export async function verifySignatures(agentId: string, setupId: string): Promis
     const db = new AgentDb(agentId);
     await db.markSetupMerged(setupId);
     console.log('Waiting for setup to be verified (make sure signer is running: npm run bitcoin-signer)');
-    do {
+    while (true) {
         const setup = await db.getSetup(setupId);
         if (setup.status == SetupStatus.VERIFIED) return;
         if (setup.status == SetupStatus.FAILED) throw new Error('Setup verification failed');
-    } while (!(await sleep(1000)));
+        await sleep(1000);
+    }
 }
 
 async function main() {

@@ -4,31 +4,29 @@ The BitSNARK protocol is a method of verifying a zero knowledge proof on the Bit
 
 The protocol involves a prover and a verifier agreeing upon a deterministic program (i.e. a program that checks the validity of a zero-knowledge proof) and preparing a bunch of Bitcoin transactions that allow the prover to publish the result of running that program on a given input (i.e. the zero-knowledge proof to be verified) within a Bitcoin transaction that includes some BTC staked on its correctness, such that the verifier can claim that stake if and only if the result is incorrect (i.e. the supplied proof is not valid).
 
-This repository is currently aimed at allowing anyone to run a prover-verifier demo locally, but we aim to expand it to be multi-verifier and over the network, and to use the protocol to implement 2-way pegging between Bitcoin and an ERC20 token, and it's almost there.
+It is possible and usually desirable to bind some of the protocol transactions to outputs of other, non-protocol transactions, making them conditional on the outcome of those transactions (i.e. letting the prover unlock some funds only by supplying a proof that the verifier can not refute).
 
 See [the whitepaper](/whitepaper.md) for a more detailed explanation of the protocol.
 
+This repository is currently aimed at allowing anyone to run a prover-verifier demo locally. We aim to expand it to be multi-verifier and over the network, and to use the protocol to implement 2-way pegging between Bitcoin and an ERC20 token. It's almost there.
+
 ## High Level Overview
 
-We start with a prover, a verifier, and a deterministic program that verifies a pre-determined (but yet ungenerated) zk-SNARK.
+We start with a prover and a verifier, each with his own private key, who agree upon a deterministic program and a desired output of that program - in our case this is a Groth16 verification program, verifying the correctness of a zk-SNARK proving the burning of some ERC20 tokens.
 
-1. The prover and the verifier prepare and sign a bunch of Bitcoin transactions as specified below
-2. The prover generates a proof regarding some agreed upon event
-3. The prover runs the program with the proof as input
-4. The prover publishes a Bitcoin transaction containing the proof and the result of the program and some BTC staked on the correctness of the result
-5. The verifier sees the proof and runs the program with the proof as input
-6. In case of discrepancy, the verifier can publish a challenge transaction<sup>*</sup> and claim the prover's stake if and only if the result published by the prover is shown to be incorrect
-7. If this doesn't happen within an agreed-upon time window, the prover can claim his own stake back and the proof is considered valid
+1. The prover and the verifier prepare and sign a chain of Bitcoin transactions as specified below, with all of the above "baked" into them
+2. The prover locks some funds that can only be unlocked via said chain of transactions
+3. Once the tokens are burned, the prover generates a proof of the burn and publishes it using the first transaction in the chain, staking some BTC on its correctness
+4. the verifier can then publish the pre-prepared challenge transaction<sup>*</sup> and claim the prover's stake if and only if the proof published by the prover is shown to be invalid
+7. If this doesn't happen within an agreed-upon time window, the prover can claim the locked funds along with his own stake back and the proof is considered valid
 
 \* <sub>Because of the high cost of a challenge in transaction fees - a cost that will be deducted from the prover's stake even if he is honest - the verifier is required to add a predefined payment to the challenge transaction which is transferred to the prover immediately. It should be equal to the cost incurred by the challenge, but significantly lower than the prover's stake.</sub>
-
-In many cases it is possible and desirable to bind some of the protocol transactions to outputs of other, non-protocol transactions, making them conditional on the outcome of those transactions (i.e. letting the prover unlock the funds only by supplying a proof that the verifier can not refute).
 
 ### Contention Dissection
 
 Since running the entire program in a Bitcoin transaction is not feasible (the Script will be too long and the transaction too large to be included in a block), the protocol implements a search for a contentious operation in the program's execution (since the program is deterministic, any discrepancy between the published result and the verified result must include at least one step of the execution for which the prover's and the verifier's views of the program's state differ). Once such an operation is identified, it is may be executed as part of the script of a Bitcoin transaction and automatically checked by the Bitcoin miners.
 
-Note this important distinction: the protocol does not validate or check the proof on the blockchain, it just makes it both possible and highly profitable for the verifier to do so, and therefore highly unprofitable for the prover to provide an invalid proof.
+Note this important distinction: the protocol does not validate the proof on the blockchain, but it makes it both possible and highly profitable for the verifier to do so, and therefore highly unprofitable for the prover to provide an invalid proof.
 
 ### Incentives
 
@@ -44,8 +42,7 @@ The diagram below shows a condensed version of the transactions flow in the BitS
 
 ![BitSNARK Transactions Flow](/specs/transactions.collapsed.svg)
 
-Most transactions are simple boxes, but
-UTXOs that input funds into the protocol are drawn as ovals, transactions that output funds are marked with a folded corner, and protocl transactions are simple boxes. Transactions publishable by the prover are green, ones publishable by the verifier are blue, and the `Locked Funds` transaction is magenta. Dashed lines are timelocked to a pre-specified number of blocks, and gray lines are outputs that only carry a symbolic amount of satoshis (just above the dust limit) either used to make transactions mutually exclusive or to accommodate the per-input size limitations of Bitcoin transactions. For simplicity's sake, the entire dissection process is collapsed into a single node marked with a triple octagon, but below you can find a full version of the diagram with all the steps expanded (it currently takes us 5 dissections to identify one out of about half a million operations in our zk-SNARK verification program).
+UTXOs that input funds into the protocol are drawn as ovals, transactions that output funds are marked with a folded corner, and protocl transactions are simple boxes. Transactions publishable by the prover are green, ones publishable by the verifier are blue, and the `Locked Funds` transaction is magenta. Dashed lines are timelocked to a pre-specified number of blocks, and gray lines are outputs that only carry a symbolic amount of satoshis (just above the dust limit) either used to make transactions mutually exclusive or to accommodate the per-input stack size limitations of Bitcoin transactions. For simplicity's sake, the entire dissection process is collapsed into a single node marked with a triple octagon, but below you can find a full version of the diagram with all the steps expanded (it currently takes us 6 dissections to identify one out of about half a million operations in our zk-SNARK verification program).
 
 <details>
 <summary>Expand here for a full Diagram with all the steps</summary>
@@ -69,7 +66,7 @@ To avoid this, the verifier must publish the first `Select` transaction, selecti
 
 This state/select process is then repeated multiple times, with the prover having to publish `State n` before the verifier publishes `Select Uncontested n-1` and then the verifier having to publich `Select n` before the prover publishes `State Ucontested n`, until a single contentious instruction is identified in the last `Select` transaction.
 
-In the condensed diagram, the dissection process is collapsed into a single node connecting the first `State` to the last `Select`, but in the full diagram it is expanded into the full 5 steps, each with its own timelock, with the prover's stake being spendable from all of the `State Uncontested` and `Select Uncontested` transactions, and with the locked funds being spendable from all of the `State Uncontested` transactions.
+In the condensed diagram, the dissection process is collapsed into a single node connecting the first `State` to the last `Select`, but in the full diagram it is expanded into the full 6 steps, each with its own timelock, with the prover's stake being spendable from all of the `State Uncontested` and `Select Uncontested` transactions, and with the locked funds being spendable from all of the `State Uncontested` transactions.
 
 Once the dissection process ends with the last `Select` and the contentious operation is identified, the prover must publish the `Argument` transaction, in which they commit to the two variables that are the input to the contentious operation, the operation itself (as identified by the binary path that located it) and its result, before the timelock expires and the verifier can publish the last `Select Uncontested` transaction.
 
@@ -132,11 +129,17 @@ npm install
 
 ### Running
 
-Before starting, make sure you have local `.env` file setting `TELEGRAM_TOKEN_PROVER` and `TELEGRAM_TOKEN_VERIFIER` to your Telegram bot tokens, and optionally `TELEGRAM_CHANNEL_ID`. Then run the demo with:
+To run the entire protocol over a local regtest network, use the `e2e` script.
 
 ```sh
 npm run e2e
 ```
+
+If you wish to examine the setup negotiation process as well, make sure have the following environment variables set in you local `.env` file:
+
+  * `TELEGRAM_TOKEN_PROVER`
+  * `TELEGRAM_TOKEN_VERIFIER`
+  * `TELEGRAM_CHANNEL_ID`
 
 ### Files and Directories of Interest
 

@@ -14,7 +14,7 @@ create() {
     $docker_cmd exec -it "$postgres_container_name" pg_dump -aU postgres $prover > ./snapshot/prover.sql
     $docker_cmd exec -it "$postgres_container_name" pg_dump -aU postgres $verifier > ./snapshot/verifier.sql
     bitcoin_cli stop
-    cp -a "$bitcoin_data_dir" ./snapshot/regtest
+    cp -a "$bitcoin_data_dir" ./snapshot/bitcoin_data
     $docker_cmd start "$bitcoin_container_name"
 }
 
@@ -22,7 +22,7 @@ load() {
     echo "Loading snapshot from $snapshot_dir"
     npm run postgres
     bitcoin_cli stop || true
-    cp -a ./snapshot/regtest "$bitcoin_data_dir"
+    cp -a ./snapshot/bitcoin_data "$bitcoin_data_dir"
     npm run regtest -- persist
     $docker_cmd exec -i "$postgres_container_name" psql -U postgres $prover < ./snapshot/prover.sql
     $docker_cmd exec -i "$postgres_container_name" psql -U postgres $verifier < ./snapshot/verifier.sql

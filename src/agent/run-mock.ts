@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import minimist from 'minimist';
 import { ProtocolProver } from './protocol-logic/protocol-prover';
 import { ProtocolVerifier } from './protocol-logic/protocol-verifier';
@@ -5,7 +6,6 @@ import { sleep } from './common/sleep';
 import { agentConf } from './agent.conf';
 import { MockPublisher } from './protocol-logic/mock-publisher';
 import { proofBigint } from './common/constants';
-import { randomBytes } from 'node:crypto';
 import { Agent } from './setup/agent';
 import { AgentRoles, SetupStatus } from './common/types';
 import { startSetup } from './setup/start-setup';
@@ -74,11 +74,10 @@ export async function main(proverAgentId: string, verifierAgentId: string, setup
         }
     };
 
-    do {
+    while (true) {
         await doit();
         await sleep(agentConf.protocolIntervalMs);
-        /*eslint no-constant-condition: "off"*/
-    } while (true);
+    }
 }
 
 if (require.main === module) {
