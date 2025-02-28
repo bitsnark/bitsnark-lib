@@ -1,29 +1,65 @@
-BSD 3-Clause License
+Non-Commercial Open Source License (NC-OSL) v1.1
 
-Copyright (c) 2018, Chris Wells (https://chriswells.io)
-All rights reserved.
+1. Definitions
 
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are met:
+    "Software" refers to the source code, compiled binaries, documentation, and any related materials provided under this license.
 
-* Redistributions of source code must retain the above copyright notice, this
-  list of conditions and the following disclaimer.
+    "Licensor" refers to the original authors and contributors of the Software.
 
-* Redistributions in binary form must reproduce the above copyright notice,
-  this list of conditions and the following disclaimer in the documentation
-  and/or other materials provided with the distribution.
+    "Licensee" refers to any individual or entity who uses, copies, modifies, or distributes the Software.
 
-* Neither the name of the copyright holder nor the names of its
-  contributors may be used to endorse or promote products derived from
-  this software without specific prior written permission.
+    "Non-Commercial Use": Use of the Software for personal, educational, academic, or research purposes that do not generate direct or indirect commercial revenue.
 
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+    "Commercial Use": Any use of the Software that generates revenue or is intended for commercial advantage or monetary compensation.
+
+2. Grant of License
+
+    Subject to compliance with the terms and conditions of this License, the Licensor grants the Licensee a worldwide, royalty-free, non-exclusive, and non-transferable right to:
+
+    Use, copy, modify, and distribute the Software for non-commercial purposes only.
+
+    Create derivative works and share them only under the same non-commercial license.
+
+    Contribute back modifications, bug fixes, and enhancements to the community.
+
+    If the Licensee distributes copies or derivative works of the Software, they must include a copy of this License and ensure that any recipients are aware of and agree to the terms herein.
+
+3. Restrictions
+
+    No Commercial Use: The Software and any derivative works must not be used, sold, sublicensed, or distributed for commercial purposes.
+
+    No Warranty: The Software is provided "AS IS" without any warranties, express or implied.
+
+    No Trademark Rights: This license does not grant any rights to use the name, logo, or trademarks of the Licensor.
+
+4. Required Notices
+
+    All copies of the Software, including modified versions, must display the following notice: "Required Notice: Copyright BTC OS Limited." This notice must be prominently displayed in the source code and any accompanying documentation.
+
+5. Disclaimer of Warranty
+
+    THE SOFTWARE IS PROVIDED "AS IS," WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT. IN NO EVENT SHALL THE LICENSOR BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, ARISING FROM OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+6. Indemnification
+
+    The Licensee agrees to indemnify, defend, and hold harmless the Licensor from and against any claims, liabilities, damages, or expenses arising from the Licensee's use or misuse of the Software.
+
+7. Patent Claims
+
+    If the Licensee initiates patent litigation against the Licensor or any contributor over claims that the Software infringes a patent, this License shall terminate automatically as of the date such litigation is filed.
+
+8. Termination
+
+    This license is automatically terminated if:
+
+    The Licensee violates any terms, especially regarding commercial use.
+
+    The Licensee initiates legal action against the Licensor related to the Software.
+
+9. Commercial Use Licensing
+
+    For permissions regarding Commercial Use of the Software, please contactadmin@remake.money to obtain a commercial license.
+
+10. Governing Law
+
+    This License shall be governed by and construed in accordance with the laws of the British Virgin Islands.

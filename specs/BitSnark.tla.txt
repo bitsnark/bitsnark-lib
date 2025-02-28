@@ -1,0 +1,261 @@
+  1 ------------------------------ MODULE BitSnark ------------------------------
+  2 (***************************************************************************)
+  3 (* This module specifies the transaction flow in the BitSNARK protocol.    *)
+  4 (***************************************************************************)
+  5
+  6 EXTENDS Naturals, FiniteSets
+  7
+  8 CONSTANTS
+  9     PROGRAM_SIZE,  (* The size of the verification program. *)
+ 10     PROVER_STAKE,  (* Size of the prover stake. *)
+ 11     VERIFIER_PAYMENT  (* Size of the verifier payment. *)
+ 12
+ 13 VARIABLES
+ 14     outputs,  (* The set of all currently spendable outputs. *)
+ 15     balances,  (* Balances of the participants and contracts. *)
+ 16     contentioned  (* The number of contentioned instructions. *)
+ 17
+ 18 Transactions ==  (* The set of protocol transactions. *)
+ 19     [Proof |-> [
+ 20         inputs |-> {"Stakable Funds"},
+ 21         outputs |-> {"Proof Value", "Proof Signal"}],
+ 22     ProofUncontested |-> [
+ 23         inputs |-> {"Proof Value", "Proof Signal", "Locked Funds"},
+ 24         outputs |-> {"Proof Uncontested"}],
+ 25     Challenge |-> [
+ 26         inputs |-> {"Payable Funds", "Proof Signal"},
+ 27         outputs |-> {"Challenge"}],
+ 28     ChallengeUncontested |-> [
+ 29         inputs |-> {"Proof Value"},
+ 30         outputs |-> {"Challenge Uncontested"}],
+ 31     FirstState |-> [
+ 32         inputs |-> {"Proof Value"},
+ 33         outputs |-> {"State"}],
+ 34     SubsequentState |-> [
+ 35         inputs |-> {"Select"},
+ 36         outputs |-> {"State"}],
+ 37     StateUncontested |-> [
+ 38         inputs |-> {"State", "Locked Funds"},
+ 39         outputs |-> {"State Uncontested"}],
+ 40     Select |-> [
+ 41         inputs |-> {"State"},
+ 42         outputs |-> {"Select"}],
+ 43     SelectUncontested |-> [
+ 44         inputs |-> {"Select"},
+ 45         outputs |-> {"Select Uncontested"}],
+ 46     Argument |-> [
+ 47         inputs |-> {"Select"},
+ 48         outputs |-> {"Argument"}],
+ 49     ArgumentUncontested |-> [
+ 50         inputs |-> {"Argument", "Locked Funds"},
+ 51         outputs |-> {"Argument Uncontested"}],
+ 52     ProofRefuted |-> [
+ 53         inputs |-> {"Argument"},
+ 54         outputs |-> {"Proof Refuted"}]]
+ 55
+ 56 StartingBalances ==
+ 57     (* Nothing is staked. *)
+ 58     (* Prover has funds to stake and unlock funds. *)
+ 59     (* Verifier has funds to pay for a challenge and win the stake. *)
+ 60     [staked |-> 0,
+ 61      prover |-> PROVER_STAKE,
+ 62      verifier |-> VERIFIER_PAYMENT]
+ 63
+ 64 IsProofValid == CHOOSE v \in {TRUE, FALSE} : TRUE
+ 65
+ 66 Init ==
+ 67     /\ outputs = {"Stakable Funds", "Payable Funds", "Locked Funds"}
+ 68     /\ balances = StartingBalances
+ 69     /\ contentioned = PROGRAM_SIZE
+ 70
+ 71
+ 72 (* State Changers. *)
+ 73
+ 74 Publish(transaction) ==
+ 75     /\ transaction.inputs \subseteq outputs
+ 76     /\ outputs' = (outputs \ transaction.inputs) \union transaction.outputs
+ 77
+ 78 Transfer(from, to, amount) ==
+ 79     balances' = [
+ 80         balances EXCEPT
+ 81         ![from] = @ - amount,
+ 82         ![to] = @ + amount]
+ 83
+ 84 ContentionDissection ==
+ 85     (* Divide the contentioned segment into ten subsegments, dividing the *)
+ 86     (* remainder between as many segments as necessary. Then set the size of *)
+ 87     (* the new contentioned segment to the size of first subsegment, which *)
+ 88     (* will always be at least as large as any of the other subsegments. *)
+ 89     (* And yes, this is practically the same as: *)
+ 90     (* contentioned' = (contentioned + 9) ÷ 10 *)
+ 91     contentioned' = Cardinality({i \in 1..contentioned : i % 10 = 1})
+ 92
+ 93
+ 94 (* Transaction Functions - the steps taken from one state to the next. *)
+ 95
+ 96 Proof ==
+ 97     /\ Publish(Transactions["Proof"])
+ 98     /\ Transfer("prover", "staked", PROVER_STAKE)
+ 99     /\ UNCHANGED contentioned
+100
+101 ProofUncontested ==
+102     /\ Publish(Transactions["ProofUncontested"])
+103     /\ Transfer("staked", "prover", PROVER_STAKE)
+104     /\ UNCHANGED contentioned
+105
+106 Challenge ==
+107     (* A smart verifier will test for an existing state transaction, *)
+108     (* but smart verifiers aren't a part of the spec. *)
+109     /\ Publish(Transactions["Challenge"])
+110     /\ Transfer("verifier", "prover", VERIFIER_PAYMENT)
+111     /\ UNCHANGED contentioned
+112
+113 ChallengeUncontested ==
+114     /\ Publish(Transactions["ChallengeUncontested"])
+115     /\ Transfer("staked", "verifier", PROVER_STAKE)
+116     /\ UNCHANGED contentioned
+117
+118 State ==
+119     /\ contentioned > 1
+120     /\ (IF contentioned = PROGRAM_SIZE THEN
+121             (* A smart prover will test for an existing challenge, *)
+122             (* but smart provers aren't a part of the spec either. *)
+123             Publish(Transactions["FirstState"])
+124         ELSE
+125             Publish(Transactions["SubsequentState"]))
+126     /\ UNCHANGED balances
+127     /\ UNCHANGED contentioned
+128
+129 StateUncontested ==
+130     /\ Publish(Transactions["StateUncontested"])
+131     /\ Transfer("staked", "prover", PROVER_STAKE)
+132     /\ UNCHANGED contentioned
+133
+134 Select ==
+135     /\ contentioned > 1
+136     /\ Publish(Transactions["Select"])
+137     /\ ContentionDissection
+138     /\ UNCHANGED balances
+139
+140 SelectUncontested ==
+141     /\ Publish(Transactions["SelectUncontested"])
+142     /\ Transfer("staked", "verifier", PROVER_STAKE)
+143     /\ UNCHANGED contentioned
+144
+145 Argument ==
+146     /\ contentioned = 1
+147     /\ Publish(Transactions["Argument"])
+148     /\ UNCHANGED contentioned
+149     /\ UNCHANGED balances
+150
+151 ArgumentUncontested ==
+152     /\ Publish(Transactions["ArgumentUncontested"])
+153     /\ Transfer("staked", "prover", PROVER_STAKE)
+154     /\ UNCHANGED contentioned
+155
+156 ProofRefuted ==
+157     /\ IsProofValid = FALSE
+158     /\ Publish(Transactions["ProofRefuted"])
+159     /\ Transfer("staked", "verifier", PROVER_STAKE)
+160     /\ UNCHANGED contentioned
+161
+162 Next ==
+163     \/ Proof
+164     \/ ProofUncontested
+165     \/ Challenge
+166     \/ ChallengeUncontested
+167     \/ State
+168     \/ StateUncontested
+169     \/ Select
+170     \/ SelectUncontested
+171     \/ Argument
+172     \/ ArgumentUncontested
+173     \/ ProofRefuted
+174
+175 vars == <<outputs, balances, contentioned>>
+176
+177 Spec ==
+178         /\ Init
+179         /\ [][Next]_vars
+180         /\ WF_vars(Next)
+181
+182
+183 (* Data Extraction. *)
+184
+185 AllowedOutputs ==
+186     UNION {
+187         Transactions[name].inputs
+188             \cup
+189         Transactions[name].outputs :
+190             name \in DOMAIN Transactions}
+191
+192 Sum(balancesRecord) ==
+193     balancesRecord["staked"] +
+194     balancesRecord["prover"] +
+195     balancesRecord["verifier"]
+196
+197
+198 (* Safety Properties. *)
+199
+200 OutputsTypeOK ==
+201     outputs \subseteq AllowedOutputs
+202
+203 BalancesTypeOK ==
+204     /\ DOMAIN balances = DOMAIN StartingBalances
+205     /\ \A key \in DOMAIN balances : balances[key] \in 0..Sum(StartingBalances)
+206
+207 ContentionedTypeOK ==
+208     contentioned \in 1..PROGRAM_SIZE
+209
+210 TypesOK ==
+211     /\ OutputsTypeOK
+212     /\ BalancesTypeOK
+213     /\ ContentionedTypeOK
+214
+215 BalancesValueOK ==
+216     Sum(balances) = Sum(StartingBalances)
+217
+218 IncentiveOK ==
+219     /\ "Proof Refuted" \in outputs =>
+220        balances["verifier"] >= StartingBalances["verifier"]
+221     /\ "Argument Uncontested" \in outputs =>
+222        balances["prover"] >= StartingBalances["prover"]
+223
+224 Safe ==
+225     /\ TypesOK
+226     /\ BalancesValueOK
+227     /\ IncentiveOK
+228
+229 THEOREM Spec => [] Safe
+230
+231
+232 (* Liveness Helpers. *)
+233
+234 Final ==
+235     ~ENABLED Next
+236
+237 ProverWins ==
+238     "Locked Funds" \notin outputs
+239
+240 VerifierWins ==
+241     "Locked Funds" \in outputs
+242
+243 (* Liveness Properties. *)
+244
+245 Terminates ==
+246     []<> Final
+247
+248 StakeIsFreed ==
+249     <> (balances["staked"] = 0)
+250
+251 HonestVerification ==
+252     <> IF IsProofValid THEN ProverWins ELSE VerifierWins
+253
+254 Live ==
+255     /\ Terminates
+256     /\ StakeIsFreed
+257     /\ HonestVerification
+258
+259 THEOREM Spec => [] Live
+260
+261 =============================================================================

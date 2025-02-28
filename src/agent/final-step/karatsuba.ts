@@ -1,6 +1,4 @@
-import assert from "assert";
-
-// const prime = 21888242871839275222246405745257275088696311157297823662689037894645226208583n;
+import assert from 'assert';
 
 type Nibble = number; // 3 bit integer
 type ExtNibble = number; // 6 bit integer
@@ -24,24 +22,20 @@ function bigintToNibblesLS(n: bigint, c?: number): NibbleSet {
         result[i] = Number(n & 0x7n);
         n = n >> 3n;
     }
-    if (n > 0)
-        teaPot();
+    if (n > 0) teaPot();
     return result;
 }
 
 /***   hardcoded    ***/
 
-// const primeNibbles: NibbleSet = bigintToNibblesLS(prime);
-
 const rowTable: Nibble[] = [];
 const table: Nibble[] = [];
 for (let i = 0; i < 8; i++) {
     rowTable[i] = i * 8;
-    for (let j = 0; j < 8; j++)
-        table[rowTable[i] + j] = i * j;
+    for (let j = 0; j < 8; j++) table[rowTable[i] + j] = i * j;
 }
 const breakTable: Nibble[][] = [];
-for (let i = 0; i < 128; i++) breakTable[i] = [ i & 7, i >> 3 ];
+for (let i = 0; i < 128; i++) breakTable[i] = [i & 7, i >> 3];
 
 /***   arithmetic   ***/
 
@@ -51,17 +45,7 @@ function nibbleMult(a: Nibble, b: Nibble): ExtNibble {
     return table[rowTable[a] + b];
 }
 
-// function smallerThanOrEqual(a: NibbleSet, b: NibbleSet): boolean {
-//     let flag = 0;
-//     for (let i = Math.max(a.length, b.length); i >= 0; i--) {
-//         if (flag == 0 && (a[i] ?? 0) < (b[i] ?? 0)) flag = 1;
-//         if (flag == 0 && (a[i] ?? 0) > (b[i] ?? 0)) flag = 2;
-//     }
-//     return flag != 2;
-// }
-
 function add(a: NibbleSet, b: NibbleSet): NibbleSet {
-
     const result: NibbleSet = [];
     let carry: Nibble = 0;
     const l = Math.max(a.length, b.length);
@@ -73,14 +57,12 @@ function add(a: NibbleSet, b: NibbleSet): NibbleSet {
     }
     result[l] = carry;
 
-    if (nibblesToBigintLS(a) + nibblesToBigintLS(b) != nibblesToBigintLS(result))
-        teaPot();
+    if (nibblesToBigintLS(a) + nibblesToBigintLS(b) != nibblesToBigintLS(result)) teaPot();
 
     return result;
-}  
+}
 
 function subtract(a: NibbleSet, b: NibbleSet): NibbleSet {
-
     const result: NibbleSet = [];
     let borrow: Nibble = 0;
     for (let i = 0; i < Math.max(a.length, b.length); i++) {
@@ -92,19 +74,15 @@ function subtract(a: NibbleSet, b: NibbleSet): NibbleSet {
             borrow = 1;
         }
     }
-    if (borrow > 0)
-        teaPot();
+    if (borrow > 0) teaPot();
 
-    if (nibblesToBigintLS(a) - nibblesToBigintLS(b) != nibblesToBigintLS(result))
-        teaPot();
+    if (nibblesToBigintLS(a) - nibblesToBigintLS(b) != nibblesToBigintLS(result)) teaPot();
 
     return result;
 }
 
 function naiiveMult(a: NibbleSet, b: NibbleSet): NibbleSet {
-
-    if (a.length != b.length)
-        teaPot();
+    if (a.length != b.length) teaPot();
 
     const result: NibbleSet = [];
     for (let i = 0; i < a.length; i++) {
@@ -118,17 +96,14 @@ function naiiveMult(a: NibbleSet, b: NibbleSet): NibbleSet {
         result[i + b.length] = carry;
     }
 
-    if (nibblesToBigintLS(a) * nibblesToBigintLS(b) != nibblesToBigintLS(result))
-        teaPot();
+    if (nibblesToBigintLS(a) * nibblesToBigintLS(b) != nibblesToBigintLS(result)) teaPot();
 
     return result;
 }
 
 function karatsubaMult(a: NibbleSet, b: NibbleSet): NibbleSet {
+    if (a.length != b.length) teaPot();
 
-    if (a.length != b.length)
-        teaPot();
-    
     if (a.length <= 5 || b.length <= 5) {
         return naiiveMult(a, b);
     }
@@ -150,8 +125,7 @@ function karatsubaMult(a: NibbleSet, b: NibbleSet): NibbleSet {
     m1 = subtract(m1, m2);
 
     const result = new Array(a.length + m2.length).fill(0);
-    for (let i = 0; i < m0.length; i++)
-        result[i] = m0[i];
+    for (let i = 0; i < m0.length; i++) result[i] = m0[i];
 
     for (let i = 0; i < m2.length; i++) {
         result[2 * l + i] += m2[i];
@@ -165,8 +139,7 @@ function karatsubaMult(a: NibbleSet, b: NibbleSet): NibbleSet {
         result[i + 1] = (result[i + 1] ?? 0) + tt[1];
     }
 
-    if (nibblesToBigintLS(a) * nibblesToBigintLS(b) != nibblesToBigintLS(result))
-        teaPot();
+    if (nibblesToBigintLS(a) * nibblesToBigintLS(b) != nibblesToBigintLS(result)) teaPot();
 
     return result;
 }
@@ -174,14 +147,12 @@ function karatsubaMult(a: NibbleSet, b: NibbleSet): NibbleSet {
 function checkEqual(a: NibbleSet, b: NibbleSet): boolean {
     let flag = true;
     for (let i = 0; i < a.length; i++) {
-        if ((b[i] ?? 0) != (a[i] ?? 0)) 
-            flag = false;
+        if ((b[i] ?? 0) != (a[i] ?? 0)) flag = false;
     }
     return flag;
 }
 
 /*** test   ***/
-
 
 function bigRandom(level: number): bigint {
     let n = 0n;
@@ -192,21 +163,11 @@ function bigRandom(level: number): bigint {
     return n % (2n ** 128n - 1n);
 }
 
-// const a = 357n;
-// const b = 632n;
-// const c = a * b;
-// const f = checkEqual(
-//     karatsubaMult(bigintToNibblesLS(a, 4), bigintToNibblesLS(b, 4)), 
-//     bigintToNibblesLS(c));
-// console.log(a, b, c, f);
-
 for (let i = 1; i < 128; i++) {
     const a = bigRandom(i);
     const b = bigRandom(i);
     const c = a * b;
-    const f = checkEqual(
-        karatsubaMult(bigintToNibblesLS(a, 128), bigintToNibblesLS(b, 128)), 
-        bigintToNibblesLS(c));
+    const f = checkEqual(karatsubaMult(bigintToNibblesLS(a, 128), bigintToNibblesLS(b, 128)), bigintToNibblesLS(c));
     console.log(i, a, b, c, f);
     assert(f);
 }

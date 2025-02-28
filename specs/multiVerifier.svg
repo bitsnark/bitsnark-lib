@@ -1,0 +1,193 @@
+<svg width="712" height="740" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0.00 0.00 452.79 666.80">
+<g id="graph0" class="graph" transform="translate(3.9999957275390727,662.7999938964844) scale(1)">
+<title>MultiVerifier</title>
+<polygon fill="white" stroke="none" points="-4,4 -4,-662.8 448.79,-662.8 448.79,4 -4,4"/>
+<!-- locked_funds -->
+<g id="node1" class="node">
+<title>locked_funds</title>
+<ellipse fill="none" stroke="magenta" cx="70.55" cy="-640.8" rx="63.07" ry="18"/>
+<text text-anchor="middle" x="70.55" y="-636.6" font-family="Times,serif" font-size="14.00">locked_funds</text>
+</g>
+<!-- locked_funds_o -->
+<g id="node3" class="node">
+<title>locked_funds_o</title>
+<ellipse fill="magenta" stroke="magenta" cx="70.55" cy="-513" rx="1.8" ry="1.8"/>
+</g>
+<!-- locked_funds&#45;&gt;locked_funds_o -->
+<g id="edge1" class="edge">
+<title>locked_funds-&gt;locked_funds_o</title>
+<path fill="none" stroke="black" d="M70.55,-622.31C70.55,-590.44 70.55,-525.28 70.55,-515.3"/>
+</g>
+<!-- proof -->
+<g id="node2" class="node">
+<title>proof</title>
+<ellipse fill="none" stroke="green" cx="386.55" cy="-640.8" rx="31.95" ry="18"/>
+<text text-anchor="middle" x="386.55" y="-636.6" font-family="Times,serif" font-size="14.00">proof</text>
+</g>
+<!-- challenge_1 -->
+<g id="node5" class="node">
+<title>challenge_1</title>
+<ellipse fill="none" stroke="rgb(0, 0, 255)" cx="386.55" cy="-568.8" rx="57.69" ry="18"/>
+<text text-anchor="middle" x="386.55" y="-564.6" font-family="Times,serif" font-size="14.00">challenge_1</text>
+</g>
+<!-- proof&#45;&gt;challenge_1 -->
+<g id="edge3" class="edge">
+<title>proof-&gt;challenge_1</title>
+<path fill="none" stroke="black" d="M386.55,-622.5C386.55,-615.21 386.55,-606.53 386.55,-598.34"/>
+<polygon fill="black" stroke="black" points="390.05,-598.42 386.55,-588.42 383.05,-598.42 390.05,-598.42"/>
+</g>
+<!-- proof_accepted -->
+<g id="node4" class="node">
+<title>proof_accepted</title>
+<ellipse fill="none" stroke="rgb(255, 0, 255)" cx="70.55" cy="-18" rx="70.55" ry="18"/>
+<text text-anchor="middle" x="70.55" y="-13.8" font-family="Times,serif" font-size="14.00">proof_accepted</text>
+</g>
+<!-- locked_funds_o&#45;&gt;proof_accepted -->
+<g id="edge2" class="edge">
+<title>locked_funds_o-&gt;proof_accepted</title>
+<path fill="none" stroke="black" d="M70.55,-510.76C70.55,-501.17 70.55,-437.74 70.55,-386.2 70.55,-386.2 70.55,-386.2 70.55,-144.8 70.55,-111.39 70.55,-72.99 70.55,-47.49" stroke-dasharray="5,2"/>
+<polygon fill="black" stroke="black" points="74.05,-47.61 70.55,-37.61 67.05,-47.61 74.05,-47.61"/>
+</g>
+<!-- challenge_1_o -->
+<g id="node6" class="node">
+<title>challenge_1_o</title>
+<ellipse fill="black" stroke="black" cx="386.55" cy="-513" rx="1.8" ry="1.8"/>
+</g>
+<!-- challenge_1&#45;&gt;challenge_1_o -->
+<g id="edge4" class="edge">
+<title>challenge_1-&gt;challenge_1_o</title>
+<path fill="none" stroke="black" d="M386.55,-550.48C386.55,-542.67 386.55,-533.61 386.55,-526.48"/>
+<polygon fill="black" stroke="black" points="390.05,-526.67 386.55,-516.67 383.05,-526.67 390.05,-526.67"/>
+</g>
+<!-- challenge_1_timeout -->
+<g id="node7" class="node">
+<title>challenge_1_uncontested</title>
+<ellipse fill="none" stroke="magenta" cx="207.55" cy="-385.2" rx="108.64" ry="18"/>
+<text text-anchor="middle" x="207.55" y="-381" font-family="Times,serif" font-size="14.00">challenge_1_uncontested</text>
+</g>
+<!-- challenge_1_o&#45;&gt;challenge_1_timeout -->
+<g id="edge5" class="edge">
+<title>challenge_1_o-&gt;challenge_1_uncontested</title>
+<path fill="none" stroke="black" d="M385.74,-511.5C380.59,-508.32 352.08,-490.67 329.55,-475.2 298.26,-453.71 263.34,-428.06 238.91,-409.83" stroke-dasharray="5,2"/>
+<polygon fill="black" stroke="black" points="241.08,-407.09 230.98,-403.9 236.89,-412.69 241.08,-407.09"/>
+</g>
+<!-- state_1_0 -->
+<g id="node8" class="node">
+<title>state_1_0</title>
+<ellipse fill="none" stroke="rgb(0, 128, 0)" cx="386.55" cy="-457.2" rx="48.05" ry="18"/>
+<text text-anchor="middle" x="386.55" y="-453" font-family="Times,serif" font-size="14.00">state_1_0</text>
+</g>
+<!-- challenge_1_o&#45;&gt;state_1_0 -->
+<g id="edge6" class="edge">
+<title>challenge_1_o-&gt;state_1_0</title>
+<path fill="none" stroke="rgb(0, 0, 0)" d="M386.55,-511.07C386.55,-507.97 386.55,-497.64 386.55,-486.92"/>
+<polygon fill="black" stroke="black" points="390.05,-486.97 386.55,-476.97 383.05,-486.97 390.05,-486.97"/>
+</g>
+<!-- select_1_0 -->
+<g id="node9" class="node">
+<title>select_1_0</title>
+<ellipse fill="none" stroke="rgb(0, 0, 255)" cx="386.55" cy="-385.2" rx="52.33" ry="18"/>
+<text text-anchor="middle" x="386.55" y="-381" font-family="Times,serif" font-size="14.00">select_1_0</text>
+</g>
+<!-- state_1_0&#45;&gt;select_1_0 -->
+<g id="edge7" class="edge">
+<title>state_1_0-&gt;select_1_0</title>
+<path fill="none" stroke="black" d="M386.55,-438.9C386.55,-431.61 386.55,-422.93 386.55,-414.74"/>
+<polygon fill="black" stroke="black" points="390.05,-414.82 386.55,-404.82 383.05,-414.82 390.05,-414.82"/>
+</g>
+<!-- select_1_0_o -->
+<g id="node10" class="node">
+<title>select_1_0_o</title>
+<ellipse fill="black" stroke="black" cx="386.55" cy="-329.4" rx="1.8" ry="1.8"/>
+</g>
+<!-- select_1_0&#45;&gt;select_1_0_o -->
+<g id="edge8" class="edge">
+<title>select_1_0-&gt;select_1_0_o</title>
+<path fill="none" stroke="black" d="M386.55,-366.88C386.55,-359.07 386.55,-350.01 386.55,-342.88"/>
+<polygon fill="black" stroke="black" points="390.05,-343.07 386.55,-333.07 383.05,-343.07 390.05,-343.07"/>
+</g>
+<!-- select_1_0_timeout -->
+<g id="node11" class="node">
+<title>select_1_0_uncontested</title>
+<ellipse fill="none" stroke="magenta" cx="207.55" cy="-201.6" rx="103.29" ry="18"/>
+<text text-anchor="middle" x="207.55" y="-197.4" font-family="Times,serif" font-size="14.00">select_1_0_uncontested</text>
+</g>
+<!-- select_1_0_o&#45;&gt;select_1_0_timeout -->
+<g id="edge9" class="edge">
+<title>select_1_0_o-&gt;select_1_0_uncontested</title>
+<path fill="none" stroke="black" d="M385.74,-327.9C380.59,-324.72 352.08,-307.07 329.55,-291.6 298.26,-270.11 263.34,-244.46 238.91,-226.23" stroke-dasharray="5,2"/>
+<polygon fill="black" stroke="black" points="241.08,-223.49 230.98,-220.3 236.89,-229.09 241.08,-223.49"/>
+</g>
+<!-- state_1_n -->
+<g id="node12" class="node">
+<title>state_1_n</title>
+<ellipse fill="none" stroke="rgb(0, 128, 0)" cx="386.55" cy="-273.6" rx="48.05" ry="18"/>
+<text text-anchor="middle" x="386.55" y="-269.4" font-family="Times,serif" font-size="14.00">state_1_n</text>
+</g>
+<!-- select_1_0_o&#45;&gt;state_1_n -->
+<g id="edge10" class="edge">
+<title>select_1_0_o-&gt;state_1_n</title>
+<path fill="none" stroke="black" d="M386.55,-327.47C386.55,-324.37 386.55,-314.04 386.55,-303.32"/>
+<polygon fill="black" stroke="black" points="390.05,-303.37 386.55,-293.37 383.05,-303.37 390.05,-303.37"/>
+</g>
+<!-- select_1_n -->
+<g id="node13" class="node">
+<title>select_1_n</title>
+<ellipse fill="none" stroke="rgb(0, 0, 255)" cx="386.55" cy="-201.6" rx="52.33" ry="18"/>
+<text text-anchor="middle" x="386.55" y="-197.4" font-family="Times,serif" font-size="14.00">select_1_n</text>
+</g>
+<!-- state_1_n&#45;&gt;select_1_n -->
+<g id="edge11" class="edge">
+<title>state_1_n-&gt;select_1_n</title>
+<path fill="none" stroke="black" d="M386.55,-255.3C386.55,-248.01 386.55,-239.33 386.55,-231.14"/>
+<polygon fill="black" stroke="black" points="390.05,-231.22 386.55,-221.22 383.05,-231.22 390.05,-231.22"/>
+</g>
+<!-- select_1_n_o -->
+<g id="node14" class="node">
+<title>select_1_n_o</title>
+<ellipse fill="black" stroke="black" cx="386.55" cy="-145.8" rx="1.8" ry="1.8"/>
+</g>
+<!-- select_1_n&#45;&gt;select_1_n_o -->
+<g id="edge12" class="edge">
+<title>select_1_n-&gt;select_1_n_o</title>
+<path fill="none" stroke="black" d="M386.55,-183.28C386.55,-175.47 386.55,-166.41 386.55,-159.28"/>
+<polygon fill="black" stroke="black" points="390.05,-159.47 386.55,-149.47 383.05,-159.47 390.05,-159.47"/>
+</g>
+<!-- select_1_n_timeout -->
+<g id="node15" class="node">
+<title>select_1_n_uncontested</title>
+<ellipse fill="none" stroke="magenta" cx="205.55" cy="-90" rx="103.29" ry="18"/>
+<text text-anchor="middle" x="205.55" y="-85.8" font-family="Times,serif" font-size="14.00">select_1_n_uncontested</text>
+</g>
+<!-- select_1_n_o&#45;&gt;select_1_n_timeout -->
+<g id="edge13" class="edge">
+<title>select_1_n_o-&gt;select_1_n_uncontested</title>
+<path fill="none" stroke="black" d="M384.99,-144.33C374.63,-141.26 314.94,-123.51 267.2,-109.32" stroke-dasharray="5,2"/>
+<polygon fill="black" stroke="black" points="268.32,-106.01 257.74,-106.51 266.33,-112.72 268.32,-106.01"/>
+</g>
+<!-- argument_1 -->
+<g id="node16" class="node">
+<title>argument_1</title>
+<ellipse fill="none" stroke="rgb(0, 128, 0)" cx="386.55" cy="-90" rx="57.16" ry="18"/>
+<text text-anchor="middle" x="386.55" y="-85.8" font-family="Times,serif" font-size="14.00">argument_1</text>
+</g>
+<!-- select_1_n_o&#45;&gt;argument_1 -->
+<g id="edge14" class="edge">
+<title>select_1_n_o-&gt;argument_1</title>
+<path fill="none" stroke="black" d="M386.55,-143.87C386.55,-140.77 386.55,-130.44 386.55,-119.72"/>
+<polygon fill="black" stroke="black" points="390.05,-119.77 386.55,-109.77 383.05,-119.77 390.05,-119.77"/>
+</g>
+<!-- refutation_1 -->
+<g id="node17" class="node">
+<title>refutation_1</title>
+<ellipse fill="none" stroke="rgb(255, 0, 255)" cx="386.55" cy="-18" rx="58.23" ry="18"/>
+<text text-anchor="middle" x="386.55" y="-13.8" font-family="Times,serif" font-size="14.00">refutation_1</text>
+</g>
+<!-- argument_1&#45;&gt;refutation_1 -->
+<g id="edge15" class="edge">
+<title>argument_1-&gt;refutation_1</title>
+<path fill="none" stroke="black" d="M386.55,-71.7C386.55,-64.41 386.55,-55.73 386.55,-47.54"/>
+<polygon fill="black" stroke="black" points="390.05,-47.62 386.55,-37.62 383.05,-47.62 390.05,-47.62"/>
+</g>
+</g>
+</svg>

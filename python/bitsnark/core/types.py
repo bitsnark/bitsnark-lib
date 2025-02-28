@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import NewType
+from typing import NewType, Literal
 
 HexStr = NewType("HexStr", str)
 
@@ -14,3 +14,6 @@ class TxIn:
 class TxOut:
     script_pubkey: str
     amount: int
+
+
+Role = Literal["prover", "verifier"]

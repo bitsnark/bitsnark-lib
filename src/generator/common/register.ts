@@ -1,4 +1,3 @@
-
 export interface Register {
     value: bigint;
     hardcoded: boolean;

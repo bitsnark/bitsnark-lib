@@ -1,10 +1,12 @@
-import assert from "assert";
-import { Bitcoin } from '../../generator/step3/bitcoin';
-import { StackItem } from "../../generator/step3/stack";
-import { nibblesToBigintLS, teaPot } from "./common";
+import { Bitcoin } from '../../generator/btc_vm/bitcoin';
+import { StackItem } from '../../generator/btc_vm/stack';
+import { last } from '../common/array-utils';
+
+export function teaPot() {
+    throw new Error("I'm a teapot");
+}
 
 export class BtcArithmetic {
-
     bitcoin: Bitcoin;
     table: StackItem[] = [];
     tableRow: StackItem[] = [];
@@ -17,27 +19,25 @@ export class BtcArithmetic {
 
     public initializeAddTables() {
         for (let i = 0; i < 64; i++) {
-            this.breakTableValue[i] = this.bitcoin.hardcode(BigInt(i & 7), 1);
+            this.breakTableValue[i] = this.bitcoin.hardcode(i & 7);
         }
         for (let i = 0; i < 64; i++) {
-            this.breakTableCarry[i] = this.bitcoin.hardcode(BigInt(i >> 3), 1);
+            this.breakTableCarry[i] = this.bitcoin.hardcode(i >> 3);
         }
     }
     public initializeMulTables() {
-
         for (let i = 0; i < 8; i++) {
-            this.tableRow[i] = this.bitcoin.hardcode(BigInt(i * 8), 1);
+            this.tableRow[i] = this.bitcoin.hardcode(i * 8);
         }
         for (let i = 0; i < 8; i++) {
-            for (let j = 0; j < 8; j++)
-                this.table[i * 8 + j] = this.bitcoin.hardcode(BigInt(i * j), 1);
+            for (let j = 0; j < 8; j++) this.table[i * 8 + j] = this.bitcoin.hardcode(i * j);
         }
     }
 
     public addWitness(na: number[]) {
         const result: StackItem[] = [];
         for (let i = 0; i < na.length; i++) {
-            result.push(this.bitcoin.newStackItem(BigInt(na[i])));
+            result.push(this.bitcoin.newStackItem(na[i]));
         }
         return result;
     }
@@ -45,7 +45,7 @@ export class BtcArithmetic {
     public drop(si: StackItem | StackItem[]) {
         this.bitcoin.drop(si);
     }
-    
+
     private nibbleMult(a: StackItem, b: StackItem) {
         this.bitcoin.pick(a);
         this.bitcoin.tableFetchInStack(this.tableRow);
@@ -57,30 +57,26 @@ export class BtcArithmetic {
     public verifyEqual(a: StackItem[], b: StackItem[]) {
         for (let i = 0; i < Math.max(a.length, b.length); i++) {
             if (a[i]) this.bitcoin.pick(a[i]);
-            else this.bitcoin.OP_0_16(0n);
+            else this.bitcoin.OP_0_16(0);
             if (b[i]) this.bitcoin.pick(b[i]);
-            else this.bitcoin.OP_0_16(0n);
+            else this.bitcoin.OP_0_16(0);
             this.bitcoin.OP_NUMEQUALVERIFY();
         }
     }
 
     public equal(a: StackItem[], b: StackItem[]): StackItem {
-        const t = this.bitcoin.newStackItem();
+        const t = this.bitcoin.newStackItem(0);
         this.bitcoin.equalNibbles(t, a, b);
         return t;
     }
-    
+
     public add(a: StackItem[], b: StackItem[]): StackItem[] {
-
         const result = this.bitcoin.newNibblesFast(Math.max(a.length, b.length) + 1);
-
-        const stack = this.bitcoin.stack.items;
 
         const l = Math.max(a.length, b.length);
         for (let i = 0; i < l; i++) {
-
             if (i == 0) {
-                this.bitcoin.OP_0_16(0n); // 0
+                this.bitcoin.OP_0_16(0); // 0
             } else {
                 this.bitcoin.OP_FROMALTSTACK();
             }
@@ -102,19 +98,11 @@ export class BtcArithmetic {
         this.bitcoin.OP_FROMALTSTACK();
         this.bitcoin.replaceWithTop(result[l]); //
 
-        if (nibblesToBigintLS(a) + nibblesToBigintLS(b) != nibblesToBigintLS(result))
-            teaPot();
-
         return result;
     }
 
     public subtractFromA(a: StackItem[], b: StackItem[]) {
-
-        if (a.length < b.length)
-            teaPot();
-
-        const savedA = nibblesToBigintLS(a);
-        const savedB = nibblesToBigintLS(b);
+        if (a.length < b.length) teaPot();
 
         const stack = this.bitcoin.stack.items;
 
@@ -122,7 +110,7 @@ export class BtcArithmetic {
             this.bitcoin.pick(a[i]); // a[i]
 
             if (i == 0) {
-                this.bitcoin.OP_0_16(0n); // 0
+                this.bitcoin.OP_0_16(0); // 0
             } else {
                 this.bitcoin.OP_FROMALTSTACK();
             }
@@ -133,45 +121,40 @@ export class BtcArithmetic {
             }
             this.bitcoin.OP_SUB(); // a[i]-borrow-b[i]
             this.bitcoin.OP_DUP(); // a[i]-borrow-b[i] a[i]-borrow-b[i]
-            this.bitcoin.OP_0_16(0n); // a[i]-borrow-b[i] a[i]-borrow-b[i] 0
+            this.bitcoin.OP_0_16(0); // a[i]-borrow-b[i] a[i]-borrow-b[i] 0
             this.bitcoin.OP_LESSTHAN(); // a[i]-borrow-b[i] flag
 
-            const flag = stack[stack.length - 1].value;
+            const flag = last(stack).value;
 
             this.bitcoin.OP_IF(); // a[i]-borrow-b[i]
-            this.bitcoin.OP_0_16(8n); // a[i]-borrow-b[i] 8 
+            this.bitcoin.OP_0_16(8); // a[i]-borrow-b[i] 8
             this.bitcoin.OP_ADD(); // a[i]-borrow-b[i]+8
-            this.bitcoin.OP_0_16(1n); // a[i]-borrow-b[i]+8 1
+            this.bitcoin.OP_0_16(1); // a[i]-borrow-b[i]+8 1
             this.bitcoin.OP_ELSE(); // a[i]-borrow-b[i]
-            this.bitcoin.OP_0_16(0n); // a[i]-borrow-b[i] 0
+            this.bitcoin.OP_0_16(0); // a[i]-borrow-b[i] 0
             this.bitcoin.OP_ENDIF();
 
             // hack
             stack.pop();
-            stack[stack.length - 1].value = flag;
-            if (!flag) stack[stack.length - 2].value -= 8n;
+            last(stack).value = flag;
+            if (!flag) (stack[stack.length - 2].value as number) -= 8;
 
             if (i + 1 < a.length) this.bitcoin.OP_TOALTSTACK(); // a[i]-borrow-b[i]
             this.bitcoin.replaceWithTop(a[i]); //
         }
-
-        if (savedA - savedB != nibblesToBigintLS(a))
-            teaPot();
     }
 
     public naiiveMult(a: StackItem[], b: StackItem[]): StackItem[] {
-
-        if (a.length != b.length)
-            teaPot();
+        if (a.length != b.length) teaPot();
 
         const result = this.bitcoin.newNibblesFast(a.length + b.length);
 
         for (let i = 0; i < a.length; i++) {
-            this.bitcoin.OP_0_16(0n);
+            this.bitcoin.OP_0_16(0);
             this.bitcoin.OP_TOALTSTACK();
 
             for (let j = 0; j < b.length; j++) {
-                this.nibbleMult(a[i], b[j])
+                this.nibbleMult(a[i], b[j]);
                 this.bitcoin.OP_FROMALTSTACK();
                 this.bitcoin.OP_ADD();
                 this.bitcoin.pick(result[i + j]);
@@ -186,21 +169,13 @@ export class BtcArithmetic {
             this.bitcoin.replaceWithTop(result[i + b.length]);
         }
 
-        if (nibblesToBigintLS(a) * nibblesToBigintLS(b) != nibblesToBigintLS(result))
-            teaPot();
-
         return result;
     }
 
     public karatsubaMult(a: StackItem[], b: StackItem[], maxDepth: number): StackItem[] {
-
-        if (a.length != b.length)
-            teaPot();
+        if (a.length != b.length) teaPot();
 
         if (maxDepth == 0) return this.naiiveMult(a, b);
-
-        const origA = nibblesToBigintLS(a);
-        const origB = nibblesToBigintLS(b);
 
         const l = Math.floor(a.length / 2);
 
@@ -243,7 +218,7 @@ export class BtcArithmetic {
             this.bitcoin.pick(result[i]);
 
             if (i == l) {
-                this.bitcoin.OP_0_16(0n); // 0
+                this.bitcoin.OP_0_16(0); // 0
             } else {
                 this.bitcoin.OP_FROMALTSTACK();
             }
@@ -257,10 +232,6 @@ export class BtcArithmetic {
             this.bitcoin.tableFetchInStack(this.breakTableValue);
             this.bitcoin.replaceWithTop(result[i]);
         }
-
-        const c = nibblesToBigintLS(result);
-        if (origA * origB != c)
-            teaPot();
 
         return result;
     }

@@ -1,10 +1,25 @@
   services:
+    postgres:
+      image: postgres:17
+      environment:
+        POSTGRES_PASSWORD: testpostgres
+
+      ports:
+        # Expose a different port, and disable connections outside of localhost
+        - 127.0.0.1:5433:5432
+      healthcheck:
+        test: ["CMD-SHELL", "pg_isready -U postgres -d postgres -h postgres"]
+        interval: 1s
+        timeout: 30s
+        start_period: 1s
+        retries: 10
+
     bitcoind:
       environment:
         USERID: ${USERID:-1000}
         GROUPID: ${GROUPID:-1000}
       stop_grace_period: 5m
-      image: polarlightning/bitcoind:26.0
+      image: polarlightning/bitcoind:28.0
       hostname: bitcoind
       command: >-
         bitcoind -server=1 -regtest=1
@@ -26,8 +41,6 @@
         interval: 2s
 #      volumes:
 #        - ./volumes/bitcoind/bitcoind:/home/bitcoin/.bitcoin
+      # NOTE: we use 19443 instead of 18443 to avoid clashing with npm run regtest
       ports:
-        - '18443:18443'
-        - '19444:18444'
-        - '28334:28334'
-        - '29335:28335'
+        - '19443:18443'

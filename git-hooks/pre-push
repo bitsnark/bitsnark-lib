@@ -10,10 +10,10 @@ current_branch="$(git rev-parse --abbrev-ref HEAD)"
 set -e
 git switch "$branch_to_update"
 npm run lint
+npm run prettier-check
+npm run compile
 npm run test
-npm run start-db || true
-npm run generate-tx
-npm run generate-scripts
+npm run python-test
 git switch "$current_branch"
 set +e
 
