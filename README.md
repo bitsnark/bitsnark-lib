@@ -129,11 +129,35 @@ npm install
 
 ### Running
 
-To run the entire protocol over a local regtest network, use the `e2e` script.
+To run the demo, you will need to create an `.env` file in the root directory of the repository and set the following environment variables:
+
+  * `PROVER_SCHNORR_PUBLIC`
+  * `PROVER_SCHNORR_PRIVATE`
+  * `VERIFIER_SCHNORR_PUBLIC`
+  * `VERIFIER_SCHNORR_PRIVATE`
+
+To run the entire protocol over the local regtest network, use the `e2e` script:
 
 ```sh
 npm run e2e
 ```
+
+This will emulate a full setup between the prover and the verifier, then execute the protocol with the prover publishing an invalid `PROOF` transaction and the verifier refuting it. After a lot of informative output you should see the `PROOF_REFUTED` transaction being published with something like the following:
+
+```sh
+Asking to send template PROOF_REFUTED (make sure sender is listening: npm run bitcoin-sender)
+Template PROOF_REFUTED, status: READY
+Handling special transaction PROOF_REFUTED...
+Signing PROOF_REFUTED
+Broadcasting transaction PROOF_REFUTED...
+Attempting to broadcast PROOF_REFUTED
+Broadcasting transaction: PROOF_REFUTED   -   152064 bytes
+Transaction broadcast: afa3583aacba0fe6dc425c8786a5eabbe75cdc32aa63ec3f2881984e9acd9b3a
+Generating 1 blocks
+Template PROOF_REFUTED, status: PUBLISHED
+```
+
+Note the the setup and execution take quite a bit of time (about 15 minutes on a powerful machine).
 
 If you wish to examine the setup negotiation process as well, make sure have the following environment variables set in you local `.env` file:
 
